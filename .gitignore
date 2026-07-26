@@ -1,3 +1,1 @@
-# Ignore memory log files
-.memlog.md
-*.memlog.md
+# Ignore memory log file
