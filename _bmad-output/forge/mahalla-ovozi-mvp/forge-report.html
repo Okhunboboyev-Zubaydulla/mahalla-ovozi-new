@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mahalla Ovozi — Forge Report</title>
+  <style>
+    :root {
+      --ink: #16251f;
+      --muted: #607068;
+      --paper: #fbfaf5;
+      --panel: #ffffff;
+      --line: #dfe6e1;
+      --green: #176b4d;
+      --green-soft: #e9f4ee;
+      --gold: #b88325;
+      --red: #8d2d2d;
+      --red-soft: #f8eeee;
+      --shadow: 0 16px 45px rgba(25, 50, 39, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 0%, rgba(184, 131, 37, 0.11), transparent 26rem),
+        radial-gradient(circle at 100% 12%, rgba(23, 107, 77, 0.10), transparent 30rem),
+        var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 32px auto 72px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 32px;
+      align-items: center;
+      padding: clamp(28px, 5vw, 64px);
+      color: #f7fff9;
+      background: linear-gradient(135deg, #102d22, #176b4d 72%, #245d48);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      right: -170px;
+      bottom: -220px;
+      border: 70px solid rgba(255,255,255,0.06);
+      border-radius: 50%;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: #bce1cd;
+      font-weight: 750;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(2.4rem, 6vw, 5.6rem);
+      line-height: 0.96;
+      letter-spacing: -0.045em;
+    }
+
+    .hero-copy {
+      max-width: 720px;
+      margin: 22px 0 0;
+      color: #e0efe6;
+      font-size: 1.08rem;
+    }
+
+    .seal {
+      position: relative;
+      z-index: 1;
+      width: 190px;
+      filter: drop-shadow(0 14px 20px rgba(0,0,0,0.25));
+      transform: rotate(-5deg);
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .chip {
+      padding: 7px 11px;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 999px;
+      color: #f1fff6;
+      background: rgba(255,255,255,0.08);
+      font-size: 0.82rem;
+      font-weight: 650;
+    }
+
+    section {
+      margin-top: 28px;
+      padding: clamp(22px, 4vw, 38px);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: 0 10px 30px rgba(25, 50, 39, 0.06);
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(1.65rem, 3vw, 2.4rem);
+      letter-spacing: -0.025em;
+    }
+
+    h3 {
+      margin: 0 0 7px;
+      font-size: 1rem;
+    }
+
+    p { margin: 0 0 12px; }
+    p:last-child { margin-bottom: 0; }
+
+    .lead {
+      color: #35473e;
+      font-size: 1.08rem;
+      max-width: 860px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      padding: 19px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fcfdfb;
+    }
+
+    .card p, .card li { color: #485a51; }
+
+    ul {
+      margin: 10px 0 0;
+      padding-left: 1.2rem;
+    }
+
+    li + li { margin-top: 7px; }
+
+    .decision {
+      border-left: 4px solid var(--green);
+      background: var(--green-soft);
+    }
+
+    .rejected {
+      border-left: 4px solid var(--red);
+      background: var(--red-soft);
+    }
+
+    .review-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .review-item {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .status {
+      min-width: 74px;
+      padding: 4px 8px;
+      color: #fff;
+      background: var(--green);
+      border-radius: 999px;
+      text-align: center;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+    }
+
+    .status.routed { background: var(--gold); }
+
+    .persona-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .persona {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fcfdfb;
+    }
+
+    .persona .icon { font-size: 1.45rem; }
+    .persona p { color: var(--muted); font-size: 0.9rem; }
+
+    .weak-points {
+      border-color: #ead8b8;
+      background: #fffaf0;
+    }
+
+    footer {
+      margin-top: 26px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.85rem;
+    }
+
+    code {
+      padding: 0.12em 0.34em;
+      background: #eef2ef;
+      border-radius: 5px;
+    }
+
+    @media (max-width: 780px) {
+      .hero { grid-template-columns: 1fr; }
+      .seal { width: 150px; }
+      .grid, .persona-grid { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      main { width: 100%; margin: 0; }
+      .hero, section { box-shadow: none; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">BMAD Forge outcome · 27 July 2026</p>
+        <h1>Mahalla<br>Ovozi</h1>
+        <p class="hero-copy">
+          A private district monitoring product that turns informal Telegram group conversation
+          into cautious, same-day Topics with original evidence for direct hokim review.
+        </p>
+        <div class="meta">
+          <span class="chip">3–4 districts</span>
+          <span class="chip">120 groups</span>
+          <span class="chip">Private paid software</span>
+          <span class="chip">Uzbekistan calendar-day Topics</span>
+        </div>
+      </div>
+      <svg class="seal" viewBox="0 0 220 220" role="img" aria-label="Hardened outcome seal">
+        <defs>
+          <filter id="rough">
+            <feTurbulence baseFrequency=".035" numOctaves="2" seed="7" result="noise"/>
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.4"/>
+          </filter>
+        </defs>
+        <g filter="url(#rough)">
+          <circle cx="110" cy="110" r="101" fill="#b88325"/>
+          <circle cx="110" cy="110" r="86" fill="#f4d98d" stroke="#7a5417" stroke-width="5"/>
+          <circle cx="110" cy="110" r="72" fill="none" stroke="#7a5417" stroke-width="2" stroke-dasharray="3 4"/>
+          <path d="M65 113l28 27 61-67" fill="none" stroke="#176b4d" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="110" y="51" text-anchor="middle" font-family="Georgia,serif" font-size="15" font-weight="700" fill="#593b0f">BMAD FORGE</text>
+          <text x="110" y="180" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" font-weight="900" letter-spacing="2" fill="#593b0f">HARDENED</text>
+        </g>
+      </svg>
+    </header>
+
+    <section>
+      <h2>Outcome</h2>
+      <p class="lead">
+        The idea is specific enough to enter formal product planning. Its central AI/Topic mechanism,
+        business model, direct-user workflow, access model, subscriptions, operating scale, and MVP
+        boundaries are decided. Fourteen adversarial findings were either closed or deliberately routed
+        to technical research and architecture.
+      </p>
+    </section>
+
+    <section>
+      <h2>Locked product spine</h2>
+      <div class="grid">
+        <article class="card decision">
+          <h3>Direct user and customer</h3>
+          <p>Hokims privately commission district-scoped deployments and monitor their own dashboards directly. No staff reporting layer sits between the product and the hokim.</p>
+        </article>
+        <article class="card decision">
+          <h3>Private multi-customer MVP</h3>
+          <p>Support 3–4 isolated districts. The Product Owner manages customers and manually administered subscriptions. This is not public SaaS.</p>
+        </article>
+        <article class="card decision">
+          <h3>Semantic triage</h3>
+          <p>Human text and captions are interpreted by meaning, intent, context, slang, mixed scripts, and typos. Vocabulary helps the LLM but never forces classification.</p>
+        </article>
+        <article class="card decision">
+          <h3>Daily Topics</h3>
+          <p>One underlying situation per district, mahalla, and Uzbekistan calendar day. Raw accepted evidence drives cautious summaries and dynamic lane membership.</p>
+        </article>
+        <article class="card decision">
+          <h3>Hokim-related complaints</h3>
+          <p>An independent complaint category may include issues outside Water, Electricity, Gas, and Waste. Overlapping signals remain one canonical Topic shown in multiple lanes.</p>
+        </article>
+        <article class="card decision">
+          <h3>Evidence over claims</h3>
+          <p>Captured messages remain primary evidence. The product attributes resident reports, preserves disagreement, and does not claim objective truth or resolution.</p>
+        </article>
+        <article class="card decision">
+          <h3>Future-only AI changes</h3>
+          <p>Model, prompt, and vocabulary changes activate immediately for future processing. Old decisions are never replayed; every result records its configuration version.</p>
+        </article>
+        <article class="card decision">
+          <h3>Operations before immediacy</h3>
+          <p>Durable ordered processing and no message loss matter more than real-time display. System Health exposes connection, queue, AI, and failure state to the Product Owner.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Key operating limits</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>Capacity envelope</h3>
+          <ul>
+            <li>Up to 4 districts and 120 groups.</li>
+            <li>20,000 messages per day.</li>
+            <li>Short bursts of 100 messages per minute.</li>
+            <li>10 simultaneous dashboard sessions.</li>
+            <li>Approximately 180,000 retained evidence messages.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Retention and search</h3>
+          <ul>
+            <li>Topic-level evidence retention for 90 days.</li>
+            <li>Irrelevant production messages discarded immediately.</li>
+            <li>Complete-day browsing ranges up to 7 days.</li>
+            <li>Plain-text historical search across retained 90-day evidence.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Subscription lifecycle</h3>
+          <ul>
+            <li>Active → seven-day Grace → Suspended → Cancelled.</li>
+            <li>Suspension stops new ingestion and hokim access.</li>
+            <li>Reactivation resumes future messages only.</li>
+            <li>Cancellation provides 30 recovery days, then permanent deletion.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Roles and access</h3>
+          <ul>
+            <li>Only Product Owner and Hokim application roles.</li>
+            <li>Hokim sees one district.</li>
+            <li>Product Owner has disclosed standing access across customers.</li>
+            <li>District-owned isolated Telegram bots.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Rejected directions</h2>
+      <div class="grid">
+        <article class="card rejected">
+          <h3>Complex historical behavior</h3>
+          <p>Rejected rolling 24-hour Topics, cross-day continuation, retroactive recovery, and production historical replay.</p>
+        </article>
+        <article class="card rejected">
+          <h3>Brittle classification</h3>
+          <p>Rejected keyword admission/rejection, planned-announcement Topics, ambiguous-message pools, and summary-only or vector context.</p>
+        </article>
+        <article class="card rejected">
+          <h3>Workflow expansion</h3>
+          <p>Rejected case management, staff review chains, ticketing, assignments, SLAs, resolution tracking, and manual Topic correction.</p>
+        </article>
+        <article class="card rejected">
+          <h3>Public SaaS machinery</h3>
+          <p>Rejected public signup, advertising, marketing funnels, public checkout, automatic charging, and unnecessary application roles.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Adversarial review</h2>
+      <p class="lead">Fourteen findings were produced. Product conflicts were closed; technical uncertainties remain visible rather than disguised as solved.</p>
+      <div class="review-list">
+        <div class="review-item"><span class="status">CLOSED</span><div>Later 3–4 district paid model explicitly supersedes the earlier one-district founder-only model.</div></div>
+        <div class="review-item"><span class="status">CLOSED</span><div>Four service lanes are distinguished from independent Hokim-related complaint classification.</div></div>
+        <div class="review-item"><span class="status">CLOSED</span><div>Mixed-content rules now include the Hokim-related exception.</div></div>
+        <div class="review-item"><span class="status">CLOSED</span><div>Seven-day browsing and 90-day historical search are separate capabilities.</div></div>
+        <div class="review-item"><span class="status">CLOSED</span><div>Immediate future-only AI activation is versioned, traceable, and rollback-capable.</div></div>
+        <div class="review-item"><span class="status">CLOSED</span><div>False-negative evaluation uses a separate dataset because irrelevant production text is not retained.</div></div>
+        <div class="review-item"><span class="status">CLOSED</span><div>Subscription access, ingestion, recovery, and deletion behavior are defined.</div></div>
+        <div class="review-item"><span class="status">CLOSED</span><div>District-scoped deployment and private hokim commissioning are reconciled.</div></div>
+        <div class="review-item"><span class="status">CLOSED</span><div>Standing Product Owner evidence access must be disclosed to customers.</div></div>
+        <div class="review-item"><span class="status">CLOSED</span><div>Verified bot access loss is distinguished from simple group inactivity.</div></div>
+        <div class="review-item"><span class="status routed">ROUTED</span><div>Bot token compromise, rotation, and offboarding move to Architecture and operations design.</div></div>
+        <div class="review-item"><span class="status routed">ROUTED</span><div>Local AI throughput and latency feasibility move to Technical Research and load testing.</div></div>
+        <div class="review-item"><span class="status routed">ROUTED</span><div>Backup, restore, and disaster recovery move to Architecture.</div></div>
+        <div class="review-item"><span class="status">CLOSED</span><div>Diagnostics retry only never-completed work; irrelevant successful classifications are discarded.</div></div>
+      </div>
+    </section>
+
+    <section class="weak-points">
+      <h2>Weak points that survive scrutiny</h2>
+      <ul>
+        <li>The local AI stack has not yet proved the full 20,000-message design envelope with all accepted same-day evidence context.</li>
+        <li>The 5/15-minute latency numbers are targets awaiting technical validation, not commercial guarantees.</li>
+        <li>Missed signals cannot be recovered from production because irrelevant text is deliberately not retained.</li>
+        <li>Customer adoption still depends on hokims voluntarily using the dashboard; the product avoids manufacturing an institutional workflow to force usage.</li>
+        <li>Telegram source navigation can fail even when captured dashboard evidence remains intact.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Voices that pressure-tested the idea</h2>
+      <div class="persona-grid">
+        <article class="persona">
+          <div class="icon">📋</div>
+          <h3>John · Product Manager</h3>
+          <p>Separated user, customer, payer, and continuation authority; challenged scope that did not serve the direct hokim workflow.</p>
+        </article>
+        <article class="persona">
+          <div class="icon">🏛️</div>
+          <h3>Skeptical Hokim · Generated voice</h3>
+          <p>Tested whether the dashboard creates direct situational awareness or merely adds another reporting layer.</p>
+        </article>
+        <article class="persona">
+          <div class="icon">💰</div>
+          <h3>Finance Reviewer · Generated voice</h3>
+          <p>Forced a real private-customer, subscription, suspension, cancellation, and deletion model.</p>
+        </article>
+        <article class="persona">
+          <div class="icon">🔐</div>
+          <h3>Operations Reviewer · Generated voice</h3>
+          <p>Challenged bot ownership, tenant isolation, standing Product Owner access, queue recovery, and diagnostics.</p>
+        </article>
+        <article class="persona">
+          <div class="icon">🧪</div>
+          <h3>Cynical Reviewer · Adversarial workflow</h3>
+          <p>Found fourteen conflicts and omissions, including two product decisions that required explicit user resolution.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Recommended handoff</h2>
+      <p class="lead">
+        Use the forged idea as the source for customer-first challenge or formal requirements. The next disciplined path is
+        Technical Research for AI feasibility, then Product Brief or PRFAQ if desired, PRD, UX, Architecture, epics and stories.
+      </p>
+    </section>
+
+    <footer>
+      Mahalla Ovozi · BMAD Forge · HARDENED · Canonical artifact: <code>forged-idea.md</code>
+    </footer>
+  </main>
+</body>
+</html>
