@@ -203,6 +203,7 @@
     }
 
     .status.routed { background: var(--gold); }
+    .status.superseded { background: var(--ink); }
 
     .persona-grid {
       display: grid;
@@ -255,7 +256,7 @@
   <main>
     <header class="hero">
       <div>
-        <p class="eyebrow">BMAD Forge outcome · 27 July 2026</p>
+        <p class="eyebrow">BMAD Forge outcome · updated 28 July 2026</p>
         <h1>Mahalla<br>Ovozi</h1>
         <p class="hero-copy">
           A private district monitoring product that turns informal Telegram group conversation
@@ -291,7 +292,7 @@
       <p class="lead">
         The idea is specific enough to enter formal product planning. Its central AI/Topic mechanism,
         business model, direct-user workflow, access model, subscriptions, operating scale, and MVP
-        boundaries are decided. Fourteen adversarial findings were either closed or deliberately routed
+        boundaries are decided. Fourteen adversarial findings were resolved or deliberately routed
         to technical research and architecture.
       </p>
     </section>
@@ -331,6 +332,14 @@
           <h3>Operations before immediacy</h3>
           <p>Durable ordered processing and no message loss matter more than real-time display. System Health exposes connection, queue, AI, and failure state to the Product Owner.</p>
         </article>
+        <article class="card decision">
+          <h3>Focused Hokim interface</h3>
+          <p>One compact sticky toolbar replaces sidebar and page navigation. A Today-default unified dashboard filters and searches retained 90-day history across five independently scrollable lanes; evidence opens in an overlay drawer.</p>
+        </article>
+        <article class="card decision">
+          <h3>Evidence-based statistics</h3>
+          <p>A compact filter-aware strip shows deterministic Topic, Hokim-related, active-mahalla, leading-service, and leading-mahalla measures. Trends are neutral; AI mood analysis is outside MVP.</p>
+        </article>
       </div>
     </section>
 
@@ -352,8 +361,8 @@
           <ul>
             <li>Topic-level evidence retention for 90 days.</li>
             <li>Irrelevant production messages discarded immediately.</li>
-            <li>Complete-day browsing ranges up to 7 days.</li>
-            <li>Plain-text historical search across retained 90-day evidence.</li>
+            <li>Today-default unified dashboard filtering and plain-text search across retained 90-day evidence.</li>
+            <li>Large result sets load progressively inside independently scrollable lanes.</li>
           </ul>
         </article>
         <article class="card">
@@ -372,6 +381,15 @@
             <li>Hokim sees one district.</li>
             <li>Product Owner has disclosed standing access across customers.</li>
             <li>District-owned isolated Telegram bots.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Statistical interpretation</h3>
+          <ul>
+            <li>Activity means unique Topic count, not message volume.</li>
+            <li>Multi-category Topics count once in each applicable service.</li>
+            <li>Evidence count is secondary context.</li>
+            <li>Filter-aware period comparisons carry no automatic good/bad judgment.</li>
           </ul>
         </article>
       </div>
@@ -401,12 +419,12 @@
 
     <section>
       <h2>Adversarial review</h2>
-      <p class="lead">Fourteen findings were produced. Product conflicts were closed; technical uncertainties remain visible rather than disguised as solved.</p>
+      <p class="lead">Fourteen findings were produced. Product conflicts were resolved, including a later UX supersession; technical uncertainties remain visible rather than disguised as solved.</p>
       <div class="review-list">
         <div class="review-item"><span class="status">CLOSED</span><div>Later 3–4 district paid model explicitly supersedes the earlier one-district founder-only model.</div></div>
         <div class="review-item"><span class="status">CLOSED</span><div>Four service lanes are distinguished from independent Hokim-related complaint classification.</div></div>
         <div class="review-item"><span class="status">CLOSED</span><div>Mixed-content rules now include the Hokim-related exception.</div></div>
-        <div class="review-item"><span class="status">CLOSED</span><div>Seven-day browsing and 90-day historical search are separate capabilities.</div></div>
+        <div class="review-item"><span class="status superseded">SUPERSEDED</span><div>A later UX decision replaces separate seven-day browsing and historical search with one Today-default dashboard covering retained 90-day evidence.</div></div>
         <div class="review-item"><span class="status">CLOSED</span><div>Immediate future-only AI activation is versioned, traceable, and rollback-capable.</div></div>
         <div class="review-item"><span class="status">CLOSED</span><div>False-negative evaluation uses a separate dataset because irrelevant production text is not retained.</div></div>
         <div class="review-item"><span class="status">CLOSED</span><div>Subscription access, ingestion, recovery, and deletion behavior are defined.</div></div>

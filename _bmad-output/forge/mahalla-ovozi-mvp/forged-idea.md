@@ -47,8 +47,21 @@
 - Forwarded messages follow normal semantic rules. Edits are ignored. Deleted Telegram messages remain captured evidence until Topic expiry.
 - Daily Topic and all evidence expire together 90 days after the Topic’s latest relevant evidence timestamp.
 - Required **Open in Telegram** action is best-effort; captured dashboard evidence remains usable when Telegram navigation fails.
-- Browsing filters show complete days: Today, Yesterday, or custom ranges up to seven days.
-- Historical plain-text search may span retained 90-day history and searches Topic summaries, evidence, usernames, and display names within one selected district.
+- One unified Hokim dashboard defaults to Today and supports complete-day date filtering plus plain-text search across the full retained 90-day window; there is no separate History page.
+- Search combines date or date range, mahalla, lane or category, and retained Topic summaries, evidence, usernames, and display names within the Hokim’s district.
+- Large result sets load progressively inside each lane instead of loading the full 90-day result set at once.
+
+## Dashboard UX direction
+
+- The Hokim interface has no sidebar, global navigation row, or page-navigation tabs. One compact sticky toolbar contains brand, fixed district context, date and mahalla filters, search, freshness, Help, and profile.
+- The Product Owner may use a sidebar because customer and system administration require multiple destinations.
+- The five lanes remain visible together on normal desktop widths; smaller widths use horizontal board scrolling without shrinking cards below readable widths.
+- The board fills the viewport below the toolbar. Each lane keeps a fixed header and independently scrolls its cards.
+- Opening the evidence drawer overlays the board from the right. Drawer open or close and background refresh preserve every lane’s scroll position.
+- A compact five-card statistics strip sits between toolbar and lanes: unique Topics with period comparison, Hokim-related Topics, active mahallas with evidence count as secondary context, most active service category, and most active mahalla or an adaptive replacement.
+- Statistics follow active date and mahalla filters. A meaningless metric is replaced, and comparison uses the equivalent preceding retained period when available.
+- “Most active” means unique Topic count, not message volume. Service comparison covers Water, Electricity, Gas, and Waste; a multi-category Topic counts once in each applicable service. Hokim-related remains separate.
+- Trend direction is neutral and never implies good or bad service performance. AI mood or sentiment statistics are excluded from MVP because captured signals are not representative public opinion.
 
 ## Access and configuration
 
@@ -109,4 +122,4 @@
 - Technical research and load testing must validate local AI throughput, all-same-day evidence context, and 5/15-minute targets before commercial promises.
 - Architecture must define tenant isolation, durable queues, idempotency, bot-token rotation/offboarding, backup/restore, disaster recovery, authentication, audit records, and permanent deletion.
 - PRD must convert these locks into testable functional and non-functional requirements.
-- UX must design the direct hokim dashboard, evidence drawer, search, Product Owner customer/subscription management, System Health, and settings.
+- UX must refine the locked role-specific navigation, unified 90-day Hokim dashboard, filter-aware statistics strip, five-lane scrolling board, evidence drawer, Product Owner customer/subscription management, System Health, and settings.

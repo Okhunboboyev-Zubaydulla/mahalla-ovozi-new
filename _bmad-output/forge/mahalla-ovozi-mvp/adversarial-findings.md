@@ -20,7 +20,7 @@
 - Closed: the final forged artifact uses the later private paid 3–4 district model and explicitly supersedes the earlier one-district founder-funded boundary.
 - Closed: Water, Electricity, Gas, and Waste are named as service lanes; Hokim-related is named as an independent complaint category.
 - Closed: mixed unsupported content may create a Hokim-related Topic only when it independently satisfies the Hokim complaint rule.
-- Closed: normal browsing remains limited to complete ranges of up to seven days; historical search may span retained 90-day history.
+- Superseded by later user decision: one unified Hokim dashboard defaults to Today and supports complete-day filtering plus plain-text search across retained 90-day history; the separate History page and seven-day browsing limit are removed.
 - Closed by user decision: configuration changes activate immediately for future processing, with activation timestamps, per-result version tracking, no reprocessing of old decisions, and future-only rollback.
 - Closed: production false-negative recovery is rejected; missed-signal evaluation uses a separately collected evaluation dataset.
 - Closed by user decision: Active, seven-day Grace, Suspended, and Cancelled states now define ingestion, access, reactivation, 30-day recovery, and deletion.
