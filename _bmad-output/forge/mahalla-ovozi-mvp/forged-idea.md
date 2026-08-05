@@ -44,7 +44,7 @@
 - Card evidence count is retained-message count. Repetition by one sender must not be described as several residents.
 - Anchor is the latest self-contained meaningful evidence, not the newest fragment and not a truth or resolution statement.
 - Evidence shows `@username`, otherwise Telegram display name; never infer or display phone numbers.
-- Forwarded messages follow normal semantic rules. Edits are ignored. Deleted Telegram messages remain captured evidence until Topic expiry.
+- Messages marked by Telegram as forwarded are excluded before semantic analysis; their text or caption is not sent to AI or retained. A non-forwarded, self-contained reply to a forwarded message may still qualify without using the forwarded parent as context. Edits are ignored. Deleted Telegram messages remain captured evidence until Topic expiry.
 - Daily Topic and all evidence expire together 90 days after the Topic’s latest relevant evidence timestamp.
 - Required **Open in Telegram** action is best-effort; captured dashboard evidence remains usable when Telegram navigation fails.
 - One unified Hokim dashboard defaults to Today and supports complete-day date filtering plus plain-text search across the full retained 90-day window; there is no separate History page.
@@ -98,7 +98,7 @@
 - Continue when the hokim uses the product and finds it useful; improve when value exists but errors or friction damage trust; stop when reasonable improvements cannot produce sufficient value or viable cost.
 - Missed relevant signals may be permanently lost because irrelevant production text is not retained.
 - False-negative measurement uses a separately collected evaluation dataset, not discarded production messages.
-- Forwarded-message origin may occasionally be unclear.
+- Relevant content shared only as a Telegram-forwarded message will be missed.
 - Captured evidence may differ from later Telegram edits.
 - Telegram source links may fail.
 - Same-day messages may be processed by different configuration versions; version tracking makes this traceable.
@@ -106,6 +106,7 @@
 ## Rejected
 
 - Rolling 24-hour or cross-day Topics.
+- Forwarded-message AI analysis and retention.
 - Hourly filters.
 - Automatic reassessment or production historical replay.
 - Planned-announcement and Service-notice Topics.
