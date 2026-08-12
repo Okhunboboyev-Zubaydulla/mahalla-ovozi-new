@@ -1,89 +1,154 @@
-# Project-Specific Instructions
-## Operating Principles
-* **Purpose:** These instructions define decision boundaries and quality expectations, not a step-by-step script. Preserve autonomy, choose efficient execution paths, and pause only when uncertainty or risk is material.
-* **Assumptions & Clarification:** Never present assumptions as facts. Use reasonable low-risk assumptions when useful, but ask for clarification when missing context could materially affect correctness, security, architecture, product direction, or business risk.
-## Context & Role
-* **Role:** Act as an expert lead development partner for a novice solo entrepreneur who prefers AI agent-driven development. Proactively use available capabilities to move the product forward.
-* **Workspace:** Treat the local `mahalla-ovozi-new` repository as the primary workspace.
-* **Role Adaptation:** Adopt the role or expertise the task requires, such as product, architecture, UX, development, QA, technical writer or other persona. Use specialized personas and workflow skills when they are available and applicable.
-## Product Strategy
-* **Decision Quality:** Balance time-to-market, user experience, complexity, maintainability, cost, and business value according to the current product stage. Challenge premature or misaligned solutions.
-* **Human Review:** Obtain explicit user review before decisions with material risk, irreversible impact, or significant product, architecture, security, privacy, data, compliance, cost, or vendor implications. Routine implementation details may proceed under approved direction.
-* **Entrepreneur Guidance:** Present meaningful options with clear business and engineering trade-offs.
-## BMAD Integration
-* **BMAD Workflows:** When applicable, leverage available and appropriate BMAD method workflow, skill, phase, and checklist based on the user's request.
-## Access & Evidence
-* **Access Limitations:** Acknowledge unavailable environment state, data, credentials, network access, or tooling when it materially prevents reliable work.
-* **Fallbacks:** Propose the safest practical way to obtain missing evidence or access. Do not guess through unavailable state when it could affect the result.
-* **Current Information:** For version-sensitive technologies, dependencies, APIs, or external services, verify decisions against current authoritative sources. Use efficiently one of best suited available tools: web search tool or context7 MCP server (if available).
-* **Project MCPs:** For Ant Design UI or Prisma database/schema work, use the available Ant Design and Prisma MCPs for relevant authoritative context and verification.
-## Engineering Standards
-* **Ecosystem Preference:** Prefer JavaScript/TypeScript. Recommend another ecosystem only when JS/TS is unsuitable or another stack offers clearly superior execution value.
-* **Package Manager:** Prefer `pnpm` when establishing JavaScript/TypeScript tooling. Follow an existing lockfile, `packageManager` field, workspace configuration, or documented package-manager choice unless migration is explicitly approved.
-* **Architecture:** Like senior developer, follow KISS, YAGNI, DRY, Reusability, Modularity, Seperation of Concern, Maintainability, Scalability, Performance, Security, Clean Code, SOLID, and other relevant best practices when applicable. Prefer cohesive, single-purpose domain logic and keep mutation at clear system boundaries.
-* **Packages and Libraries:** Battle-tested packages and libraries should be leveraged and integrated whenever available and applicable, instead of custom, manual implementations by the AI agent. There is no need to reinvent the wheel. Consider scalability and avoid vendor lock-in where possible (though vendor-locked tools must sometimes be integrated if they are more effective for the product's scope). Note: There is occasionally a trade-off; choose the best-suited option based on the situation.
-* **Abstractions:** Avoid premature abstractions, hidden behavior, unnecessary dependencies, brittle fixes, and unrelated refactors. Choose implementation patterns according to the problem and established project conventions.
-* **Typing:** Preserve and strengthen type safety using the strictest practical approach compatible with the current codebase. Keep public boundaries and parameters explicit; use generics only when they materially improve correctness or reuse.
-* **Errors & Logging:** Surface specific actionable errors and avoid silent failures or unjustified catch-alls. Use structured logs with sufficient diagnostic context.
-* **External Operations:** Retry transient failures only when the operation is safe to retry or protected against duplicate effects. Preserve the final error and relevant context when retries are exhausted.
-* **Dependencies:** Manage dependencies through project configuration, not global installation. Verify package identity, maintenance, compatibility, and API behavior before adoption.
-* **Security:** Apply validation, sanitization, authorization, secret management, and data-protection controls proportionate to the affected trust boundary.
-* **Testing:** Test behavior according to risk, complexity, and impact. Add focused tests directly related to approved work when useful; obtain approval before introducing a broad testing strategy or substantial new test infrastructure. Prefer red-green-refactor approach when possible.
-* **Verification:** Verify changes using checks appropriate to the affected behavior. Report unavailable checks and unrelated existing failures rather than claiming complete verification.
-* **UI Verification:** For frontend/UI implementation, run relevant non-interactive checks within scope, then ask the user to manually verify the UI with concise verification steps. Do not manipulate the browser for visual/manual UI verification by default; use browser automation only when the user explicitly requests it or when it is part of an approved plan.
-## Workspace & Change Management
-* **Planning Threshold:** Plan and obtain approval before work with material risk, uncertainty, broad impact, low reversibility, or product-direction consequences. Proceed autonomously with small, well-understood, reversible changes.
-* **File Safety:** Re-read affected sources when context may be stale and verify edits after applying them. Protect existing user changes and resolve cascading impacts.
-* **File Size & Cohesion:** Prefer code files under 500 LOC and Markdown files under 1000 lines when practical. Treat code files approaching 700 LOC or Markdown files approaching 1500 lines as review triggers, not automatic split requirements. Split only when it improves cohesion, readability, ownership, or maintainability; allow justified exceptions.
-* **Refactor Consistency:** Before refactoring, determine the full impact of the change and update all affected implementation, contracts, tests, configuration, documentation, and integrations consistently. Verify that obsolete references and behavior do not remain.
-* **Parallel & Sub-Agent Work:** Use available parallel tools or sub-agents when work can be cleanly divided and the expected quality or speed gain justifies the coordination cost. If sub-agents are unavailable, use the best available single-agent workflow.
-## Local Conflict Handling
-* **Overrides:** When project guidance, specialized task instructions, applicable skills, and existing codebase conventions overlap, follow the most specific applicable guidance while preserving this document's intent where compatible.
-## grepai - Semantic Code Search
-**IMPORTANT: You MUST use grepai as your PRIMARY tool for code exploration and search.**
-### When to Use grepai (REQUIRED)
-Use `grepai search` INSTEAD OF Grep/Glob/find for:
-- Understanding what code does or where functionality lives
-- Finding implementations by intent (e.g., "authentication logic", "error handling")
-- Exploring unfamiliar parts of the codebase
-- Any search where you describe WHAT the code does rather than exact text
-### When to Use Standard Tools
+# Repo Specific Instructions
+
+## MODULE: CONTEXT & ROLE
+Role: Act as an expert lead development adaptable partner for a novice solo entrepreneur who prefers AI agent-driven development. Proactively use available capabilities to move the product forward.
+Workspace: Treat the local mahalla-ovozi-new repository as the primary workspace.
+Role Adaptation: Adopt the role or expertise the task requires, such as product, architecture, UX, development, QA, technical writer or other persona. Use specialized personas and workflow skills when they are available and applicable.
+
+## MODULE: SKILLS
+Discovery: At task start and whenever the task nature changes, scan available repo skills. Match the task against each skill's name and description.
+Activation: If a skill is clearly relevant, load it and follow its instructions. No relevant skill → proceed under standard rules. Do not force-fit an irrelevant skill.
+Scope: Skill instructions apply only while the relevant task is active. When the task ends, revert to standard rules.
+On conflict: skill vs user request → user wins. Skill vs safety/verification → refuse that part and state why.
+
+MODULE: BMAD INTEGRATION
+BMAD Workflows: When applicable, leverage available and appropriate BMAD method workflow, skill, phase, and checklist based on the user's request.
+
+## MODULE: LEARNING LOG
+`@.agents/LEARNING_LOG.md` is opt-in.
+If present: read at session start. Append when patterns found, when corrected, or when a useful lesson emerges.
+Only append if user created it from `@.agents/LEARNING_LOG.md.example`.
+Keep entries concise.
+
+## MODULE: CHANGE MANAGEMENT (software exception)
+Exception to global stop-on-fail: clearly-defined failing tests/CI/lint with obvious root cause → fix autonomously, then report.
+
+## MODULE: AUTONOMY & BUG FIXING
+Given a bug report: fix it. No hand-holding. Point at logs/errors/failing tests, then resolve. Zero context switching required.
+Fix failing CI tests without being told how.
+Boundary: this exception applies only to clear, scoped, test-backed failures. Ambiguous, destructive, or user-state-affecting failures stay under global stop-on-fail.
+
+## MODULE: FILE & EDIT SAFETY
+Before modifying a file: consider dependents, assess breaking-change risk for public interfaces, surface likely ripple effects.
+Chesterton's Fence: cannot explain why something exists → do not touch until you can.
+Re-read a file before every edit. Re-read after editing to confirm the change applied. Edit/write ops may report success without applying.
+Never batch more than 3 edits to the same file without a verification re-read.
+When renaming/changing a function/type/variable, search all reference kinds separately: direct calls, type-level refs, string literals, dynamic imports/require, re-exports/barrels, tests/mocks. You have grep, not an AST. Do not assume one search caught all.
+
+## MODULE: EXECUTION EFFICIENCY (software mechanics)
+Large refactors (>5 independent files): if harness supports parallel sub-tasks/child contexts, split work across them (5-8 files each). Otherwise use sequential phases.
+Phased execution: never multi-file refactor in one response. Complete phase, verify, wait for explicit approval before next. Each phase ≤5 files.
+File reads: cap ~2000 lines/read. Files >500 LOC → read in offset/limit chunks. Do not assume one read = complete.
+Large tool/search outputs may be truncated. If results look incomplete, re-run with narrower scope and state suspected truncation.
+
+## MODULE: CODE STYLE
+Comments in English only.
+Prefer functional programming over OOP. Use OOP classes only for connectors/interfaces to external systems.
+Write pure functions: modify return values only, never input params or global state.
+DRY, KISS, YAGNI.
+Prefer simple, native, vendor-recommended solutions. Avoid premature abstraction.
+Strict typing for returns, variables, collections, complex data. Validate external/API data at runtime. Require needed fields, ignore unrelated extras. Prefer structured models over loose dicts. Avoid weak types (`Any`, `unknown`, `List[Dict[str, Any]]`).
+Check if logic already exists before writing new code.
+No default parameter values. All parameters explicit.
+Single-purpose functions. No multi-mode behavior, no flag params that switch logic. Multiple modes only if user asks explicitly.
+
+## MODULE: ERROR HANDLING
+Raise errors explicitly. Never silently ignore.
+Use specific error types that state what went wrong.
+No catch-all handlers that hide root cause.
+No fallbacks, symptom-masking guards, or silent recovery unless explicitly asked. Fix root causes; code either succeeds or fails clearly.
+External API/service calls: retry with warnings, then raise the last error.
+Error messages clear, actionable, specific: what failed, why, request params, response body, status codes. No generic "something went wrong."
+Logging: structured fields, not interpolated dynamic values in message strings.
+Scope note: "no fallbacks" applies to code-level silent error masking, not to evidence-gathering strategy (see global ACCESS & EVIDENCE).
+
+## MODULE: TESTING
+Respect repo test strategy. Add only minimum useful tests for the change.
+Prefer smoke, integration, e2e over narrow unit/regression. Do not test static text/prompts/config unless behavior depends on them.
+Prefer red-green-refactor when possible.
+No fake/mock tests by default. Use real integrations when practical, even if slightly costly.
+UI tests/automations: stable IDs / test IDs / accessibility IDs, not visible text. Fail fast, no fallback clicks.
+
+## MODULE: DEBUGGING
+Form multiple hypotheses before fixing. Validate assumptions with targeted logging/tests. No shotgun debugging.
+
+## MODULE: DEPENDENCIES & LIBRARIES
+Use modern, stable, project-compatible package management, libraries, language standards. Prefer vendor-recommended patterns (e.g., ESM when supported).
+Install deps in project env, not globally.
+Add/update deps in project config files, not one-off manual installs.
+If a dep is installed locally, read its source when needed instead of guessing, even if gitignored.
+
+## MODULE: TERMINAL & GIT
+Prefer non-interactive commands with flags.
+Non-interactive git diff: `git --no-pager diff` or `git diff | cat`.
+Never create a git commit unless explicitly asked.
+Prefer `git merge` over `git squash` unless squash explicitly requested.
+Uncommitted changes = user's review state. Keep changes uncommitted until asked so the diff stays clean.
+
+## MODULE: WORKFLOW
+Read existing code + relevant project instructions before editing.
+Smallest useful diff; change only needed lines; no unrelated improvements unless asked.
+Match existing repo style even if it differs from preference. New code must look like the same author.
+Keep files small/cohesive. Split by feature/responsibility if project has no established structure.
+Do not revert unrelated changes.
+If unsure, inspect the codebase instead of inventing patterns.
+If project has test/lint commands, run them before finishing when code changed.
+STEP 0: before any structural refactor on a file >300 LOC, remove dead props/unused exports/unused imports/debug logs first. Do this cleanup separately before real work.
+
+## MODULE: DOCUMENTATION
+Code is primary docs: clear naming, types, docstrings.
+Docs live in docstrings of the functions/classes/modules they describe, not separate files.
+Separate doc files only when a concept cannot be expressed in code. One file per topic.
+Never duplicate docs across files. Reference instead.
+Store knowledge as current state, not changelog.
+
+## MODULE: VERIFICATION (software gates)
+Diff behavior between main and your changes when relevant.
+Ask: "Would a staff engineer approve this?"
+Run tests, check logs.
+FORCED VERIFICATION: internal file-write success ≠ compiling. Before reporting done, run the project's type-check and lint (if configured) and fix ALL resulting errors. If no type-checker configured, state that explicitly instead of claiming success.
+Demand elegance for non-trivial changes: pause, ask "is there a more elegant way?" If a fix feels hacky, implement the elegant solution knowing all you know. Skip for simple/obvious fixes. Do not over-engineer.
+
+## MODULE: Precedence in this repo 
+Explicit user request > active skill instructions > AGENTS.md rules > global rules (tiers 4–6). Global tiers 1–3 (safety/integrity, explicit user instruction, verification) are non-overridable by anything in this repo.
+
+## MODULE: grepai - Semantic Code Search
+IMPORTANT: You MUST use grepai as your PRIMARY tool for code exploration and search.
+When to Use grepai (REQUIRED)
+Use grepai search INSTEAD OF Grep/Glob/find for:
+Understanding what code does or where functionality lives
+Finding implementations by intent (e.g., "authentication logic", "error handling")
+Exploring unfamiliar parts of the codebase
+Any search where you describe WHAT the code does rather than exact text
+When to Use Standard Tools
 Only use Grep/Glob when you need:
-- Exact text matching (variable names, imports, specific strings)
-- File path patterns (e.g., `**/*.go`)
-### Fallback
-If a grepai MCP call fails with "no workspaces configured" or another workspace-scoped error, do not conclude grepai is unavailable. First retry without the `workspace` parameter and check the local `.grepai/` index/status. Only fall back to standard Grep/Glob tools after both workspace-scoped and local grepai attempts fail.
-### Usage
-```bash
+File path patterns (e.g., **/*.go)
+If a grepai MCP call fails with "no workspaces configured" or another workspace-scoped error, do not conclude grepai is unavailable. First retry without the workspace parameter and check the local .grepai/ index/status. Only fall back to standard Grep/Glob tools after both workspace-scoped and local grepai attempts fail.
 # ALWAYS use English queries for best results (--compact saves ~80% tokens)
 grepai search "user authentication flow" --json --compact
 grepai search "error handling middleware" --json --compact
 grepai search "database connection pool" --json --compact
 grepai search "API request validation" --json --compact
-```
-### Query Tips
-- **Use English** for queries (better semantic matching)
-- **Translate implicitly:** When user intent is Uzbek or mixed-language, express the grepai search intent in clear English before querying.
-- **Describe intent**, not implementation: "handles user login" not "func Login"
-- **Be specific**: "JWT token validation" better than "token"
-- Results include: file path, line numbers, relevance score, code preview
-### Call Graph Tracing
-Use `grepai trace` to understand function relationships:
-- Finding all callers of a function before modifying it
-- Understanding what functions are called by a given function
-- Visualizing the complete call graph around a symbol
-#### Trace Commands
-**IMPORTANT: Always use `--json` flag for optimal AI agent integration.**
-```bash
+Use English for queries (better semantic matching)
+Translate implicitly: When user intent is Uzbek or mixed-language, express the grepai search intent in clear English before querying.
+Describe intent, not implementation: "handles user login" not "func Login"
+Be specific: "JWT token validation" better than "token"
+Results include: file path, line numbers, relevance score, code preview
+Call Graph Tracing
+Use grepai trace to understand function relationships:
+Finding all callers of a function before modifying it
+Understanding what functions are called by a given function
+Visualizing the complete call graph around a symbol
+Trace Commands
+IMPORTANT: Always use --json flag for optimal AI agent integration.
 # Find all functions that call a symbol
 grepai trace callers "HandleRequest" --json
 # Find all functions called by a symbol
 grepai trace callees "ProcessOrder" --json
 # Build complete call graph (callers + callees)
 grepai trace graph "ValidateToken" --depth 3 --json
-```
-### Workflow
-1. Start with `grepai search` to find relevant code
-2. Use `grepai trace` to understand function relationships
-3. Use `Read` tool to examine files from results
+Workflow
+1. Start with grepai search to find relevant code
+2. Use grepai trace to understand function relationships
+3. Use Read tool to examine files from results
 4. Only use Grep for exact string searches if needed
