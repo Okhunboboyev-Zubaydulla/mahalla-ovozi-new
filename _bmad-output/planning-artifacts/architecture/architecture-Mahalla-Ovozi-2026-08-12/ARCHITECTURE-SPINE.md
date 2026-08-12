@@ -71,9 +71,9 @@ These approved product semantics constrain architecture and are not implementati
 
 ### AD-2 — TypeScript/Node application stack [ADOPTED]
 
-- **Binds:** browser application, HTTP/API, Telegram webhook handling, asynchronous workers, shared contracts, package management, and runtime/tooling choices.
-- **Prevents:** parallel backend ecosystems, SSR/server-action coupling without a requirement, incompatible TypeScript toolchains, and duplicated application logic between HTTP and worker runtimes.
-- **Rule:** Use a pnpm TypeScript workspace targeting Node.js 24 LTS. Fastify 5.x serves the private JSON API and Telegram webhook transport. HTTP/webhook and worker entrypoints share the same backend modules. The private browser application is a React 19.2 SPA built with Vite 8.x and minimal React Router. Start on TypeScript 6.0.x. Do not introduce Next.js, SSR, React Server Components, or server actions without a later concrete requirement.
+- **Binds:** browser application, HTTP/API, Telegram webhook handling, asynchronous workers, shared contracts, package management, runtime/tooling choices, and the primary UI component/styling system.
+- **Prevents:** parallel backend ecosystems, SSR/server-action coupling without a requirement, incompatible TypeScript toolchains, duplicated application logic between HTTP and worker runtimes, and competing frontend component/styling systems.
+- **Rule:** Use a pnpm TypeScript workspace targeting Node.js 24 LTS. Fastify 5.x serves the private JSON API and Telegram webhook transport. HTTP/webhook and worker entrypoints share the same backend modules. The private browser application is a React 19.2 SPA built with Vite 8.x and minimal React Router. Use Ant Design 6.x as the primary UI component and styling system: implement the approved UX through Ant Design component APIs and `ConfigProvider` theme/design tokens, using narrowly scoped custom CSS only where Ant Design cannot reasonably express a required product-specific layout or behavior. Do not introduce Tailwind or another general-purpose UI component/styling framework without a later concrete requirement. Start on TypeScript 6.0.x. Do not introduce Next.js, SSR, React Server Components, or server actions without a later concrete requirement.
 
 ### AD-3 — PostgreSQL system of record and PostgreSQL-backed durable jobs [ADOPTED]
 
@@ -141,7 +141,7 @@ These approved product semantics constrain architecture and are not implementati
 | Jobs/idempotency | Jobs are retryable. Logical business effects require explicit idempotency/uniqueness keys; infrastructure delivery claims never replace application idempotency. |
 | API | Same-origin `/api/v1/*` JSON REST; project-owned Zod request/response contracts; sanitized stable error envelope. |
 | Frontend state | TanStack Query owns server state; React owns ephemeral UI/form state. District scope is part of every District query key and protected cache lifecycle. |
-| UI styling | Implement the approved UX with semantic CSS custom properties and locally scoped CSS/CSS Modules; do not introduce an external component/styling framework in the MVP baseline without a later concrete need. |
+| UI styling | Ant Design is the primary MVP component/styling system. Implement the approved UX through Ant Design components and `ConfigProvider` theme/design tokens; prefer library component APIs/tokens over replacements or global overrides. Use narrowly scoped custom CSS only when needed for product-specific layout/behavior that Ant Design cannot reasonably express. Do not add Tailwind or a second general-purpose component/styling framework without a concrete requirement. |
 | AI context | Raw evidence is verbatim, complete for required same-day scope, deterministically ordered, fingerprinted/versioned, and never silently truncated or summarized. |
 | Secrets/logging | Redact/exclude credentials, raw resident evidence, AI context, and ephemeral search text from routine logs, metrics, traces, raw errors, URLs, and browser persistence. |
 | Audit | Record privacy-safe operational/admin metadata such as actor, District/scope, action, timestamp, outcome, and safe identifiers; never store raw resident evidence or credentials in audit payloads. |
@@ -162,6 +162,7 @@ Verified-current seed at architecture finalization; once implementation exists, 
 | React | 19.2.x |
 | React Router | 8.3.x |
 | Vite | 8.1.x |
+| Ant Design | 6.6.x |
 | PostgreSQL | 18.4 |
 | pg-boss | 12.26.x |
 | Drizzle ORM | 0.45.2 |
@@ -182,7 +183,7 @@ Verified-current seed at architecture finalization; once implementation exists, 
 ```text
 mahalla-ovozi-new/
   apps/
-    web/                         # React/Vite private SPA
+    web/                         # React/Vite/Ant Design private SPA
     backend/
       entrypoints/
         http.ts                  # Fastify private API + Telegram webhook
@@ -253,5 +254,5 @@ flowchart LR
 - **PostgreSQL RLS:** optional defense-in-depth after the explicit District-scope model is implemented and tested; do not add during MVP merely for architectural symmetry.
 - **TypeScript 7:** toolchain upgrade after ecosystem/compiler-API compatibility is suitable; not an architecture change.
 - **Multi-host/high availability:** single-host downtime is an accepted MVP limitation; revisit only when availability or measured load requires it.
-- **Additional frontend component/styling framework:** none is part of the MVP baseline. Revisit only if implementation demonstrates a concrete need that semantic CSS custom properties and locally scoped CSS cannot meet efficiently.
+- **Second frontend component/styling system:** Ant Design is the MVP baseline. Revisit only if implementation demonstrates a concrete requirement Ant Design plus narrowly scoped custom CSS cannot meet efficiently; do not add another general-purpose UI/styling system for convenience alone.
 - **Local/self-hosted AI:** not required for MVP; may be evaluated later behind the existing AI adapter contract.
