@@ -2,7 +2,7 @@
 title: 'Mahalla Ovozi Product Requirements Document'
 status: complete
 created: '2026-07-30'
-updated: '2026-08-05'
+updated: '2026-08-10'
 ---
 
 # Mahalla Ovozi Product Requirements Document
@@ -60,22 +60,7 @@ The product reduces manual message reading and delivers useful signals rather th
   - A subscription pause is shown as a subscription state, not as a technical failure.
   - If the Console cannot fix the problem, it provides a clear reason and the next technical area to inspect.
 
-#### UJ-3: Zubaydulla observes the AI analysis flow
-
-- **Persona and context:** Zubaydulla wants to understand whether the current AI/LLM analysis flow produces satisfactory results with different message patterns.
-- **Entry state:** He is authenticated in the Product Owner Console and opens the Simulation Lab.
-- **Path:**
-  1. Zubaydulla starts an isolated simulation scenario.
-  2. He creates one or more sequential simulated days.
-  3. He enters synthetic Telegram-like messages with simulated times, senders, mahallas, and reply relationships.
-  4. He observes validation, relevance decisions, same-day context use, Topic matching, lanes, summaries, and supporting evidence.
-  5. He advances the simulated date to test new-day Topic separation, historical views, date filters, and time-based retention behavior.
-  6. He sees errors, latency, and the current AI configuration.
-- **Climax:** Zubaydulla understands how the AI analysis behaves across messages and days and personally judges whether the results are satisfactory.
-- **Resolution:** He finishes, clears, or starts another scenario. The product does not require a verdict, report, notes, or approval action.
-- **Boundary:** The Simulation Lab tests the AI message-analysis and product-domain flow, not real Telegram delivery, network behavior, servers, provider outages, backups, or payments.
-
-#### UJ-4: Zubaydulla onboards a new district
+#### UJ-3: Zubaydulla onboards a new district
 
 - **Persona and context:** Zubaydulla has approved customer information and is responsible for configuring the district.
 - **Entry state:** He is authenticated in the Product Owner Console and starts a new district setup.
@@ -91,7 +76,7 @@ The product reduces manual message reading and delivers useful signals rather th
 - **Resolution:** The Hokim can sign in and see only that district's dashboard. Processing begins for the configured groups.
 - **Edge case:** If setup is incomplete, the Console preserves the entered configuration, marks the district **Setup incomplete**, shows the remaining problems, and keeps processing and Hokim access disabled until Zubaydulla finishes successfully.
 
-#### UJ-5: Zubaydulla manages a district subscription lifecycle
+#### UJ-4: Zubaydulla manages a district subscription lifecycle
 
 - **Persona and context:** Zubaydulla manages subscriptions manually because payment occurs outside Mahalla Ovozi.
 - **Entry state:** He is authenticated in the Product Owner Console and opens the district's subscription section.
@@ -111,7 +96,7 @@ The product reduces manual message reading and delivers useful signals rather th
   - Previously completed production decisions are never replayed.
   - After live deletion, restoration through the product is impossible; a disaster restore must reapply the deletion before access.
 
-#### UJ-6: Hokim Akmal reviews earlier district signals
+#### UJ-5: Hokim Akmal reviews earlier district signals
 
 - **Persona and context:** Akmal wants to find and understand signals from an earlier date or period.
 - **Entry state:** He is authenticated in the same unified district dashboard used for current monitoring.
@@ -136,13 +121,12 @@ The product reduces manual message reading and delivers useful signals rather th
 - **Accepted Evidence** — A Telegram message that passes relevance analysis and is retained as the source material behind a Topic.
 - **Topic** — One same-day situation built from related Accepted Evidence. A Topic never continues or merges across different days.
 - **Lane** — One of the five dashboard groupings: Water, Electricity, Gas, Waste, or Hokim-related. One Topic may appear in multiple applicable Lanes.
-- **Simulation Scenario** — An isolated, synthetic multi-day test used by the Product Owner to observe the AI analysis flow without affecting production.
 
 ## 4. Features
 
 ### 4.1 Authorized Telegram Intake
 
-**Description:** Each District receives supported human messages from approved Telegram groups through its own passive bot. Structural checks remove unsupported content before AI use, semantic analysis decides relevance, and only qualifying messages become Accepted Evidence. Realizes UJ-1 and supports the gated setup in UJ-4.
+**Description:** Each District receives supported human messages from approved Telegram groups through its own passive bot. Structural checks remove unsupported content before AI use, semantic analysis decides relevance, and only qualifying messages become Accepted Evidence. Realizes UJ-1 and supports the gated setup in UJ-3.
 
 **Functional Requirements:**
 
@@ -206,7 +190,7 @@ The product can safely handle duplicate delivery and retry incomplete processing
 
 ### 4.2 AI Topic Analysis and Evidence
 
-**Description:** The product organizes Accepted Evidence into same-day Topics, derives cautious and traceable Topic information, and presents one canonical Topic in every applicable Lane. Complete evidence and explicit failures take priority over plausible-looking but incomplete AI output. Realizes UJ-1 and supplies the analysis behavior observed in UJ-3.
+**Description:** The product organizes Accepted Evidence into same-day Topics, derives cautious and traceable Topic information, and presents one canonical Topic in every applicable Lane. Complete evidence and explicit failures take priority over plausible-looking but incomplete AI output. Realizes UJ-1.
 
 **Functional Requirements:**
 
@@ -280,7 +264,7 @@ The product commits an AI-derived result only when it is valid and traceable to 
 
 ### 4.3 Hokim Dashboard and History
 
-**Description:** The Hokim uses one stable monitoring surface to scan current Topics, inspect Accepted Evidence, and review retained history without moving between dashboard and History pages. Filters, statistics, freshness, and background updates remain coordinated. Realizes UJ-1 and UJ-6.
+**Description:** The Hokim uses one stable monitoring surface to scan current Topics, inspect Accepted Evidence, and review retained history without moving between dashboard and History pages. Filters, statistics, freshness, and background updates remain coordinated. Realizes UJ-1 and UJ-5.
 
 **Functional Requirements:**
 
@@ -342,7 +326,7 @@ The dashboard can summarize the active result set through five compact statistic
 
 ### 4.4 Product Owner Console and District Management
 
-**Description:** Product Owner Zubaydulla uses one private Console to onboard and manage Districts, Telegram connections, Hokim access, future AI configuration, and immutable operational records. Incomplete or invalid setup cannot silently become active. Realizes UJ-4 and establishes the management controls used by UJ-2, UJ-3, and UJ-5.
+**Description:** Product Owner Zubaydulla uses one private Console to onboard and manage Districts, Telegram connections, Hokim access, future AI configuration, and immutable operational records. Incomplete or invalid setup cannot silently become active. Realizes UJ-3 and establishes the management controls used by UJ-2 and UJ-4.
 
 **Functional Requirements:**
 
@@ -351,7 +335,7 @@ The dashboard can summarize the active result set through five compact statistic
 Zubaydulla can manage every District from one authenticated Product Owner Console organized into focused operational sections.
 
 **Consequences (testable):**
-- The Console provides Overview, System Health, Districts, Telegram Setup, Subscriptions, Hokim Accounts, AI Operations, Audit History, and Simulation Lab sections.
+- The Console provides Overview, System Health, Districts, Telegram Setup, Subscriptions, Hokim Accounts, AI Operations, and Audit History sections.
 - Only the Product Owner can access the Console or view information across Districts.
 - Zubaydulla can select one District and browse or search its retained Topics and Accepted Evidence for operations and troubleshooting; a single view or search never mixes evidence from different Districts.
 - The MVP introduces no additional admin, support, or District-staff roles.
@@ -476,7 +460,7 @@ The product can evaluate freshness against initial pilot targets and provide dia
 
 ### 4.6 Subscription Lifecycle and District Deletion
 
-**Description:** Zubaydulla records externally managed subscription status and controls each District's product access through a small, explicit lifecycle. Grace, Suspension, Cancellation, recovery, retention, live deletion, and protected-backup expiry produce visible dates and audited consequences without adding payment processing to the MVP. Realizes UJ-5.
+**Description:** Zubaydulla records externally managed subscription status and controls each District's product access through a small, explicit lifecycle. Grace, Suspension, Cancellation, recovery, retention, live deletion, and protected-backup expiry produce visible dates and audited consequences without adding payment processing to the MVP. Realizes UJ-4.
 
 **Functional Requirements:**
 
@@ -529,68 +513,6 @@ The product deletes all remaining District data from live systems at the cancell
 - Any disaster restore reapplies recorded District deletion markers and current normal-retention expirations before user access, so deleted or expired data does not re-enter the accessible product.
 - Live deletion and backup expiry are safe to retry or re-verify without duplicating effects, and each milestone is verified before its success is recorded.
 - A failed or incomplete live deletion or required backup expiry becomes a Critical System Health issue until that milestone completes safely.
-
-### 4.7 Simulation Lab
-
-**Description:** Zubaydulla uses an isolated Simulation Lab to observe how the currently configured production AI and product-domain flow behaves across synthetic Telegram-like conversations and multiple virtual days. The Lab supports learning and investigation without profiles, scoring, formal approval, production mutation, or infrastructure-test claims. Realizes UJ-3.
-
-**Functional Requirements:**
-
-#### FR-33: Synthetic multi-day scenario authoring
-
-Zubaydulla can create and edit a named synthetic scenario that represents Telegram-like activity across one or more virtual Uzbekistan calendar days.
-
-**Consequences (testable):**
-- A scenario defines a virtual start date, synthetic Mahallas, one simulated group per Mahalla, synthetic senders, and an ordered message timeline.
-- A synthetic message can carry text or caption, virtual send time, sender name or username, reply relation, forwarded marker, and a supported or intentionally unsupported message type.
-- Zubaydulla can complete a virtual day, advance to another day, and continue the scenario for as many days as needed.
-- Scenario creation uses no real Telegram group, resident, bot token, or production data.
-- Telegram-marked synthetic forwards are skipped under the same rule as production.
-
-#### FR-34: Reproducible isolated Runs
-
-Zubaydulla can execute an editable scenario as a separate immutable Run using the current configured AI flow.
-
-**Consequences (testable):**
-- A Run snapshots the exact synthetic messages and their virtual order, the exact AI configuration version, and its real execution start and completion times.
-- Zubaydulla can run one selected virtual day, all remaining days in order, or the complete scenario from the beginning.
-- Re-running never overwrites an earlier Run, and a scenario can be cloned and edited before another Run.
-- Each Run is isolated from production and from every other Run; it cannot activate configuration or rewrite production or prior simulation results.
-- The MVP provides no Candidate-versus-Production profiles, required score, verdict, review report, approval workflow, cost estimate, provider-cost warning, billing metadata, token-cost dashboard, or simulation budget management.
-
-#### FR-35: Production-equivalent product-domain processing
-
-The Simulation Lab can exercise the current production product-domain flow over synthetic messages without claiming to simulate unrelated infrastructure.
-
-**Consequences (testable):**
-- A Run applies current intake eligibility, relevance, forwarded-message exclusion, Accepted Evidence, Topic matching, multi-Lane classification, cautious summary, anchor, attribution, evidence, and explicit-failure rules.
-- Virtual Uzbekistan midnight resets Topic identity under the same rule as production.
-- Multi-day execution supports inspection of simulated dashboard history and 90-day Topic-retention behavior as virtual time advances.
-- Complete required context is never silently truncated; an approved limit breach fails explicitly.
-- The Lab does not claim to test real Telegram delivery, webhook or network behavior, deliberate provider outages, production workers or servers, backups, payment, or subscription infrastructure.
-
-#### FR-36: Observable Run result
-
-Zubaydulla can observe Run inputs, processing decisions, derived outputs, simulated Hokim presentation, history behavior, and failures on one result screen.
-
-**Consequences (testable):**
-- The Input Timeline lists every synthetic message in virtual order as Accepted, Skipped, or Failed with its reason.
-- AI results show created or updated Topics, virtual day, Mahalla, Lane membership, cautious summary, anchor, evidence count and attribution, and exact AI configuration version.
-- A clearly marked **Simulation — not production** view renders results through the same five-Lane Hokim dashboard behavior.
-- Completed virtual days remain browsable, including visible midnight reset and retention-expiry effects.
-- Context overflow, invalid AI output, refusal, timeout, rate limit, provider failure, and other processing failures remain explicit and never become invented partial success.
-- Results support observation only and provide no automated correctness score or required judgment.
-
-#### FR-37: Synthetic data isolation and lifecycle
-
-Zubaydulla can retain or delete synthetic scenarios and Runs independently without affecting production data.
-
-**Consequences (testable):**
-- The Console states that Simulation Lab accepts synthetic data only and reminds Zubaydulla not to enter real resident information.
-- Production messages cannot be imported into Simulation Lab.
-- Scenarios and Runs remain available until Zubaydulla deletes them; production 90-day retention does not apply to synthetic simulation data.
-- Zubaydulla can delete an individual Run or delete a whole scenario and all its Runs after explicit confirmation.
-- Simulation deletion is scoped to the selected synthetic records and cannot delete or change any production record.
 
 ## 5. Non-Functional Requirements
 
@@ -676,7 +598,7 @@ The Hokim dashboard and Product Owner Console use Uzbek Cyrillic as the only MVP
 - Technical identifiers such as model names, trace IDs, and provider error codes remain in their original form.
 - Telegram evidence remains exactly in its original language and script, while Topic summaries remain Uzbek Cyrillic.
 - Search operates over original Uzbek, Russian, and mixed-language evidence without translating it first.
-- User-facing dates, Topic-day boundaries, Grace expiry, cancellation deletion deadlines, and simulated days use Asia/Tashkent time.
+- User-facing dates, Topic-day boundaries, Grace expiry, and cancellation deletion deadlines use Asia/Tashkent time.
 - Dates display as `DD.MM.YYYY`, ordinary time as 24-hour `HH:mm`, and technically useful audit or diagnostic time may include seconds as `HH:mm:ss`.
 - Timestamps are stored in a safe universal internal form and Telegram source times are displayed in Asia/Tashkent; the MVP provides no timezone selector.
 
@@ -686,7 +608,7 @@ The Hokim dashboard and Product Owner Console use Uzbek Cyrillic as the only MVP
 
 Mahalla Ovozi begins with one District for at least 30 calendar days after successful activation, using that District's real approved Mahalla groups.
 
-- Zubaydulla monitors System Health and can use Simulation Lab whenever he wants to investigate current AI behavior.
+- Zubaydulla monitors System Health and may manually assess AI behavior by connecting a controlled mock Mahalla group through the ordinary District onboarding and Telegram integration flow.
 - The Hokim checks the dashboard whenever useful; the pilot requires no fixed time or daily login.
 - Pilot success never depends on whether the Hokim makes a decision or takes action because the product's responsibility ends at delivering cautious, traceable signals.
 - When group activity is too low to judge the flow fairly, the pilot is extended rather than declared successful or unsuccessful prematurely.
@@ -697,13 +619,13 @@ The MVP is successful when the bounded pilot supports all of the following concl
 
 - The pilot Hokim can find current relevant Topics and open their Accepted Evidence without needing to read every Telegram group.
 - The Hokim considers Topic summaries understandable, cautious, and traceable enough to continue using the product.
-- Zubaydulla can perform normal District onboarding, operational investigation, subscription and account management, future-only configuration changes, and simulation through the Product Owner Console without routine database edits.
+- Zubaydulla can perform normal District onboarding, operational investigation, subscription and account management, and future-only configuration changes through the Product Owner Console without routine database edits.
 - Every displayed production Topic is traceable to its retained Accepted Evidence and exact AI configuration version.
 - Cross-District authorization and isolation tests pass, and no confirmed exposure remains unresolved.
 - No required evidence is silently lost after durable acceptance or silently removed from required AI context.
 - Invalid or incomplete AI output remains an explicit failure rather than appearing as a successful Topic result.
 - Approved capacity, intake, AI-delay, web-performance, backup, and recovery targets pass production-shaped verification.
-- Zubaydulla considers AI behavior satisfactory through his own Simulation Lab observation without an application-required score or formal evaluation report.
+- Zubaydulla considers AI behavior satisfactory through manual observation of controlled test messages processed through the ordinary Telegram integration and product flow; the application requires no score or formal evaluation report.
 - At pilot review, the Hokim wants Mahalla Ovozi to remain available and Zubaydulla considers continued operation commercially worthwhile.
 
 ### 6.3 Expansion gate
@@ -714,7 +636,7 @@ The product does not add a second production District until:
 - cross-District authorization and isolation tests have passed, and no confirmed exposure remains unresolved;
 - the required backup and clean-restore verification has passed;
 - durable intake and processing targets have been demonstrated under representative conditions;
-- Zubaydulla considers current AI behavior satisfactory based on manual Simulation Lab testing; and
+- Zubaydulla considers current AI behavior satisfactory based on manual end-to-end validation through a controlled Telegram group using the ordinary product flow; and
 - the pilot Hokim considers the dashboard understandable and useful enough to continue.
 
 ## 7. Explicit MVP Out of Scope
@@ -734,8 +656,7 @@ The MVP deliberately excludes the following capabilities so implementation remai
 - External operational alerts, manual incident-acknowledgement workflow, and automatic repair.
 - Native mobile applications and a separate mobile dashboard design.
 - Uzbek Latin or other multilingual UI options.
-- Formal AI scoring or release gates, Candidate-versus-Production profiles, required evaluation reports, and Simulation cost features.
-- Importing production messages into Simulation Lab.
+- Formal AI scoring or release gates, Candidate-versus-Production profiles, and required evaluation reports.
 - Enterprise privacy administration, consent workflows, data-residency controls, custom key management, and formal legal-review screens.
 - A formal uptime guarantee or high-availability infrastructure for the bounded MVP.
 
@@ -757,9 +678,9 @@ The MVP deliberately excludes the following capabilities so implementation remai
 
 ### 8.2 Material risks and mitigations
 
-1. **AI misses a relevant signal.** Zubaydulla tests realistic synthetic cases, the pilot begins with one District, and analysis configuration remains versioned and future-only.
+1. **AI misses a relevant signal.** Zubaydulla tests controlled non-real messages through a real Telegram mock Mahalla group connected by the ordinary product flow, the pilot begins with one District, and analysis configuration remains versioned and future-only.
 2. **AI groups evidence incorrectly or writes a misleading summary.** Accepted Evidence remains the source of truth, summaries use cautious attribution, and the Hokim can inspect the complete evidence trail.
-3. **Same-day evidence becomes too large for the configured AI.** The operation fails explicitly rather than silently truncating, System Health exposes the issue, and Zubaydulla can investigate through Simulation Lab.
+3. **Same-day evidence becomes too large for the configured AI.** The operation fails explicitly rather than silently truncating, System Health exposes the issue, and Zubaydulla can investigate through District-scoped Topics and Evidence plus privacy-safe diagnostics.
 4. **A Telegram bot loses group access or Telegram delivery fails.** Direct technical checks and actionable health states expose verified problems, durable intake protects received work, and silence alone never becomes a false disconnection claim.
 5. **The AI provider becomes slow or unavailable.** Durable queued work, visible delay or failure, safe retry rules, and prohibition of invented results or silent unapproved fallback contain the impact.
 6. **A Hokim sees another District's information.** Deterministic server-side District authorization, access tests, immediate session revocation, and Audit History protect the boundary; any confirmed exposure blocks pilot expansion.
