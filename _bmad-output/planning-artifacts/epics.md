@@ -603,3 +603,117 @@ So that the District has a verified passive Telegram connection before approved 
 **When** focused automated checks run
 **Then** integration tests cover encrypted token persistence, one-bot-per-District enforcement, successful/failed validation, replacement atomicity, explicit District scoping, and secret exclusion from returned contracts
 **And** browser tests cover first-time connection, validation failure, successful connection, token non-restoration after reload, and offline submission behavior.
+
+### Story 1.5: Configure and Validate Telegram Group-to-Mahalla Mappings
+
+As the **Product Owner**,
+I want to map approved Telegram groups one-to-one to Mahallas and validate that the District bot can receive the required messages from them,
+So that future Telegram evidence can be attributed deterministically to the correct District and Mahalla.
+
+**Acceptance Criteria:**
+
+**Given** a District with a valid Telegram bot from Story 1.4
+**When** the Product Owner opens Telegram Setup
+**Then** the selected District shows a searchable collection of its Mahalla/group mappings
+**And** each mapping displays safe Telegram group identity, Mahalla identity, and validation/readiness state
+**And** mappings from another District cannot appear.
+
+**Given** the Product Owner needs to configure a Mahalla
+**When** they create or select the Mahalla and associate an approved Telegram group
+**Then** the relationship is persisted with explicit District scope
+**And** one Telegram group can belong to only one Mahalla within the District
+**And** one Mahalla can have only one approved Telegram group
+**And** the invariants are enforced by authoritative application/storage constraints rather than UI convention alone.
+
+**Given** a Telegram group is already mapped
+**When** the Product Owner attempts to map that same group to a second Mahalla, or map a second group to an already-mapped Mahalla
+**Then** the save is rejected
+**And** the conflicting mapping is identified with sanitized, useful feedback
+**And** the existing valid mapping remains unchanged.
+
+**Given** a mapping is newly configured
+**When** its Telegram readiness is validated
+**Then** the system verifies the configured District bot has the required access to that exact group
+**And** verifies the required bot/privacy-mode configuration
+**And** verifies receipt using the approved test-message flow before the mapping can become ready
+**And** a stored mapping alone is never treated as proof that Telegram delivery works.
+
+**Given** the Product Owner is performing the test-message flow
+**When** the system is waiting for the expected Telegram evidence
+**Then** the UI exposes an explicit waiting state
+**And** identifies the correct District/group safely
+**And** does not claim success until the authoritative expected test receipt is observed.
+
+**Given** the expected test message is received successfully through the configured District bot
+**When** its group identity matches the mapping under validation
+**Then** that mapping is marked passed/readied
+**And** the test verifies connectivity/configuration only
+**And** the test message does not become production Accepted Evidence or start Topic/AI processing while the District remains incomplete.
+
+**Given** the test times out, the bot lacks access, privacy-mode/configuration is wrong, the message arrives from a different group, or Telegram validation otherwise fails
+**When** the check completes
+**Then** the mapping remains failed or incomplete
+**And** the UI identifies the safe failure category and next corrective action
+**And** no raw Telegram payload, token, resident content, or upstream error body is exposed in product errors or telemetry.
+
+**Given** Telegram delivers an update from a group that is not an approved mapping for the District
+**When** the system evaluates authorization
+**Then** that group is not considered approved for production intake
+**And** absence of an approved District-scoped mapping cannot be interpreted as global or permissive access.
+
+**Given** the District is still incomplete
+**When** all its mappings pass validation
+**Then** Story 1.3's mapping prerequisite becomes passed from authoritative server state
+**And** production intake remains disabled until the separate District activation transition in Story 1.7 succeeds.
+
+**Given** the Product Owner changes, removes, disables, or remaps a relationship before District activation
+**When** Save succeeds
+**Then** readiness is recalculated from the new authoritative mapping state
+**And** no unrelated mapping is modified.
+
+**Given** the District is Active in a later system state and retained evidence exists for a mapping
+**When** the Product Owner attempts removal, disablement, or remapping
+**Then** the UI shows the exact future-only consequence before confirmation
+**And** the change affects only Telegram messages received after the effective change
+**And** retained Topics/evidence keep their original Mahalla and Telegram attribution
+**And** completed historical messages are not replayed, moved, rewritten, or backfilled.
+
+**Given** an active mapping change requires revalidation
+**When** its new Telegram access/test checks have not passed
+**Then** the changed relationship is not treated as ready for future intake
+**And** the product does not silently continue using an unverified replacement relationship.
+
+**Given** the Product Owner explicitly saves mapping changes
+**When** the mutation is in progress
+**Then** duplicate submissions are prevented
+**And** no optimistic success is displayed
+**And** failure leaves previously committed valid mapping state intact wherever atomic replacement is required.
+
+**Given** mapping administration is audited
+**When** mappings are created, validated, changed, disabled, remapped, or removed
+**Then** Audit History records privacy-safe District, actor, action, mapping identifiers, result, and time metadata
+**And** no bot token, resident message content, or secret validation material is written to audit payloads.
+
+**Given** the browser loses connectivity while mappings are already loaded
+**When** it is offline
+**Then** still-authorized mapping data may remain visible read-only with an offline warning
+**And** creation, change, removal, and validation actions are blocked
+**And** operations are not queued for automatic replay
+**And** reconnect revalidates the session and District context before new actions.
+
+**Given** the mapping collection grows to the approved MVP District envelope
+**When** the Product Owner searches or reviews mappings
+**Then** the interface remains usable for at least the approved 30 Mahallas/groups per District
+**And** search operates on safe administrative mapping metadata rather than resident evidence.
+
+**Given** Telegram Setup is used with keyboard navigation, supported responsive widths, 200% zoom, or reduced-motion preferences
+**When** mappings and validation states are operated
+**Then** all required actions remain keyboard operable with visible logical focus
+**And** validation/conflict state is not conveyed through color alone
+**And** touch targets and responsive layout satisfy the approved UX floor
+**And** Uzbek Cyrillic labels and statuses remain readable without clipped required actions.
+
+**Given** Story 1.5 is verified
+**When** focused automated checks run
+**Then** integration tests cover one-to-one constraints, explicit District scoping, unauthorized-group rejection, access/privacy/test validation, timeout/conflict states, authoritative readiness updates, and future-only remapping behavior
+**And** browser tests cover creating a mapping, mapping conflict, successful test-message validation, timeout/failure, searching mappings, and protected offline behavior.
