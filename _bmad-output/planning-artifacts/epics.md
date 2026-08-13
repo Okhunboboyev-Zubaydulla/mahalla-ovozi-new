@@ -120,7 +120,7 @@ NFR8: Language, evidence fidelity, and time — all product-facing MVP UI and AI
 - AR12 — Use same-origin versioned JSON REST under /api/v1/* with shared browser-safe Zod contracts; database rows/provider/job objects never cross the API boundary, failures use a stable sanitized envelope, long collections use opaque deterministic cursor/keyset pagination, and authoritative mutations do not use optimistic success unless the operation contract explicitly allows safe retry.
 - AR13 — TanStack Query owns frontend server state and ordinary React state owns ephemeral form/interaction state; every District-scoped query key includes District, District switching performs dirty-state resolution followed by prior-District request cancellation, protected-cache purge and local-state clearing before new load, and late stale-District responses never render.
 - AR14 — Deploy the MVP on one Linux host with Docker Compose and Caddy as the only public edge; internal services remain private, SPA/API/webhook are same-origin, and HTTP/worker runtimes share the backend image/codebase.
-- AR15 — Use pgBackRest 2.59.x with continuous WAL archiving to encrypted off-primary S3-compatible storage; backup expiry after District deletion is separately verified, and disaster restoration blocks normal access until current deletion tombstones and normal retention have been reconciled.
+- AR15 — Use pgBackRest 2.59.x with continuous PostgreSQL WAL archiving to encrypted off-primary S3-compatible storage; backup expiry after District deletion is separately verified, and disaster restoration blocks normal access until current deletion tombstones and normal retention have been reconciled.
 - AR16 — Maintain a minimal privacy-safe deletion-tombstone reconciliation source outside restorable PostgreSQL backup history so older database restores can prove which Districts must remain deleted.
 - AR17 — Use OpenTelemetry metrics/traces through an OTLP/collector boundary and privacy-safe structured JSON logs; routine telemetry must exclude raw resident evidence, AI context, search text, credentials, and secrets while measuring intake, backlog/queue age, retries, stale snapshots, context size/tokens, AI/end-to-end latency/cost/failures, Topic refresh/coalescing, database/WAL/backup, deletion-backup expiry, and restore drills.
 - AR18 — Product Owner System Health remains application-owned sanitized state and must work independently of the engineering telemetry backend.
@@ -949,3 +949,67 @@ So that production operation and Hokim access cannot begin from an incomplete or
 **When** focused automated checks run
 **Then** integration tests cover authoritative readiness revalidation, blocked activation, atomic successful activation, activation audit events, inactive-versus-active access enforcement, lifecycle checks at protected boundaries, and first-sign-in password replacement
 **And** browser tests cover activation blockers, successful activation, failed/stale activation, Hokim denial before activation, temporary-password first sign-in after activation, required password replacement, informational notice, and successful role-derived routing.
+
+## Epic 2: Authorized Telegram Signals Become Traceable Topics
+
+An activated District can passively receive authorized Telegram messages and reliably turn qualifying evidence into cautious, same-day canonical Topics with complete traceability.
+
+### Story 2.1: Durably Receive Authorized District Telegram Messages
+
+As the **Product Owner**,
+I want each activated District's Telegram bot to receive messages only from that District's approved groups and hand authorized intake off durably,
+So that downstream signal processing begins from isolated, traceable, retry-safe Telegram input.
+
+**Acceptance Criteria:**
+
+**Given** a District is Active, its Telegram bot is valid, and the source Telegram group has an approved one-to-one mapping to a Mahalla in that District
+**When** Telegram delivers a message update through that District's bot
+**Then** the application resolves the District and Mahalla from authoritative server-side configuration
+**And** the intake is explicitly scoped to that District
+**And** no client- or Telegram-supplied District identifier is trusted as authorization evidence.
+
+**Given** an update arrives through a District bot
+**When** its source group is not currently approved for that same District, belongs to another District, or has no valid Mahalla mapping
+**Then** the message does not enter production processing
+**And** no AI operation or downstream processing job is created from it
+**And** its resident message content is not retained as production evidence or routine diagnostic data
+**And** another District's configuration can never authorize it.
+
+**Given** the District is not Active at the time intake is evaluated
+**When** Telegram delivers an update
+**Then** production intake and downstream processing do not begin
+**And** no later worker may bypass that lifecycle decision merely because an earlier job or request existed.
+
+**Given** an authorized update is eligible for production intake
+**When** the webhook handler accepts it
+**Then** the authorized intake state and its required asynchronous processing work are made durable in PostgreSQL/pg-boss before Telegram receives a successful acknowledgement
+**And** persistence and consequential job creation are atomic wherever both are required for correctness
+**And** a persistence or enqueue failure cannot be reported as successful durable intake.
+
+**Given** the same Telegram update or message is delivered more than once because of retry, redelivery, or concurrent webhook handling
+**When** intake is processed repeatedly
+**Then** all deliveries resolve to one logical intake item and one required downstream business effect
+**And** duplicate delivery cannot create duplicate retained candidate state or duplicate consequential processing
+**And** incomplete work remains retryable without replaying already-completed intake effects.
+
+**Given** an authorized message is durably captured for later processing
+**When** its processing is delayed or retried
+**Then** the originally received Telegram message identifiers, original Telegram timestamp, source group, resolved District, and resolved Mahalla remain stable
+**And** the Uzbekistan calendar day used for ordering-sensitive processing is derived from the original Telegram timestamp in `Asia/Tashkent`, not from retry or worker execution time.
+
+**Given** multiple authorized messages for the same District, Mahalla, and Uzbekistan calendar day may be processed concurrently
+**When** downstream work is scheduled
+**Then** ordering-sensitive processing is coordinated using the stable District + Mahalla + day scope
+**And** source ordering can later be resolved deterministically without depending on worker arrival order
+**And** unrelated scopes remain free to process concurrently.
+
+**Given** intake succeeds, is rejected, duplicated, delayed, or fails durably
+**When** routine logs, metrics, or traces are emitted
+**Then** they contain sufficient privacy-safe operational metadata to measure intake count, duplicate handling, persistence failures, and webhook durability latency
+**And** raw Telegram message content, bot tokens, AI context, credentials, and other secrets are absent from routine telemetry and audit payloads.
+
+**Given** Story 2.1 is verified
+**When** focused automated and production-shaped checks run
+**Then** integration tests cover Active approved-group intake, inactive-District rejection, unapproved-group rejection, cross-District rejection, durable job handoff, transaction failure, duplicate/redelivery behavior, retry stability, original-timestamp preservation, and District/Mahalla/day isolation
+**And** tests prove this story makes no AI relevance or Topic decision yet
+**And** webhook durability is verified against the approved NFR3 target of successful authorized persistence below one second for at least 95% of normal/burst traffic at the MVP envelope.
