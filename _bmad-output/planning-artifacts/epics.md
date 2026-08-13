@@ -837,3 +837,115 @@ So that the District has a securely provisioned Hokim identity whose access is d
 **When** focused automated checks run
 **Then** integration tests cover one-active-account-per-District enforcement, password hashing, deterministic District authorization, immediate session revocation on reset/disable/replace, inactive-District access denial, and cross-District rejection
 **And** browser tests cover account creation, one-time credential display, credential disappearance after leaving/reload, reset, disablement, replacement, and blocked Hokim access before District activation.
+
+### Story 1.7: Validate and Activate a District
+
+As the **Product Owner**,
+I want to activate a District only after every required onboarding check passes,
+So that production operation and Hokim access cannot begin from an incomplete or invalid configuration.
+
+**Acceptance Criteria:**
+
+**Given** a District is in `Setup incomplete`
+**When** the Product Owner reviews its onboarding checklist
+**Then** the activation control is unavailable unless every required prerequisite is currently passed
+**And** the checklist shows the remaining activation blockers explicitly.
+
+**Given** activation readiness is evaluated
+**When** the server determines whether the District may activate
+**Then** it authoritatively rechecks the required District identity/setup state, subscription/access eligibility, validated Telegram bot, validated approved group-to-Mahalla mappings, active Hokim account, external-disclosure confirmation, District-isolation invariants, and required baseline analysis configuration
+**And** browser-maintained or previously cached readiness state cannot substitute for those checks.
+
+**Given** any required check is incomplete or fails
+**When** the Product Owner attempts activation
+**Then** the District remains `Setup incomplete`
+**And** no partial lifecycle transition is committed
+**And** the failed activation attempt is audited with privacy-safe actionable failure reasons
+**And** the Product Owner can return to the relevant permanent management surface to correct the blocker.
+
+**Given** a readiness check becomes invalid between displaying the checklist and submitting activation
+**When** activation is processed
+**Then** the authoritative activation transaction detects the changed condition
+**And** rejects activation rather than relying on stale UI state.
+
+**Given** every required activation check passes
+**When** the Product Owner deliberately activates the District
+**Then** the District lifecycle state becomes `Active` through one authoritative transition
+**And** the resulting state, activation time, and actor are persisted
+**And** the successful activation is recorded in append-only Audit History.
+
+**Given** the activation mutation is executing
+**When** the Product Owner submits the action
+**Then** duplicate submission is prevented
+**And** no optimistic success is shown
+**And** the UI reports success only after authoritative server confirmation.
+
+**Given** a District remains `Setup incomplete`
+**When** any production-facing path evaluates its lifecycle eligibility
+**Then** the District is ineligible for production Telegram intake, AI processing, and Hokim product access
+**And** lifecycle eligibility is enforced server-side rather than by hiding frontend controls alone.
+
+**Given** a District has become `Active`
+**When** later production Telegram or worker capabilities evaluate the District
+**Then** the lifecycle boundary reports the District as eligible for future production work
+**And** each District-owned background/external operation must still recheck current lifecycle and District authorization before side effects
+**And** activation itself does not fabricate or backfill Telegram messages, Accepted Evidence, Topics, or AI results.
+
+**Given** a previously provisioned active Hokim account belongs to the newly Active District
+**When** the Hokim authenticates successfully
+**Then** the account may proceed into the District-bound Hokim access flow
+**And** authorization remains fixed to that single District
+**And** the Hokim receives no District selector or cross-District access.
+
+**Given** the Hokim authenticates with a generated temporary password for the first time
+**When** authentication succeeds after District activation
+**Then** the Hokim must replace the temporary password before normal product access is granted
+**And** the replacement credential must satisfy the approved minimum credential requirements and be stored only as an Argon2id hash
+**And** the temporary credential ceases to authenticate after successful replacement.
+
+**Given** the first-sign-in password-replacement surface is displayed
+**When** the Hokim reviews it
+**Then** it includes the concise factual notice that the Product Owner has standing operational access to the District's retained Topics and Accepted Evidence for operation and troubleshooting under the customer arrangement
+**And** that notice is informational only
+**And** it introduces no consent checkbox, agreement record, or additional permission gate beyond required password replacement.
+
+**Given** first-sign-in password replacement fails validation or server submission
+**When** the failure occurs
+**Then** normal Hokim product access remains blocked
+**And** valid non-secret entered values are preserved where appropriate
+**And** the UI exposes a sanitized error without credentials, hashes, session tokens, or internal error bodies.
+
+**Given** first-sign-in password replacement succeeds
+**When** the new credential is committed
+**Then** the Hokim continues through role-derived routing into an authorized District-bound landing state
+**And** no separate role selection or District selection is introduced
+**And** the active session remains governed by the approved revocable-session rules.
+
+**Given** the Product Owner later changes a configuration prerequisite in a way that makes future operation invalid
+**When** that capability's approved rules require readiness to be withdrawn
+**Then** the system does not silently pretend the prerequisite remains valid
+**And** the applicable future-only/lifecycle rule for that configuration governs subsequent work
+**And** retained historical evidence and attribution are not rewritten.
+
+**Given** activation succeeds or fails
+**When** the result is displayed
+**Then** durable feedback identifies the affected District, resulting state or blocker, time in Asia/Tashkent, and route to relevant operational/audit information where useful
+**And** secrets or resident content are never included.
+
+**Given** the browser is offline
+**When** activation or first-sign-in password replacement is attempted
+**Then** the mutation is blocked or fails explicitly
+**And** it is never queued for later automatic replay
+**And** reconnect revalidates session, District, lifecycle, and readiness before another attempt.
+
+**Given** activation and first-sign-in surfaces are used with keyboard navigation, supported responsive widths, 200% zoom, or reduced-motion preference
+**When** the user operates them
+**Then** all required actions remain keyboard accessible with visible focus
+**And** blocker/success state is not color-only
+**And** Uzbek Cyrillic text and required controls remain readable and available without clipping
+**And** lifecycle actions cannot be accidentally triggered through duplicate submission.
+
+**Given** Story 1.7 is verified
+**When** focused automated checks run
+**Then** integration tests cover authoritative readiness revalidation, blocked activation, atomic successful activation, activation audit events, inactive-versus-active access enforcement, lifecycle checks at protected boundaries, and first-sign-in password replacement
+**And** browser tests cover activation blockers, successful activation, failed/stale activation, Hokim denial before activation, temporary-password first sign-in after activation, required password replacement, informational notice, and successful role-derived routing.
