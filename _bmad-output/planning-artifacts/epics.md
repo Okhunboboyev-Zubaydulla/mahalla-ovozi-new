@@ -418,3 +418,93 @@ So that subsequent configuration is always attached to the correct District and 
 **When** focused automated checks run
 **Then** integration tests cover explicit District scoping, missing-scope rejection, District creation, and cross-District authorization boundaries
 **And** browser tests cover zero-District creation, selected-District persistence, dirty-switch cancellation, successful District switching, and rejection of a late stale-District response.
+
+### Story 1.3: Resume District Onboarding and Track Activation Readiness
+
+As the **Product Owner**,
+I want each incomplete District to have a resumable onboarding checklist with explicit readiness checks,
+So that I can leave setup unfinished, return later, and know exactly what still prevents safe activation.
+
+**Acceptance Criteria:**
+
+**Given** an incomplete District created in Story 1.2
+**When** the Product Owner opens its District setup
+**Then** the Console shows one resumable onboarding checklist for that District
+**And** each required setup area has an explicit `passed`, `incomplete`, or `failed` state
+**And** the checklist clearly identifies blockers without implying the District is active.
+
+**Given** the onboarding checklist
+**When** readiness is evaluated
+**Then** it represents all activation prerequisites required by FR20: subscription/access eligibility, Telegram bot validation, approved group-to-Mahalla mappings, Hokim account readiness, external-disclosure confirmation, District-isolation checks, and required analysis-configuration readiness
+**And** activation remains unavailable while any required prerequisite is not passed.
+
+**Given** Telegram setup and Hokim-account capabilities are not yet implemented at this point in the epic
+**When** Story 1.3 is used independently
+**Then** their checklist items remain truthfully `incomplete` rather than being mocked, auto-passed, or hidden
+**And** the onboarding workflow itself remains fully usable and resumable
+**And** later stories can satisfy those existing checks without redesigning the checklist contract.
+
+**Given** full subscription lifecycle management belongs to Epic 6
+**When** onboarding needs an initial subscription/access prerequisite
+**Then** Story 1.3 introduces only the minimum District access-eligibility state needed for activation readiness
+**And** does not implement Grace, Suspension, Cancellation, recovery, payment processing, or deletion lifecycle behavior
+**And** Epic 6 may extend the same lifecycle boundary later without Epic 1 depending on Epic 6.
+
+**Given** full AI Operations management belongs to Epic 5
+**When** onboarding checks analysis-configuration readiness
+**Then** the system verifies that the District can resolve a valid approved baseline analysis configuration/profile
+**And** Story 1.3 does not expose version editing, activation diffs, rollback, or other Epic 5 configuration-management features.
+
+**Given** a setup section contains editable non-secret fields
+**When** the Product Owner changes and saves that section
+**Then** the section is saved explicitly rather than by autosave
+**And** only that section's valid data and readiness state are committed
+**And** the Product Owner can leave and later resume from the persisted state.
+
+**Given** the Product Owner has unsaved changes in a setup section
+**When** they navigate away, switch Districts, sign out, use browser Back, or trigger another transition that would discard the draft
+**Then** the approved dirty-state guard runs
+**And** cancelling preserves the current draft and District context
+**And** confirming discard removes only unsaved client-side changes.
+
+**Given** the required external-disclosure confirmation has not been completed
+**When** readiness is evaluated
+**Then** disclosure remains an explicit activation blocker
+**And** the Product Owner can record the confirmation through a deliberate action
+**And** the resulting audit event contains only District, actor, action, and time metadata—not resident content or unnecessary disclosure details.
+
+**Given** a District-isolation readiness check runs
+**When** the system evaluates the District
+**Then** it verifies the required District-scoped relationships and authorization invariants available at this stage
+**And** a failed or unavailable check is reported truthfully as failed/incomplete rather than silently passed
+**And** the failure uses sanitized diagnostic information.
+
+**Given** any readiness prerequisite changes
+**When** the onboarding page is loaded or refreshed
+**Then** readiness is derived from authoritative server state rather than a browser-maintained completion flag
+**And** stale client state cannot activate or mark a prerequisite passed.
+
+**Given** a setup save or readiness check fails
+**When** the failure is shown
+**Then** valid entered values are preserved where safe
+**And** the UI identifies the affected setup area and a useful next action
+**And** raw upstream errors, credentials, Telegram tokens, resident content, and secrets are never exposed.
+
+**Given** the browser is offline while previously authorized onboarding data is visible
+**When** the Product Owner remains offline
+**Then** existing permitted setup state may remain visible read-only with an offline warning
+**And** saves/readiness checks are blocked
+**And** no mutations are queued for automatic replay
+**And** reconnect revalidates session, District, and lifecycle state before resuming.
+
+**Given** the onboarding workflow is used on supported responsive widths, at 200% zoom, with keyboard navigation, or reduced motion
+**When** checklist items and setup sections are reviewed
+**Then** status meaning is not color-only
+**And** focus order and labels expose checklist state programmatically
+**And** controls satisfy the approved touch/focus requirements
+**And** Uzbek Cyrillic text remains readable without clipped required actions.
+
+**Given** Story 1.3 is verified
+**When** focused automated checks run
+**Then** integration tests cover persisted resumability, authoritative readiness derivation, disclosure recording, isolation failure behavior, and activation remaining blocked
+**And** browser tests cover save-and-resume, dirty-state protection, failed prerequisite presentation, and offline read-only behavior.
