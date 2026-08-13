@@ -1,5 +1,5 @@
 ---
-stepsCompleted: []
+stepsCompleted: [1]
 inputDocuments:
   - _bmad-output/planning-artifacts/prds/prd-Mahalla-Ovozi-2026-07-30/prd.md
   - _bmad-output/planning-artifacts/prds/prd-Mahalla-Ovozi-2026-07-30/.memlog.md
@@ -188,10 +188,79 @@ UX-DR28: Use calm concise Uzbek Cyrillic UI microcopy, exact Asia/Tashkent date/
 
 ### FR Coverage Map
 
-{{requirements_coverage_map}}
+FR1: Epic 2 - District-specific passive Telegram bot intake.
+FR2: Epic 2 - Supported content intake and structural exclusions.
+FR3: Epic 2 - Semantic relevance decision.
+FR4: Epic 2 - Relevance exclusions and disposal.
+FR5: Epic 2 - Original Telegram message-state preservation.
+FR6: Epic 2 - Duplicate-safe and retry-safe processing.
+FR7: Epic 2 - Same-day Topic identity and seeding.
+FR8: Epic 2 - Same-day Topic matching.
+FR9: Epic 2 - Complete same-day Mahalla evidence context.
+FR10: Epic 2 - Canonical multi-Lane Topic behavior.
+FR11: Epic 2 - Cautious derived Topic information.
+FR12: Epic 2 - Evidence integrity and 90-day Topic-level retention.
+FR13: Epic 2 - Explicit AI failure handling and traceability.
+FR14: Epic 3 - Unified five-Lane Hokim dashboard.
+FR15: Epic 3 - Topic cards and complete evidence detail.
+FR16: Epic 3 - Stable refresh and truthful freshness.
+FR17: Epic 3 - Retained history, filters, search, and progressive loading.
+FR18: Epic 3 - Filter-aware neutral statistics.
+FR19: Epic 1 - Unified Product Owner Console and District-scoped operational context.
+FR20: Epic 1 - Gated and resumable District onboarding.
+FR21: Epic 1 - Telegram bot, group, and Mahalla management.
+FR22: Epic 1 - Hokim account lifecycle and District access boundary.
+FR23: Epic 5 - Versioned future-only analysis configuration.
+FR24: Epic 4 - Immutable searchable Audit History.
+FR25: Epic 4 - Truthful hierarchical health status.
+FR26: Epic 4 - Product and District monitoring coverage.
+FR27: Epic 4 - Actionable in-Console issue lifecycle and safe retry.
+FR28: Epic 4 - Pilot operating targets and privacy-safe diagnostics.
+FR29: Epic 6 - Manually managed subscription record.
+FR30: Epic 6 - Active, Grace, Suspended, and restoration lifecycle.
+FR31: Epic 6 - Confirmed cancellation and gated recovery.
+FR32: Epic 6 - Verified live deletion, protected-backup expiry, and restore reconciliation.
 
 ## Epic List
 
-{{epics_list}}
+### Epic 1: Secure District Onboarding & Access
+The Product Owner can create and configure an isolated District, connect its Telegram setup, create its Hokim account, complete required checks, activate it, and ensure both roles can access only the scopes they are authorized to use.
+**FRs covered:** FR19, FR20, FR21, FR22.
 
-<!-- Epic and story sections are intentionally deferred until Step 2 and Step 3 of the BMAD workflow. -->
+Implementation/UX notes: Establish the Product Owner Console shell, authentication/session foundation, explicit District context, resumable setup, encrypted bot-secret handling, one-to-one group/Mahalla configuration, one-time Hokim credentials, activation gates, and deterministic tenant isolation. Cross-cutting security, responsive, accessible, sanitized-error, and dirty-state rules apply from this first epic.
+
+### Epic 2: Authorized Telegram Signals Become Traceable Topics
+An activated District can passively receive authorized Telegram messages and reliably turn qualifying evidence into cautious, same-day canonical Topics with complete traceability.
+**FRs covered:** FR1, FR2, FR3, FR4, FR5, FR6, FR7, FR8, FR9, FR10, FR11, FR12, FR13.
+
+Implementation/UX notes: Keep Telegram intake, relevance, evidence, Topic grouping, and AI derivation together because they form one end-to-end signal capability. Carry durable/idempotent intake, deterministic source ordering, complete same-day context, contextRevision/CAS, derived generations, immutable AI profiles, explicit failures, evidence fidelity, and retention as correctness boundaries rather than separate technical epics.
+
+### Epic 3: Hokim Situational Awareness & Retained History
+The Hokim can understand current District signals, inspect their complete evidence, and find retained historical signals from the same unified five-Lane dashboard.
+**FRs covered:** FR14, FR15, FR16, FR17, FR18.
+
+Implementation/UX notes: Deliver the approved overview-first dashboard, Topic/evidence detail, stable refresh, freshness states, coordinated filters/search/statistics, per-Lane progressive loading, responsive horizontal Lane navigation, keyboard/focus behavior, reduced-motion support, and preserved review context. Accessibility and responsive requirements remain story acceptance criteria, not a separate frontend epic.
+
+### Epic 4: Operational Health & Auditable Investigation
+The Product Owner can determine whether Districts are operating correctly, distinguish real failures from quiet or delayed states, investigate safely, retry eligible incomplete work, verify recovery, and inspect immutable operational history.
+**FRs covered:** FR24, FR25, FR26, FR27, FR28.
+
+Implementation/UX notes: Treat System Health and Audit History as one operational investigation loop. Keep product health application-owned and privacy-safe, distinguish subscription pauses from technical failure, expose only sanitized diagnostics, allow retry only for incomplete duplicate-safe work, record failure/recovery, and add no external alerts, acknowledgement workflow, automatic repair, or raw resident evidence in routine telemetry.
+
+### Epic 5: Controlled Future Analysis Configuration
+The Product Owner can safely change or roll back AI/model/prompt/vocabulary configuration for future processing while preserving exact historical lineage and never replaying completed message-level decisions.
+**FRs covered:** FR23.
+
+Implementation/UX notes: Deliver Global and District configuration drafts, validation, field-level diffs, immutable version history, confirmation/reason capture, future-only activation, rollback-as-new-version, and project-owned provider-neutral profile lineage. This stays separate from signal processing because it is a distinct Product Owner operational capability and risk boundary.
+
+### Epic 6: Subscription Lifecycle, Recovery & Verified Deletion
+The Product Owner can manage Active, Grace, Suspended, and Cancelled District states, recover an eligible cancelled District, or allow it to proceed safely through live deletion and protected-backup expiry with disaster-restore reconciliation.
+**FRs covered:** FR29, FR30, FR31, FR32.
+
+Implementation/UX notes: Keep commercial lifecycle, recovery, retention interaction, live deletion, backup expiry, deletion tombstones, and restore reconciliation together as one business correctness boundary. Preserve exact lifecycle consequences, future-message-only reactivation, high-assurance cancellation, retry-safe deletion milestones, and Critical health visibility for failed deletion or backup expiry.
+
+### Natural Dependency Direction
+
+Epic 1 enables the secure District and access foundation. Epic 2 builds the core signal-production capability on an activated District. Epic 3 exposes those Topics and evidence to the Hokim. Epic 4 adds Product Owner operational diagnosis over the working system. Epic 5 adds controlled future analysis configuration without changing prior history. Epic 6 completes the District commercial/offboarding lifecycle. Later epics may depend on earlier capabilities, but no epic depends on a future epic to complete its own outcome.
+
+<!-- Individual story sections are intentionally deferred until Step 3 of the BMAD workflow. -->
