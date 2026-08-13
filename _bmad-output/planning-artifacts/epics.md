@@ -1176,3 +1176,126 @@ So that genuinely relevant District signals continue toward Topics while irrelev
 **Then** tests cover meaning-based qualification with and without configured vocabulary, qualifying Hokim references, vague leadership references, service and non-service examples, announcements/advertisements/speculation/praise exclusions, self-contained replies to forwarded parents, contextual relevance with complete same-day evidence, deterministic ordering, context overflow, provider/refusal/timeout/rate-limit/invalid-output failures, stale-snapshot rejection, duplicate delivery, retry, and completed-decision non-replay
 **And** tests prove an irrelevant decision disposes of resident raw content
 **And** tests prove this story does not yet create Accepted Evidence, assign Topic membership, create a Topic, or derive Lane/summary state.
+
+### Story 2.4: Assign Relevant Signals to Same-Day Topics and Commit Accepted Evidence
+
+As the **Hokim**,
+I want each relevance-qualified Telegram signal to become Accepted Evidence only when it can be reliably assigned to the correct same-day Topic or safely start a new one,
+So that District Topics remain traceable, day-bounded, and free from guessed evidence relationships.
+
+**Acceptance Criteria:**
+
+**Given** a candidate has a completed `relevant` decision from Story 2.3
+**When** Topic assignment begins
+**Then** its authoritative scope is the captured District, captured Mahalla, and `Asia/Tashkent` calendar day derived from the original Telegram timestamp
+**And** Topic assignment never crosses District, Mahalla, or midnight boundaries
+**And** current District lifecycle eligibility is rechecked before any new AI side effect.
+
+**Given** the relevant candidate directly replies to a Telegram message that already exists as Accepted Evidence in the same District, Mahalla, and calendar day
+**When** Topic membership is resolved
+**Then** the direct Telegram reply relationship takes priority
+**And** the candidate is assigned to that evidence item's canonical Topic
+**And** the system does not choose a different Topic merely because another semantic match appears plausible.
+
+**Given** a direct reply target belongs to another District, another Mahalla, another calendar day, was structurally excluded, was discarded, or is otherwise not eligible Accepted Evidence
+**When** Topic assignment evaluates the reply relationship
+**Then** that relationship cannot create a Topic link
+**And** no cross-scope or cross-day exception is created
+**And** the candidate continues only through the safe same-day fallback rules applicable to its own captured scope.
+
+**Given** no valid direct-reply Topic relationship exists
+**When** a same-day Topic-matching decision is required
+**Then** only the nearest earlier same-day Topic-linked message in deterministic source order is eligible as the fallback relationship target
+**And** the candidate plus all raw Accepted Evidence from every same-day Topic in the same Mahalla is supplied as the complete contextual AI snapshot
+**And** the complete context is used to determine whether the candidate and eligible earlier message concern the same underlying situation
+**And** the system does not search arbitrary older Topics for a more convenient match.
+
+**Given** the eligible nearest earlier Topic-linked message concerns the same underlying situation
+**When** the validated matching result commits successfully
+**Then** the candidate is assigned to that existing canonical Topic
+**And** no second Topic is created for the same assignment
+**And** time gaps, recurrence, restoration reports, or contradictory reports do not by themselves force a new Topic when they clearly concern the same situation.
+
+**Given** the candidate does not reliably belong to an existing same-day Topic
+**And** the candidate itself is sufficiently self-contained to establish an underlying situation
+**When** Topic assignment completes
+**Then** one new canonical Topic is created for that District + Mahalla + calendar day + situation
+**And** the candidate becomes the first Accepted Evidence for that Topic
+**And** the Topic receives an opaque identity that is independent of any future Lane membership.
+
+**Given** a relevant candidate is vague or context-dependent
+**And** it has neither a valid direct-reply Topic relationship nor a reliable nearest-earlier same-day match
+**When** assignment cannot establish Topic membership safely
+**Then** the system does not guess
+**And** the candidate does not create a new Topic
+**And** it does not become Accepted Evidence
+**And** its resident raw content is discarded after the completed non-acceptance outcome rather than being retained for future reassessment.
+
+**Given** a candidate is accepted into an existing or newly created Topic
+**When** the authoritative commit occurs
+**Then** Topic assignment and creation of the single Accepted Evidence record are committed atomically where required for correctness
+**And** Accepted Evidence preserves the original text/caption verbatim, original Telegram timestamp, message identifier, captured source group, District, Mahalla, and permitted Telegram identity metadata
+**And** username is retained when available, otherwise display name may be retained
+**And** no phone number is inferred.
+
+**Given** Accepted Evidence has been committed
+**When** Telegram later edits or deletes the original message
+**Then** the captured Accepted Evidence is not rewritten by the edit
+**And** Telegram deletion does not remove it before its Topic retention boundary
+**And** the originally captured Telegram timestamp remains authoritative.
+
+**Given** Accepted Evidence changes canonical same-day Mahalla AI-input state
+**When** it is committed
+**Then** the Mahalla/day `contextRevision` advances atomically with that canonical state change
+**And** the deterministic evidence order remains original Telegram timestamp, Telegram message ID, then internal evidence ID
+**And** only the affected Topic is marked as requiring a later derived-projection refresh
+**And** no Topic summary, Lane membership, anchor, or other derived projection is asserted by this story.
+
+**Given** a Topic receives Accepted Evidence
+**When** its retention metadata is derived
+**Then** its latest-relevant-evidence timestamp reflects the latest original Telegram timestamp among its Accepted Evidence
+**And** its Topic-level retention boundary is 90 days after that timestamp
+**And** individual Accepted Evidence is not assigned an earlier independent expiry while the Topic remains retained.
+
+**Given** Topic matching requires a contextual AI operation
+**When** its canonical snapshot is constructed
+**Then** the operation captures the current `contextRevision`, deterministic fingerprint, serializer version, and immutable AI profile version
+**And** the provider call occurs outside database transactions
+**And** RAG, vectors, summaries, recent windows, cross-day context, or silent truncation never replace the complete required same-day snapshot.
+
+**Given** canonical AI-input state changes while Topic matching is in flight
+**When** the matching result attempts to commit against an obsolete `contextRevision`
+**Then** it fails as `STALE_SNAPSHOT`
+**And** neither Topic membership nor Accepted Evidence from that stale operation is committed
+**And** the unfinished assignment may retry using the newest complete snapshot
+**And** Story 2.3's already-completed relevance decision is not replayed merely because context advanced.
+
+**Given** complete context exceeds the approved provider/request limit, or the matching operation encounters refusal, timeout, rate limit, provider failure, structurally invalid output, or semantically invalid output
+**When** no valid reliable Topic-assignment result exists
+**Then** the operation remains an explicit failure
+**And** the system does not use failure as justification to attach the candidate or seed a new Topic
+**And** no partial Accepted Evidence or Topic state is committed
+**And** incomplete work remains duplicate-safe and retryable.
+
+**Given** the same Telegram message is redelivered, retried, or processed concurrently
+**When** Topic/evidence processing repeats
+**Then** at most one Accepted Evidence record can exist for that Telegram message in its captured District scope
+**And** one completed Topic-assignment result is preserved for the applicable processing decision
+**And** an already-completed assignment is not replayed because of Telegram redelivery or worker restart.
+
+**Given** relevant candidates for the same District, Mahalla, and calendar day are processed concurrently
+**When** they can affect shared Topic/context state
+**Then** stable scoped ordering coordination and authoritative uniqueness/idempotency boundaries prevent duplicate logical Topics or duplicate evidence effects
+**And** queue ordering does not replace transaction, revision, or uniqueness correctness checks
+**And** unrelated District/Mahalla/day scopes may process concurrently.
+
+**Given** Topic assignment succeeds, rejects an unassignable candidate, retries, becomes stale, or fails
+**When** routine observability is emitted
+**Then** privacy-safe telemetry can distinguish assignment paths, new-versus-existing Topic outcomes, retries, stale snapshots, context size, processing latency, and sanitized failures
+**And** raw evidence, candidate content, complete AI context, credentials, bot secrets, and provider payloads containing resident content remain outside routine logs, metrics, traces, and Audit History.
+
+**Given** Story 2.4 is verified
+**When** focused automated checks run
+**Then** tests cover direct-reply priority, invalid/cross-day reply targets, nearest-earlier fallback matching, complete same-day context, existing-Topic assignment, independent self-contained Topic seeding, vague unassignable candidates, contradictory/restoration/recurrence evidence, original evidence-state preservation, duplicate/redelivery behavior, concurrent assignment, context revision advancement, stale-snapshot rejection, context overflow, provider failures, and 90-day retention metadata
+**And** tests prove one candidate cannot create duplicate Accepted Evidence or duplicate logical Topic effects
+**And** tests prove this story does not yet derive Topic summary, Lane membership, anchor, latest-activity projection, or Hokim-related projection.
