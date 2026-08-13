@@ -437,6 +437,7 @@ So that I can leave setup unfinished, return later, and know exactly what still 
 **When** readiness is evaluated
 **Then** it represents all activation prerequisites required by FR20: subscription/access eligibility, Telegram bot validation, approved group-to-Mahalla mappings, Hokim account readiness, external-disclosure confirmation, District-isolation checks, and required analysis-configuration readiness
 **And** activation remains unavailable while any required prerequisite is not passed.
+
 **Given** Telegram setup and Hokim-account capabilities are not yet implemented at this point in the epic
 **When** Story 1.3 is used independently
 **Then** their checklist items remain truthfully `incomplete` rather than being mocked, auto-passed, or hidden
