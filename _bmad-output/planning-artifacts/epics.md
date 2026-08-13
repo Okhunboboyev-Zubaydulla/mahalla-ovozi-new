@@ -329,3 +329,92 @@ So that I can access the Product Owner surface without exposing the system to pu
 **When** focused automated checks run
 **Then** integration tests cover authentication/session/rate-limit boundaries
 **And** a critical browser test covers successful sign-in, invalid credentials, sign-out, and session-invalidated access.
+
+### Story 1.2: Create and Select a District in the Product Owner Console
+
+As the **Product Owner**,
+I want to create a District and work within an explicit District context in one Console,
+So that subsequent configuration is always attached to the correct District and District-owned data cannot be mixed accidentally.
+
+**Acceptance Criteria:**
+
+**Given** an authenticated Product Owner
+**When** the Product Owner enters the Console
+**Then** the approved persistent navigation exposes Overview, System Health, Districts, Telegram Setup, Subscriptions, Hokim Accounts, AI Operations, and Audit History
+**And** the current District context is always visibly identifiable where a section can operate on District-owned data
+**And** all user-facing product copy uses Uzbek Cyrillic.
+
+**Given** no District exists yet
+**When** the Product Owner opens Districts
+**Then** an honest empty state is shown
+**And** the Product Owner can begin creating the first District
+**And** no unrelated future Telegram, Topic, subscription-lifecycle, or AI-processing entities are created by this story.
+
+**Given** the Product Owner creates a District with its required identity, including its District name
+**When** Save succeeds
+**Then** the system assigns an opaque District identifier
+**And** persists the District in an incomplete onboarding state
+**And** makes that District selectable in the Console
+**And** the incomplete District performs no production Telegram intake or AI processing and grants no Hokim access.
+
+**Given** a District-scoped application request
+**When** it reaches application, repository, or other District-owned boundaries
+**Then** explicit District scope is required
+**And** missing District scope is rejected rather than interpreted as global scope
+**And** the server derives authorization context rather than trusting a browser-supplied role or unrestricted District identity.
+
+**Given** a Product Owner operation that is genuinely global or aggregate
+**When** no single District is selected
+**Then** it uses a dedicated global/Product Owner contract
+**And** it cannot expose or mix District-owned evidence, credentials, mappings, accounts, or other protected District content.
+
+**Given** a District is selected
+**When** the Product Owner navigates among District-scoped Console sections
+**Then** that District remains visibly selected
+**And** frontend server-state query keys include the District identity
+**And** responses for another District cannot render into the active District context.
+
+**Given** the Product Owner requests a switch from District A to District B
+**When** no unsaved form state blocks the transition
+**Then** prior-District requests are cancelled where possible
+**And** protected District A cache/content-bearing client state is purged before District B data is loaded
+**And** local District-bound interaction state is cleared
+**And** a late District A response is ignored and never rendered under District B.
+
+**Given** there are unsaved changes in the active District context
+**When** the Product Owner attempts District switching, navigation, sign-out, browser Back, or another transition that would discard the draft
+**Then** the approved dirty-state guard runs before changing context
+**And** cancelling the guard leaves the existing District and draft unchanged
+**And** confirming discard performs the protected context transition.
+
+**Given** District creation or another authoritative mutation is submitted
+**When** the request is in progress or fails
+**Then** duplicate submission is prevented without freezing unrelated navigation
+**And** no optimistic success is displayed
+**And** a failure preserves valid entered values and presents a sanitized error with a useful next action.
+
+**Given** field validation fails on Save
+**When** the server or shared contract rejects the submitted values
+**Then** one accessible error summary receives focus
+**And** links to invalid controls are provided
+**And** valid field values remain intact
+**And** entry/blur validation does not unexpectedly steal focus.
+
+**Given** the browser loses network connectivity while the Console contains still-authorized loaded data
+**When** the Product Owner remains offline
+**Then** permitted loaded data may remain visible read-only with an offline indication
+**And** new loads and mutations are blocked
+**And** nothing is queued for automatic resubmission
+**And** reconnect revalidates the session and active District context before refreshing.
+
+**Given** the Console is used with keyboard navigation, phone/tablet widths, 200% zoom, or reduced-motion preference
+**When** the Product Owner creates or switches District context
+**Then** core actions remain keyboard operable with visible logical focus
+**And** touch targets and responsive layout satisfy the approved UX floor
+**And** no protected action or status depends on color alone
+**And** Cyrillic text and important controls are not clipped or hidden.
+
+**Given** Story 1.2 is verified
+**When** focused automated checks run
+**Then** integration tests cover explicit District scoping, missing-scope rejection, District creation, and cross-District authorization boundaries
+**And** browser tests cover zero-District creation, selected-District persistence, dirty-switch cancellation, successful District switching, and rejection of a late stale-District response.
