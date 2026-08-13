@@ -437,7 +437,6 @@ So that I can leave setup unfinished, return later, and know exactly what still 
 **When** readiness is evaluated
 **Then** it represents all activation prerequisites required by FR20: subscription/access eligibility, Telegram bot validation, approved group-to-Mahalla mappings, Hokim account readiness, external-disclosure confirmation, District-isolation checks, and required analysis-configuration readiness
 **And** activation remains unavailable while any required prerequisite is not passed.
-
 **Given** Telegram setup and Hokim-account capabilities are not yet implemented at this point in the epic
 **When** Story 1.3 is used independently
 **Then** their checklist items remain truthfully `incomplete` rather than being mocked, auto-passed, or hidden
@@ -1086,3 +1085,93 @@ So that AI analysis receives only valid candidate content and excluded Telegram 
 **Then** integration tests cover supported human text, textual captions, commands, bot messages, empty content, captionless media, audio, documents/file contents, Telegram-marked forwards, non-forwarded replies to forwarded parents, malformed metadata, duplicates, and delayed processing
 **And** tests prove structural exclusions never invoke the AI gateway
 **And** tests prove excluded raw content is not retained for future reassessment and supported content reaches the next stage verbatim with its original captured scope and Telegram metadata.
+
+### Story 2.3: Decide Semantic Relevance by Meaning and Discard Non-Qualifying Content
+
+As the **Hokim**,
+I want structurally supported Telegram messages to be judged by their meaning rather than by keyword matching,
+So that genuinely relevant District signals continue toward Topics while irrelevant group content is discarded.
+
+**Acceptance Criteria:**
+
+**Given** a structurally supported candidate from Story 2.2
+**When** semantic relevance analysis runs
+**Then** the decision is made through the project-owned AI gateway using meaning analysis
+**And** the candidate's original text or caption remains verbatim
+**And** deterministic District, Mahalla, lifecycle, authorization, retention, and Telegram-forwarding rules remain outside AI control.
+
+**Given** configured District recognition vocabulary contains Uzbek or Russian, Latin or Cyrillic forms, jargon, abbreviations, common typos, or informal terms
+**When** relevance is evaluated
+**Then** that vocabulary is supplied only as guidance to semantic analysis
+**And** presence of a configured term cannot by itself force a candidate to qualify
+**And** absence of a configured term cannot by itself prevent a candidate from qualifying.
+
+**Given** a candidate clearly reports a supported Water, Electricity, Gas, or Waste situation, complaint, or another qualifying signal
+**When** its meaning satisfies the approved relevance rules
+**Then** it receives a completed `relevant` semantic decision
+**And** it may continue as a relevance-qualified candidate toward same-day Topic assignment
+**And** it is not yet treated as Accepted Evidence or a Topic merely because relevance succeeded.
+
+**Given** a candidate directly and meaningfully concerns the Hokim or District leadership
+**When** relevance is evaluated
+**Then** a direct configured Hokim reference or clear semantic leadership reference can qualify
+**And** a non-service complaint such as a road problem can qualify for later Hokim-related handling when that connection is clear
+**And** a vague expression such as “responsible people” does not qualify merely by implication when no reliable connecting context exists.
+
+**Given** semantic interpretation requires same-day Mahalla context to resolve an otherwise ambiguous candidate
+**When** the contextual relevance operation is prepared
+**Then** its canonical input contains the candidate plus all raw Accepted Evidence from every same-day Topic in that Mahalla
+**And** evidence is ordered deterministically by original Telegram timestamp, then Telegram message ID, then internal evidence ID
+**And** RAG, vector retrieval, summaries, recent-message windows, cross-day memory, or top-K selection do not replace that required context
+**And** required older same-day evidence is never silently truncated.
+
+**Given** a non-forwarded reply to a Telegram-marked forwarded parent passed Story 2.2's structural boundary
+**When** semantic analysis determines whether that reply can proceed
+**Then** the reply must contain a sufficiently self-contained qualifying signal
+**And** the excluded forwarded parent is never supplied as context
+**And** a reply that depends on the forwarded parent for its meaning is excluded rather than guessed or reconstructed.
+
+**Given** a candidate is a planned announcement, advertisement, pure speculation, neutral Hokim mention, praise, or other non-qualifying content
+**When** it contains no independently qualifying reported situation, complaint, or meaningful Hokim-related concern
+**Then** the completed semantic decision is `irrelevant`
+**And** it does not become Accepted Evidence or proceed to Topic processing
+**And** its resident raw content is discarded after the completed decision
+**And** it is not retained for later automatic reconsideration.
+
+**Given** a candidate is semantically excluded
+**When** Telegram later redelivers the same message or a worker restarts
+**Then** the completed decision is not replayed merely because of redelivery or restart
+**And** discarded raw content is not reconstructed
+**And** only minimal content-free state required for duplicate/idempotency handling may remain.
+
+**Given** a logical semantic-relevance operation is created
+**When** it invokes an AI provider
+**Then** it pins the exact immutable AI profile/configuration version used for that logical operation
+**And** provider calls occur outside database transactions
+**And** retries of that unfinished logical operation retain the pinned profile
+**And** later configuration activation does not replay an already-completed historical relevance decision.
+
+**Given** contextual relevance analysis captured a Mahalla/day `contextRevision` and snapshot fingerprint
+**When** Accepted Evidence changes before the AI result can commit
+**Then** the stale result is rejected as `STALE_SNAPSHOT`
+**And** no relevance result or other AI-derived state from that stale snapshot is committed
+**And** only the unfinished candidate may retry against the newest complete deterministic context
+**And** already-completed historical message decisions are not replayed merely because context advanced.
+
+**Given** the provider refuses, times out, is rate-limited, fails, returns structurally invalid output, returns semantically invalid output, or complete required context exceeds the approved limit
+**When** semantic relevance processing cannot produce a valid result
+**Then** the outcome remains an explicit failure rather than being converted to `irrelevant` or `relevant`
+**And** no partial relevance success is committed
+**And** the candidate remains only as required for duplicate-safe retry of incomplete work
+**And** the exact logical operation/profile and privacy-safe failure category remain traceable for later operational investigation.
+
+**Given** relevance processing succeeds, excludes content, retries, becomes stale, or fails
+**When** routine observability data is emitted
+**Then** metrics/logs/traces can distinguish relevance outcomes, retries, stale snapshots, context size, latency, and sanitized AI failure categories
+**And** raw Telegram candidate content, complete AI context, bot tokens, credentials, prompts containing resident evidence, and secrets are absent from routine telemetry and Audit History.
+
+**Given** Story 2.3 is verified
+**When** focused automated checks run
+**Then** tests cover meaning-based qualification with and without configured vocabulary, qualifying Hokim references, vague leadership references, service and non-service examples, announcements/advertisements/speculation/praise exclusions, self-contained replies to forwarded parents, contextual relevance with complete same-day evidence, deterministic ordering, context overflow, provider/refusal/timeout/rate-limit/invalid-output failures, stale-snapshot rejection, duplicate delivery, retry, and completed-decision non-replay
+**And** tests prove an irrelevant decision disposes of resident raw content
+**And** tests prove this story does not yet create Accepted Evidence, assign Topic membership, create a Topic, or derive Lane/summary state.
