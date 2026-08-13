@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [1]
+stepsCompleted: [1, 2]
 inputDocuments:
   - _bmad-output/planning-artifacts/prds/prd-Mahalla-Ovozi-2026-07-30/prd.md
   - _bmad-output/planning-artifacts/prds/prd-Mahalla-Ovozi-2026-07-30/.memlog.md
@@ -263,4 +263,69 @@ Implementation/UX notes: Keep commercial lifecycle, recovery, retention interact
 
 Epic 1 enables the secure District and access foundation. Epic 2 builds the core signal-production capability on an activated District. Epic 3 exposes those Topics and evidence to the Hokim. Epic 4 adds Product Owner operational diagnosis over the working system. Epic 5 adds controlled future analysis configuration without changing prior history. Epic 6 completes the District commercial/offboarding lifecycle. Later epics may depend on earlier capabilities, but no epic depends on a future epic to complete its own outcome.
 
-<!-- Individual story sections are intentionally deferred until Step 3 of the BMAD workflow. -->
+## Epic 1: Secure District Onboarding & Access
+
+The Product Owner can create and configure an isolated District, connect its Telegram setup, create its Hokim account, complete required checks, activate it, and ensure both roles can access only the scopes they are authorized to use.
+
+### Story 1.1: Secure Product Owner Sign-In
+
+As the **Product Owner**,
+I want to sign in securely to the private Mahalla Ovozi application,
+So that I can access the Product Owner surface without exposing the system to public or unauthorized access.
+
+**Acceptance Criteria:**
+
+**Given** the greenfield repository
+**When** Story 1.1 is implemented
+**Then** the application foundation uses the approved pnpm workspace, TypeScript/Node, Fastify, React/Vite, Ant Design, PostgreSQL/Drizzle, shared Zod REST contracts, and the architecture's modular-monolith boundaries
+**And** only schema/infrastructure required for this story is introduced.
+
+**Given** Mahalla Ovozi is deployed without a Product Owner account
+**When** the secure server-side account-management command is used with a username and password/passphrase of at least 12 characters
+**Then** one Product Owner account can be created or securely recovered/reset
+**And** its password is stored only as an Argon2id hash
+**And** the plaintext credential never enters logs, telemetry, Audit History, URLs, or browser persistence.
+
+**Given** an unauthenticated visitor opens the private application
+**When** the sign-in surface loads
+**Then** it presents username and password fields only
+**And** provides no public registration, role selector, social login, email/SMS recovery, or MFA workflow
+**And** user-facing copy is Uzbek Cyrillic.
+
+**Given** valid Product Owner credentials
+**When** the Product Owner signs in
+**Then** authentication creates a server-derived Product Owner actor context
+**And** creates an opaque PostgreSQL-backed session whose usable token exists only in a host-scoped `Secure`, `HttpOnly`, `SameSite=Strict` cookie
+**And** only a hash of that session token is persisted server-side
+**And** the Product Owner reaches a protected Product Owner landing surface.
+
+**Given** invalid credentials
+**When** sign-in fails
+**Then** the interface returns the generic Uzbek Cyrillic error `Нотўғри фойдаланувчи номи ёки парол.` without revealing whether an account exists
+**And** repeated failed attempts are rate-limited
+**And** the failure is recorded as privacy-safe audit metadata without credentials or secrets.
+
+**Given** an authenticated Product Owner session
+**When** 12 hours of inactivity elapse, the session is explicitly revoked, or the Product Owner signs out
+**Then** the session can no longer authorize a protected request
+**And** protected browser state is cleared
+**And** the user is returned to the sign-in state.
+
+**Given** a protected state-changing browser request
+**When** it does not satisfy the approved same-origin/Origin/Fetch-Metadata protections
+**Then** the request is rejected without performing the mutation
+**And** the returned error uses the sanitized API error contract.
+
+**Given** the browser is offline during sign-in
+**When** authentication cannot reach the server
+**Then** the UI shows a scoped connection-unavailable state
+**And** does not queue, automatically replay, or falsely report the sign-in as successful.
+
+**Given** keyboard navigation, supported responsive widths, or reduced-motion preferences
+**When** the sign-in flow is used
+**Then** controls remain keyboard accessible with visible focus, readable Uzbek Cyrillic, appropriate responsive layout, and no color-only status meaning.
+
+**Given** the story is verified
+**When** focused automated checks run
+**Then** integration tests cover authentication/session/rate-limit boundaries
+**And** a critical browser test covers successful sign-in, invalid credentials, sign-out, and session-invalidated access.
