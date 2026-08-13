@@ -717,3 +717,123 @@ So that future Telegram evidence can be attributed deterministically to the corr
 **When** focused automated checks run
 **Then** integration tests cover one-to-one constraints, explicit District scoping, unauthorized-group rejection, access/privacy/test validation, timeout/conflict states, authoritative readiness updates, and future-only remapping behavior
 **And** browser tests cover creating a mapping, mapping conflict, successful test-message validation, timeout/failure, searching mappings, and protected offline behavior.
+
+### Story 1.6: Create and Manage the District Hokim Account
+
+As the **Product Owner**,
+I want to create and manage the single Hokim account assigned to a District,
+So that the District has a securely provisioned Hokim identity whose access is deterministic and can be revoked immediately.
+
+**Acceptance Criteria:**
+
+**Given** a District is selected
+**When** the Product Owner opens Hokim Accounts
+**Then** only that District's Hokim-account state is shown
+**And** the interface clearly distinguishes no account, active account, and disabled account states
+**And** account data from another District cannot appear.
+
+**Given** the District does not yet have a Hokim account
+**When** the Product Owner creates one with the required username/account identity
+**Then** exactly one active Hokim account is associated with that District
+**And** the server generates a temporary credential of at least 12 characters
+**And** the credential is stored only as an Argon2id hash
+**And** the account's role and District authorization are assigned by server-side authoritative state.
+
+**Given** a temporary Hokim password has just been generated
+**When** creation or reset succeeds
+**Then** the plaintext temporary password is shown only on the dedicated one-time credential surface
+**And** Copy is available only on that surface
+**And** the password is never written to logs, telemetry, Audit History, URL/history state, browser storage, or persistent frontend cache.
+
+**Given** the Product Owner leaves, dismisses, reloads, navigates away from, or restores browser history after the one-time credential surface
+**When** the credential surface is no longer the active successful transaction
+**Then** the plaintext password cannot be displayed again
+**And** persistent UI shows only safe credential status and last-reset time
+**And** there is no “reveal password” capability.
+
+**Given** a Hokim enters credentials on the private sign-in surface
+**When** authentication succeeds
+**Then** the server determines the actor is a Hokim without trusting a browser role selector
+**And** authorization resolves deterministically to exactly the District assigned to that account
+**And** the Hokim cannot select, request, or derive access to another District.
+
+**Given** the assigned District is still incomplete and not activated
+**When** the Hokim attempts to authenticate or access protected Hokim functionality
+**Then** no operational Hokim access is granted
+**And** the response is sanitized and does not reveal unnecessary District lifecycle internals
+**And** successful District activation in Story 1.7 can enable the already-provisioned account without recreating it.
+
+**Given** valid credentials for an eligible Hokim account after its District becomes Active
+**When** the Hokim signs in
+**Then** the same approved PostgreSQL-backed opaque-session protections apply
+**And** only a hashed session token is persisted
+**And** the browser receives the host-scoped `Secure`, `HttpOnly`, `SameSite=Strict` session cookie
+**And** the session is bound to the server-derived Hokim actor and District context.
+
+**Given** invalid Hokim credentials
+**When** sign-in fails
+**Then** the same generic Uzbek Cyrillic invalid-credentials behavior is used without disclosing whether the username exists
+**And** failed attempts are rate-limited and audited using privacy-safe metadata.
+
+**Given** the Product Owner resets the active Hokim account's credential
+**When** reset succeeds
+**Then** a new temporary password is generated and shown once
+**And** the prior password can no longer authenticate
+**And** all existing sessions for that Hokim account are revoked immediately
+**And** no unrelated District or Product Owner sessions are revoked.
+
+**Given** the Product Owner disables the Hokim account
+**When** disablement succeeds
+**Then** new authentication for that account is denied immediately
+**And** all of that account's existing sessions are revoked immediately
+**And** the District account state is reflected authoritatively in the onboarding readiness check.
+
+**Given** the Product Owner replaces the District Hokim account
+**When** replacement succeeds
+**Then** the prior account is no longer the active District Hokim account
+**And** all sessions belonging to the replaced account are immediately revoked
+**And** exactly one new active Hokim account is assigned to the District
+**And** its generated temporary password follows the same one-time-display rules.
+
+**Given** an operation would result in more than one active Hokim account for one District
+**When** the mutation is attempted
+**Then** authoritative application/storage constraints reject it
+**And** the existing valid account assignment remains consistent.
+
+**Given** a Hokim session exists
+**When** the account is disabled/replaced or the District lifecycle no longer permits Hokim access
+**Then** the next protected request fails authorization even if the browser still holds the old session cookie
+**And** protected cached content is removed rather than left accessible as stale authorized data.
+
+**Given** a Hokim attempts to access a resource belonging to another District
+**When** the request reaches an application or repository boundary
+**Then** the server rejects it using the explicit District authorization boundary
+**And** no cross-District content, existence information, or credentials are disclosed.
+
+**Given** account creation, reset, disablement, replacement, successful sign-in, or failed sign-in occurs
+**When** the action is audited
+**Then** Audit History contains privacy-safe actor/District/action/result/time metadata
+**And** plaintext passwords, session tokens, resident content, and secrets never appear.
+
+**Given** the Hokim-account readiness state changes
+**When** Story 1.3's onboarding checklist is refreshed
+**Then** the Hokim prerequisite is derived from authoritative account state
+**And** a missing or disabled account is not marked passed
+**And** activation still remains governed by all other prerequisites.
+
+**Given** the browser is offline during Product Owner account administration
+**When** a create/reset/disable/replace operation is attempted
+**Then** the mutation is blocked or fails explicitly
+**And** no credential operation is queued for automatic replay
+**And** no false success or reusable temporary credential is presented.
+
+**Given** Hokim account administration or sign-in is used with keyboard navigation, supported responsive widths, 200% zoom, or reduced-motion preferences
+**When** the relevant screens are operated
+**Then** all essential actions remain keyboard accessible with visible focus
+**And** credential/status meaning is not color-only
+**And** the one-time credential surface remains usable without clipped controls or Cyrillic text.
+
+**Given** Story 1.6 is verified
+**When** focused automated checks run
+**Then** integration tests cover one-active-account-per-District enforcement, password hashing, deterministic District authorization, immediate session revocation on reset/disable/replace, inactive-District access denial, and cross-District rejection
+**And** browser tests cover account creation, one-time credential display, credential disappearance after leaving/reload, reset, disablement, replacement, and blocked Hokim access before District activation.
