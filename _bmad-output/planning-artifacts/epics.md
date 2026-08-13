@@ -508,3 +508,98 @@ So that I can leave setup unfinished, return later, and know exactly what still 
 **When** focused automated checks run
 **Then** integration tests cover persisted resumability, authoritative readiness derivation, disclosure recording, isolation failure behavior, and activation remaining blocked
 **And** browser tests cover save-and-resume, dirty-state protection, failed prerequisite presentation, and offline read-only behavior.
+
+### Story 1.4: Connect and Validate a District Telegram Bot
+
+As the **Product Owner**,
+I want to securely connect and validate one Telegram bot for a District,
+So that the District has a verified passive Telegram connection before approved groups can be mapped or production intake can be activated.
+
+**Acceptance Criteria:**
+
+**Given** an incomplete District is selected
+**When** the Product Owner opens Telegram Setup
+**Then** the page shows a District-scoped bot connection status card
+**And** it clearly distinguishes not configured, validating, valid, and failed states
+**And** no bot information from another District can appear.
+
+**Given** the District has no configured bot
+**When** the Product Owner enters a Telegram bot token
+**Then** the token exists in browser state only for the active submission transaction
+**And** it is never written to browser storage, URL/history state, logs, telemetry, Audit History, error output, or resumable onboarding drafts
+**And** browser autofill/persistence is not relied upon for restoring it.
+
+**Given** the Product Owner submits a bot token
+**When** the server accepts the request
+**Then** the token is handled only through the project-owned Telegram integration boundary
+**And** the plaintext token is not persisted directly
+**And** persistent storage contains authenticated ciphertext encrypted under the deployment-held versioned secret-encryption key.
+
+**Given** a submitted token is syntactically invalid, rejected by Telegram, belongs to an inaccessible bot, or validation cannot complete
+**When** validation finishes
+**Then** the District does not receive a valid Telegram readiness state
+**And** no unusable plaintext credential is retained
+**And** the Product Owner receives a sanitized failure category and useful next action without upstream response bodies or secrets.
+
+**Given** a valid Telegram bot token
+**When** the product validates it through Telegram
+**Then** the product verifies the bot identity and required connectivity/access capability available at bot level
+**And** persists only the approved non-secret bot metadata required for administration
+**And** marks the bot prerequisite passed only after successful authoritative validation.
+
+**Given** Telegram is temporarily unavailable or times out during validation
+**When** validation cannot establish the required result
+**Then** the status remains failed or incomplete rather than being treated as successful
+**And** retry does not create duplicate bot records or duplicate authoritative effects
+**And** the current District remains inactive.
+
+**Given** a District already has a valid configured bot
+**When** the Product Owner opens Telegram Setup later
+**Then** the stored token is never returned to the browser
+**And** the UI shows only safe bot identity/status metadata
+**And** there is no “reveal token” capability.
+
+**Given** the Product Owner supplies a replacement token for an incomplete District
+**When** replacement validation succeeds
+**Then** the new token becomes the District's sole configured bot credential atomically
+**And** obsolete credential material is removed according to the credential lifecycle rules
+**And** failed replacement validation leaves the previously valid configuration unchanged.
+
+**Given** the District is already Active in a later system state
+**When** a Product Owner attempts bot replacement or removal
+**Then** the UI must first present the approved exact future-only operational consequence
+**And** the action requires explicit confirmation
+**And** historical retained evidence and attribution are not rewritten
+**And** no past Telegram messages are backfilled or reprocessed because of the credential change.
+
+**Given** one bot is already assigned to the selected District
+**When** an operation would create a second simultaneously active District bot configuration
+**Then** the server rejects it
+**And** the one-bot-per-District invariant is preserved by authoritative storage constraints/application rules rather than UI convention alone.
+
+**Given** Telegram validation changes the bot's readiness state
+**When** the onboarding checklist is refreshed
+**Then** Story 1.3's Telegram-bot prerequisite is derived from the authoritative bot state
+**And** group-to-Mahalla mapping remains separately incomplete until Story 1.5 is satisfied.
+
+**Given** bot configuration is audited
+**When** creation, validation, replacement, or removal occurs
+**Then** Audit History receives only privacy-safe metadata such as District, actor, action, result, safe bot identifier where approved, and time
+**And** the token or other Telegram secrets never appear in audit payloads.
+
+**Given** the browser goes offline before or during token submission
+**When** connectivity is unavailable
+**Then** submission is blocked or fails explicitly
+**And** the secret is not queued for later automatic replay
+**And** reconnect does not automatically resubmit the token.
+
+**Given** Telegram Setup is used with keyboard navigation, supported responsive widths, 200% zoom, or reduced-motion settings
+**When** the Product Owner enters or validates a bot
+**Then** labels, validation states, confirmation actions, and focus behavior satisfy the approved accessibility floor
+**And** state is not conveyed by color alone
+**And** Uzbek Cyrillic status/error copy remains readable without exposing technical secrets.
+
+**Given** Story 1.4 is verified
+**When** focused automated checks run
+**Then** integration tests cover encrypted token persistence, one-bot-per-District enforcement, successful/failed validation, replacement atomicity, explicit District scoping, and secret exclusion from returned contracts
+**And** browser tests cover first-time connection, validation failure, successful connection, token non-restoration after reload, and offline submission behavior.
