@@ -1013,3 +1013,76 @@ So that downstream signal processing begins from isolated, traceable, retry-safe
 **Then** integration tests cover Active approved-group intake, inactive-District rejection, unapproved-group rejection, cross-District rejection, durable job handoff, transaction failure, duplicate/redelivery behavior, retry stability, original-timestamp preservation, and District/Mahalla/day isolation
 **And** tests prove this story makes no AI relevance or Topic decision yet
 **And** webhook durability is verified against the approved NFR3 target of successful authorized persistence below one second for at least 95% of normal/burst traffic at the MVP envelope.
+
+### Story 2.2: Admit Supported Telegram Content and Discard Structural Exclusions
+
+As the **Product Owner**,
+I want authorized Telegram intake to admit only supported human text or textual captions and discard structurally unsupported content before AI,
+So that AI analysis receives only valid candidate content and excluded Telegram content is not retained for later reassessment.
+
+**Acceptance Criteria:**
+
+**Given** an authorized intake item from Story 2.1 contains a human-authored text message
+**When** structural content qualification runs
+**Then** its original text is admitted as a supported candidate for subsequent semantic analysis
+**And** its original Telegram timestamp, message identifiers, District, Mahalla, source group, and required message relationship metadata remain associated with the candidate
+**And** the text is preserved verbatim without translation, normalization, summarization, or rewriting.
+
+**Given** an authorized Telegram message contains media with a non-empty textual caption
+**When** structural content qualification runs
+**Then** the textual caption can be admitted as the candidate content
+**And** the caption remains verbatim in its original language, script, and line structure
+**And** media bytes, OCR output, audio transcription, document contents, and other attachment contents are not downloaded or introduced into AI context by this capability.
+
+**Given** an authorized Telegram update contains a command, bot-authored message, empty supported content, captionless media, audio-only content, document/file content without a supported textual caption, or another unsupported content type
+**When** structural content qualification runs
+**Then** it is excluded before any AI operation is created or invoked
+**And** it cannot become Accepted Evidence or seed/update a Topic
+**And** its raw resident content is discarded after the structural outcome is completed.
+
+**Given** Telegram marks a message as forwarded using Telegram-provided forwarding metadata
+**When** structural qualification evaluates it
+**Then** the message is excluded before AI regardless of the apparent meaning of its text or caption
+**And** configured vocabulary or keywords cannot override the exclusion
+**And** the forwarded message content is not retained for future production reassessment.
+
+**Given** a non-forwarded message directly replies to a Telegram-marked forwarded message
+**When** the reply itself contains structurally supported human text or a textual caption
+**Then** the reply may continue as its own candidate for later semantic analysis
+**And** the forwarded parent remains excluded
+**And** the forwarded parent's content is not fetched, retained, or supplied as candidate context
+**And** the later semantic decision must determine whether the reply is sufficiently self-contained to qualify.
+
+**Given** a structurally excluded message has completed its structural decision
+**When** the same Telegram delivery is retried, redelivered, or processed concurrently
+**Then** it remains one completed structural outcome
+**And** duplicate handling does not invoke AI or recreate discarded resident content
+**And** any minimal state retained solely for duplicate-safe processing contains no discarded raw message/caption content.
+
+**Given** a candidate was authorized and attributed to its District and Mahalla when durably received in Story 2.1
+**When** structural processing occurs later
+**Then** it uses that captured District/Mahalla/source attribution rather than silently remapping the historical intake item from a later configuration change
+**And** future-only mapping changes affect only subsequent intake
+**And** current District lifecycle eligibility is still rechecked where required before later AI side effects.
+
+**Given** structurally supported content passes this story's qualification
+**When** it is handed to the next processing stage
+**Then** no relevance, Lane, Topic membership, Topic creation, summary, or other AI-derived success has yet been asserted
+**And** configured multilingual recognition vocabulary has not been used as a deterministic structural admission/rejection rule.
+
+**Given** structural processing succeeds, excludes content, retries, or fails
+**When** operational telemetry is emitted
+**Then** privacy-safe metrics/logs can distinguish supported candidates, structural exclusion categories, retries, failures, and processing latency
+**And** raw Telegram content, discarded captions, attachment contents, bot tokens, credentials, and secrets do not enter routine logs, metrics, traces, or Audit History.
+
+**Given** structural processing encounters malformed or insufficient Telegram metadata such that the required content/origin/forwarding decision cannot be made safely
+**When** qualification cannot establish a valid supported candidate
+**Then** the system does not guess or send the message to AI
+**And** processing fails or excludes it through an explicit safe outcome as appropriate
+**And** no partial candidate or Accepted Evidence state is committed.
+
+**Given** Story 2.2 is verified
+**When** focused automated checks run
+**Then** integration tests cover supported human text, textual captions, commands, bot messages, empty content, captionless media, audio, documents/file contents, Telegram-marked forwards, non-forwarded replies to forwarded parents, malformed metadata, duplicates, and delayed processing
+**And** tests prove structural exclusions never invoke the AI gateway
+**And** tests prove excluded raw content is not retained for future reassessment and supported content reaches the next stage verbatim with its original captured scope and Telegram metadata.
