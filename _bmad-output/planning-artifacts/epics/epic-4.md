@@ -1,9 +1,9 @@
 ## Epic 4: Operational Health & Auditable Investigation
 
-The Product Owner can determine whether Districts are operating correctly, distinguish real failures from quiet or delayed states, investigate safely, retry eligible incomplete work, verify recovery, and inspect immutable operational history.
-**FRs covered:** FR24, FR25, FR26, FR27, FR28.
+The Product Owner can determine whether Districts are operating correctly, distinguish real failures from quiet or delayed states, investigate safely, retry eligible incomplete work, inspect one District's retained Topics and evidence for troubleshooting, verify recovery, and inspect immutable operational history.
+**FRs covered:** FR19, FR24, FR25, FR26, FR27, FR28.
 
-Implementation/UX notes: Treat System Health and Audit History as one operational investigation loop. Keep product health application-owned and privacy-safe, distinguish subscription pauses from technical failure, expose only sanitized diagnostics, allow retry only for incomplete duplicate-safe work, record failure/recovery, and add no external alerts, acknowledgement workflow, automatic repair, or raw resident evidence in routine telemetry.
+Implementation/UX notes: Treat System Health, selected-District retained Topic/Evidence investigation, and Audit History as one operational investigation loop. Keep product health application-owned and privacy-safe, require explicit District scope for resident-bearing operational data, distinguish subscription pauses from technical failure, expose only sanitized diagnostics, allow retry only for incomplete duplicate-safe work, record failure/recovery, and add no external alerts, acknowledgement workflow, automatic repair, or raw resident evidence in routine telemetry.
 
 ### Story 4.1: Inspect Truthful System and District Health
 
@@ -396,3 +396,73 @@ So that I can verify operational history, investigate security events, and demon
 **When** focused automated and browser checks run  
 **Then** integration tests cover append-only immutability, newest-first ordering, equal-timestamp tie handling, keyset pagination, concurrent record arrival during pagination, `Asia/Tashkent` calendar filtering, allowlisted metadata search, performance under NFR2 targets, deletion-proof discriminator separation, and shared Zod contract enforcement  
 **And** browser tests cover filter combinations, safe search, progressive loading, read-only detail panels, focus restoration, responsive layouts, and absence of edit/delete controls.
+
+### Story 4.5: Browse Retained District Topics and Evidence for Troubleshooting
+
+As the **Product Owner**,  
+I want to browse and search the retained Topics and Accepted Evidence for one explicitly selected District,  
+So that I can investigate operational questions without mixing resident-bearing data across Districts or changing production decisions.
+
+**Acceptance Criteria:**
+
+**Given** an authenticated Product Owner opens a District in the Console's Districts section  
+**When** the retained Topics and Evidence browser is requested  
+**Then** one explicit District selection is required before any resident-bearing Topic or Accepted Evidence data is returned  
+**And** the selected District remains visibly identifiable  
+**And** an all-District or missing-District request cannot return, aggregate, or search resident-bearing Topic/Evidence content  
+**And** Product Owner authorization and District scope are derived and enforced server-side.
+
+**Given** the selected District has retained canonical Topics from Epic 2  
+**When** the operational Topic collection loads  
+**Then** it reads the existing canonical Topic identities, cautious derived summaries, Mahalla, Lane membership, latest meaningful activity, and retained evidence counts without rerunning production AI  
+**And** results are read-only operational evidence access rather than a second Topic model, case-management surface, or Product Owner approval/edit workflow  
+**And** large collections use the approved deterministic keyset/cursor progressive-loading contract.
+
+**Given** the Product Owner needs to find a retained operational signal  
+**When** plain-text search is applied within the explicitly selected District  
+**Then** search can match retained Topic summaries, original Accepted Evidence text, permitted Telegram usernames, and retained display names  
+**And** matching remains lexical/plain-text rather than AI semantic question answering  
+**And** search text is excluded from routine logs, metrics, traces, and Audit History  
+**And** no search request can cross the selected District boundary.
+
+**Given** the Product Owner opens a retained Topic from the operational browser  
+**When** evidence detail loads  
+**Then** the complete retained Accepted Evidence trail remains available oldest-to-newest under the same source-of-truth and progressive-completeness rules established for retained evidence  
+**And** original evidence text/caption remains verbatim with original Telegram timestamp and permitted username/display-name identity  
+**And** no phone number is inferred or displayed  
+**And** Topic summary or other derived data never replaces the underlying Accepted Evidence.
+
+**Given** retained evidence no longer exists because its Topic reached the authoritative retention deadline or District deletion removed it  
+**When** the Product Owner requests the Topic or evidence  
+**Then** expired/deleted resident-bearing data is unavailable and cannot be reconstructed from AI outputs, telemetry, audit records, or stale browser state  
+**And** the browser presents the approved factual unavailable/not-found state without revealing cross-District existence information.
+
+**Given** District A Topic/Evidence results, search text, selection, or detail are loaded  
+**When** the Product Owner switches to District B  
+**Then** the existing District-switch contract clears District A content-bearing cache, search text, result-derived filters/counts, selections, open detail, and errors before District B resident-bearing data is loaded  
+**And** prior-District requests are cancelled where possible  
+**And** late District A responses are ignored and never render under District B.
+
+**Given** the browser loses network connectivity or an ordinary background refresh fails while previously authorized District Topic/Evidence data is visible  
+**When** the Product Owner continues investigation  
+**Then** already-loaded permitted data may remain visible read-only with the approved offline/stale indication  
+**And** new loads and searches are blocked while offline rather than queued  
+**And** reconnect revalidates the Product Owner session, selected District authorization, lifecycle, and retention before refreshing resident-bearing data.
+
+**Given** the operational Topic/Evidence browser is used on supported responsive widths, at 200% zoom, with keyboard navigation, or reduced-motion preference  
+**When** the Product Owner browses results, searches, progressively loads records, or opens/closes evidence detail  
+**Then** the approved Console data-collection/detail patterns remain keyboard operable with visible logical focus  
+**And** Uzbek Cyrillic UI copy and mixed-script verbatim evidence remain readable without clipping  
+**And** state meaning never depends on color alone  
+**And** opening/closing detail preserves the originating result context and focus where still valid.
+
+**Given** Story 4.5 operates at the approved MVP envelope  
+**When** representative initial Console requests and plain-text search/filter requests are measured under production-shaped conditions  
+**Then** initial usable results satisfy the applicable 3-second NFR2 Console target for at least 95% of requests  
+**And** search/filter changes satisfy the applicable 2-second target for at least 95% of requests  
+**And** progressive loading prevents large retained collections from blocking initial usability.
+
+**Given** Story 4.5 is verified  
+**When** focused integration and browser checks run  
+**Then** integration tests cover explicit Product Owner District scoping, rejection of missing/all-District resident-bearing searches, cross-District isolation, read-only canonical Topic reuse, plain-text summary/evidence/identity search, complete retained evidence access, retention/deletion invalidation, deterministic progressive loading, stale-response rejection, search-text telemetry exclusion, and NFR2 performance behavior  
+**And** browser tests cover District selection, retained Topic browsing, search and zero-result behavior, evidence detail, District switching with prior-content purge, offline/stale behavior, responsive layout, keyboard/focus restoration, and non-color-only state meaning.
