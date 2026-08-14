@@ -361,7 +361,9 @@ So that I can verify operational history, investigate security events, and demon
 **Then** records are presented in strict reverse chronological order (newest first) based on their authoritative event timestamp  
 **And** records with identical timestamps use a deterministic secondary sort by unique audit record ID  
 **And** the log displays the event timestamp, actor (Product Owner or canonical system actor), affected District/scope, action category, action name, outcome, and safe summary metadata  
-**And** raw resident message content, credentials, tokens, AI context, and raw upstream errors are excluded from audit records.
+**And** an event's permitted supplied reason is retained and displayed when one exists  
+**And** relevant old and new non-secret values are retained and displayed for applicable state/configuration changes rather than being reduced to a lossy summary  
+**And** raw resident message content, credentials, tokens, AI context, secrets, and raw upstream errors are excluded from audit records and old/new value fields.
 
 **Given** the Product Owner filters or searches Audit History  
 **When** criteria are applied  
@@ -389,13 +391,13 @@ So that I can verify operational history, investigate security events, and demon
 
 **Given** audit data crosses module, API, and browser boundaries  
 **When** Audit History contracts are defined  
-**Then** record models, filter parameters, keyset cursor formats, search contracts, and deletion-proof schemas are project-owned shared Zod contracts extending Epic 4's contract boundary  
-**And** unknown action categories, invalid date formats, and unsafe query parameters are rejected safely.
+**Then** record models, permitted supplied-reason fields, relevant old/new non-secret value fields, filter parameters, keyset cursor formats, search contracts, and deletion-proof schemas are project-owned shared Zod contracts extending Epic 4's contract boundary  
+**And** unknown action categories, invalid date formats, unsafe old/new values, and unsafe query parameters are rejected safely.
 
 **Given** Story 4.4 is verified  
 **When** focused automated and browser checks run  
-**Then** integration tests cover append-only immutability, newest-first ordering, equal-timestamp tie handling, keyset pagination, concurrent record arrival during pagination, `Asia/Tashkent` calendar filtering, allowlisted metadata search, performance under NFR2 targets, deletion-proof discriminator separation, and shared Zod contract enforcement  
-**And** browser tests cover filter combinations, safe search, progressive loading, read-only detail panels, focus restoration, responsive layouts, and absence of edit/delete controls.
+**Then** integration tests cover append-only immutability, newest-first ordering, equal-timestamp tie handling, permitted supplied reasons, relevant old/new non-secret values, secret/content exclusion from value fields, keyset pagination, concurrent record arrival during pagination, `Asia/Tashkent` calendar filtering, allowlisted metadata search, performance under NFR2 targets, deletion-proof discriminator separation, and shared Zod contract enforcement  
+**And** browser tests cover filter combinations, safe search, progressive loading, read-only detail panels including applicable reason/old-new values, focus restoration, responsive layouts, and absence of edit/delete controls.
 
 ### Story 4.5: Browse Retained District Topics and Evidence for Troubleshooting
 
