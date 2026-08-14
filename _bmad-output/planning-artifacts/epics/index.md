@@ -188,7 +188,7 @@ UX-DR28: Use calm concise Uzbek Cyrillic UI microcopy, exact Asia/Tashkent date/
 
 ### FR Coverage Map
 
-FR1: Epic 2 - District-specific passive Telegram bot intake.
+FR1: Epic 1 + Epic 2 - District-specific passive Telegram bot configuration, readiness, and authorized intake.
 FR2: Epic 2 - Supported content intake and structural exclusions.
 FR3: Epic 2 - Semantic relevance decision.
 FR4: Epic 2 - Relevance exclusions and disposal.
@@ -206,7 +206,7 @@ FR15: Epic 3 - Topic cards and complete evidence detail.
 FR16: Epic 3 - Stable refresh and truthful freshness.
 FR17: Epic 3 - Retained history, filters, search, and progressive loading.
 FR18: Epic 3 - Filter-aware neutral statistics.
-FR19: Epic 1 - Unified Product Owner Console and District-scoped operational context.
+FR19: Epic 1 + Epic 4 - Unified Product Owner Console/District context plus selected-District retained Topic and Accepted Evidence investigation.
 FR20: Epic 1 - Gated and resumable District onboarding.
 FR21: Epic 1 - Telegram bot, group, and Mahalla management.
 FR22: Epic 1 - Hokim account lifecycle and District access boundary.
@@ -242,10 +242,10 @@ The Hokim can understand current District signals, inspect their complete eviden
 Implementation/UX notes: Deliver the approved overview-first dashboard, Topic/evidence detail, stable refresh, freshness states, coordinated filters/search/statistics, per-Lane progressive loading, responsive horizontal Lane navigation, keyboard/focus behavior, reduced-motion support, and preserved review context. Accessibility and responsive requirements remain story acceptance criteria, not a separate frontend epic.
 
 ### Epic 4: Operational Health & Auditable Investigation
-The Product Owner can determine whether Districts are operating correctly, distinguish real failures from quiet or delayed states, investigate safely, retry eligible incomplete work, verify recovery, and inspect immutable operational history.
-**FRs covered:** FR24, FR25, FR26, FR27, FR28.
+The Product Owner can determine whether Districts are operating correctly, distinguish real failures from quiet or delayed states, investigate safely, retry eligible incomplete work, inspect one District's retained Topics and evidence for troubleshooting, verify recovery, and inspect immutable operational history.
+**FRs covered:** FR19, FR24, FR25, FR26, FR27, FR28.
 
-Implementation/UX notes: Treat System Health and Audit History as one operational investigation loop. Keep product health application-owned and privacy-safe, distinguish subscription pauses from technical failure, expose only sanitized diagnostics, allow retry only for incomplete duplicate-safe work, record failure/recovery, and add no external alerts, acknowledgement workflow, automatic repair, or raw resident evidence in routine telemetry.
+Implementation/UX notes: Treat System Health, selected-District retained Topic/Evidence investigation, and Audit History as one operational investigation loop. Keep product health application-owned and privacy-safe, require explicit District scope for resident-bearing operational data, distinguish subscription pauses from technical failure, expose only sanitized diagnostics, allow retry only for incomplete duplicate-safe work, record failure/recovery, and add no external alerts, acknowledgement workflow, automatic repair, or raw resident evidence in routine telemetry.
 
 ### Epic 5: Controlled Future Analysis Configuration
 The Product Owner can safely change or roll back AI/model/prompt/vocabulary configuration for future processing while preserving exact historical lineage and never replaying completed message-level decisions.
@@ -261,4 +261,4 @@ Implementation/UX notes: Keep commercial lifecycle, recovery, retention interact
 
 ### Natural Dependency Direction
 
-Epic 1 enables the secure District and access foundation. Epic 2 builds the core signal-production capability on an activated District. Epic 3 exposes those Topics and evidence to the Hokim. Epic 4 adds Product Owner operational diagnosis over the working system. Epic 5 adds controlled future analysis configuration without changing prior history. Epic 6 completes the District commercial/offboarding lifecycle. Later epics may depend on earlier capabilities, but no epic depends on a future epic to complete its own outcome.
+Epic 1 enables the secure District and access foundation. Epic 2 builds the core signal-production capability on an activated District. Epic 3 exposes those Topics and evidence to the Hokim. Epic 4 adds Product Owner operational diagnosis and selected-District retained Topic/Evidence investigation over the working system. Epic 5 adds controlled future analysis configuration without changing prior history. Epic 6 completes the District commercial/offboarding lifecycle. Later epics may depend on earlier capabilities, but no epic depends on a future epic to complete its own outcome.
