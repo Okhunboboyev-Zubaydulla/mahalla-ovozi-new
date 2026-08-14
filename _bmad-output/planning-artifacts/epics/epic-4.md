@@ -11,6 +11,8 @@ As the **Product Owner**,
 I want to inspect evidence-based overall, District, and component health,  
 So that I can distinguish real technical failures from delays, quiet operation, and insufficient evidence.
 
+**FRs:** FR25, FR26, FR28.
+
 **Acceptance Criteria:**
 
 **Given** an authenticated Product Owner opens System Health  
@@ -179,6 +181,8 @@ As the **Product Owner**,
 I want to see active operational issues ranked by severity, understand their scope and recommended next step, and have issues resolve automatically when recovery is verified,  
 So that I can address real problems without manual ticket tracking, false alarms, or unverified closeouts.
 
+**FRs:** FR24, FR27.
+
 **Acceptance Criteria:**
 
 **Given** component health evaluation detects a condition requiring operational attention  
@@ -303,6 +307,8 @@ As the **Product Owner**,
 I want to trigger manual retry for eligible failed or incomplete processing,  
 So that I can safely resume stuck or failed work without creating duplicates, replaying completed decisions, or exposing unsafe actions.
 
+**FRs:** FR24, FR27.
+
 **Acceptance Criteria:**
 
 **Given** an authenticated Product Owner investigates an operational issue or failed processing state  
@@ -354,6 +360,8 @@ As the **Product Owner**,
 I want to search and filter an immutable audit log of administrative actions, security events, issue transitions, and retry executions,  
 So that I can verify operational history, investigate security events, and demonstrate governance compliance.
 
+**FRs:** FR24.
+
 **Acceptance Criteria:**
 
 **Given** an authenticated Product Owner navigates to Audit History in the Console  
@@ -383,20 +391,14 @@ So that I can verify operational history, investigate security events, and demon
 **And** closing the detail view preserves the exact filter, pagination, and scroll position  
 **And** no edit or delete controls exist anywhere in the interface or API contracts.
 
-**Given** an audit record represents a permanent District deletion proof  
-**When** the record is returned  
-**Then** an explicit discriminator distinguishes ordinary operational audit records from permanent content-free deletion proofs  
-**And** the deletion proof exposes only privacy-safe lifecycle proof metadata without reconstructing deleted District detail  
-**And** Story 4.4 only reads and displays deletion-proof records without implementing deletion lifecycle logic.
-
 **Given** audit data crosses module, API, and browser boundaries  
 **When** Audit History contracts are defined  
-**Then** record models, permitted supplied-reason fields, relevant old/new non-secret value fields, filter parameters, keyset cursor formats, search contracts, and deletion-proof schemas are project-owned shared Zod contracts extending Epic 4's contract boundary  
+**Then** record models, permitted supplied-reason fields, relevant old/new non-secret value fields, filter parameters, keyset cursor formats, and search contracts are project-owned shared Zod contracts extending Epic 4's contract boundary  
 **And** unknown action categories, invalid date formats, unsafe old/new values, and unsafe query parameters are rejected safely.
 
 **Given** Story 4.4 is verified  
 **When** focused automated and browser checks run  
-**Then** integration tests cover append-only immutability, newest-first ordering, equal-timestamp tie handling, permitted supplied reasons, relevant old/new non-secret values, secret/content exclusion from value fields, keyset pagination, concurrent record arrival during pagination, `Asia/Tashkent` calendar filtering, allowlisted metadata search, performance under NFR2 targets, deletion-proof discriminator separation, and shared Zod contract enforcement  
+**Then** integration tests cover append-only immutability, newest-first ordering, equal-timestamp tie handling, permitted supplied reasons, relevant old/new non-secret values, secret/content exclusion from value fields, keyset pagination, concurrent record arrival during pagination, `Asia/Tashkent` calendar filtering, allowlisted metadata search, performance under NFR2 targets, and shared Zod contract enforcement  
 **And** browser tests cover filter combinations, safe search, progressive loading, read-only detail panels including applicable reason/old-new values, focus restoration, responsive layouts, and absence of edit/delete controls.
 
 ### Story 4.5: Browse Retained District Topics and Evidence for Troubleshooting
@@ -404,6 +406,8 @@ So that I can verify operational history, investigate security events, and demon
 As the **Product Owner**,  
 I want to browse and search the retained Topics and Accepted Evidence for one explicitly selected District,  
 So that I can investigate operational questions without mixing resident-bearing data across Districts or changing production decisions.
+
+**FRs:** FR19.
 
 **Acceptance Criteria:**
 
