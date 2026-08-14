@@ -270,6 +270,12 @@ So that the District has a verified passive Telegram connection before approved 
 **And** the plaintext token is not persisted directly
 **And** persistent storage contains authenticated ciphertext encrypted under the deployment-held versioned secret-encryption key.
 
+**Given** validation resolves a Telegram bot identity already authoritatively assigned to another District
+**When** the Product Owner attempts to configure it for the selected District
+**Then** the operation is rejected
+**And** one Telegram bot identity/credential cannot be simultaneously assigned to more than one District
+**And** the existing other-District configuration is neither exposed nor modified.
+
 **Given** a submitted token is syntactically invalid, rejected by Telegram, belongs to an inaccessible bot, or validation cannot complete
 **When** validation finishes
 **Then** the District does not receive a valid Telegram readiness state
@@ -281,6 +287,12 @@ So that the District has a verified passive Telegram connection before approved 
 **Then** the product verifies the bot identity and required connectivity/access capability available at bot level
 **And** persists only the approved non-secret bot metadata required for administration
 **And** marks the bot prerequisite passed only after successful authoritative validation.
+
+**Given** a configured District bot is used by Mahalla Ovozi in MVP
+**When** the product operates through the Telegram integration
+**Then** the bot is used only for passive receipt and required connectivity/access validation
+**And** Mahalla Ovozi does not send group messages, moderate or delete group content, ban members, pin messages, or manage group membership/settings
+**And** no District activation prerequisite requires the bot to have Telegram administrator privileges.
 
 **Given** Telegram is temporarily unavailable or times out during validation
 **When** validation cannot establish the required result
@@ -336,7 +348,7 @@ So that the District has a verified passive Telegram connection before approved 
 
 **Given** Story 1.4 is verified
 **When** focused automated checks run
-**Then** integration tests cover encrypted token persistence, one-bot-per-District enforcement, successful/failed validation, replacement atomicity, explicit District scoping, and secret exclusion from returned contracts
+**Then** integration tests cover encrypted token persistence, one-bot-per-District enforcement, cross-District bot-identity rejection, passive no-outbound/no-admin behavior, successful/failed validation, replacement atomicity, explicit District scoping, and secret exclusion from returned contracts
 **And** browser tests cover first-time connection, validation failure, successful connection, token non-restoration after reload, and offline submission behavior.
 
 ### Story 1.5: Configure and Validate Telegram Group-to-Mahalla Mappings
@@ -360,6 +372,12 @@ So that future Telegram evidence can be attributed deterministically to the corr
 **And** one Mahalla can have only one approved Telegram group
 **And** the invariants are enforced by authoritative application/storage constraints rather than UI convention alone.
 
+**Given** a Telegram group is already an approved mapping for District A
+**When** the Product Owner attempts to approve that same Telegram group for District B
+**Then** the save is rejected by authoritative application/storage constraints
+**And** one approved Telegram group cannot simultaneously belong to more than one District
+**And** District A's protected mapping details are neither exposed nor modified.
+
 **Given** a Telegram group is already mapped
 **When** the Product Owner attempts to map that same group to a second Mahalla, or map a second group to an already-mapped Mahalla
 **Then** the save is rejected
@@ -368,24 +386,24 @@ So that future Telegram evidence can be attributed deterministically to the corr
 
 **Given** a mapping is newly configured
 **When** its Telegram readiness is validated
-**Then** the system verifies the configured District bot has the required access to that exact group
-**And** verifies the required bot/privacy-mode configuration
-**And** verifies receipt using the approved test-message flow before the mapping can become ready
+**Then** the system verifies the configured District bot is an ordinary non-admin member with the required access to that exact group
+**And** verifies Telegram Group Privacy Mode is disabled for the bot
+**And** verifies receipt of an ordinary non-command human text test message from that exact group before the mapping can become ready
 **And** a stored mapping alone is never treated as proof that Telegram delivery works.
 
 **Given** the Product Owner is performing the test-message flow
 **When** the system is waiting for the expected Telegram evidence
 **Then** the UI exposes an explicit waiting state
 **And** identifies the correct District/group safely
-**And** does not claim success until the authoritative expected test receipt is observed.
+**And** does not claim success until the authoritative expected ordinary non-command test receipt is observed.
 
-**Given** the expected test message is received successfully through the configured District bot
+**Given** the expected ordinary non-command human text test message is received successfully through the configured District bot
 **When** its group identity matches the mapping under validation
 **Then** that mapping is marked passed/readied
 **And** the test verifies connectivity/configuration only
 **And** the test message does not become production Accepted Evidence or start Topic/AI processing while the District remains incomplete.
 
-**Given** the test times out, the bot lacks access, privacy-mode/configuration is wrong, the message arrives from a different group, or Telegram validation otherwise fails
+**Given** the test times out, the bot lacks access, has administrator-only setup rather than the required ordinary non-admin membership, Group Privacy Mode is enabled or otherwise misconfigured, only a command/bot-authored message is observed, the message arrives from a different group, or Telegram validation otherwise fails
 **When** the check completes
 **Then** the mapping remains failed or incomplete
 **And** the UI identifies the safe failure category and next corrective action
@@ -450,8 +468,8 @@ So that future Telegram evidence can be attributed deterministically to the corr
 
 **Given** Story 1.5 is verified
 **When** focused automated checks run
-**Then** integration tests cover one-to-one constraints, explicit District scoping, unauthorized-group rejection, access/privacy/test validation, timeout/conflict states, authoritative readiness updates, and future-only remapping behavior
-**And** browser tests cover creating a mapping, mapping conflict, successful test-message validation, timeout/failure, searching mappings, and protected offline behavior.
+**Then** integration tests cover one-to-one constraints including cross-District group uniqueness, explicit District scoping, unauthorized-group rejection, required ordinary non-admin membership, disabled Group Privacy Mode, ordinary non-command test receipt, timeout/conflict states, authoritative readiness updates, and future-only remapping behavior
+**And** browser tests cover creating a mapping, mapping conflict, successful ordinary-message validation, timeout/failure, searching mappings, and protected offline behavior.
 
 ### Story 1.6: Create and Manage the District Hokim Account
 
@@ -683,4 +701,4 @@ So that production operation and Hokim access cannot begin from an incomplete or
 **Given** Story 1.7 is verified
 **When** focused automated checks run
 **Then** integration tests cover authoritative readiness revalidation, blocked activation, atomic successful activation, activation audit events, inactive-versus-active access enforcement, lifecycle checks at protected boundaries, and first-sign-in password replacement
-**And** browser tests cover activation blockers, successful activation, failed/stale activation, Hokim denial before activation, temporary-password first sign-in after activation, required password replacement, informational notice, and successful role-derived routing.
+**And** browser tests cover activation blockers, successful activation, failed/stale activation, Hokim denial before activation, temporary-password first sign in after activation, required password replacement, informational notice, and successful role-derived routing.
