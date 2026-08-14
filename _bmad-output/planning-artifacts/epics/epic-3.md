@@ -21,31 +21,8 @@ So that I can quickly understand current situations without navigating between s
 **Given** the Hokim enters the dashboard
 **When** the overview shell renders
 **Then** there is no sidebar, page-tab dashboard, or separate History surface
-**And** the compact sticky toolbar contains `Маҳалла Овози`, the fixed District context, current date context, Help, and profile controls
-**And** filter/search controls owned by later stories appear only when their capability exists rather than as fake disabled controls.
-
-**Given** the Hokim activates Help
-**When** the Help surface opens
-**Then** it provides concise factual Uzbek Cyrillic guidance explaining that dashboard signals are reported signals rather than verified facts; one canonical Topic can appear in multiple Lanes; `Янги`/`Янгиланди` meanings; Accepted Evidence chronology; freshness/processing delay; Telegram best-effort navigation; and Hokim ownership of real-world decisions
-**And** it explains that a Topic and all of its Accepted Evidence expire together 90 days after that Topic's latest relevant evidence timestamp and individual evidence does not expire earlier while the Topic remains retained
-**And** Help adds no recommendations, automated decisions, service-performance scoring, support chat, feedback workflow, AI assistant, or case management.
-
-**Given** the Hokim opens Help at a desktop-width composition
-**When** the Help surface is presented
-**Then** it uses the approved read-only non-modal complementary-region pattern
-**And** its labelled heading receives focus, Close is the first Help action, and the dashboard remains operable subject to the existing covered-target keyboard rule
-**And** closing Help restores the exact Help opener where valid, otherwise the deterministic dashboard focus fallback applies.
-
-**Given** the Hokim opens Help at a narrow-screen composition
-**When** the Help surface is presented
-**Then** it uses the approved routed full-screen read-only page rather than a modal dialog
-**And** entry focuses its labelled main heading
-**And** Back or Close restores the prior dashboard query, board/Lane scroll context, and valid Help opener or deterministic fallback target.
-
-**Given** Help is closed
-**When** the Hokim returns to the dashboard
-**Then** the current dashboard query, horizontal board position, every Lane's vertical scroll position, and exact Help opener focus are restored where still valid
-**And** opening Help never reprocesses Topic or evidence data.
+**And** the compact sticky toolbar contains `Маҳалла Овози`, the fixed District context, and current date context
+**And** controls not implemented by this story are not shown as fake disabled capabilities.
 
 **Given** a dashboard-origin read-only surface closes or returns to the dashboard
 **When** its exact originating opener no longer exists, is no longer rendered, or is no longer permitted
@@ -54,19 +31,6 @@ So that I can quickly understand current situations without navigating between s
 **And** these fallback targets may receive programmatic focus without becoming ordinary additional Tab stops
 **And** focus is never left on removed content, sent to an arbitrary Topic card, or allowed to fall unpredictably to the document body
 **And** authorization, lifecycle, or retention invalidation overrides this dashboard fallback and follows the resulting authorized sign-in/denied surface instead.
-
-**Given** the authenticated Hokim activates the profile control
-**When** the profile menu opens
-**Then** it exposes the MVP's existing Sign out session action
-**And** Story 3.1 does not create a dedicated profile page, editable personal profile, password-management UI, role selector, account administration, District switching, or new navigation hierarchy.
-
-**Given** the Hokim activates Sign out
-**When** sign-out succeeds
-**Then** the existing authentication/session contract terminates the Hokim session
-**And** protected dashboard/query data is removed from browser-visible state and cache
-**And** the user is routed to the existing sign-in surface
-**And** no dashboard filter, search text, Topic/evidence selection, or protected content survives as restorable authenticated state
-**And** no confirmation dialog is required unless an independently defined unsaved-change guard is actually active.
 
 **Given** the dashboard establishes its visual foundation
 **When** the shell, toolbar, Lane board, Topic cards, status surfaces, and controls render
@@ -149,7 +113,7 @@ So that I can quickly understand current situations without navigating between s
 
 **Given** Story 3.1 is verified under the approved production-shaped envelope
 **When** focused integration/browser/performance checks run
-**Then** they cover fixed-District isolation, canonical multi-Lane identity, card fields, first-visit and multi-session/device `Янги`/`Янгиланди` behavior, deterministic Lane pagination, loading/empty/error states, desktop/narrow Help structure and context/focus restoration including deterministic fallback, profile Sign out and prohibited profile capabilities, responsive Lane navigation, keyboard/focus/zoom/reduced-motion behavior, Civic Teal token mapping and absence of persistent dashboard shadows
+**Then** they cover fixed-District isolation, canonical multi-Lane identity, card fields, first-visit and multi-session/device `Янги`/`Янгиланди` behavior, deterministic Lane pagination, loading/empty/error states, deterministic fallback focus, responsive Lane navigation, keyboard/focus/zoom/reduced-motion behavior, Civic Teal token mapping, and absence of persistent dashboard shadows
 **And** the dashboard becomes usable within three seconds for at least 95% of requests under the approved design envelope.
 
 ### Story 3.2: Inspect Complete Topic Evidence
@@ -296,9 +260,9 @@ So that newer information becomes discoverable while the dashboard remains stabl
 
 **Given** a permitted dashboard result is already visible
 **When** background revalidation runs
-**Then** it requests the latest permitted canonical Topic projection for the fixed District and the dashboard scope capabilities already implemented by Stories 3.1–3.3
-**And** for Story 3.3 independently, that scope is the existing default dashboard result and does not require date/Mahalla/Lane filtering or plain-text search from Story 3.4
-**And** later stories may extend the same non-disruptive refresh behavior to their successfully applied scopes without changing Story 3.3's core refresh contract
+**Then** it requests the latest permitted canonical Topic projection for the fixed District and the dashboard scope capabilities already implemented at that point
+**And** this story's independently complete scope is the existing default dashboard result and does not require later filtering or plain-text search capabilities
+**And** later capabilities may extend the same non-disruptive refresh behavior to their successfully applied scopes without changing Story 3.3's core refresh contract
 **And** it does not rerun Telegram intake, relevance, Topic assignment, or AI derivation
 **And** the story promises no fake real-time behavior or fixed refresh interval.
 
@@ -420,11 +384,11 @@ So that newer information becomes discoverable while the dashboard remains stabl
 **When** focused automated/browser checks run
 **Then** they cover independently implementable default-scope refresh, unchanged silent refresh, non-blocking operation, new Topic discoverability without viewport movement, updated Topics remaining in place, canonical Topic counting across multi-Lane appearances, open-detail preservation, complete and progressively loading evidence refresh without duplicate/forced scroll or false completeness, truthful freshness/delay, ordinary failure, offline-before/after-load behavior, locally known session expiry, reconnect revalidation, invalidation, stale-response rejection, and reduced motion.
 
-### Story 3.4: Find Current and Retained Topics
+### Story 3.4: Filter Current and Retained Topics
 
 As the **Hokim**,
-I want to filter and search current and retained Topics from the same dashboard,
-So that I can quickly find an earlier District situation and inspect its retained evidence without navigating to a separate History surface.
+I want to filter current and retained Topics by date, Mahalla, and Lane from the same dashboard,
+So that I can focus on an earlier or narrower District situation without navigating to a separate History surface.
 
 **FRs:** FR17.
 
@@ -447,7 +411,7 @@ So that I can quickly find an earlier District situation and inspect its retaine
 **Then** `Бугун` is the sole permitted partial-current-day scope and covers the current Asia/Tashkent calendar day from `00:00` through the successful server evaluation `asOf`
 **And** `Кеча` and `Сана бўйича` operate only on complete Asia/Tashkent calendar days or permitted complete-day ranges
 **And** the dashboard provides no Last 1 hour, Last 3 hours, Last 6 hours, arbitrary hour/minute range, or any other partial-day filter
-**And** hourly filtering is not introduced indirectly through search or another control.
+**And** hourly filtering is not introduced indirectly through another control.
 
 **Given** Topic retention is Topic-level
 **When** a custom historical range is evaluated
@@ -471,112 +435,20 @@ So that I can quickly find an earlier District situation and inspect its retaine
 **Then** all affected Lane results use that same fixed-District scope
 **And** no AI relevance/Topic assignment/projection is rerun to answer the historical query.
 
-**Given** the Hokim enters plain text in dashboard search
-**When** approximately 400ms of idle time establishes a settled search
-**Then** ordinary lexical search evaluates retained Topic summaries, Accepted Evidence, Telegram usernames, and display names inside the active permitted District/date/Mahalla/Lane scope
-**And** phone numbers are excluded
-**And** search is not semantic AI question answering, vector retrieval, RAG, reclassification, or historical reassessment.
-
-**Given** a settled search matches Topic summary text
-**When** matching cards render
-**Then** matching summary text may be highlighted without truncating the complete summary
-**And** an evidence-only match may expose `Далилда топилди`
-**And** an identity-only match may expose `Фойдаланувчида топилди`
-**And** those hints do not reveal phone numbers or extra resident identity.
-
-**Given** a filter/search scope successfully settles
-**When** its result-count announcement is produced
-**Then** the announced count represents distinct canonical Topics matching the complete successfully applied scope
-**And** one Topic rendered in multiple selected Lanes contributes exactly once
-**And** the count comes from the complete server-side result set rather than browser-loaded pages or Lane-card appearances
-**And** the announcement is one scoped polite atomic message
-**And** stale/superseded announcements are cancelled or ignored.
-
-**Given** rapid search/filter changes produce overlapping requests
-**When** an earlier response completes after a newer request
-**Then** stale work is cancelled where possible or ignored
-**And** obsolete results, counts, and continuation state cannot replace the latest successfully applied scope.
-
-**Given** raw search text is sent to the server
-**When** a search request is made
-**Then** it is sent only in a validated request body under same-origin `/api/v1/*`
-**And** raw search text never appears in URL path/query/fragment/history/shareable route, saved/recent-search suggestions, persistent browser storage, Audit History, analytics, telemetry, routine logs, traces, or raw error output.
-
-**Given** sign-out, session expiry, permission loss, or District invalidation occurs
-**When** protected dashboard state is cleared
-**Then** raw search text and temporary search-match context are cleared immediately with the other protected/ephemeral state.
-
-**Given** search text exists
-**When** the Hokim uses Search Clear
-**Then** only search text and temporary search-match context are cleared
-**And** active date, Mahalla, and Lane selections remain unchanged.
-
-**Given** any non-default dashboard criteria exist
+**Given** any non-default date, Mahalla, or Lane criteria exist
 **When** the Hokim activates `Фильтрларни тозалаш`
-**Then** the scope resets to `Бугун`, all permitted Mahallas, all five Lanes, and empty search
+**Then** the scope resets to `Бугун`, all permitted Mahallas, and all five Lanes
 **And** no separate History page or route is introduced.
 
 **Given** the dashboard is used at a narrow-screen composition
-**When** date, Mahalla, Lane, or search filtering is available
+**When** date, Mahalla, or Lane filtering is available
 **Then** the compact dashboard toolbar exposes the approved `Фильтрлар N` control for filter criteria that do not remain directly visible
 **And** activating it opens the approved modal filter/navigation sheet with a programmatic title, inert background, contained keyboard focus, visible Close/Cancel control, and Escape dismissal
 **And** the sheet exposes the same date, Mahalla, and Lane capabilities as the wider layout without introducing a separate mobile filter model
 **And** closing or applying the sheet returns focus deterministically to the `Фильтрлар N` opener
-**And** active filter state remains visible after the sheet closes
-**And** search remains governed by its existing responsive UX behavior and privacy rules rather than creating a second search implementation.
+**And** active filter state remains visible after the sheet closes.
 
-**Given** the current applied scope has at least one loaded Lane batch
-**When** `Яна кўрсатиш` is used
-**Then** Story 3.1's same opaque deterministic cursor/keyset pagination contract is reused rather than introducing offset, page-number, or search-specific pagination
-**And** each cursor is bound to District, Lane, and the exact successfully applied date/Mahalla/Lane/search scope
-**And** appended data cannot duplicate already loaded Topic identities under deterministic ordering
-**And** infinite scroll is not introduced.
-
-**Given** a filter/search scope successfully produces its initial Lane results
-**When** the server returns a continuation cursor
-**Then** the opaque cursor is bound to the authorized District, Lane, exact successfully applied date/Mahalla/Lane/search scope, deterministic ordering, and the keyset boundary needed for continuation
-**And** the cursor does not represent or require a materialized historical snapshot of mutable Topic projections.
-
-**Given** `Яна кўрсатиш` is activated after newer or updated Topic data exists
-**When** the next batch is requested
-**Then** continuation uses the cursor's deterministic keyset boundary against currently permitted retained data
-**And** canonical Topic identities already loaded in that Lane are not appended again
-**And** Topics that are newly created or updated such that they belong before the existing continuation boundary are not retroactively inserted into already reviewed earlier batches
-**And** normal dashboard refresh/revalidation is the mechanism for making such newer state discoverable.
-
-**Given** a successful filter/search change or dashboard refresh establishes a new displayed result context
-**When** older continuation state or late pagination responses still exist
-**Then** the prior continuation state is discarded for that Lane
-**And** late responses belonging to the obsolete displayed context cannot append into the refreshed/current Lane
-**And** a fresh continuation cursor from the current displayed result is used for subsequent loading.
-
-**Given** a Lane continuation cursor was issued from a successfully displayed result
-**When** a later Topic creation, projection update, retention deletion, or other authoritative change may alter that Lane's matching membership or deterministic ordering across the cursor boundary
-**Then** the server does not continue that cursor as though the collection were unchanged
-**And** the cursor is rejected as stale using a sanitized continuation-state response
-**And** no Topic is silently skipped merely because its mutable ordering key crossed the previous keyset boundary
-**And** the server may conservatively invalidate when it cannot prove that intervening changes are irrelevant to the cursor's scope and ordering.
-
-**Given** a continuation cursor becomes stale because the underlying permitted result changed
-**When** the stale continuation response is handled
-**Then** already loaded permitted Lane content remains usable
-**And** the dashboard uses Story 3.3's existing non-disruptive refresh/revalidation behavior to establish fresh result and continuation state
-**And** valid selection, evidence detail, focus, board position, and Lane scroll context are preserved where possible
-**And** the system does not recreate an old Topic projection or materialize a historical pagination snapshot.
-
-**Given** authorization, session, District access, lifecycle, or retention validity changes
-**When** an otherwise valid continuation cursor is presented
-**Then** current security/retention rules override continuation semantics
-**And** an old cursor cannot return protected or expired data merely because it once referenced it
-**And** opaque cursor/evaluation values expose no raw search text, resident evidence, Telegram identity, credentials, or other protected content.
-
-**Given** a Lane continuation request fails
-**When** previously loaded results remain permitted
-**Then** those results remain visible
-**And** that Lane exposes `Юклаб бўлмади. Қайта уриниш.` locally
-**And** the failure does not reset other Lanes or the applied filters.
-
-**Given** the Hokim requests new date, Mahalla, Lane, or search criteria
+**Given** the Hokim requests new date, Mahalla, or Lane criteria
 **When** that requested scope fails before becoming successfully applied
 **Then** failure is not converted into a false zero/filtered-empty result
 **And** the last successful permitted results remain visible
@@ -584,31 +456,29 @@ So that I can quickly find an earlier District situation and inspect its retaine
 **And** prior results are not falsely represented as matching the failed request
 **And** a scoped sanitized failure with safe `Қайта уриниш` is presented.
 
-**Given** requested criteria failed and never became applied
+**Given** requested filter criteria failed and never became applied
 **When** the dashboard is reloaded, reconstructed, or restores ordinary dashboard state
 **Then** the last successfully applied non-sensitive date/Mahalla/Lane scope is restored rather than the failed requested values
-**And** failed requested criteria are not persisted as authoritative scope
-**And** failed/pending search text is never restored from URL or browser persistence under the stricter ephemeral-search rule.
+**And** failed requested criteria are not persisted as authoritative scope.
 
-**Given** a failed requested scope later succeeds on retry
+**Given** a failed requested filter scope later succeeds on retry
 **When** its results are accepted
 **Then** those criteria become the new successfully applied scope
-**And** they replace the preceding successful date/Mahalla/Lane scope for ordinary non-sensitive continuity
-**And** search text remains ephemeral and non-persistent regardless of successful application.
+**And** they replace the preceding successful date/Mahalla/Lane scope for ordinary non-sensitive continuity.
 
-**Given** a successful applied result contains zero canonical Topics
+**Given** a successful applied filter result contains zero canonical Topics
 **When** the board renders
-**Then** `Танланган шартлар бўйича мавзулар топилмади` is used for filtered/search empty state
+**Then** `Танланган шартлар бўйича мавзулар топилмади` is used for filtered empty state
 **And** selected Lane headers remain visible with `Мос мавзу топилмади` as applicable
 **And** a failed request is never presented with that legitimate-zero copy.
 
-**Given** evidence detail is opened from a filtered/searched result
+**Given** evidence detail is opened from a filtered result
 **When** the Hokim returns to the dashboard
-**Then** the active successfully applied query and board/Lane review context are preserved
+**Then** the active successfully applied filter scope and board/Lane review context are preserved
 **And** refresh uses that successfully applied scope rather than an obsolete or failed requested scope.
 
 **Given** the dashboard is used at supported responsive widths, 200% zoom, approximately 320 CSS pixels, keyboard operation, or reduced motion
-**When** filters, Lane selection, search, result announcements, and progressive loading are used
+**When** filters and Lane selection are used
 **Then** controls remain accessible and usable with visible focus and non-color-only state
 **And** important Cyrillic text/actions do not clip or overlap
 **And** intentional horizontal Lane navigation is the only permitted general board overflow
@@ -616,8 +486,8 @@ So that I can quickly find an earlier District situation and inspect its retaine
 
 **Given** Story 3.4 is verified under the approved production-shaped envelope
 **When** integration/browser/performance checks run
-**Then** they cover retained date/range behavior through the approved 90-day boundary, the Today-only partial-current-day exception and prohibition of every other hourly/partial-day request, Mahalla/Lane combinations, zero-Lane prevention, lexical summary/evidence/identity search, canonical result counting, request-body/URL/log search privacy, rapid stale-response rejection, Search Clear versus full filter reset, successful zero versus failed requested scope, reload/restoration after failed criteria, retry promotion to applied scope, scope-and-keyset-bound continuation, mutable-order stale-cursor invalidation/recovery, refreshed-context cursor replacement, obsolete pagination-response rejection, local continuation retry, narrow `Фильтрлар N` sheet behavior, responsive/accessibility/reduced-motion behavior, and retention/auth invalidation
-**And** combined date/Mahalla/Lane/plain-text filter changes return updated results within two seconds for at least 95% of requests under the approved design envelope.
+**Then** they cover retained date/range behavior through the approved 90-day boundary, the Today-only partial-current-day exception and prohibition of every other hourly/partial-day request, Mahalla/Lane combinations, zero-Lane prevention, requested-versus-applied filter state, successful zero versus failed requested scope, reload/restoration after failed criteria, retry promotion to applied scope, narrow `Фильтрлар N` sheet behavior, responsive/accessibility/reduced-motion behavior, and retention/auth invalidation
+**And** date/Mahalla/Lane filter changes return updated results within two seconds for at least 95% of requests under the approved design envelope.
 
 ### Story 3.5: Understand the Active Result Set Through Neutral Statistics
 
@@ -632,12 +502,12 @@ So that I can understand the shape of current or historical signals without mist
 **Given** a successfully applied dashboard scope
 **When** the statistics region renders
 **Then** exactly five compact read-only cards appear between the toolbar and Lane board
-**And** the normal metrics are: unique Topics with equivalent prior-period comparison; Hokim-related Topics; active Mahallas with retained Accepted Evidence count as secondary context; most active service Lane; and most active Mahalla
+**And** the base metrics are: unique Topics; Hokim-related Topics; active Mahallas with retained Accepted Evidence count as secondary context; most active service Lane; and most active Mahalla
 **And** the statistics contain no sentiment, urgency, severity, service-quality score, satisfaction, representative-public-opinion claim, AI judgment, or performance ranking action.
 
-**Given** date, Mahalla, selected Lanes, or settled plain-text search is successfully applied
+**Given** date, Mahalla, or selected Lanes are successfully applied
 **When** board results and statistics update
-**Then** all five statistics describe the same coordinated active result scope as the Lane board
+**Then** all five statistics describe the same successfully applied result scope as the Lane board
 **And** statistics are calculated from the complete authoritative server-side result set rather than only browser-loaded pagination batches.
 
 **Given** overall unique Topics are counted
@@ -695,6 +565,284 @@ So that I can understand the shape of current or historical signals without mist
 **And** tied candidate names are not required to be enumerated inside or through an interactive expansion of the compact statistic card
 **And** no green/good or red/bad interpretation is attached to the tie or any tied candidate.
 
+**Given** a successful active scope contains zero canonical Topics
+**When** statistics render
+**Then** zero is shown where it is a truthful meaningful count
+**And** ranking metrics do not invent a leader
+**And** applicable deterministic fallback or neutral unavailable state is used without implying service quality, satisfaction, or System Health.
+
+**Given** a most-active metric has two or more eligible candidates but every candidate has zero matching canonical Topics
+**When** Card 4 or Card 5 is rendered
+**Then** the zero-result rule takes precedence over ordinary tie presentation
+**And** the UI does not display a tied-leader count or identify any candidate as most active
+**And** the card uses the already-defined applicable deterministic fallback or neutral unavailable state
+**And** no service quality, satisfaction, inactivity judgment, or System Health meaning is inferred from the zero result.
+
+**Given** the statistics strip fits the primary desktop composition
+**When** it renders
+**Then** all five read-only cards are visible
+**And** cards use the approved visual hierarchy without appearing clickable
+**And** metric cards themselves are non-focusable and do not act as filters, navigation, rankings, or actions.
+
+**Given** all five statistic cards do not fit the effective viewport
+**When** the statistics region overflows
+**Then** it is a labelled horizontal statistics region with visible keyboard-operable Previous/Next statistic controls
+**And** one activation moves one statistic at a time
+**And** the newly visible metric name and position are announced
+**And** current statistic position is preserved across viewport/zoom/orientation changes where safe
+**And** only navigation controls, not read-only metric cards, enter the Tab sequence.
+
+**Given** phone/tablet width, 200% zoom, approximately 320 CSS pixels, tie/fallback labels, Mahalla names, or Uzbek Cyrillic values
+**When** statistics render
+**Then** text wraps safely without dropping below the approved font floor or causing general page-level horizontal overflow
+**And** Previous/Next controls meet the approved phone/tablet target size/separation
+**And** purpose/state is not conveyed only by color or icon
+**And** reduced motion makes statistic movement immediate.
+
+**Given** statistics are requested from the backend
+**When** authoritative aggregates are produced
+**Then** same-origin `/api/v1/*` and shared browser-safe Zod contracts are used
+**And** the server enforces the fixed-District ActorContext
+**And** canonical Topic IDs and retained evidence aggregates are authoritative rather than browser-side counts
+**And** database/infrastructure/provider/job representations do not cross the browser boundary.
+
+**Given** Story 3.5 is verified
+**When** focused integration/browser checks run
+**Then** they cover canonical Topic deduplication across Lanes, Hokim overlap, multi-service counts, distinct active Mahallas, evidence deduplication across multi-Lane appearances, service/Mahalla leader calculations, non-zero tie-count presentation, zero-result tie precedence, `Multi-Lane Topics` and `Multi-evidence Topics` fallbacks plus restoration of normal metrics, statistics independent of browser pagination, desktop five-card presentation, mobile statistic navigation, non-focusable cards, keyboard controls, announcements, zoom/320px Cyrillic wrapping, and reduced motion
+**And** the story adds no sentiment, public-opinion inference, service-performance score, urgency/severity ranking, action recommendation, case management, or additional dashboard filters.
+
+### Story 3.6: Use Dashboard Help and Profile Controls
+
+As the **Hokim**,
+I want Help and session controls available from the dashboard,
+So that I can understand the product's evidence limits and safely leave my protected session without changing the dashboard model.
+
+**FRs:** FR14, FR15.
+
+**Acceptance Criteria:**
+
+**Given** the Hokim enters the dashboard after the core board is available
+**When** the toolbar renders
+**Then** it adds Help and profile controls without introducing a sidebar, dashboard page tabs, District selector, or separate History surface.
+
+**Given** the Hokim activates Help
+**When** the Help surface opens
+**Then** it provides concise factual Uzbek Cyrillic guidance explaining that dashboard signals are reported signals rather than verified facts; one canonical Topic can appear in multiple Lanes; `Янги`/`Янгиланди` meanings; Accepted Evidence chronology; freshness/processing delay; Telegram best-effort navigation; and Hokim ownership of real-world decisions
+**And** it explains that a Topic and all of its Accepted Evidence expire together 90 days after that Topic's latest relevant evidence timestamp and individual evidence does not expire earlier while the Topic remains retained
+**And** Help adds no recommendations, automated decisions, service-performance scoring, support chat, feedback workflow, AI assistant, or case management.
+
+**Given** the Hokim opens Help at a desktop-width composition
+**When** the Help surface is presented
+**Then** it uses the approved read-only non-modal complementary-region pattern
+**And** its labelled heading receives focus, Close is the first Help action, and the dashboard remains operable subject to the existing covered-target keyboard rule
+**And** closing Help restores the exact Help opener where valid, otherwise Story 3.1's deterministic dashboard focus fallback applies.
+
+**Given** the Hokim opens Help at a narrow-screen composition
+**When** the Help surface is presented
+**Then** it uses the approved routed full-screen read-only page rather than a modal dialog
+**And** entry focuses its labelled main heading
+**And** Back or Close restores the prior dashboard query, board/Lane scroll context, and valid Help opener or deterministic fallback target.
+
+**Given** Help is closed
+**When** the Hokim returns to the dashboard
+**Then** the current dashboard query, horizontal board position, every Lane's vertical scroll position, and exact Help opener focus are restored where still valid
+**And** opening Help never reprocesses Topic or evidence data.
+
+**Given** the authenticated Hokim activates the profile control
+**When** the profile menu opens
+**Then** it exposes the MVP's existing Sign out session action
+**And** it does not create a dedicated profile page, editable personal profile, password-management UI, role selector, account administration, District switching, or new navigation hierarchy.
+
+**Given** the Hokim activates Sign out
+**When** sign-out succeeds
+**Then** the existing authentication/session contract terminates the Hokim session
+**And** protected dashboard/query data is removed from browser-visible state and cache
+**And** the user is routed to the existing sign-in surface
+**And** no dashboard filter, search text, Topic/evidence selection, or protected content survives as restorable authenticated state
+**And** no confirmation dialog is required unless an independently defined unsaved-change guard is actually active.
+
+**Given** Help or profile controls are used with keyboard navigation, supported responsive widths, 200% zoom, or reduced-motion preference
+**When** those utility surfaces are opened or closed
+**Then** controls remain keyboard operable with visible focus
+**And** opener restoration and routed/non-modal detail behavior follow the approved UX contract
+**And** Cyrillic text and required actions remain readable without clipping
+**And** reduced-motion behavior never delays access to the resulting state.
+
+**Given** Story 3.6 is verified
+**When** focused browser checks run
+**Then** they cover desktop/narrow Help structure and context/focus restoration including deterministic fallback, factual Help content and prohibited scope, profile Sign out, protected-state clearing, prohibited profile capabilities, keyboard access, responsive behavior, and reduced motion.
+
+### Story 3.7: Search Current and Retained Topics Privately
+
+As the **Hokim**,
+I want to search retained Topic and evidence text within my current dashboard scope,
+So that I can find a situation quickly without sending sensitive search text into persistent product or telemetry state.
+
+**FRs:** FR17, FR18.
+
+**Acceptance Criteria:**
+
+**Given** the Hokim enters plain text in dashboard search
+**When** approximately 400ms of idle time establishes a settled search
+**Then** ordinary lexical search evaluates retained Topic summaries, Accepted Evidence, Telegram usernames, and display names inside the active permitted District/date/Mahalla/Lane scope
+**And** phone numbers are excluded
+**And** search is not semantic AI question answering, vector retrieval, RAG, reclassification, or historical reassessment.
+
+**Given** a settled search matches Topic summary text
+**When** matching cards render
+**Then** matching summary text may be highlighted without truncating the complete summary
+**And** an evidence-only match may expose `Далилда топилди`
+**And** an identity-only match may expose `Фойдаланувчида топилди`
+**And** those hints do not reveal phone numbers or extra resident identity.
+
+**Given** a search scope successfully settles
+**When** its result-count announcement is produced
+**Then** the announced count represents distinct canonical Topics matching the complete successfully applied scope
+**And** one Topic rendered in multiple selected Lanes contributes exactly once
+**And** the count comes from the complete server-side result set rather than browser-loaded pages or Lane-card appearances
+**And** the announcement is one scoped polite atomic message
+**And** stale/superseded announcements are cancelled or ignored.
+
+**Given** rapid search/filter changes produce overlapping requests
+**When** an earlier response completes after a newer request
+**Then** stale work is cancelled where possible or ignored
+**And** obsolete results, counts, and continuation state cannot replace the latest successfully applied scope.
+
+**Given** raw search text is sent to the server
+**When** a search request is made
+**Then** it is sent only in a validated request body under same-origin `/api/v1/*`
+**And** raw search text never appears in URL path/query/fragment/history/shareable route, saved/recent-search suggestions, persistent browser storage, Audit History, analytics, telemetry, routine logs, traces, or raw error output.
+
+**Given** sign-out, session expiry, permission loss, or District invalidation occurs
+**When** protected dashboard state is cleared
+**Then** raw search text and temporary search-match context are cleared immediately with the other protected/ephemeral state.
+
+**Given** search text exists
+**When** the Hokim uses Search Clear
+**Then** only search text and temporary search-match context are cleared
+**And** active date, Mahalla, and Lane selections remain unchanged.
+
+**Given** any non-default dashboard criteria exist
+**When** the Hokim activates `Фильтрларни тозалаш`
+**Then** the scope resets to `Бугун`, all permitted Mahallas, all five Lanes, and empty search
+**And** no separate History page or route is introduced.
+
+**Given** a settled search changes the active result scope
+**When** the search applies successfully
+**Then** all selected Lane results and all five statistics update to that same successfully applied search scope
+**And** no AI processing or historical reassessment is triggered.
+
+**Given** a requested search fails before becoming successfully applied
+**When** the failure is displayed
+**Then** failure is not converted into a false zero/search-empty result
+**And** the last successful permitted results remain visible
+**And** the requested search remains distinguishable as requested but not successfully applied
+**And** prior results are not represented as matching the failed search
+**And** a scoped sanitized failure with safe `Қайта уриниш` is presented
+**And** failed or pending search text is never restored from URL or persistent browser state.
+
+**Given** a failed requested search later succeeds on retry
+**When** its results are accepted
+**Then** it becomes the current successfully applied search scope
+**And** search text remains ephemeral and non-persistent regardless of successful application.
+
+**Given** a successful applied search contains zero canonical Topics
+**When** the board renders
+**Then** `Танланган шартлар бўйича мавзулар топилмади` is used
+**And** selected Lane headers remain visible with `Мос мавзу топилмади` as applicable
+**And** statistics use their truthful zero/fallback behavior rather than invented values.
+
+**Given** evidence detail is opened from a searched result
+**When** the Hokim returns to the dashboard
+**Then** the active successfully applied search/filter scope and board/Lane review context are preserved
+**And** refresh uses that successfully applied scope rather than an obsolete or failed request.
+
+**Given** search is used at supported responsive widths, 200% zoom, approximately 320 CSS pixels, keyboard operation, or reduced motion
+**When** search, result announcements, and Search Clear are used
+**Then** controls remain accessible with visible focus and non-color-only state
+**And** important Cyrillic text/actions do not clip or overlap
+**And** programmatic motion is immediate under reduced motion.
+
+**Given** Story 3.7 is verified under the approved production-shaped envelope
+**When** integration/browser/performance checks run
+**Then** they cover lexical summary/evidence/identity search, canonical result counting, request-body/URL/log search privacy, rapid stale-response rejection, Search Clear versus full filter reset, successful zero versus failed requested search, retry promotion to applied search, evidence-detail return context, responsive/accessibility/reduced-motion behavior, and retention/auth invalidation
+**And** combined date/Mahalla/Lane/plain-text search changes return updated results and statistics within two seconds for at least 95% of requests under the approved design envelope.
+
+### Story 3.8: Continue Large Filtered and Search Results Safely
+
+As the **Hokim**,
+I want to continue loading large filtered or searched Lane results without duplicates or stale pagination,
+So that I can review all retained matching Topics while preserving my current dashboard context.
+
+**FRs:** FR17.
+
+**Acceptance Criteria:**
+
+**Given** the current applied scope has at least one loaded Lane batch
+**When** `Яна кўрсатиш` is used
+**Then** Story 3.1's opaque deterministic cursor/keyset pagination contract is reused rather than introducing offset, page-number, or search-specific pagination
+**And** each cursor is bound to District, Lane, and the exact successfully applied date/Mahalla/Lane/search scope
+**And** appended data cannot duplicate already loaded Topic identities under deterministic ordering
+**And** infinite scroll is not introduced.
+
+**Given** a filter/search scope successfully produces its initial Lane results
+**When** the server returns a continuation cursor
+**Then** the opaque cursor is bound to the authorized District, Lane, exact successfully applied date/Mahalla/Lane/search scope, deterministic ordering, and the keyset boundary needed for continuation
+**And** the cursor does not represent or require a materialized historical snapshot of mutable Topic projections.
+
+**Given** `Яна кўрсатиш` is activated after newer or updated Topic data exists
+**When** the next batch is requested
+**Then** continuation uses the cursor's deterministic keyset boundary against currently permitted retained data
+**And** canonical Topic identities already loaded in that Lane are not appended again
+**And** Topics that are newly created or updated such that they belong before the existing continuation boundary are not retroactively inserted into already reviewed earlier batches
+**And** normal dashboard refresh/revalidation is the mechanism for making such newer state discoverable.
+
+**Given** a successful filter/search change or dashboard refresh establishes a new displayed result context
+**When** older continuation state or late pagination responses still exist
+**Then** the prior continuation state is discarded for that Lane
+**And** late responses belonging to the obsolete displayed context cannot append into the refreshed/current Lane
+**And** a fresh continuation cursor from the current displayed result is used for subsequent loading.
+
+**Given** a Lane continuation cursor was issued from a successfully displayed result
+**When** a later Topic creation, projection update, retention deletion, or other authoritative change may alter that Lane's matching membership or deterministic ordering across the cursor boundary
+**Then** the server does not continue that cursor as though the collection were unchanged
+**And** the cursor is rejected as stale using a sanitized continuation-state response
+**And** no Topic is silently skipped merely because its mutable ordering key crossed the previous keyset boundary
+**And** the server may conservatively invalidate when it cannot prove that intervening changes are irrelevant to the cursor's scope and ordering.
+
+**Given** a continuation cursor becomes stale because the underlying permitted result changed
+**When** the stale continuation response is handled
+**Then** already loaded permitted Lane content remains usable
+**And** the dashboard uses Story 3.3's existing non-disruptive refresh/revalidation behavior to establish fresh result and continuation state
+**And** valid selection, evidence detail, focus, board position, and Lane scroll context are preserved where possible
+**And** the system does not recreate an old Topic projection or materialize a historical pagination snapshot.
+
+**Given** authorization, session, District access, lifecycle, or retention validity changes
+**When** an otherwise valid continuation cursor is presented
+**Then** current security/retention rules override continuation semantics
+**And** an old cursor cannot return protected or expired data merely because it once referenced it
+**And** opaque cursor/evaluation values expose no raw search text, resident evidence, Telegram identity, credentials, or other protected content.
+
+**Given** a Lane continuation request fails
+**When** previously loaded results remain permitted
+**Then** those results remain visible
+**And** that Lane exposes `Юклаб бўлмади. Қайта уриниш.` locally
+**And** the failure does not reset other Lanes or the applied filters/search.
+
+**Given** Story 3.8 is verified
+**When** focused integration/browser checks run
+**Then** they cover scope-and-keyset-bound continuation, mutable-order stale-cursor invalidation/recovery, refreshed-context cursor replacement, obsolete pagination-response rejection, canonical Topic deduplication, local continuation retry, authorization/retention precedence, and preservation of existing dashboard review context.
+
+### Story 3.9: Compare Topic Volume With Equivalent Prior Periods
+
+As the **Hokim**,
+I want the unique-Topic statistic to compare equivalent time periods when the retained data supports a truthful comparison,
+So that I can understand change over time without invented or mismatched historical baselines.
+
+**FRs:** FR18.
+
+**Acceptance Criteria:**
+
 **Given** `Бугун` is the active date scope with all five Lanes selected and settled search empty
 **When** the unique-Topics prior-period comparison is calculated
 **Then** the current comparison interval is today `00:00` through the successful server evaluation `asOf` in Asia/Tashkent
@@ -728,18 +876,19 @@ So that I can understand the shape of current or historical signals without mist
 **Then** comparison is shown as unavailable rather than using a partial period or interpreting missing history as zero
 **And** trend presentation remains neutral and non-color-only.
 
-**Given** a successful active scope contains zero canonical Topics
-**When** statistics render
-**Then** zero is shown where it is a truthful meaningful count
-**And** ranking metrics do not invent a leader
-**And** applicable deterministic fallback or neutral unavailable state is used without implying service quality, satisfaction, or System Health.
+**Given** Story 3.9 is verified
+**When** focused integration/browser checks run
+**Then** they cover Today `asOf` comparison and earliest-evidence inclusion, Today comparison unavailable for Lane-subset/search scopes, completed-day and completed-range comparisons, unavailable retained prior periods, canonical Topic deduplication, Asia/Tashkent boundaries, and neutral/non-color-only presentation.
 
-**Given** a most-active metric has two or more eligible candidates but every candidate has zero matching canonical Topics
-**When** Card 4 or Card 5 is rendered
-**Then** the zero-result rule takes precedence over ordinary tie presentation
-**And** the UI does not display a tied-leader count or identify any candidate as most active
-**And** the card uses the already-defined applicable deterministic fallback or neutral unavailable state
-**And** no service quality, satisfaction, inactivity judgment, or System Health meaning is inferred from the zero result.
+### Story 3.10: Keep Board and Statistics Consistent During Updates
+
+As the **Hokim**,
+I want Lane results and statistics to come from one consistent dashboard evaluation and recover independently when a section fails,
+So that I am never shown statistics that silently describe a different result set from the board I am reviewing.
+
+**FRs:** FR16, FR18.
+
+**Acceptance Criteria:**
 
 **Given** Lane results and statistics belong to one coordinated dashboard evaluation
 **When** the server establishes that evaluation
@@ -817,35 +966,7 @@ So that I can understand the shape of current or historical signals without mist
 
 **Given** settled search scopes statistics
 **When** statistics requests are made or observed
-**Then** Story 3.4's search-privacy contract remains unchanged: raw search text does not enter URLs, browser persistence, Audit History, analytics, telemetry, routine logs, traces, or raw errors.
-
-**Given** the statistics strip fits the primary desktop composition
-**When** it renders
-**Then** all five read-only cards are visible
-**And** cards use the approved visual hierarchy without appearing clickable
-**And** metric cards themselves are non-focusable and do not act as filters, navigation, rankings, or actions.
-
-**Given** all five statistic cards do not fit the effective viewport
-**When** the statistics region overflows
-**Then** it is a labelled horizontal statistics region with visible keyboard-operable Previous/Next statistic controls
-**And** one activation moves one statistic at a time
-**And** the newly visible metric name and position are announced
-**And** current statistic position is preserved across viewport/zoom/orientation changes where safe
-**And** only navigation controls, not read-only metric cards, enter the Tab sequence.
-
-**Given** phone/tablet width, 200% zoom, approximately 320 CSS pixels, tie/fallback labels, Mahalla names, or Uzbek Cyrillic values
-**When** statistics render
-**Then** text wraps safely without dropping below the approved font floor or causing general page-level horizontal overflow
-**And** Previous/Next controls meet the approved phone/tablet target size/separation
-**And** purpose/state is not conveyed only by color or icon
-**And** reduced motion makes statistic movement immediate.
-
-**Given** statistics are requested from the backend
-**When** authoritative aggregates are produced
-**Then** same-origin `/api/v1/*` and shared browser-safe Zod contracts are used
-**And** the server enforces the fixed-District ActorContext
-**And** canonical Topic IDs and retained evidence aggregates are authoritative rather than browser-side counts
-**And** database/infrastructure/provider/job representations do not cross the browser boundary.
+**Then** Story 3.7's search-privacy contract remains unchanged: raw search text does not enter URLs, browser persistence, Audit History, analytics, telemetry, routine logs, traces, or raw errors.
 
 **Given** combined date, Mahalla, Lane, and settled plain-text criteria change under the approved design envelope
 **When** the coordinated dashboard evaluation succeeds
@@ -854,7 +975,6 @@ So that I can understand the shape of current or historical signals without mist
 **And** browser pagination after the initial applied scope remains Lane-local progressive loading rather than blocking the complete dashboard
 **And** AI processing latency remains separate from this web-screen target.
 
-**Given** Story 3.5 is verified
+**Given** Story 3.10 is verified
 **When** focused integration/browser/performance checks run
-**Then** they cover canonical Topic deduplication across Lanes, Hokim overlap, multi-service counts, distinct active Mahallas, evidence deduplication across multi-Lane appearances, service/Mahalla leader calculations, non-zero tie-count presentation, zero-result tie precedence, `Multi-Lane Topics` and `Multi-evidence Topics` fallbacks plus restoration of normal metrics, statistics independent of browser pagination, Today `asOf` comparison and earliest-evidence inclusion, Today comparison unavailable for Lane-subset/search scopes, completed-day/range comparisons, unavailable retained prior periods, shared consistent-read coordinated evaluation, fresh privacy-safe evaluation identity, partial Lane-success/statistics-failure toolbar freshness, coordinated statistics retry including Lane re-evaluation and review-context preservation, search privacy, statistics-only loading/failure, mismatched/late evaluation-response rejection, refresh/invalidation, desktop five-card presentation, mobile statistic navigation, non-focusable cards, keyboard controls, announcements, zoom/320px Cyrillic wrapping, reduced motion, and the two-second/95% combined-filter performance target
-**And** the story adds no sentiment, public-opinion inference, service-performance score, urgency/severity ranking, action recommendation, case management, or additional dashboard filters.
+**Then** they cover the shared consistent-read coordinated evaluation, fresh privacy-safe evaluation identity, partial Lane-success/statistics-failure toolbar freshness, coordinated statistics retry including Lane re-evaluation and review-context preservation, statistics-only loading/failure, mismatched/late evaluation-response rejection, refresh/invalidation, search privacy, and the two-second/95% combined-filter performance target.

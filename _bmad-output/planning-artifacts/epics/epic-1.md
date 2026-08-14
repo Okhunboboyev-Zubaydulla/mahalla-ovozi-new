@@ -17,6 +17,14 @@ So that I can access the Product Owner surface without exposing the system to pu
 **Then** the application foundation uses the approved pnpm workspace, TypeScript/Node, Fastify, React/Vite, Ant Design, PostgreSQL/Drizzle, shared Zod REST contracts, and the architecture's modular-monolith boundaries
 **And** only schema/infrastructure required for this story is introduced.
 
+**Given** the greenfield application foundation is established
+**When** changes are pushed to the repository or proposed for merge
+**Then** a minimal `.github/workflows/ci.yml` workflow uses the approved Node.js 24 and pnpm 11 toolchain with the committed lockfile
+**And** installs dependencies with the frozen lockfile
+**And** runs the repository-supported typecheck, build, and focused automated test commands required by the currently implemented scope
+**And** a failing required check fails CI rather than being reported as successful
+**And** this baseline introduces no production deployment/CD step and requires no production secrets.
+
 **Given** Mahalla Ovozi is deployed without a Product Owner account
 **When** the secure server-side account-management command is used with a username and password/passphrase of at least 12 characters
 **Then** one Product Owner account can be created or securely recovered/reset
@@ -65,7 +73,8 @@ So that I can access the Product Owner surface without exposing the system to pu
 **Given** the story is verified
 **When** focused automated checks run
 **Then** integration tests cover authentication/session/rate-limit boundaries
-**And** a critical browser test covers successful sign-in, invalid credentials, sign-out, and session-invalidated access.
+**And** a critical browser test covers successful sign-in, invalid credentials, sign-out, and session-invalidated access
+**And** the baseline CI workflow executes the current required typecheck/build/test commands on repository changes and fails when one of those required checks fails.
 
 ### Story 1.2: Create and Select a District in the Product Owner Console
 

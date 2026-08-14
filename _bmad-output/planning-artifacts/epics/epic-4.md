@@ -11,14 +11,14 @@ As the **Product Owner**,
 I want to inspect evidence-based overall, District, and component health,  
 So that I can distinguish real technical failures from delays, quiet operation, and insufficient evidence.
 
-**FRs:** FR25, FR26, FR28.
+**FRs:** FR25, FR28.
 
 **Acceptance Criteria:**
 
 **Given** an authenticated Product Owner opens System Health  
 **When** health information loads  
 **Then** the page shows application-owned overall product health with a visible last-check time  
-**And** it shows each applicable District and monitored component  
+**And** it shows applicable District and component health that is already registered with the health boundary  
 **And** the Product Owner can inspect all-District aggregate health or one explicitly selected District  
 **And** District-owned data is returned only through explicit District scope, while all-District aggregation uses a dedicated global Product Owner contract  
 **And** information from one District never renders in another District context.
@@ -74,65 +74,12 @@ So that I can distinguish real technical failures from delays, quiet operation, 
 **And** the Product Owner Console provides no setting for modifying the 5-minute, 15-minute, or 10-minute pilot thresholds  
 **And** Story 4.1 introduces no general-purpose health-rule configuration UI.
 
-**Given** the Product Owner inspects System Health coverage  
-**When** the District/component matrix is presented  
-**Then** it covers Telegram bot and approved-group access, intake freshness, processing queues/workers, AI processing, web application, database, storage, retention jobs, and scheduled-deletion-job capability  
-**And** relevant operational information includes last received-message time, queue depth, oldest queued age, active model/prompt version, processing latency, and success/failure counts where applicable  
-**And** each status identifies its affected District and component where applicable.
-
-**Given** Epic 6 deletion business workflows have not yet been implemented  
-**When** Story 4.1 evaluates scheduled-deletion operational health  
-**Then** it monitors only the independently testable technical scheduler/worker capability available at this point in the architecture  
-**And** absence of actual District deletion work is not considered failure  
-**And** zero scheduled deletion jobs can coexist with `Healthy` technical scheduler capability  
-**And** stale or insufficient scheduler checks produce `Unknown` under the same health rules  
-**And** Story 4.1 does not create cancellation deadlines, District deletion jobs, backup-expiry business milestones, recovery logic, or any other Epic 6 behavior.
-
 **Given** processing or access is intentionally paused by an authoritative lifecycle/subscription state that is already available to the health boundary  
 **When** System Health explains the condition  
 **Then** that lifecycle cause remains distinct from technical failure  
 **And** an intentional pause does not manufacture `Degraded` or `Unavailable` solely because processing is stopped by policy  
 **And** the existing Subscriptions Console destination may be referenced for management context  
 **And** Story 4.1 introduces no Epic 6 subscription-management functionality.
-
-**Given** health diagnostics or recent technical errors are presented  
-**When** the Product Owner inspects them  
-**Then** they expose only necessary privacy-safe District/Mahalla/group/component scope, processing stage, timestamps, safe queue/job/trace identifiers, applicable AI configuration lineage, safe error category, and other approved operational metadata  
-**And** resident message text is not shown as routine health diagnostics  
-**And** credentials, bot tokens, provider keys, secrets, resident-bearing AI context, and raw upstream error bodies are never exposed  
-**And** user-visible errors use sanitized beginner-readable explanations.
-
-**Given** the OTLP collector or another engineering telemetry backend is unavailable  
-**When** the Product Owner requests System Health  
-**Then** application-owned health continues to evaluate authoritative product state and direct health evidence where available  
-**And** telemetry-backend availability is not the source of truth for Product Owner health  
-**And** telemetry failure cannot fabricate `Healthy`  
-**And** insufficient health evidence still produces `Unknown`.
-
-**Given** one component health check fails while other health information remains available  
-**When** System Health renders  
-**Then** unaffected District/component data remains usable  
-**And** the failed component follows the evidence-based state rules rather than causing an unrelated whole-page failure  
-**And** missing evidence produces `Unknown` instead of invented success or invented failure.
-
-**Given** previously successful System Health data is visible  
-**When** an ordinary background refresh fails  
-**Then** the last successfully permitted data remains visible with a persistent stale warning and its last successful update time  
-**And** that displayed historical snapshot is not silently reclassified as newly checked `Healthy`  
-**And** browser network loss remains a client-connectivity state and never creates a Product, District, or server health issue.
-
-**Given** System Health is rendered on supported browsers, viewport sizes, and input methods  
-**When** the Product Owner reviews the health matrix  
-**Then** semantic table/matrix/stacked-record behavior follows the approved responsive data-collection contract  
-**And** state meaning never depends on color alone  
-**And** keyboard operation and programmatically associated row/column identities remain available  
-**And** all visible product copy uses Uzbek Cyrillic  
-**And** diagnostic times follow the approved Asia/Tashkent presentation convention.
-
-**Given** System Health operates at the approved MVP capacity envelope  
-**When** representative Product Owner health requests are measured under production-shaped conditions  
-**Then** at least 95% become usable within the approved 3-second Console target  
-**And** larger operational collections use the approved progressive-loading behavior rather than blocking initial usability.
 
 **Given** System Health determines which components apply to a monitored scope  
 **When** component health is evaluated  
@@ -171,9 +118,8 @@ So that I can distinguish real technical failures from delays, quiet operation, 
 
 **Given** Story 4.1 is verified  
 **When** focused automated and browser checks run  
-**Then** integration tests cover the six canonical states, deterministic component→District→overall aggregation, mixed `Healthy`/`Quiet`, all-Quiet District behavior, known-failure precedence, required-child `Unknown`, non-applicable component exclusion, zero-District handling, global versus District component ownership, aggregate `lastCheckAt` oldest-contributing calculation, stale contributing evidence preventing `Healthy`, 5/15-minute delay thresholds, >10-minute stale-check behavior, deployment-configured threshold ownership, District isolation/global aggregation, lifecycle-versus-technical separation, deletion-scheduler capability without Epic 6 dependency, privacy-safe diagnostics, telemetry independence, and shared contract validation  
-**And** browser tests cover all-District and selected-District System Health, localized visible states backed by canonical enums, stale refresh, responsive matrix presentation, keyboard access, and non-color-only state meaning  
-**And** production-shaped verification covers the applicable NFR2 Console usability target.
+**Then** integration tests cover the six canonical states, deterministic component→District→overall aggregation, mixed `Healthy`/`Quiet`, all-Quiet District behavior, known-failure precedence, required-child `Unknown`, non-applicable component exclusion, zero-District handling, global versus District component ownership, aggregate `lastCheckAt` oldest-contributing calculation, stale contributing evidence preventing `Healthy`, 5/15-minute delay thresholds, >10-minute stale-check behavior, deployment-configured threshold ownership, District isolation/global aggregation, lifecycle-versus-technical separation, and shared contract validation  
+**And** browser tests cover all-District and selected-District health, localized visible states backed by canonical enums, and non-color-only state meaning.
 
 ### Story 4.2: Investigate Active Operational Issues and Verified Recovery
 
@@ -472,3 +418,77 @@ So that I can investigate operational questions without mixing resident-bearing 
 **When** focused integration and browser checks run  
 **Then** integration tests cover explicit Product Owner District scoping, rejection of missing/all-District resident-bearing searches, cross-District isolation, read-only canonical Topic reuse, plain-text summary/evidence/identity search, complete retained evidence access, retention/deletion invalidation, deterministic progressive loading, stale-response rejection, search-text telemetry exclusion, and NFR2 performance behavior  
 **And** browser tests cover District selection, retained Topic browsing, search and zero-result behavior, evidence detail, District switching with prior-content purge, offline/stale behavior, responsive layout, keyboard/focus restoration, and non-color-only state meaning.
+
+### Story 4.6: Review Complete and Resilient System Health Coverage
+
+As the **Product Owner**,  
+I want System Health to cover every required operational component and remain useful when individual checks, telemetry, or refreshes fail,  
+So that I can diagnose the product reliably without confusing missing engineering telemetry with product health.
+
+**FRs:** FR25, FR26, FR28.
+
+**Acceptance Criteria:**
+
+**Given** the Product Owner inspects System Health coverage  
+**When** the District/component matrix is presented  
+**Then** it covers Telegram bot and approved-group access, intake freshness, processing queues/workers, AI processing, web application, database, storage, retention jobs, and scheduled-deletion-job capability  
+**And** relevant operational information includes last received-message time, queue depth, oldest queued age, active model/prompt version, processing latency, and success/failure counts where applicable  
+**And** each status identifies its affected District and component where applicable.
+
+**Given** Epic 6 deletion business workflows have not yet been implemented  
+**When** scheduled-deletion operational health is evaluated  
+**Then** System Health monitors only the independently testable technical scheduler/worker capability available at this point in the architecture  
+**And** absence of actual District deletion work is not considered failure  
+**And** zero scheduled deletion jobs can coexist with `Healthy` technical scheduler capability  
+**And** stale or insufficient scheduler checks produce `Unknown` under the existing health rules  
+**And** this story does not create cancellation deadlines, District deletion jobs, backup-expiry business milestones, recovery logic, or any other Epic 6 behavior.
+
+**Given** health diagnostics or recent technical errors are presented  
+**When** the Product Owner inspects them  
+**Then** they expose only necessary privacy-safe District/Mahalla/group/component scope, processing stage, timestamps, safe queue/job/trace identifiers, applicable AI configuration lineage, safe error category, and other approved operational metadata  
+**And** resident message text is not shown as routine health diagnostics  
+**And** credentials, bot tokens, provider keys, secrets, resident-bearing AI context, and raw upstream error bodies are never exposed  
+**And** user-visible errors use sanitized beginner-readable explanations.
+
+**Given** the OTLP collector or another engineering telemetry backend is unavailable  
+**When** the Product Owner requests System Health  
+**Then** application-owned health continues to evaluate authoritative product state and direct health evidence where available  
+**And** telemetry-backend availability is not the source of truth for Product Owner health  
+**And** telemetry failure cannot fabricate `Healthy`  
+**And** insufficient health evidence still produces `Unknown`.
+
+**Given** one component health check fails while other health information remains available  
+**When** System Health renders  
+**Then** unaffected District/component data remains usable  
+**And** the failed component follows the evidence-based state rules rather than causing an unrelated whole-page failure  
+**And** missing evidence produces `Unknown` instead of invented success or invented failure.
+
+**Given** previously successful System Health data is visible  
+**When** an ordinary background refresh fails  
+**Then** the last successfully permitted data remains visible with a persistent stale warning and its last successful update time  
+**And** that displayed historical snapshot is not silently reclassified as newly checked `Healthy`  
+**And** browser network loss remains a client-connectivity state and never creates a Product, District, or server health issue.
+
+**Given** System Health is rendered on supported browsers, viewport sizes, and input methods  
+**When** the Product Owner reviews the health matrix  
+**Then** semantic table/matrix/stacked-record behavior follows the approved responsive data-collection contract  
+**And** state meaning never depends on color alone  
+**And** keyboard operation and programmatically associated row/column identities remain available  
+**And** all visible product copy uses Uzbek Cyrillic  
+**And** diagnostic times follow the approved Asia/Tashkent presentation convention.
+
+**Given** System Health operates at the approved MVP capacity envelope  
+**When** representative Product Owner health requests are measured under production-shaped conditions  
+**Then** at least 95% become usable within the approved 3-second Console target  
+**And** larger operational collections use the approved progressive-loading behavior rather than blocking initial usability.
+
+**Given** complete coverage state crosses module, API, and browser boundaries  
+**When** the Story 4.6 contracts are implemented  
+**Then** they extend Story 4.1's project-owned health contracts rather than creating parallel health enums or infrastructure-owned browser models  
+**And** database rows, telemetry-provider types, job objects, and translated strings do not become the public contract.
+
+**Given** Story 4.6 is verified  
+**When** focused automated, browser, and production-shaped checks run  
+**Then** integration tests cover required component coverage, deletion-scheduler capability without Epic 6 dependency, privacy-safe diagnostics, telemetry independence, local component failure, stale refresh, and shared contract extension  
+**And** browser tests cover complete all-District and selected-District System Health coverage, stale/local-failure presentation, responsive matrix behavior, keyboard access, and non-color-only meaning  
+**And** production-shaped verification covers the applicable NFR2 Console usability target.
