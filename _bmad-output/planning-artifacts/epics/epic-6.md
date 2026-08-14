@@ -170,6 +170,13 @@ So that product access follows the District's manually managed subscription life
 **And** messages missed while Suspended are not fetched, reconstructed, backfilled, or replayed  
 **And** previously completed processing is not rerun merely because the District returned to Active.
 
+**Given** any Active/Grace/Suspended lifecycle status change in Story 6.2 becomes authoritative  
+**When** Active-to-Grace, automatic Grace-to-Suspended, Grace-to-Active, or Suspended-to-Active succeeds  
+**Then** exactly one immutable append-only Audit History event records the District, previous state, new state, effective time, result, and actor using privacy-safe metadata  
+**And** Product Owner initiated transitions use the Product Owner actor while automatic Grace expiry uses the canonical system actor  
+**And** any permitted supplied reason is retained under the Audit History contract  
+**And** duplicate requests, worker retries, or concurrent evaluation cannot create duplicate audit records for one logical status transition.
+
 **Given** Grace expiry and a Product Owner Restore Active request occur concurrently  
 **When** both attempt to change the same current lifecycle state  
 **Then** only a transition valid against the authoritative current state succeeds  
@@ -211,7 +218,7 @@ So that product access follows the District's manually managed subscription life
 
 **Given** Story 6.2 is verified  
 **When** focused automated and browser checks run  
-**Then** integration tests cover Active-to-Grace, exact seven-day scheduling, Grace-to-Suspended automatic transition, Grace-to-Active, Suspended-to-Active, authorization, invalid transitions, duplicate-safe expiry, concurrent transition rejection, lifecycle enforcement on jobs, and future-message-only reactivation  
+**Then** integration tests cover Active-to-Grace, exact seven-day scheduling, Grace-to-Suspended automatic transition, Grace-to-Active, Suspended-to-Active, one audit event for every successful status transition with Product Owner/system actor attribution, authorization, invalid transitions, duplicate-safe expiry, concurrent transition rejection, lifecycle enforcement on jobs, and future-message-only reactivation  
 **And** browser tests cover consequence confirmation, timeline/state feedback, Hokim access removal after Suspension, restoration, failure handling, responsive/keyboard behavior, and offline mutation blocking.
 
 ### Story 6.3: Cancel and Recover a District Before Live Deletion
