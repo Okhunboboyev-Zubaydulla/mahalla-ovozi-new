@@ -8,6 +8,8 @@ As the **Product Owner**,
 I want to sign in securely to the private Mahalla Ovozi application,
 So that I can access the Product Owner surface without exposing the system to public or unauthorized access.
 
+**FRs:** FR19.
+
 **Acceptance Criteria:**
 
 **Given** the greenfield repository
@@ -70,6 +72,8 @@ So that I can access the Product Owner surface without exposing the system to pu
 As the **Product Owner**,
 I want to create a District and work within an explicit District context in one Console,
 So that subsequent configuration is always attached to the correct District and District-owned data cannot be mixed accidentally.
+
+**FRs:** FR19, FR20.
 
 **Acceptance Criteria:**
 
@@ -160,6 +164,8 @@ As the **Product Owner**,
 I want each incomplete District to have a resumable onboarding checklist with explicit readiness checks,
 So that I can leave setup unfinished, return later, and know exactly what still prevents safe activation.
 
+**FRs:** FR20.
+
 **Acceptance Criteria:**
 
 **Given** an incomplete District created in Story 1.2
@@ -249,6 +255,8 @@ So that I can leave setup unfinished, return later, and know exactly what still 
 As the **Product Owner**,
 I want to securely connect and validate one Telegram bot for a District,
 So that the District has a verified passive Telegram connection before approved groups can be mapped or production intake can be activated.
+
+**FRs:** FR1, FR20, FR21.
 
 **Acceptance Criteria:**
 
@@ -356,6 +364,8 @@ So that the District has a verified passive Telegram connection before approved 
 As the **Product Owner**,
 I want to map approved Telegram groups one-to-one to Mahallas and validate that the District bot can receive the required messages from them,
 So that future Telegram evidence can be attributed deterministically to the correct District and Mahalla.
+
+**FRs:** FR1, FR20, FR21.
 
 **Acceptance Criteria:**
 
@@ -483,6 +493,8 @@ As the **Product Owner**,
 I want to create and manage the single Hokim account assigned to a District,
 So that the District has a securely provisioned Hokim identity whose access is deterministic and can be revoked immediately.
 
+**FRs:** FR20, FR22.
+
 **Acceptance Criteria:**
 
 **Given** a District is selected
@@ -603,6 +615,8 @@ So that the District has a securely provisioned Hokim identity whose access is d
 As the **Product Owner**,
 I want to activate a District only after every required onboarding check passes,
 So that production operation and Hokim access cannot begin from an incomplete or invalid configuration.
+
+**FRs:** FR20, FR22.
 
 **Acceptance Criteria:**
 

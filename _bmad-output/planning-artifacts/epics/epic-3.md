@@ -8,6 +8,8 @@ As the **Hokim**,
 I want to scan today's canonical Topics across one unified five-Lane District board,
 So that I can quickly understand current situations without navigating between separate dashboard surfaces.
 
+**FRs:** FR14, FR15.
+
 **Acceptance Criteria:**
 
 **Given** an authenticated Hokim whose server-derived ActorContext is bound to exactly one Active District
@@ -156,6 +158,8 @@ As the **Hokim**,
 I want to inspect the complete retained Accepted Evidence for a Topic,
 So that I can understand exactly what residents reported without treating the Topic summary as the source of truth.
 
+**FRs:** FR15.
+
 **Acceptance Criteria:**
 
 **Given** a Topic card from Story 3.1
@@ -285,6 +289,8 @@ So that I can understand exactly what residents reported without treating the To
 As the **Hokim**,
 I want current Topic information to refresh in the background without disrupting my review,
 So that newer information becomes discoverable while the dashboard remains stable and truthful about freshness.
+
+**FRs:** FR16.
 
 **Acceptance Criteria:**
 
@@ -419,6 +425,8 @@ So that newer information becomes discoverable while the dashboard remains stabl
 As the **Hokim**,
 I want to filter and search current and retained Topics from the same dashboard,
 So that I can quickly find an earlier District situation and inspect its retained evidence without navigating to a separate History surface.
+
+**FRs:** FR17.
 
 **Acceptance Criteria:**
 
@@ -616,6 +624,8 @@ So that I can quickly find an earlier District situation and inspect its retaine
 As the **Hokim**,
 I want five compact neutral statistics that follow the dashboard result scope,
 So that I can understand the shape of current or historical signals without mistaking them for service-performance scores or representative public opinion.
+
+**FRs:** FR18.
 
 **Acceptance Criteria:**
 

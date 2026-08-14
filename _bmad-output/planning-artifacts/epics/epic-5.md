@@ -11,6 +11,8 @@ As the **Product Owner**,
 I want to review the active global analysis settings and save a validated draft of proposed changes,  
 So that I can safely prepare model, prompt, and global recognition-vocabulary changes without affecting production processing.
 
+**FRs:** FR23.
+
 **Acceptance Criteria:**
 
 **Given** an authenticated Product Owner opens AI Operations > Global Settings  
@@ -88,6 +90,8 @@ As the **Product Owner**,
 I want to review and edit a District-specific recognition-settings draft,  
 So that I can prepare local Hokim-recognition terms and vocabulary additions without changing production behavior.
 
+**FRs:** FR23.
+
 **Acceptance Criteria:**
 
 **Given** an authenticated Product Owner opens AI Operations  
@@ -142,12 +146,6 @@ So that I can prepare local Hokim-recognition terms and vocabulary additions wit
 **And** the currently active District configuration remains unchanged  
 **And** saving the draft performs no AI processing and does not replay, reassess, or rewrite any completed historical message-level decision.
 
-**Given** the Product Owner enters an audit-bound free-text field associated with the draft, if such a field is present at this draft stage  
-**When** known product secrets are detected  
-**Then** the save is rejected with a sanitized field error  
-**And** help text prohibits resident message text, resident identifiers, credentials, bot tokens, provider keys, and other secrets  
-**And** no general personal-data-redaction workflow is introduced.
-
 **Given** a Hokim or unauthorized request attempts to read or modify District Settings  
 **When** server authorization is evaluated  
 **Then** access is denied using server-derived actor and District context  
@@ -176,6 +174,8 @@ So that I can prepare local Hokim-recognition terms and vocabulary additions wit
 As the **Product Owner**,  
 I want to review the exact configuration changes and explicitly activate a saved Global or District draft,  
 So that future AI processing uses the intended configuration without rewriting or replaying historical decisions.
+
+**FRs:** FR23.
 
 **Acceptance Criteria:**
 
@@ -316,6 +316,8 @@ So that future AI processing uses the intended configuration without rewriting o
 As the **Product Owner**,  
 I want to review previous configuration versions and restore a known earlier configuration as a new active version,  
 So that I can safely recover from an undesirable configuration change without rewriting history or replaying past processing.
+
+**FRs:** FR23.
 
 **Acceptance Criteria:**
 

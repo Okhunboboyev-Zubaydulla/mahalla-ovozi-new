@@ -8,6 +8,8 @@ As the **Product Owner**,
 I want each activated District's Telegram bot to receive messages only from that District's approved groups and hand authorized intake off durably,
 So that downstream signal processing begins from isolated, traceable, retry-safe Telegram input.
 
+**FRs:** FR1, FR6.
+
 **Acceptance Criteria:**
 
 **Given** a District is Active, its Telegram bot is valid, and the source Telegram group has an approved one-to-one mapping to a Mahalla in that District
@@ -67,6 +69,8 @@ So that downstream signal processing begins from isolated, traceable, retry-safe
 As the **Product Owner**,
 I want authorized Telegram intake to admit only supported human text or textual captions and discard structurally unsupported content before AI,
 So that AI analysis receives only valid candidate content and excluded Telegram content is not retained for later reassessment.
+
+**FRs:** FR2, FR4.
 
 **Acceptance Criteria:**
 
@@ -141,6 +145,8 @@ As the **Hokim**,
 I want structurally supported Telegram messages to be judged by their meaning rather than by keyword matching,
 So that genuinely relevant District signals continue toward Topics while irrelevant group content is discarded.
 
+**FRs:** FR3, FR4, FR9, FR13.
+
 **Acceptance Criteria:**
 
 **Given** a structurally supported candidate from Story 2.2
@@ -194,8 +200,13 @@ So that genuinely relevant District signals continue toward Topics while irrelev
 **And** only minimal content-free state required for duplicate/idempotency handling may remain.
 
 **Given** a logical semantic-relevance operation is created
-**When** it invokes an AI provider
-**Then** it pins the exact immutable AI profile/configuration version used for that logical operation
+**When** it is persisted and may invoke an AI provider
+**Then** it establishes the reusable production AI-operation traceability boundary used by later AI stories
+**And** receives its own opaque logical-operation identifier
+**And** records its operation type and authoritative District, Mahalla, day, and subject scope required for investigation
+**And** pins the exact immutable AI profile/configuration version selected for that logical operation
+**And** each external provider request receives a distinct provider-attempt identifier linked to that logical operation
+**And** logical-operation and provider-attempt status is persisted as privacy-safe durable state without raw candidate content, raw Accepted Evidence, complete AI context, provider SDK objects, credentials, or secrets
 **And** provider calls occur outside database transactions
 **And** retries of that unfinished logical operation retain the pinned profile
 **And** later configuration activation does not replay an already-completed historical relevance decision.
@@ -238,7 +249,7 @@ So that genuinely relevant District signals continue toward Topics while irrelev
 
 **Given** Story 2.3 is verified
 **When** focused automated checks run
-**Then** tests cover meaning-based qualification with and without configured vocabulary, qualifying Hokim references, vague leadership references, service and non-service examples, announcements/advertisements/speculation/praise exclusions, self-contained replies to forwarded parents, contextual relevance with complete same-day evidence, deterministic ordering, context overflow, provider/refusal/timeout/rate-limit/invalid-output failures, stale-snapshot rejection, duplicate delivery, retry, and completed-decision non-replay
+**Then** tests cover meaning-based qualification with and without configured vocabulary, qualifying Hokim references, vague leadership references, service and non-service examples, announcements/advertisements/speculation/praise exclusions, self-contained replies to forwarded parents, contextual relevance with complete same-day evidence, deterministic ordering, context overflow, provider/refusal/timeout/rate-limit/invalid-output failures, stale-snapshot rejection, duplicate delivery, retry, completed-decision non-replay, and creation of the reusable logical-operation/provider-attempt traceability boundary
 **And** tests prove an irrelevant decision disposes of resident raw content
 **And** tests prove this story does not yet create Accepted Evidence, assign Topic membership, create a Topic, or derive Lane/summary state.
 
@@ -247,6 +258,8 @@ So that genuinely relevant District signals continue toward Topics while irrelev
 As the **Hokim**,
 I want each relevance-qualified Telegram signal to become Accepted Evidence only when it can be reliably assigned to the correct same-day Topic or safely start a new one,
 So that District Topics remain traceable, day-bounded, and free from guessed evidence relationships.
+
+**FRs:** FR5, FR6, FR7, FR8, FR9, FR12, FR13.
 
 **Acceptance Criteria:**
 
@@ -324,7 +337,8 @@ So that District Topics remain traceable, day-bounded, and free from guessed evi
 
 **Given** Topic matching requires a contextual AI operation
 **When** its canonical snapshot is constructed
-**Then** the operation captures the current `contextRevision`, deterministic fingerprint, serializer version, and immutable AI profile version
+**Then** the operation reuses Story 2.3's logical-operation/provider-attempt traceability boundary
+**And** captures the current `contextRevision`, deterministic fingerprint, serializer version, and immutable AI profile version
 **And** the provider call occurs outside database transactions
 **And** RAG, vectors, summaries, recent windows, cross-day context, or silent truncation never replace the complete required same-day snapshot.
 
@@ -371,6 +385,8 @@ As the **Hokim**,
 I want each Topic to maintain one cautious derived representation across every applicable Lane,
 So that I can later see a consistent summary of the situation without duplicate Topics or unsupported claims.
 
+**FRs:** FR9, FR10, FR11, FR13.
+
 **Acceptance Criteria:**
 
 **Given** a Topic has Accepted Evidence and `requiredDerivedGeneration` is greater than `appliedDerivedGeneration`
@@ -388,7 +404,8 @@ So that I can later see a consistent summary of the situation without duplicate 
 
 **Given** a logical Topic-derived refresh operation is created
 **When** it is prepared for the AI gateway
-**Then** it captures the target `requiredDerivedGeneration`, current Mahalla/day `contextRevision`, deterministic snapshot fingerprint, serializer version, and immutable AI profile version
+**Then** it reuses Story 2.3's logical-operation/provider-attempt traceability boundary
+**And** captures the target `requiredDerivedGeneration`, current Mahalla/day `contextRevision`, deterministic snapshot fingerprint, serializer version, and immutable AI profile version
 **And** the provider call occurs outside database transactions
 **And** retries of the same unfinished logical operation remain pinned to that profile.
 
@@ -510,6 +527,8 @@ As the **Product Owner**,
 I want each Topic and its Accepted Evidence to follow one authoritative 90-day retention boundary,
 So that retained evidence remains complete while needed and expires predictably without leaving partial or resurrectable resident data.
 
+**FRs:** FR12.
+
 **Acceptance Criteria:**
 
 **Given** a Topic contains Accepted Evidence
@@ -626,49 +645,28 @@ So that retained evidence remains complete while needed and expires predictably 
 **And** tests prove retained evidence cannot become orphaned from its Topic
 **And** tests prove deleted Topics or Accepted Evidence cannot be resurrected by stale or retried processing.
 
-### Story 2.7: Preserve AI Operation Traceability and Explicit Failure State
+### Story 2.7: Query AI Operation Traceability and Explicit Failure State
 
 As the **Product Owner**,
-I want every production AI operation and provider attempt to have durable, privacy-safe traceability,
+I want production AI operations and provider attempts to remain queryable through durable, privacy-safe traceability,
 So that AI failures and committed results can be investigated without exposing resident evidence or mistaking incomplete processing for success.
+
+**FRs:** FR13.
 
 **Acceptance Criteria:**
 
-**Given** production processing requires an AI decision or Topic-derived recalculation
-**When** a new logical AI operation is created
-**Then** it receives its own opaque logical-operation identifier
-**And** records the operation type and authoritative District/Mahalla/day/subject scope required for investigation
-**And** pins the exact immutable AI profile version selected for that logical operation
-**And** no provider-specific SDK object becomes part of the domain/application record.
-
-**Given** a logical AI operation invokes an external AI provider
-**When** each provider request is attempted
-**Then** that invocation receives a distinct provider-attempt identifier associated with the logical operation
-**And** multiple retries remain distinguishable as separate attempts without creating multiple logical business operations
-**And** the relationship between logical operation, attempts, and eventual terminal outcome remains queryable.
-
-**Given** an unfinished logical operation is retried
-**When** a later provider attempt executes
-**Then** it uses the immutable profile already pinned to that logical operation
-**And** later activation of a different model, prompt, schema, parameter set, limit, or retry policy does not mutate that existing operation
-**And** a genuinely new logical operation created after configuration activation uses the then-active applicable profile.
-
-**Given** an AI profile is referenced by an operation
-**When** its lineage is inspected
-**Then** the exact project-owned configuration version can resolve the operation type, provider adapter, exact model identifier, prompt version, output-schema version, generation parameters, approved limits, retry policy, and applicable capability configuration
-**And** historical profile versions remain immutable rather than being overwritten in place.
-
-**Given** a context-dependent logical AI operation or provider attempt is recorded
-**When** its investigation metadata is persisted
-**Then** it includes the applicable `contextRevision`, deterministic snapshot fingerprint, serializer version, and target derived generation where relevant
-**And** it includes operation/attempt start and completion timestamps and privacy-safe terminal status
-**And** none of that traceability stores raw candidate content, raw Accepted Evidence, or complete AI context.
+**Given** production AI logical-operation and provider-attempt records have been created through the traceability boundary established by Story 2.3 and reused by Stories 2.4–2.5
+**When** Story 2.7 exposes them for operational investigation
+**Then** it reuses those authoritative records rather than creating a parallel AI-operation store
+**And** the relationship between logical operation, distinct provider attempts, immutable pinned profile, operation type, authoritative District/Mahalla/day/subject scope, applicable `contextRevision`, deterministic snapshot fingerprint, serializer version, target derived generation where relevant, timestamps, and privacy-safe status remains queryable
+**And** historical profile lineage remains immutable
+**And** no provider-specific SDK object, raw candidate content, raw Accepted Evidence, complete AI context, credentials, or secrets becomes part of the investigation contract.
 
 **Given** an AI provider succeeds technically
-**When** its output returns to the application
-**Then** provider success alone is not a completed business success
-**And** the result must pass the project-owned structural validation and operation-specific semantic validation required by Stories 2.3–2.5
-**And** any applicable `contextRevision`, subject-validity, and derived-generation commit conditions must also succeed before the logical operation may be recorded as successfully committed.
+**When** its output returns to the application and the operation is later investigated
+**Then** provider success alone is not represented as completed business success
+**And** the record reflects whether the project-owned structural validation and operation-specific semantic validation required by Stories 2.3–2.5 succeeded
+**And** any applicable `contextRevision`, subject-validity, and derived-generation commit conditions must also have succeeded before the logical operation can appear as successfully committed.
 
 **Given** provider output passes structural and semantic validation but its contextual snapshot has become stale
 **When** the authoritative commit detects an obsolete `contextRevision` or target generation
@@ -701,12 +699,12 @@ So that AI failures and committed results can be investigated without exposing r
 **And** completed provider-attempt records remain stable investigation history rather than being overwritten by later attempts.
 
 **Given** an AI operation reaches valid committed success
-**When** its terminal state is persisted
+**When** its terminal state is queried
 **Then** the successful business result is traceable to the logical-operation identifier, pinned immutable profile, applicable provider attempt, snapshot/configuration lineage, and relevant commit revision/generation metadata
 **And** later investigation can distinguish the configuration that actually produced the result from whichever configuration is currently active.
 
 **Given** an AI operation cannot currently complete but remains safely retryable
-**When** its operational state is persisted
+**When** its operational state is queried
 **Then** it remains explicitly incomplete/failed rather than appearing as a successful or silently dropped operation
 **And** sufficient privacy-safe state exists for a later eligible retry or Product Owner investigation
 **And** raw candidate/evidence content is retained only where another approved story requires it for incomplete processing correctness.
@@ -746,6 +744,6 @@ So that AI failures and committed results can be investigated without exposing r
 
 **Given** Story 2.7 is verified
 **When** focused automated checks run
-**Then** tests cover separate logical-operation and provider-attempt identifiers, immutable profile pinning across retries, future profile activation, structural and semantic validation failures, stale snapshots, derived-generation staleness, context-overflow before provider invocation, refusal, timeout, rate limit, provider failure, duplicate attempts, retry eligibility/exhaustion, successful configuration lineage, subject expiry/invalidation, explicit District-scoped versus global investigation queries, and privacy-safe System Health querying
-**And** tests prove a provider-level success cannot bypass application validation/CAS requirements
-**And** tests prove no failure path can produce partial AI-derived business success.
+**Then** tests cover querying the separate logical-operation and provider-attempt identifiers established earlier, immutable profile lineage across retries and future profile activation, structural and semantic validation failures, stale snapshots, derived-generation staleness, context-overflow before provider invocation, refusal, timeout, rate limit, provider failure, duplicate attempts, retry eligibility/exhaustion, successful configuration lineage, subject expiry/invalidation, explicit District-scoped versus global investigation queries, and privacy-safe System Health querying
+**And** tests prove a provider-level success cannot be presented as application success when validation/CAS requirements failed
+**And** tests prove no failure path can appear as partial AI-derived business success.

@@ -11,6 +11,8 @@ As the **Product Owner**,
 I want to review each District's current subscription record and maintain its external payment reference and internal note,  
 So that I can track manually managed product access without adding payment processing to Mahalla Ovozi.
 
+**FRs:** FR29.
+
 **Acceptance Criteria:**
 
 **Given** an authenticated Product Owner opens Subscriptions  
@@ -95,6 +97,8 @@ So that I can track manually managed product access without adding payment proce
 As the **Product Owner**,  
 I want to start Grace, allow overdue Grace to become Suspended automatically, and restore an eligible District to Active,  
 So that product access follows the District's manually managed subscription lifecycle without losing retained data or replaying missed processing.
+
+**FRs:** FR29, FR30.
 
 **Acceptance Criteria:**
 
@@ -226,6 +230,8 @@ So that product access follows the District's manually managed subscription life
 As the **Product Owner**,  
 I want to cancel a District with explicit consequences and recover it during the permitted recovery window,  
 So that participation can end safely while still allowing a controlled return before permanent live deletion.
+
+**FRs:** FR29, FR31.
 
 **Acceptance Criteria:**
 
@@ -364,6 +370,8 @@ As the **Product Owner**,
 I want a Cancelled District to be permanently deleted from live systems at its scheduled deadline with verifiable proof,  
 So that offboarded District data does not remain accessible beyond the approved cancellation window.
 
+**FRs:** FR32.
+
 **Acceptance Criteria:**
 
 **Given** a District remains Cancelled when its authoritative 30-day live-deletion deadline is reached  
@@ -410,6 +418,13 @@ So that offboarded District data does not remain accessible beyond the approved 
 **And** it contains only permitted metadata required for deletion verification  
 **And** it contains no resident messages, evidence, usernames, bot tokens, credentials, payment details, subscription notes, or other private District content.
 
+**Given** the surviving deletion proof crosses the operational-history/API/browser boundary  
+**When** its contract and read-only presentation are defined  
+**Then** Story 6.4 extends Epic 4's existing Audit History shared contract with an explicit permanent-deletion-proof discriminator and content-free proof schema rather than requiring Epic 4 to prebuild a future deletion type  
+**And** ordinary operational audit records remain distinguishable from permanent deletion proofs  
+**And** only the approved privacy-safe proof metadata can be returned through that discriminator  
+**And** Product Owner proof presentation reuses the established read-only operational-history boundary where applicable without recreating deleted District detail.
+
 **Given** the Product Owner reviews a successfully live-deleted District's deletion proof  
 **When** the proof is displayed  
 **Then** it can identify the District by the minimum approved identifier/name metadata  
@@ -452,7 +467,7 @@ So that offboarded District data does not remain accessible beyond the approved 
 
 **Given** Story 6.4 is verified  
 **When** focused automated and operational tests run  
-**Then** they cover cancellation-deadline eligibility, recovery/deletion races, explicit District isolation, complete live-data removal, ordinary-retention interaction, retry/idempotency behavior, minimal tombstone persistence, proof metadata, post-deletion access denial, and Critical health on incomplete deletion  
+**Then** they cover cancellation-deadline eligibility, recovery/deletion races, explicit District isolation, complete live-data removal, ordinary-retention interaction, retry/idempotency behavior, minimal tombstone persistence, proof metadata, permanent-deletion-proof discriminator/schema integration with the existing Audit History contract, post-deletion access denial, and Critical health on incomplete deletion  
 **And** destructive-path tests demonstrate that another District's records cannot be deleted by supplying or manipulating the wrong District identifier  
 **And** browser tests cover deletion-status/proof presentation and the distinction between completed live deletion and still-pending backup expiry.
 
@@ -461,6 +476,8 @@ So that offboarded District data does not remain accessible beyond the approved 
 As the **Product Owner**,  
 I want deleted District data to age out of protected backups and remain deleted after disaster recovery,  
 So that permanent deletion remains trustworthy even when infrastructure backups or restored historical database state are involved.
+
+**FRs:** FR32.
 
 **Acceptance Criteria:**
 
