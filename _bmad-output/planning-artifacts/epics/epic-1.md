@@ -419,6 +419,12 @@ So that future Telegram evidence can be attributed deterministically to the corr
 **Then** Story 1.3's mapping prerequisite becomes passed from authoritative server state
 **And** production intake remains disabled until the separate District activation transition in Story 1.7 succeeds.
 
+**Given** a Mahalla is enabled to participate in an Active District
+**When** its approved-group state is evaluated
+**Then** it has exactly one approved active Telegram group
+**And** zero active groups is valid only while the District/Mahalla setup is incomplete or the Mahalla/group is explicitly disabled
+**And** a mutation that would leave an enabled participating Mahalla with zero or more than one approved active group is rejected or cannot be treated as ready.
+
 **Given** the Product Owner changes, removes, disables, or remaps a relationship before District activation
 **When** Save succeeds
 **Then** readiness is recalculated from the new authoritative mapping state
@@ -468,7 +474,7 @@ So that future Telegram evidence can be attributed deterministically to the corr
 
 **Given** Story 1.5 is verified
 **When** focused automated checks run
-**Then** integration tests cover one-to-one constraints including cross-District group uniqueness, explicit District scoping, unauthorized-group rejection, required ordinary non-admin membership, disabled Group Privacy Mode, ordinary non-command test receipt, timeout/conflict states, authoritative readiness updates, and future-only remapping behavior
+**Then** integration tests cover one-to-one constraints including cross-District group uniqueness, enabled-Active-Mahalla exact-one-group enforcement, explicit District scoping, unauthorized-group rejection, required ordinary non-admin membership, disabled Group Privacy Mode, ordinary non-command test receipt, timeout/conflict states, authoritative readiness updates, and future-only remapping behavior
 **And** browser tests cover creating a mapping, mapping conflict, successful ordinary-message validation, timeout/failure, searching mappings, and protected offline behavior.
 
 ### Story 1.6: Create and Manage the District Hokim Account
@@ -563,9 +569,10 @@ So that the District has a securely provisioned Hokim identity whose access is d
 **Then** the server rejects it using the explicit District authorization boundary
 **And** no cross-District content, existence information, or credentials are disclosed.
 
-**Given** account creation, reset, disablement, replacement, successful sign-in, or failed sign-in occurs
+**Given** account creation, reset, disablement, replacement, successful sign-in, failed sign-in, or a rejected cross-District authorization attempt occurs
 **When** the action is audited
 **Then** Audit History contains privacy-safe actor/District/action/result/time metadata
+**And** rejected cross-District authorization records identify only the requesting actor, authorized/requested scope as safely permitted, action, result, and time without disclosing protected target-District content or existence details
 **And** plaintext passwords, session tokens, resident content, and secrets never appear.
 
 **Given** the Hokim-account readiness state changes
@@ -588,7 +595,7 @@ So that the District has a securely provisioned Hokim identity whose access is d
 
 **Given** Story 1.6 is verified
 **When** focused automated checks run
-**Then** integration tests cover one-active-account-per-District enforcement, password hashing, deterministic District authorization, immediate session revocation on reset/disable/replace, inactive-District access denial, and cross-District rejection
+**Then** integration tests cover one-active-account-per-District enforcement, password hashing, deterministic District authorization, immediate session revocation on reset/disable/replace, inactive-District access denial, cross-District rejection, and privacy-safe auditing of rejected cross-District authorization
 **And** browser tests cover account creation, one-time credential display, credential disappearance after leaving/reload, reset, disablement, replacement, and blocked Hokim access before District activation.
 
 ### Story 1.7: Validate and Activate a District
