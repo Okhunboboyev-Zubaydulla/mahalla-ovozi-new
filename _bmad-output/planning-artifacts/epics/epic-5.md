@@ -240,7 +240,7 @@ So that future AI processing uses the intended configuration without rewriting o
 
 **Given** another authoritative activation has changed the active version since the draft's activation review was loaded  
 **When** the Product Owner attempts to activate the stale draft  
-**Then** the server rejectss the activation rather than silently applying it against a different baseline  
+**Then** the server rejects the activation rather than silently applying it against a different baseline  
 **And** no new active version is created from the stale request  
 **And** the Product Owner is required to refresh and review the diff against the current active version before confirming again  
 **And** the draft is not silently discarded.
