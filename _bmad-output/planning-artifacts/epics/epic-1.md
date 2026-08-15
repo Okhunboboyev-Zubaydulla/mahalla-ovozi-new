@@ -18,18 +18,23 @@ So that I can access the Product Owner surface without exposing the system to pu
 **And** only schema/infrastructure required for this story is introduced.
 
 **Given** the greenfield application foundation is established
-**When** changes are pushed to the repository or proposed for merge
+**When** changes are proposed for merge into `main` or committed to `main`
 **Then** a minimal `.github/workflows/ci.yml` workflow uses the approved Node.js 24 and pnpm 11 toolchain with the committed lockfile
 **And** installs dependencies with the frozen lockfile
-**And** runs the repository-supported typecheck, build, and focused automated test commands required by the currently implemented scope
-**And** a failing required check fails CI rather than being reported as successful
-**And** this baseline introduces no production deployment/CD step and requires no production secrets.
+**And** applies the committed SQL migrations to PostgreSQL
+**And** runs the repository-supported typecheck, build, focused integration tests, and critical browser test required by the currently implemented scope
+**And** a failing required command fails CI rather than being reported as successful
+**And** the workflow has only the minimum repository read permission
+**And** this baseline introduces no production deployment/CD step and requires no production credentials or secrets.
 
 **Given** Mahalla Ovozi is deployed without a Product Owner account
-**When** the secure server-side account-management command is used with a username and password/passphrase of at least 12 characters
+**When** the secure server-side account-management command is used
 **Then** one Product Owner account can be created or securely recovered/reset
+**And** the password/passphrase contains 15–128 Unicode code points
+**And** commonly used or compromised passwords are rejected without requiring an external runtime password-checking service
+**And** password content is never silently truncated or trimmed
 **And** its password is stored only as an Argon2id hash
-**And** the plaintext credential never enters logs, telemetry, Audit History, URLs, or browser persistence.
+**And** the plaintext credential never enters logs, telemetry, Audit History, URLs, command-line arguments, browser persistence, or command output.
 
 **Given** an unauthenticated visitor opens the private application
 **When** the sign-in surface loads
@@ -42,29 +47,32 @@ So that I can access the Product Owner surface without exposing the system to pu
 **Then** authentication creates a server-derived Product Owner actor context
 **And** creates an opaque PostgreSQL-backed session whose usable token exists only in a host-scoped `Secure`, `HttpOnly`, `SameSite=Strict` cookie
 **And** only a hash of that session token is persisted server-side
+**And** session creation succeeds only if the credential state that was verified is still current when the session is committed
 **And** the Product Owner reaches a protected Product Owner landing surface.
 
 **Given** invalid credentials
 **When** sign-in fails
 **Then** the interface returns the generic Uzbek Cyrillic error `Нотўғри фойдаланувчи номи ёки парол.` without revealing whether an account exists
-**And** repeated failed attempts are rate-limited
-**And** the failure is recorded as privacy-safe audit metadata without credentials or secrets.
+**And** only failed credential attempts consume the configured sign-in failure budget
+**And** repeated failed attempts are rate-limited with a deterministic retry boundary
+**And** failed and successful authentication events are recorded as privacy-safe audit metadata without credentials or secrets.
 
 **Given** an authenticated Product Owner session
-**When** 12 hours of inactivity elapse, the session is explicitly revoked, or the Product Owner signs out
+**When** 12 hours of genuine user inactivity elapse, 24 hours of absolute session lifetime elapse, the session is explicitly revoked, credentials are replaced, or the Product Owner successfully signs out
 **Then** the session can no longer authorize a protected request
-**And** protected browser state is cleared
+**And** protected browser state is cleared when authentication loss is authoritative
 **And** the user is returned to the sign-in state.
 
 **Given** a protected state-changing browser request
 **When** it does not satisfy the approved same-origin/Origin/Fetch-Metadata protections
-**Then** the request is rejected without performing the mutation
+**Then** the request is rejected before password-verification or application mutation work executes
+**And** it does not consume the failed-login budget
 **And** the returned error uses the sanitized API error contract.
 
-**Given** the browser is offline during sign-in
-**When** authentication cannot reach the server
-**Then** the UI shows a scoped connection-unavailable state
-**And** does not queue, automatically replay, or falsely report the sign-in as successful.
+**Given** authentication cannot reach the server
+**When** sign-in, sign-out, activity reporting, or session bootstrap is attempted
+**Then** the UI distinguishes network uncertainty from authoritative authentication loss
+**And** no authentication mutation is queued, automatically replayed, or falsely reported as successful.
 
 **Given** keyboard navigation, supported responsive widths, or reduced-motion preferences
 **When** the sign-in flow is used
@@ -72,9 +80,9 @@ So that I can access the Product Owner surface without exposing the system to pu
 
 **Given** the story is verified
 **When** focused automated checks run
-**Then** integration tests cover authentication/session/rate-limit boundaries
-**And** a critical browser test covers successful sign-in, invalid credentials, sign-out, and session-invalidated access
-**And** the baseline CI workflow executes the current required typecheck/build/test commands on repository changes and fails when one of those required checks fails.
+**Then** real-PostgreSQL integration tests cover credential, authentication, session lifetime/revocation, reset concurrency, rate-limit, origin, audit, cookie, logging, and sanitized-error boundaries
+**And** a critical browser test covers successful and failed sign-in, protected routing, authentication loss, sign-out, offline/non-replay behavior, inactivity behavior, and required accessibility behavior
+**And** CI verifies the committed migrations and all current required checks and fails when one of those checks fails.
 
 ### Story 1.2: Create and Select a District in the Product Owner Console
 
@@ -515,7 +523,7 @@ So that the District has a securely provisioned Hokim identity whose access is d
 **Given** the District does not yet have a Hokim account
 **When** the Product Owner creates one with the required username/account identity
 **Then** exactly one active Hokim account is associated with that District
-**And** the server generates a temporary credential of at least 12 characters
+**And** the server generates a temporary credential of at least 15 characters
 **And** the credential is stored only as an Argon2id hash
 **And** the account's role and District authorization are assigned by server-side authoritative state.
 

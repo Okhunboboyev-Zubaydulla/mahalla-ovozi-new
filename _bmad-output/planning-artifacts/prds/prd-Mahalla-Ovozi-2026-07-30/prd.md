@@ -2,7 +2,7 @@
 title: 'Mahalla Ovozi Product Requirements Document'
 status: complete
 created: '2026-07-30'
-updated: '2026-08-10'
+updated: '2026-08-15'
 ---
 
 # Mahalla Ovozi Product Requirements Document
@@ -126,7 +126,7 @@ The product reduces manual message reading and delivers useful signals rather th
 
 ### 4.1 Authorized Telegram Intake
 
-**Description:** Each District receives supported human messages from approved Telegram groups through its own passive bot. Structural checks remove unsupported content before AI use, semantic analysis decides relevance, and only qualifying messages become Accepted Evidence. Realizes UJ-1 and supports the gated setup in UJ-3.
+**Description:** Each District receives supported human messages from approved groups through its own passive bot. Structural checks remove unsupported content before AI use, semantic analysis decides relevance, and only qualifying messages become Accepted Evidence. Realizes UJ-1 and supports the gated setup in UJ-3.
 
 **Functional Requirements:**
 
@@ -562,8 +562,8 @@ The production pilot targets a recovery point of no more than one hour of data l
 Private product access uses the approved simple username-and-password model and enforces deterministic authorization outside AI behavior.
 
 - There is no public registration; Zubaydulla creates and resets Hokim credentials, while the Product Owner account is created during secure deployment and is recoverable through a server-side maintenance command.
-- Passwords or passphrases contain at least 12 characters and are stored only as secure password hashes.
-- HTTPS and secure browser session cookies protect authenticated sessions; inactivity ends a session after 12 hours.
+- Passwords or passphrases contain at least 15 and at most 128 Unicode code points, support spaces and Unicode without composition rules or silent truncation, reject commonly used or compromised values during credential creation/reset, and are stored only as secure password hashes.
+- HTTPS and secure browser session cookies protect authenticated sessions. A session ends after 12 hours of genuine user inactivity or after 24 hours of absolute lifetime, whichever occurs first. Background requests or passive session checks do not by themselves extend the inactivity period.
 - Legitimate multi-device sessions are allowed, while disabling or replacing an account immediately revokes all of its sessions.
 - Repeated failed logins are rate-limited and recorded in Audit History.
 - A Hokim can access only the assigned District, and cross-District denial does not depend on an AI model.
