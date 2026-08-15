@@ -78,6 +78,13 @@ Install deps in project env, not globally.
 Add/update deps in project config files, not one-off manual installs.
 If a dep is installed locally, read its source when needed instead of guessing, even if gitignored.
 
+MODULE: MCP SERVERS
+Discovery: At task start, note available MCP servers and their capabilities.
+Selection: When an MCP server is relevant to the current task, leverage it instead of weaker alternatives (generic search, guessing, manual reconstruction). When multiple tool paths exist, choose the best-suited one; do not invoke MCP when built-in tools already suffice.
+Efficiency: Use the narrowest effective calls. Do not route work through an MCP server unless it materially improves accuracy, recency, or effort.
+Failure: If an MCP server is unavailable or errors, state it and use the next-best available tool path. Do not guess through the gap.
+Security: Never pass secrets, credentials, tokens, or sensitive personal data to an MCP server unless explicitly required and approved.
+
 ## MODULE: TERMINAL & GIT
 Prefer non-interactive commands with flags.
 Non-interactive git diff: `git --no-pager diff` or `git diff | cat`.

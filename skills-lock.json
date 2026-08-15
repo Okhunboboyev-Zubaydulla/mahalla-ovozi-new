@@ -1,6 +1,18 @@
 {
   "version": 1,
   "skills": {
+    "antd": {
+      "source": "ant-design/ant-design-cli",
+      "sourceType": "github",
+      "skillPath": "skills/antd/SKILL.md",
+      "computedHash": "768fdf6d639de736784bb97c24f37cde2607824916583337f2c10f05ba0e5d35"
+    },
+    "fastify-best-practices": {
+      "source": "mcollina/skills",
+      "sourceType": "github",
+      "skillPath": "skills/fastify/SKILL.md",
+      "computedHash": "b3a771fa66bc5d8dac0af14e99e51fca2ff4a9add56f09d986778528bdf72c4c"
+    },
     "grill-me": {
       "source": "mattpocock/skills",
       "sourceType": "github",
