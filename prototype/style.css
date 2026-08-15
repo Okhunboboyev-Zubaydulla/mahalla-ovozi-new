@@ -788,7 +788,7 @@ button {
   top: 0;
   right: 0;
   bottom: 0;
-  width: 540px;
+  width: 440px;
   max-width: 100vw;
   background: #FFFFFF;
   box-shadow: var(--shadow-drawer);
@@ -891,12 +891,13 @@ button {
 }
 
 .evidence-thread-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--text-main);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 12px;
 }
 
 .evidence-items-list {
