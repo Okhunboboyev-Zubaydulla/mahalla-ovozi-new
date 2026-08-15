@@ -130,7 +130,7 @@ NFR8: Language, evidence fidelity, and time — all product-facing MVP UI and AI
 
 ### UX Design Requirements
 
-UX-DR1: Implement the final light-only Civic Teal design token system through Ant Design ConfigProvider/theme tokens, preserving approved semantic colors, spacing, 8px radius, restrained borders/tonal hierarchy, primary-selection versus keyboard-focus distinction, and no persistent card shadows.
+UX-DR1: Implement the approved design token system from DESIGN.md through Ant Design ConfigProvider/theme tokens, preserving approved semantic colors (Soft Azure Blue brand, Coral Red Hokim, Civic Blue Water, Violet Electricity, Flame Orange Gas, Emerald Green Waste), spacing, 8px radius, restrained borders/tonal hierarchy, primary-selection versus keyboard-focus distinction, and no persistent card shadows.
 
 UX-DR2: Use the approved type ramp with no user-facing text below 14px; Topic summaries remain complete and unclamped; controls, long District/Mahalla names, statuses and mixed-script evidence must wrap without clipping; acceptance-test full Uzbek Cyrillic glyph coverage including Ў ў Қ қ Ғ ғ Ҳ ҳ across supported browsers/OS families.
 

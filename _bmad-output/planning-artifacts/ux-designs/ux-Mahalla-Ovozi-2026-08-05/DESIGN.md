@@ -6,30 +6,39 @@ sources:
   - ../../prds/prd-Mahalla-Ovozi-2026-07-30/prd.md
 updated: 2026-08-11
 colors:
-  surface-page: '#F5F7F6'
+  surface-page: '#F8FAFC'
   surface-raised: '#FFFFFF'
-  surface-subtle: '#EDF3F1'
-  text-primary: '#172321'
-  text-secondary: '#52615E'
-  border: '#C9D5D1'
-  boundary-essential: '#6B7C77'
-  primary: '#0F5C5E'
+  surface-subtle: '#F1F5F9'
+  text-primary: '#0F172A'
+  text-secondary: '#475569'
+  text-muted: '#64748B'
+  text-dim: '#94A3B8'
+  border: '#E2E8F0'
+  boundary-essential: '#CBD5E1'
+  primary: '#0284C7'
+  primary-hover: '#0369A1'
+  primary-light: '#E0F2FE'
   on-primary: '#FFFFFF'
-  focus: '#007A7C'
-  lane-hokim: '#3F4B7A'
-  lane-hokim-surface: '#F0F1F8'
-  lane-water: '#1F6688'
-  lane-water-surface: '#EAF4F8'
-  lane-electricity: '#765300'
-  lane-electricity-surface: '#FBF3DF'
-  lane-gas: '#81462F'
-  lane-gas-surface: '#F7EEE9'
-  lane-waste: '#356848'
-  lane-waste-surface: '#EAF3EC'
-  warning: '#6B4B00'
-  warning-surface: '#FFF4D6'
-  search-match: '#F5DD77'
-  search-match-text: '#172321'
+  focus: '#0284C7'
+  lane-hokim: '#EF4444'
+  lane-hokim-surface: '#FEE2E2'
+  lane-hokim-text: '#DC2626'
+  lane-water: '#2563EB'
+  lane-water-surface: '#DBEAFE'
+  lane-water-text: '#1D4ED8'
+  lane-electricity: '#7C3AED'
+  lane-electricity-surface: '#F3E8FF'
+  lane-electricity-text: '#6D28D9'
+  lane-gas: '#EA580C'
+  lane-gas-surface: '#FFEDD5'
+  lane-gas-text: '#C2410C'
+  lane-waste: '#059669'
+  lane-waste-surface: '#D1FAE5'
+  lane-waste-text: '#047857'
+  warning: '#F59E0B'
+  warning-surface: '#FEF3C7'
+  search-match: '#FEF08A'
+  search-match-text: '#854D0E'
 typography:
   wordmark:
     fontFamily: 'system-ui, sans-serif'
@@ -166,27 +175,27 @@ components:
 
 Mahalla Ovozi uses a calm civic-intelligence posture: trustworthy, restrained, evidence-first, and information-dense without crowding. It is modern without fashion cues and serious without bureaucratic ceremony. It must never resemble a commercial analytics spectacle, a gamified monitoring tool, or an automated decision system.
 
-The in-product wordmark is the Cyrillic text **Маҳалла Овози**. It uses deliberate sans-serif typography with no permanent symbol; the canonical English and technical project name remains Mahalla Ovozi.
+The in-product brand identity consists of a **Soft Sky / Azure Blue** (`#0284C7`) emblem featuring a clean vector silhouette of a person projecting voice waves (`🗣️`), paired with the bold wordmark **Mahalla Ovozi**. The canonical English and technical project name remains Mahalla Ovozi.
 
-The imported [dashboard prototype](imports/prototype-dashboard-overview-2026-08-05.png) is a fallible composition input. `DESIGN.md` and `EXPERIENCE.md` win on every conflict with that image.
+The design contract is realized and reconciled against the interactive working prototype in `prototype/`.
 
 ## Colors
 
-The product is light-only for MVP. The Civic Teal palette uses `{colors.surface-page}` as the main canvas, `{colors.surface-raised}` for readable content surfaces, and `{colors.surface-subtle}` for quiet grouping. Text uses `{colors.text-primary}` and `{colors.text-secondary}`. `{colors.border}` is limited to decorative separators; `{colors.boundary-essential}` identifies inputs, buttons, selectable cards, and any other control or region whose boundary is required for recognition. Essential boundaries maintain at least 3:1 contrast against every adjacent surface. Focus and selection remain separate semantic states and must stay distinguishable from the resting boundary.
+The product is light-only for MVP. The modern Azure / Civic palette uses `{colors.surface-page}` (`#F8FAFC`) as the main canvas, `{colors.surface-raised}` (`#FFFFFF`) for readable content surfaces, and `{colors.surface-subtle}` (`#F1F5F9`) for quiet grouping. Text uses `{colors.text-primary}` (`#0F172A`) and `{colors.text-secondary}` (`#475569`). `{colors.border}` (`#E2E8F0`) is used for crisp separators; `{colors.boundary-essential}` (`#CBD5E1`) identifies inputs, buttons, selectable cards, and container regions. Essential boundaries maintain at least 3:1 contrast against adjacent surfaces. Focus and selection remain separate semantic states and stay distinguishable from the resting boundary.
 
-`{colors.primary}` marks primary actions and selection, while `{colors.focus}` is reserved only for visible keyboard focus. When an item is both selected and keyboard-focused, show its selected boundary together with a separate focus ring so both states remain distinguishable. The accepted load-bearing pairs meet WCAG AA for normal text. State meaning always includes text or an accessible label and never depends on color.
+`{colors.primary}` (`#0284C7`) marks primary actions and brand emphasis, while `{colors.focus}` is reserved for visible keyboard focus. When an item is both selected and keyboard-focused, show its selected boundary together with a separate focus ring so both states remain distinguishable. The accepted load-bearing pairs meet WCAG AA for normal text. State meaning always includes text or an accessible label and never depends on color alone.
 
-Lane accents are restrained semantic outlines or header details, paired with their quiet surfaces:
+Lane accents provide clear, distinct semantic differentiation across headers, badges, and cards:
 
-| Lane | Accent | Surface |
-|---|---|---|
-| Ҳокимга оид | `{colors.lane-hokim}` | `{colors.lane-hokim-surface}` |
-| Сув | `{colors.lane-water}` | `{colors.lane-water-surface}` |
-| Электр | `{colors.lane-electricity}` | `{colors.lane-electricity-surface}` |
-| Газ | `{colors.lane-gas}` | `{colors.lane-gas-surface}` |
-| Чиқинди | `{colors.lane-waste}` | `{colors.lane-waste-surface}` |
+| Lane | Accent | Surface | Text Badge |
+|---|---|---|---|
+| Hokimga oid (Ҳокимга оид) | `{colors.lane-hokim}` (`#EF4444`) | `{colors.lane-hokim-surface}` (`#FEE2E2`) | `{colors.lane-hokim-text}` (`#DC2626`) |
+| Suv (Сув) | `{colors.lane-water}` (`#2563EB`) | `{colors.lane-water-surface}` (`#DBEAFE`) | `{colors.lane-water-text}` (`#1D4ED8`) |
+| Elektr (Электр) | `{colors.lane-electricity}` (`#7C3AED`) | `{colors.lane-electricity-surface}` (`#F3E8FF`) | `{colors.lane-electricity-text}` (`#6D28D9`) |
+| Gaz (Газ) | `{colors.lane-gas}` (`#EA580C`) | `{colors.lane-gas-surface}` (`#FFEDD5`) | `{colors.lane-gas-text}` (`#C2410C`) |
+| Chiqindi (Чиқинди) | `{colors.lane-waste}` (`#059669`) | `{colors.lane-waste-surface}` (`#D1FAE5`) | `{colors.lane-waste-text}` (`#047857`) |
 
-Warnings use `{colors.warning}` on `{colors.warning-surface}`. Search matches use `{colors.search-match-text}` on `{colors.search-match}` without altering the preserved evidence text. Do not infer urgency, quality, sentiment, or service performance from lane or statistic colors.
+Warnings use `{colors.warning}` (`#F59E0B`) on `{colors.warning-surface}` (`#FEF3C7`). Search matches use `{colors.search-match-text}` (`#854D0E`) on `{colors.search-match}` (`#FEF08A`) without altering preserved evidence text. Do not infer urgency, quality, sentiment, or service performance from lane or statistic colors.
 
 ## Typography
 
@@ -222,7 +231,7 @@ Use borders and tonal layering for persistent hierarchy. Cards, lists, tables, t
 
 | Component | Visual contract |
 |---|---|
-| `application-shell` | Light page canvas, stable separators, Cyrillic text wordmark; dashboard toolbar or Console sidebar/header establishes context without decorative chrome. |
+| `application-shell` | Light page canvas, stable separators, Soft Azure Blue speaking silhouette emblem + bold Mahalla Ovozi wordmark; dashboard toolbar or Console sidebar/header establishes context without decorative chrome. |
 | `filter-bar` | Compact raised grouping, thin border, visible labels, readable selected values, and a `{colors.focus}` focus ring. |
 | `metric-card` | Read-only raised surface; statistic value dominates, label and neutral comparison remain secondary; never looks clickable. |
 | `lane-board` | Fixed semantic lane accents, stable headers, readable fixed-width columns, and no activity-ranked visual hierarchy. Whenever all five Lanes do not fit, show visible Previous Lane and Next Lane controls beside the labelled horizontal board region. |
@@ -240,8 +249,8 @@ Use borders and tonal layering for persistent hierarchy. Cards, lists, tables, t
 
 | Do | Don't |
 |---|---|
-| Use **Маҳалла Овози** and Uzbek Cyrillic for all interface copy. | Use Latin interface labels, transliteration, or the rejected red prototype logo. |
-| Use restrained semantic outline icons consistently by concept and action. | Reuse the prototype icon styling, arbitrary multicolor icons, or decorative illustration. |
+| Use the approved **Mahalla Ovozi** wordmark with the Soft Azure Blue speaking person silhouette emblem (`🗣️`). | Use arbitrary multicolor icons or the rejected red prototype logo. |
+| Use restrained semantic outline icons consistently by concept and action. | Reuse arbitrary uncoordinated multicolor icons or decorative fluff. |
 | Preserve evidence hierarchy, readable summaries, and stable context. | Add evidence quote previews, AI subcategory tags, sentiment, scores, urgency, or ranking. |
 | When motion is allowed, use 120–180 ms functional transitions for panels, filters, focus, selection, and revealed content. | Add lift, bounce, pulse, parallax, or decorative motion. |
 | Under `prefers-reduced-motion: reduce`, make drawer, sheet, filter, reveal, and every programmatic-scroll transition immediate; snap Lane alignment directly, disable skeleton animation, and preserve focus, selection, progress, and other essential feedback as static states. | Depend on animation to communicate state, retain smooth scrolling, or animate across the Lane board. |

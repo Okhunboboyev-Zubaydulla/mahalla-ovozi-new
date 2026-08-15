@@ -142,9 +142,9 @@ Health state labels are explicit: Healthy, Delayed, Degraded, Unavailable, Quiet
 
 The [dashboard prototype](imports/prototype-dashboard-overview-2026-08-05.png) contributed the qualitative idea of a compact overview with a toolbar, five statistics, fixed semantic Lanes, and scan-friendly Topic cards. Its implementation details are reconciled in `reconcile-prototype-dashboard-overview-2026-08-05.md`.
 
-- Retain: overview-first density, simultaneous Lane context, quiet outlined surfaces, direct District/date/Mahalla/search context, and restrained semantic Lane differentiation.
-- Revise: make filters complete and coordinated, use stable in-session refresh, move evidence to detail, represent one canonical multi-Lane Topic explicitly, and make freshness truthful.
-- Reject: Latin UI, red logo/accent, evidence quote previews, AI subcategory tags, prototype icon styling, visual urgency, AI ranking, sentiment, scores, charts, and clickable statistics.
+- Retain: overview-first density, simultaneous Lane context, quiet outlined surfaces, direct District/date/Mahalla/search context, and distinct semantic Lane differentiation.
+- Revise: brand identity uses Soft Azure Blue speaking silhouette emblem (`🗣️`), make filters complete and coordinated, use stable in-session refresh, move evidence to detail, represent one canonical multi-Lane Topic explicitly, and make freshness truthful.
+- Reject: unapproved red prototype logo, arbitrary uncoordinated multicolor icons, evidence quote previews on cards, AI subcategory tags, visual urgency, AI ranking, sentiment, scores, charts, and clickable statistics.
 - Avoid globally: separate History, automatic infinite scroll, automatic repair, optimistic success, global notification centers, modal stacks, decorative motion, or controls that imply case management or Hokim action tracking.
 
 ## Key Flows

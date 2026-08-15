@@ -34,7 +34,7 @@ So that I can quickly understand current situations without navigating between s
 
 **Given** the dashboard establishes its visual foundation
 **When** the shell, toolbar, Lane board, Topic cards, status surfaces, and controls render
-**Then** the MVP uses the approved light-only Civic Teal design tokens through the approved Ant Design `ConfigProvider`/component foundation rather than a competing visual system
+**Then** the MVP uses the approved light-only design tokens from DESIGN.md through the approved Ant Design `ConfigProvider`/component foundation rather than a competing visual system
 **And** persistent hierarchy uses borders and tonal layering rather than persistent shadows
 **And** cards, toolbar regions, Lane containers, lists, and other persistent dashboard surfaces have no persistent shadow
 **And** temporary or overlaid surfaces use only the approved restrained elevation treatment
@@ -113,7 +113,7 @@ So that I can quickly understand current situations without navigating between s
 
 **Given** Story 3.1 is verified under the approved production-shaped envelope
 **When** focused integration/browser/performance checks run
-**Then** they cover fixed-District isolation, canonical multi-Lane identity, card fields, first-visit and multi-session/device `Янги`/`Янгиланди` behavior, deterministic Lane pagination, loading/empty/error states, deterministic fallback focus, responsive Lane navigation, keyboard/focus/zoom/reduced-motion behavior, Civic Teal token mapping, and absence of persistent dashboard shadows
+**Then** they cover fixed-District isolation, canonical multi-Lane identity, card fields, first-visit and multi-session/device `Янги`/`Янгиланди` behavior, deterministic Lane pagination, loading/empty/error states, deterministic fallback focus, responsive Lane navigation, keyboard/focus/zoom/reduced-motion behavior, DESIGN.md design token mapping, and absence of persistent dashboard shadows
 **And** the dashboard becomes usable within three seconds for at least 95% of requests under the approved design envelope.
 
 ### Story 3.2: Inspect Complete Topic Evidence
