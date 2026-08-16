@@ -1,0 +1,87 @@
+:root {
+  color: #0f172a;
+  font-family: system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+  background: #f8fafc;
+}
+
+.auth-page,
+.console-page,
+.status-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 32px 16px;
+}
+
+.auth-card,
+.console-card,
+.status-card {
+  width: min(100%, 420px);
+  border-color: #cbd5e1;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-lockup h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.brand-mark {
+  color: #0284c7;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.auth-card .ant-alert,
+.console-card .ant-alert,
+.status-card .ant-alert {
+  margin-bottom: 16px;
+}
+
+:focus-visible {
+  outline: 3px solid #0284c7;
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .auth-page,
+  .console-page,
+  .status-page {
+    align-items: start;
+    padding: 16px 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

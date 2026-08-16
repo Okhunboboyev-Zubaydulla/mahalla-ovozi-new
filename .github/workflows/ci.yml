@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.4-alpine
+        env:
+          POSTGRES_DB: mahalla_test
+          POSTGRES_PASSWORD: mahalla_test
+          POSTGRES_USER: mahalla_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready --username=mahalla_test --dbname=mahalla_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://mahalla_test:mahalla_test@127.0.0.1:5432/mahalla_test
+      TEST_DATABASE_URL: postgresql://mahalla_test:mahalla_test@127.0.0.1:5432/mahalla_test
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          run_install: false
+          version: 11.21.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          cache: pnpm
+          node-version-file: .node-version
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Verify migration artifacts are current
+        run: |
+          corepack pnpm db:generate
+          git diff --exit-code -- apps/backend/drizzle
+
+      - name: Apply SQL migrations
+        run: corepack pnpm db:migrate
+
+      - name: Typecheck
+        run: corepack pnpm typecheck
+
+      - name: Build
+        run: corepack pnpm build
+
+      - name: Run PostgreSQL integration tests
+        run: corepack pnpm test:integration
+
+      - name: Run frontend authentication tests
+        run: corepack pnpm test:web
+
+      - name: Install Chromium
+        run: corepack pnpm exec playwright install --with-deps chromium
+
+      - name: Run critical authentication browser tests
+        run: corepack pnpm test:e2e

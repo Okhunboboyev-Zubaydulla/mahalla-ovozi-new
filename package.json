@@ -1,0 +1,25 @@
+{
+  "name": "mahalla-ovozi",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.21.0",
+  "engines": {
+    "node": ">=24.0.0 <25.0.0",
+    "pnpm": ">=11.0.0 <12.0.0"
+  },
+  "scripts": {
+    "account:product-owner": "corepack pnpm --filter @mahalla-ovozi/backend run account:product-owner",
+    "build": "corepack pnpm --recursive --if-present run build",
+    "db:generate": "corepack pnpm --filter @mahalla-ovozi/backend run db:generate",
+    "db:migrate": "corepack pnpm --filter @mahalla-ovozi/backend run db:migrate",
+    "test:e2e": "playwright test",
+    "test:integration": "corepack pnpm --filter @mahalla-ovozi/backend run test:integration",
+    "test:web": "corepack pnpm --filter @mahalla-ovozi/web run test",
+    "typecheck": "corepack pnpm --recursive --if-present run typecheck && tsc -p tsconfig.playwright.json --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.60.0",
+    "typescript": "6.0.3"
+  }
+}

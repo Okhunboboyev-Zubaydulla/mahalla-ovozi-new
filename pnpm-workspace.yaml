@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+  - packages/*
+allowBuilds:
+  argon2: true
+  esbuild: true
+overrides:
+  esbuild@<=0.24.2: 0.25.12

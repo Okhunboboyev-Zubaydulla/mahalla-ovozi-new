@@ -1,6 +1,10 @@
+---
+baseline_commit: 1f185d3400947bb4d9c860719958c08addab9795
+---
+
 # Story 1.1: Secure Product Owner Sign-In
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -860,16 +864,151 @@ Each checkpoint must be verified before proceeding to the next implementation ch
 
 ### Agent Model Used
 
-_Not started._
+OpenAI Codex (GPT-5)
+
+### Implementation Plan
+
+1. Establish the Node.js 24 / pnpm 11 strict TypeScript workspace with only the three Story 1.1 packages.
+2. Define the Story 1.1 authentication schema in Drizzle and generate one reviewable SQL migration.
+3. Prove the migration and database invariants against an empty PostgreSQL 18 database, then wire the current checks into minimal CI.
+4. Implement credential policy and production-strength Argon2id/session cryptography behind project-owned ports.
+5. Implement real-PostgreSQL Product Owner provisioning/reset, credential-version guarded authentication, and server-authoritative session lifecycle operations.
+6. Prove atomic reset/session/audit behavior, concurrency, expiry, activity, revocation, and the non-argv maintenance command before stopping at Checkpoint 2.
+7. Implement the four Fastify authentication routes with shared Zod contracts, secure cookie handling, same-origin guards, bounded parsing, failed-login throttling/auditing, structured redacted logging, and sanitized HTTP errors.
+8. Prove the HTTP/security boundary against PostgreSQL 18, including adversarial parser, ordering, audit-failure, cookie, rate-limit, and logging cases, then stop before Checkpoint 4.
+9. Implement the Uzbek Cyrillic sign-in surface, authoritative session bootstrap, TanStack Query protected-state boundary, minimal Product Owner landing, truthful sign-out, and same-origin Vite proxy.
+10. Prove frontend error/offline/non-replay, protected-routing cleanup, genuine-user activity, privacy timer, responsive/accessibility, and Ant Design behavior, then stop before Checkpoint 5.
+11. Add one Chromium-only Playwright security suite over a real HTTPS, same-origin, Fastify, and PostgreSQL boundary without weakening production authentication behavior.
+12. Prove every Story 1.1 gate from an empty PostgreSQL 18.4 database, wire the browser suite into fail-closed CI, and move the synchronized lifecycle to review only after all checks pass.
 
 ### Debug Log References
 
-_Not started._
+- 2026-08-15 Checkpoint 1 RED: PostgreSQL 18 connected; 2 of 3 integration tests failed because the approved tables/indexes did not exist.
+- 2026-08-15 Checkpoint 1 GREEN: migration applied from an empty PostgreSQL 18.4 database; 3 of 3 integration tests passed.
+- 2026-08-15 Checkpoint 1 gates: frozen pnpm 11 install, migration drift check, typecheck, and build all exited successfully.
+- 2026-08-15 Checkpoint 1 dependency audit: 0 known vulnerabilities across 224 dependencies after applying a patched transitive `esbuild` override.
+- 2026-08-15 Checkpoint 2 RED: credential policy, Argon2id, opaque-session, PostgreSQL auth-store, session-lifecycle, and maintenance-command tests each failed first because the corresponding production boundary was absent.
+- 2026-08-15 Checkpoint 2 GREEN: 24 of 24 real-PostgreSQL/crypto/command integration tests passed across 5 files, including deterministic reset-vs-login concurrency and forced-audit rollback cases.
+- 2026-08-15 Checkpoint 2 gates: frozen install, migration drift check, built command smoke, dependency audit, architecture lint, full integration suite, workspace typecheck/build, and `git diff --check` all exited successfully.
+- 2026-08-15 Checkpoint 3 RED: shared-contract, route, cookie, Origin/Fetch-Metadata, rate-limit, audit, logging, parser, and entrypoint tests failed first because the HTTP boundary was absent; final hardening tests also exposed Fastify's non-enforcement of `z.undefined()` as a route body schema and audit-write failure ordering.
+- 2026-08-15 Checkpoint 3 GREEN: 65 of 65 integration tests passed across 9 files against a fresh PostgreSQL 18.4 database, including an 8 KiB limit on every authentication mutation and rate-limit accounting when failed-login audit persistence fails.
+- 2026-08-15 Checkpoint 3 gates: frozen install, empty-database migration, migration drift, full integration suite, workspace typecheck/build, dependency audit, architecture lint, and tracked/untracked whitespace checks all exited successfully; no code-lint script is configured.
+- 2026-08-16 Checkpoint 4 RED: authentication API, protected-routing, activity/privacy, and frontend UX tests failed first because the browser authentication boundary did not exist; the duplicate-submission test then exposed that loading state alone did not natively disable the submit control.
+- 2026-08-16 Checkpoint 4 GREEN: 22 of 22 focused frontend authentication tests passed across 3 files, covering bootstrap, sign-in categories, duplicate prevention, protected-state cleanup, sign-out truthfulness/non-replay, genuine activity throttling, and the local privacy boundary.
+- 2026-08-16 Checkpoint 4 gates: frozen install, migration drift, 65 of 65 PostgreSQL 18.4 integration tests, workspace typecheck/build, dependency audit, Ant Design lint/doctor, and focused frontend tests exited successfully; Playwright was not started.
+- 2026-08-16 Checkpoint 5 RED: the first protected-route browser test failed with `ERR_CONNECTION_REFUSED` before the HTTPS/backend harness existed; the expanded suite then exposed two over-specific test assertions and the new E2E typecheck exposed isolated-declaration and environment-typing boundaries.
+- 2026-08-16 Checkpoint 5 GREEN: 13 of 13 Chromium tests passed against HTTPS Vite proxying, the real Fastify server, generated non-persisted test credentials, and PostgreSQL 18.4.
+- 2026-08-16 Checkpoint 5 gates: frozen install, empty-database migration, zero migration drift, 65 of 65 backend tests, 22 of 22 frontend tests, 13 of 13 Playwright tests, workspace/E2E typecheck, build, dependency audit, Ant Design lint/doctor, architecture lint, secret/scope/whitespace checks, and contract hashes all passed; no general code-lint script is configured.
 
 ### Completion Notes List
 
-_Not started._
+- Checkpoint 1 only: created the pnpm workspace, strict TypeScript baseline, backend/web/API-contract package boundaries, and committed lockfile.
+- Added only the approved authentication account, session, and audit persistence schema with opaque UUIDs, `timestamptz`, singleton Product Owner, canonical username uniqueness, hashed-token-only storage, account lookup index, and audit actor `ON DELETE SET NULL`.
+- Added the generated `0000_auth_foundation.sql` migration and verified it from an empty PostgreSQL 18.4 database.
+- Added minimal current-scope CI with Node.js 24, pnpm 11, PostgreSQL 18.4, frozen install, migration-drift/application checks, typecheck, build, and focused integration tests.
+- Patched the Drizzle Kit development-only transitive `esbuild` advisory through a pnpm override without changing the architecture-pinned Drizzle version.
+- Deferred all auth behavior, HTTP/security, frontend auth UX, and Playwright work to Checkpoints 2–5 as required.
+- Checkpoint 2 only: added canonical username and NFC password handling, 15–128 Unicode-code-point enforcement, local common/compromised-password rejection for provisioning/reset, and explicit Argon2id parameters (`m=19456`, `t=2`, `p=1`).
+- Added a non-argv Product Owner maintenance command that reads one password line from non-interactive stdin, rejects echo-prone TTY and command arguments, and emits only safe account metadata.
+- Added functionally composed auth/application ports plus PostgreSQL adapters for credential snapshots, guarded session commit, session validation, acknowledged activity, sign-out, explicit revocation, and atomic Product Owner reset.
+- Added 32-byte opaque session tokens with SHA-256 server-side hashes only, independent multi-device sessions, 12-hour genuine-user inactivity, and persisted 24-hour absolute expiry using authoritative PostgreSQL time.
+- Proved `credential_version` prevents stale verified credentials from creating a session after reset; reset atomically changes the hash/version, revokes sessions, and appends `AUTH_CREDENTIAL_RESET`.
+- Proved session/login success, sign-out, explicit revocation, and required audit writes are atomic and privacy-safe within the Checkpoint 2 persistence boundary.
+- Deferred Fastify routes, cookies, Origin/Fetch-Metadata checks, failed-login rate limiting/auditing, security logging, frontend auth, Playwright, and later behavior to Checkpoints 3–5.
+- Checkpoint 3 only: added `POST /api/v1/auth/sign-in`, `GET /api/v1/auth/session`, `POST /api/v1/auth/sign-out`, and `POST /api/v1/auth/activity` with shared strict Zod contracts and stable sanitized Cyrillic error envelopes.
+- Added the `__Host-mahalla_session` cookie with `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/`, no `Domain`, matching clear semantics, and `Cache-Control: no-store` across authentication responses.
+- Enforced exact configured Origin and optional `Sec-Fetch-Site: same-origin` before limiter, Argon2, or mutation work; all authentication mutation bodies are capped at 8 KiB and bodyless routes reject unexpected content.
+- Added the Fastify-5-compatible in-memory failed-login limiter at 10 verified failures per resolved client IP per 15 minutes, with pre-Argon rejection, `Retry-After`, generic invalid-credential behavior, and dummy verification for missing accounts.
+- Added typed privacy-safe failure/rate-limit audit writes, request IDs on authentication audit events, allowlisted structured security logging, defense-in-depth secret/header redaction, and sanitized handling for parser, validation, PostgreSQL, and unexpected failures.
+- Kept authentication/application logic independent of Fastify and PostgreSQL types; no JWT, Redis, external breach service, permissive CORS, or CSRF-token subsystem was introduced.
+- Deferred frontend authentication state/UI, protected routing, browser activity/offline behavior, Playwright, and all later-story navigation to Checkpoints 4–5.
+- Checkpoint 4 only: added the Uzbek Cyrillic `/sign-in` surface with visible username/password labels, browser credential autocomplete, duplicate-submit prevention, scoped accessible error states, ephemeral form state, and fixed `/console` routing.
+- Added same-origin typed authentication requests validated through the shared actor/error schemas; no browser-visible token or persistent browser authentication state was introduced.
+- Added authoritative TanStack Query session bootstrap, protected query cancellation/removal on confirmed authentication loss, replace navigation, read-only transient uncertainty, and hidden protected content at the 12-hour local privacy boundary.
+- Added explicit pointer/keyboard activity acknowledgement throttled to approximately five minutes, with no polling, mousemove, scroll, visibility, reconnect replay, or offline mutation queue treated as genuine activity.
+- Added the minimal Product Owner landing and truthful sign-out: confirmed `204` clears protected state, while network uncertainty remains unconfirmed and is never replayed automatically.
+- Applied the approved light-only Ant Design tokens, narrow responsive CSS, visible focus, 44 px controls, reduced-motion behavior, and Vite same-origin `/api` proxy without adding CORS or later-story navigation.
+- Kept Story 1.1 and sprint tracking `in-progress`; deferred Playwright and the final E2E gate to Checkpoint 5.
+- Checkpoint 5 only: added one Chromium security suite covering real sign-in/failure, protected routing, authoritative loss, confirmed/uncertain sign-out, offline non-replay, activity, inactivity privacy, autocomplete, keyboard focus/submission, reduced motion, and 320 px reflow.
+- Added test-only HTTPS through an explicit Vite `e2e` mode; ordinary development and production behavior remain unchanged, while Secure/HttpOnly/SameSite cookie and exact same-origin protections execute unchanged in the browser journey.
+- Added generated in-memory E2E credentials supplied through the existing non-argv maintenance command; no reusable credential, token, or production secret is committed or persisted in browser storage.
+- Added Playwright static typing and the final fail-closed CI steps for Chromium installation and the critical browser suite.
+- Completed every Story 1.1 verification gate and synchronized the story and sprint tracker to `review`; Epic 1 remains `in-progress` pending review and later stories.
 
 ### File List
 
-_Not started._
+- `.github/workflows/ci.yml`
+- `.gitignore`
+- `.node-version`
+- `_bmad-output/implementation-artifacts/1-1-secure-product-owner-sign-in.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `apps/backend/drizzle.config.ts`
+- `apps/backend/drizzle/0000_auth_foundation.sql`
+- `apps/backend/drizzle/meta/0000_snapshot.json`
+- `apps/backend/drizzle/meta/_journal.json`
+- `apps/backend/package.json`
+- `apps/backend/src/adapters/crypto/argon2id-password-crypto.ts`
+- `apps/backend/src/adapters/crypto/opaque-session-crypto.ts`
+- `apps/backend/src/adapters/db/postgres-auth-store.ts`
+- `apps/backend/src/adapters/db/postgres-session-operations.ts`
+- `apps/backend/src/adapters/db/schema.ts`
+- `apps/backend/src/entrypoints/product-owner-account.ts`
+- `apps/backend/src/entrypoints/http.ts`
+- `apps/backend/src/http/authentication-http-app.ts`
+- `apps/backend/src/http/http-errors.ts`
+- `apps/backend/src/http/http-security.ts`
+- `apps/backend/src/modules/auth/auth-service.ts`
+- `apps/backend/src/modules/auth/credential-policy.ts`
+- `apps/backend/src/modules/auth/ports.ts`
+- `apps/backend/src/modules/auth/provision-product-owner.ts`
+- `apps/backend/test/integration/auth-core.integration.test.ts`
+- `apps/backend/test/integration/auth-contracts.integration.test.ts`
+- `apps/backend/test/integration/auth-http-hardening.integration.test.ts`
+- `apps/backend/test/integration/auth-http.integration.test.ts`
+- `apps/backend/test/integration/auth-persistence.integration.test.ts`
+- `apps/backend/test/integration/auth-session.integration.test.ts`
+- `apps/backend/test/integration/foundation.integration.test.ts`
+- `apps/backend/test/integration/http-entrypoint.integration.test.ts`
+- `apps/backend/test/integration/product-owner-command.integration.test.ts`
+- `apps/backend/tsconfig.build.json`
+- `apps/backend/tsconfig.json`
+- `apps/backend/vitest.integration.config.ts`
+- `apps/web/index.html`
+- `apps/web/e2e/authentication.spec.ts`
+- `apps/web/e2e/global-setup.ts`
+- `apps/web/package.json`
+- `apps/web/src/ProductOwnerLandingPage.tsx`
+- `apps/web/src/app/application.tsx`
+- `apps/web/src/app/theme.ts`
+- `apps/web/src/auth/SignInPage.tsx`
+- `apps/web/src/auth/auth-api.ts`
+- `apps/web/src/auth/authentication-context.tsx`
+- `apps/web/src/main.tsx`
+- `apps/web/src/styles.css`
+- `apps/web/test/auth-activity.test.tsx`
+- `apps/web/test/auth-api.test.ts`
+- `apps/web/test/auth-flow.test.tsx`
+- `apps/web/test/setup.ts`
+- `apps/web/tsconfig.json`
+- `apps/web/vite.config.ts`
+- `apps/web/vitest.config.ts`
+- `package.json`
+- `packages/api-contracts/package.json`
+- `packages/api-contracts/src/index.ts`
+- `packages/api-contracts/src/auth.ts`
+- `packages/api-contracts/src/errors.ts`
+- `packages/api-contracts/tsconfig.build.json`
+- `packages/api-contracts/tsconfig.json`
+- `playwright.config.ts`
+- `pnpm-lock.yaml`
+- `pnpm-workspace.yaml`
+- `tsconfig.base.json`
+- `tsconfig.playwright.json`
+
+## Change Log
+
+- 2026-08-15: Implemented and verified Checkpoint 1 — Foundation. Story remains `in-progress` pending Checkpoints 2–5.
+- 2026-08-15: Implemented and verified Checkpoint 2 — Auth Core. Story remains `in-progress` pending Checkpoints 3–5.
+- 2026-08-15: Implemented and verified Checkpoint 3 — HTTP/Security. Story remains `in-progress` pending Checkpoints 4–5.
+- 2026-08-16: Implemented and verified Checkpoint 4 — Frontend Auth. Story remains `in-progress` pending Checkpoint 5.
+- 2026-08-16: Implemented and verified Checkpoint 5 — E2E/Final Gate. Story and sprint tracking moved to `review`.

@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "isolatedDeclarations": false,
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2025"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "typeRoots": [
+      "./apps/backend/node_modules/@types"
+    ],
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "apps/web/e2e/**/*.ts",
+    "playwright.config.ts"
+  ]
+}
