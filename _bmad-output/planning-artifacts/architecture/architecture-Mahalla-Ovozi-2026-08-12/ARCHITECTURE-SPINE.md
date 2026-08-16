@@ -73,7 +73,7 @@ These approved product semantics constrain architecture and are not implementati
 
 - **Binds:** browser application, HTTP/API, Telegram webhook handling, asynchronous workers, shared contracts, package management, runtime/tooling choices, and the primary UI component/styling system.
 - **Prevents:** parallel backend ecosystems, SSR/server-action coupling without a requirement, incompatible TypeScript toolchains, duplicated application logic between HTTP and worker runtimes, and competing frontend component/styling systems.
-- **Rule:** Use a pnpm TypeScript workspace targeting Node.js 24 LTS. Fastify 5.x serves the private JSON API and Telegram webhook transport. HTTP/webhook and worker entrypoints share the same backend modules. The private browser application is a React 19.2 SPA built with Vite 8.x and minimal React Router. Use Ant Design 6.x as the primary UI component and styling system: implement the approved UX through Ant Design component APIs and `ConfigProvider` theme/design tokens, using narrowly scoped custom CSS only where Ant Design cannot reasonably express a required product-specific layout or behavior. Do not introduce Tailwind or another general-purpose UI component/styling framework without a later concrete requirement. Start on TypeScript 6.0.x. Do not introduce Next.js, SSR, React Server Components, or server actions without a later concrete requirement.
+- **Rule:** Use a pnpm TypeScript workspace targeting Node.js 24 LTS. Fastify 5.x serves the private JSON API and Telegram webhook transport. HTTP/webhook and worker entrypoints share the same backend modules. The private browser application is a React 19.2 SPA built with Vite 8.x and minimal React Router through the v8 `react-router` package; do not install the removed `react-router-dom` package. Use Ant Design 6.x as the primary UI component and styling system: implement the approved UX through Ant Design component APIs and `ConfigProvider` theme/design tokens, using narrowly scoped custom CSS only where Ant Design cannot reasonably express a required product-specific layout or behavior. Do not introduce Tailwind or another general-purpose UI component/styling framework without a later concrete requirement. Start on TypeScript 6.0.x. Do not introduce Next.js, SSR, React Server Components, or server actions without a later concrete requirement.
 
 ### AD-3 — PostgreSQL system of record and PostgreSQL-backed durable jobs [ADOPTED]
 
@@ -161,7 +161,7 @@ Verified-current seed at architecture finalization; once implementation exists, 
 | Fastify | 5.10.x |
 | fastify-type-provider-zod | 7.0.x |
 | React | 19.2.x |
-| React Router | 8.3.x |
+| React Router (`react-router`) | 8.3.x |
 | Vite | 8.1.x |
 | Ant Design | 6.6.x |
 | PostgreSQL | 18.4 |
