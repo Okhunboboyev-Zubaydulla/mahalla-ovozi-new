@@ -1,0 +1,35 @@
+{
+  "name": "@mahalla-ovozi/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.6.1",
+    "@mahalla-ovozi/api-contracts": "workspace:*",
+    "@tanstack/react-query": "^5.66.9",
+    "antd": "^5.24.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.1",
+    "@testing-library/react": "^16.2.0",
+    "@types/node": "^22.13.9",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0",
+    "vitest": "^3.0.7"
+  }
+}

@@ -1,0 +1,114 @@
+# generated: 2026-08-16
+# last_updated: 2026-08-17
+# project: Mahalla-Ovozi
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+#
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; sprint-status surfaces open ones
+
+generated: 2026-08-16
+last_updated: 2026-08-17
+project: Mahalla-Ovozi
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # ── Epic 1: Secure District Onboarding & Access ──
+  epic-1: in-progress
+  1-1-secure-product-owner-sign-in: review
+  1-2-create-and-select-a-district-in-the-product-owner-console: backlog
+  1-3-resume-district-onboarding-and-track-activation-readiness: backlog
+  1-4-connect-and-validate-a-district-telegram-bot: backlog
+  1-5-configure-and-validate-telegram-group-to-mahalla-mappings: backlog
+  1-6-create-and-manage-the-district-hokim-account: backlog
+  1-7-validate-and-activate-a-district: backlog
+  epic-1-retrospective: optional
+
+  # ── Epic 2: Authorized Telegram Signals Become Traceable Topics ──
+  epic-2: backlog
+  2-1-durably-receive-authorized-district-telegram-messages: backlog
+  2-2-admit-supported-telegram-content-and-discard-structural-exclusions: backlog
+  2-3-decide-semantic-relevance-by-meaning-and-discard-non-qualifying-content: backlog
+  2-4-assign-relevant-signals-to-same-day-topics-and-commit-accepted-evidence: backlog
+  2-5-recalculate-the-canonical-multi-lane-topic-projection: backlog
+  2-6-enforce-topic-level-retention-and-preserve-accepted-evidence-as-source-of-truth: backlog
+  2-7-query-ai-operation-traceability-and-explicit-failure-state: backlog
+  epic-2-retrospective: optional
+
+  # ── Epic 3: Hokim Situational Awareness & Retained History ──
+  epic-3: backlog
+  3-1-scan-todays-unified-five-lane-topic-board: backlog
+  3-2-inspect-complete-topic-evidence: backlog
+  3-3-refresh-dashboard-without-disrupting-review: backlog
+  3-4-filter-current-and-retained-topics: backlog
+  3-5-understand-the-active-result-set-through-neutral-statistics: backlog
+  3-6-use-dashboard-help-and-profile-controls: backlog
+  3-7-search-current-and-retained-topics-privately: backlog
+  3-8-continue-large-filtered-and-search-results-safely: backlog
+  3-9-compare-topic-volume-with-equivalent-prior-periods: backlog
+  3-10-keep-board-and-statistics-consistent-during-updates: backlog
+  epic-3-retrospective: optional
+
+  # ── Epic 4: Operational Health & Auditable Investigation ──
+  epic-4: backlog
+  4-1-inspect-truthful-system-and-district-health: backlog
+  4-2-investigate-active-operational-issues-and-verified-recovery: backlog
+  4-3-safely-retry-eligible-incomplete-work: backlog
+  4-4-inspect-immutable-searchable-audit-history: backlog
+  4-5-browse-retained-district-topics-and-evidence-for-troubleshooting: backlog
+  4-6-review-complete-and-resilient-system-health-coverage: backlog
+  epic-4-retrospective: optional
+
+  # ── Epic 5: Controlled Future Analysis Configuration ──
+  epic-5: backlog
+  5-1-prepare-a-validated-global-analysis-settings-draft: backlog
+  5-2-prepare-a-district-recognition-settings-draft: backlog
+  5-3-review-and-activate-a-future-only-analysis-configuration-version: backlog
+  5-4-review-configuration-history-and-roll-back-as-a-new-future-only-version: backlog
+  epic-5-retrospective: optional
+
+  # ── Epic 6: Subscription Lifecycle, Recovery & Verified Deletion ──
+  epic-6: backlog
+  6-1-review-and-maintain-district-subscription-records: backlog
+  6-2-manage-active-grace-and-suspended-district-service: backlog
+  6-3-cancel-and-recover-a-district-before-live-deletion: backlog
+  6-4-execute-permanent-live-system-district-deletion: backlog
+  6-5-verify-protected-backup-expiry: backlog
+  6-6-reconcile-disaster-restores-before-re-enabling-service: backlog
+  6-7-review-and-diagnose-the-district-deletion-lifecycle: backlog
+  epic-6-retrospective: optional

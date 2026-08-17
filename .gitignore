@@ -1,2 +1,40 @@
-# Ignore memory log file
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.output/
+
+# Logs & Telemetry
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Environment files & Secrets
+.env
+.env.*
+!.env.example
+
+# IDE & OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+
+# Tooling & Memory
 .grepai/
+.temp/
+.tmp/

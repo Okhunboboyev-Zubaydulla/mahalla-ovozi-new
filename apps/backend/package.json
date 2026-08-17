@@ -1,0 +1,36 @@
+{
+  "name": "@mahalla-ovozi/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/entrypoints/http.js",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --import tsx/esm src/adapters/db/migrate.ts",
+    "dev": "node --import tsx/esm src/entrypoints/http.ts",
+    "cli:manage-po": "node --import tsx/esm src/cli/manage-product-owner.ts"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.0.0",
+    "@mahalla-ovozi/api-contracts": "workspace:*",
+    "argon2": "^0.41.1",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.45.2",
+    "fastify": "^5.2.1",
+    "fastify-type-provider-zod": "^4.0.2",
+    "pg": "^8.13.3",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "@types/pg": "^8.11.11",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.7"
+  }
+}
