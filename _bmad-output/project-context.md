@@ -20,19 +20,14 @@ file lean: load referenced authoritative artifacts when deeper context is needed
 
 ## Technology Stack & Versions
 
-- Node.js 24.x; pnpm 11.21.0; TypeScript 6.0.3; ESM.
-- Backend: Fastify 5.10.0, Drizzle ORM 0.45.2, Drizzle Kit 0.31.10,
-  `pg` 8.23.0, Argon2 0.45.1.
-- Web: React 19.2.8, React Router 8.3.0 via `react-router`,
-  Vite 8.2.1, Ant Design 6.6.0, TanStack Query 5.101.4.
-- Shared contracts: Zod 4.4.3.
-- Tests: Vitest 4.1.10, Playwright 1.60.0.
-- Architecture baseline: PostgreSQL 18.x, pg-boss 12.x,
-  Caddy 2.11.x, pgBackRest 2.59.x, OpenTelemetry.
+- Node.js 24 LTS; pnpm 10.x; TypeScript 5.x; ESM.
+- Backend: Fastify 5.x, Drizzle ORM 0.45.x, Drizzle Kit 0.31.x, `pg` 8.x, Argon2 0.41.x.
+- Web: React 19.x, React Router 7.x (`react-router-dom`), Vite 6.x, Ant Design 5.x, TanStack Query 5.x.
+- Shared contracts: Zod 3.x.
+- Tests: Vitest 3.x, Playwright 1.x.
+- Architecture baseline: PostgreSQL 16+ / 17+, pg-boss 10.x, Caddy 2.x, pgBackRest 2.x, OpenTelemetry JS 2.x.
 
-For already-installed dependencies, package manifests and `pnpm-lock.yaml`
-are the exact-version source of truth. Architecture decisions govern allowed
-technology families and constraints.
+Package manifests (`package.json`) and `pnpm-lock.yaml` are the single authoritative source of truth for exact dependency versions. Architecture decisions govern allowed technology families and constraints.
 
 ## Critical Implementation Rules
 
@@ -54,9 +49,8 @@ technology families and constraints.
 - Maintain the hexagonal modular-monolith dependency direction:
   domain/application code may depend on project-owned ports, never infrastructure
   adapters or provider SDKs.
-- Keep the frontend a React SPA. Use `react-router`; do not introduce
-  `react-router-dom`, Next.js, SSR, RSC, or server actions without an approved
-  architecture change.
+- Keep the frontend a React SPA. Use `react-router-dom` v7; do not introduce
+  Next.js, SSR, RSC, or server actions without an approved architecture change.
 - Use TanStack Query for remote state and React state/context for local UI or
   narrowly scoped orchestration. Do not add another global state framework
   without a concrete requirement.

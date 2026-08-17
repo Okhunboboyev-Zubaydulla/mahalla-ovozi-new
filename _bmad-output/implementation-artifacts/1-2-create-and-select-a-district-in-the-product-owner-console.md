@@ -167,7 +167,7 @@ So that subsequent configuration is always attached to the correct District and 
 
 ### Architecture Compliance & Invariants
 - **Hexagonal Modular Monolith (`AD-1`):** District business rules reside in `apps/backend/src/modules/districts/`. Database queries and migrations live in `apps/backend/src/adapters/db/`. HTTP transport routes live in `apps/backend/src/modules/districts/districts-routes.ts`. Domain modules must not directly depend on HTTP framework objects or raw external drivers.
-- **Stack Standards (`AD-2`):** pnpm workspace targeting Node.js 24 LTS, TypeScript 6.0.x, Fastify 5.10.x, React 19.2.x, Vite 8.x, Ant Design 5/6 with `ConfigProvider` theme tokens, Drizzle ORM 0.45.2, PostgreSQL 18.4, Zod 3/4, TanStack Query 5.x. No Tailwind, no Redux/Zustand, no Next.js.
+- **Stack Standards (`AD-2`):** pnpm workspace targeting Node.js 24 LTS, TypeScript 5.x, Fastify 5.x, React 19.x, Vite 6.x, Ant Design 5.x with `ConfigProvider` theme tokens, Drizzle ORM 0.45.x, PostgreSQL 16+ / 17+, Zod 3.x, TanStack Query 5.x. No Tailwind, no Redux/Zustand, no Next.js.
 - **Relational Persistence & Migrations (`AD-3`, `AD-4`):** PostgreSQL is the sole system of record. Every schema change generates a versioned migration file in `apps/backend/drizzle/*.sql`. No automated schema-push in shared or test environments.
 - **Database-backed Sessions, Explicit District Scope & Privacy (`AD-9`):**
   - All district-scoped entities must store `district_id`.

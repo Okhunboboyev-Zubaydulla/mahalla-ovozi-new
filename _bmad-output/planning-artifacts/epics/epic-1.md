@@ -19,7 +19,7 @@ So that I can access the Product Owner surface without exposing the system to pu
 
 **Given** the greenfield application foundation is established
 **When** changes are proposed for merge into `main` or committed to `main`
-**Then** a minimal `.github/workflows/ci.yml` workflow uses the approved Node.js 24 and pnpm 11 toolchain with the committed lockfile
+**Then** a minimal `.github/workflows/ci.yml` workflow uses the approved Node.js 24 and pnpm 10 toolchain with the committed lockfile
 **And** installs dependencies with the frozen lockfile
 **And** applies the committed SQL migrations to PostgreSQL
 **And** runs the repository-supported typecheck, build, focused integration tests, and critical browser test required by the currently implemented scope

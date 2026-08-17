@@ -25,7 +25,7 @@ So that I can access the Product Owner surface without exposing the system to pu
 2. **Continuous Integration Pipeline**
    - **Given** the greenfield application foundation is established
    - **When** changes are proposed for merge into `main` or committed to `main`
-   - **Then** a minimal `.github/workflows/ci.yml` workflow uses the approved Node.js 24 and pnpm 11 toolchain with the committed lockfile
+   - **Then** a minimal `.github/workflows/ci.yml` workflow uses the approved Node.js 24 and pnpm 10 toolchain with the committed lockfile
    - **And** installs dependencies with the frozen lockfile (`pnpm install --frozen-lockfile`)
    - **And** applies the committed SQL migrations to PostgreSQL
    - **And** runs the repository-supported typecheck, build, focused integration tests, and critical browser test required by the currently implemented scope
@@ -102,9 +102,9 @@ So that I can access the Product Owner surface without exposing the system to pu
 ## Tasks / Subtasks
 
 - [x] Task 1: Workspace & Toolchain Foundation Setup (AC: 1, 2)
-  - [x] 1.1 Initialize the root pnpm workspace (`pnpm-workspace.yaml`, root `package.json`, `tsconfig.base.json`) targeting Node.js 24 LTS and TypeScript 6.x.
-  - [x] 1.2 Configure `deploy/compose/docker-compose.yml` with PostgreSQL 18.x container for local development and test execution.
-  - [x] 1.3 Create `.github/workflows/ci.yml` with Node 24 + pnpm 11, frozen lockfile (`pnpm install --frozen-lockfile`), PostgreSQL service container, Drizzle migrations, typechecking, Vitest integration tests, and Playwright browser tests.
+  - [x] 1.1 Initialize the root pnpm workspace (`pnpm-workspace.yaml`, root `package.json`, `tsconfig.base.json`) targeting Node.js 24 LTS and TypeScript 5.x.
+  - [x] 1.2 Configure `deploy/compose/docker-compose.yml` with PostgreSQL container for local development and test execution.
+  - [x] 1.3 Create `.github/workflows/ci.yml` with Node 24 + pnpm 10, frozen lockfile (`pnpm install --frozen-lockfile`), PostgreSQL service container, Drizzle migrations, typechecking, Vitest integration tests, and Playwright browser tests.
 - [x] Task 2: Shared API Contracts Package (AC: 1, 6, 8)
   - [x] 2.1 Create `packages/api-contracts` workspace package with TypeScript and Zod.
   - [x] 2.2 Define Zod schemas and TypeScript types for `/api/v1/auth/sign-in`, `/api/v1/auth/sign-out`, and `/api/v1/auth/session`.
@@ -115,7 +115,7 @@ So that I can access the Product Owner surface without exposing the system to pu
   - [x] 3.3 Generate reviewable SQL migrations in `apps/backend/drizzle` and implement a deterministic migration runner.
 - [x] Task 4: Password Policy, Argon2id & CLI Account Management (AC: 3)
   - [x] 4.1 Implement password validator (15–128 Unicode code points, no trimming or silent truncation, offline rejection of common passwords).
-  - [x] 4.2 Implement Argon2id hashing and verification utility (`argon2` 0.45.x with parameters: `memoryCost: 65536`, `timeCost: 3`, `parallelism: 4`).
+  - [x] 4.2 Implement Argon2id hashing and verification utility (`argon2` 0.41.x with parameters: `memoryCost: 65536`, `timeCost: 3`, `parallelism: 4`).
   - [x] 4.3 Implement secure CLI command `apps/backend/src/cli/manage-product-owner.ts` for PO account creation and password reset (interactive hidden stdin input, no plaintext in CLI args/logs/output).
 - [x] Task 5: Auth Module, Session Engine & Threat Defenses (AC: 5, 6, 7, 8)
   - [x] 5.1 Implement Origin and `Sec-Fetch-Site` protection middleware for state-changing requests, rejecting violations with 403 before credential checks.
@@ -124,7 +124,7 @@ So that I can access the Product Owner surface without exposing the system to pu
   - [x] 5.4 Implement sign-in endpoint (`POST /api/v1/auth/sign-in`) with credential concurrency check, generic Uzbek Cyrillic error `Нотўғри фойдаланувчи номи ёки парол.`, and privacy-safe audit logging.
   - [x] 5.5 Implement sign-out (`POST /api/v1/auth/sign-out`) and session check (`GET /api/v1/auth/session`) endpoints with 12h idle timeout, 24h absolute max lifetime, and credential version invalidation.
 - [x] Task 6: Frontend React / Ant Design Application (AC: 1, 4, 9, 10)
-  - [x] 6.1 Initialize `apps/web` with React 19.2, Vite 8.x, React Router 8.3, and Ant Design 6.6.
+  - [x] 6.1 Initialize `apps/web` with React 19.x, Vite 6.x, React Router 7.x, and Ant Design 5.x.
   - [x] 6.2 Configure Ant Design `ConfigProvider` with visual tokens from `DESIGN.md` (colors: `surface-page`, `primary: #0F5C5E`, `focus: #007A7C`, `rounded: 8px`, touch min: 44px).
   - [x] 6.3 Implement `SignInPage.tsx` with Uzbek Cyrillic copy, username/password inputs, visible focus indicators, accessible error summary, and no public registration/social links.
   - [x] 6.4 Implement auth state management with TanStack Query, distinguishing network uncertainty from authoritative auth loss and preventing mutation re-queuing.
@@ -138,11 +138,11 @@ So that I can access the Product Owner surface without exposing the system to pu
 
 ### Architecture Compliance & Invariants
 - **Hexagonal Modular Monolith (`AD-1`):** All application code belongs in a single repository with modular boundaries. Domain/application logic in `apps/backend/src/modules/auth` and `apps/backend/src/modules/audit` must not depend directly on database client implementations or transport layer internals; infrastructure concerns reside in `apps/backend/src/adapters/`.
-- **Stack Standards (`AD-2`):** pnpm workspace targeting Node.js 24 LTS, TypeScript 6.0.x, Fastify 5.10.x, React 19.2.x, Vite 8.1.x, Ant Design 6.6.x, Drizzle ORM 0.45.2, PostgreSQL 18.4, Zod 4.4.x, TanStack Query 5.101.x, Vitest 4.1.x, Playwright 1.60.x. No Tailwind, no Next.js, no GraphQL, no Redux/Zustand.
-- **Relational Persistence & Migrations (`AD-3`, `AD-4`):** PostgreSQL 18.x is the sole system of record. Use Drizzle ORM with version-controlled SQL migrations (`apps/backend/drizzle/*.sql`). Never use automatic schema-push workflows in shared or production environments.
+- **Stack Standards (`AD-2`):** pnpm workspace targeting Node.js 24 LTS, TypeScript 5.x, Fastify 5.x, React 19.x, Vite 6.x, Ant Design 5.x, Drizzle ORM 0.45.x, PostgreSQL 16+ / 17+, Zod 3.x, TanStack Query 5.x, Vitest 3.x, Playwright 1.x. No Tailwind, no Next.js, no GraphQL, no Redux/Zustand.
+- **Relational Persistence & Migrations (`AD-3`, `AD-4`):** PostgreSQL is the sole system of record. Use Drizzle ORM with version-controlled SQL migrations (`apps/backend/drizzle/*.sql`). Never use automatic schema-push workflows in shared or production environments.
 - **Security & Session Architecture (`AD-9`):**
   - Project-owned username/password authentication. Single Product Owner role.
-  - Passwords hashed with Argon2id (`argon2` 0.45.x: memoryCost 65536 KB, timeCost 3, parallelism 4).
+  - Passwords hashed with Argon2id (`argon2` 0.41.x: memoryCost 65536 KB, timeCost 3, parallelism 4).
   - Passwords require 15–128 Unicode characters; offline blocklist rejections for commonly used passwords without network calls; zero trimming/truncation.
   - Sessions are opaque, database-backed records. Database persists only `SHA-256(session_token)`. Usable token resides exclusively in a host-scoped `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/` cookie (`__Host-session`).
   - Session lifetime rules: 12-hour sliding idle timeout (`last_active_at`), 24-hour absolute session ceiling (`created_at`). Explicit sign-out or `credential_version` mismatch immediately invalidates authorization.
@@ -152,7 +152,7 @@ So that I can access the Product Owner surface without exposing the system to pu
   - Privacy-safe audit logging: append-only `audit_events` records. Plaintext passwords, hashes, session tokens, and raw cookies must NEVER enter audit logs, application logs, telemetry, URLs, or command output.
 - **API Contracts & REST Boundary (`AD-10`):** Fastify serves same-origin JSON REST under `/api/v1/auth/*`. Request and response bodies are strictly validated against shared Zod schemas in `packages/api-contracts`. Errors use sanitized envelope `{ error: { code: string, message: string } }`.
 - **UI System & Microcopy (`DESIGN.md`, `EXPERIENCE.md`):**
-  - Ant Design 6.x with design tokens configured in `ConfigProvider`:
+  - Ant Design 5.x with design tokens configured in `ConfigProvider`:
     - `colorBgLayout`: `#F5F7F6` (`surface-page`)
     - `colorBgContainer`: `#FFFFFF` (`surface-raised`)
     - `colorPrimary`: `#0F5C5E` (`primary`)
@@ -177,7 +177,7 @@ So that I can access the Product Owner surface without exposing the system to pu
 - **No Plaintext Credential Leaks:** Do not pass passwords via CLI flags (`-p password`); use interactive hidden stdin prompts. Do not include credentials in log strings, error objects, or audit JSON metadata.
 - **No Identity Framework Overkill:** Do not install NextAuth, Passport, Auth0, Keycloak, or Supabase. Mahalla Ovozi uses project-owned, database-backed sessions.
 - **No Leaky Contracts:** Do not import backend database models or Drizzle entities into `packages/api-contracts` or frontend code. Contracts must be pure Zod definitions.
-- **No Premature Complexity:** Do not introduce Redis, Kafka, BullMQ, or Microservices. PostgreSQL 18 is the sole system of record.
+- **No Premature Complexity:** Do not introduce Redis, Kafka, BullMQ, or Microservices. PostgreSQL is the sole system of record.
 - **No Unused Feature Scope:** Do not implement District selection, Hokim accounts, Telegram bots, or AI worker jobs in this story.
 
 ### Testing Standards & Guardrails
@@ -206,7 +206,7 @@ So that I can access the Product Owner surface without exposing the system to pu
 mahalla-ovozi-new/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                         # CI pipeline (Node 24, pnpm 11, PG 18, frozen lockfile)
+│       └── ci.yml                         # CI pipeline (Node 24, pnpm 10, PG, frozen lockfile)
 ├── apps/
 │   ├── backend/
 │   │   ├── drizzle/                       # Reviewable SQL migrations
@@ -248,7 +248,7 @@ mahalla-ovozi-new/
 │       └── tsconfig.json
 ├── deploy/
 │   └── compose/
-│       └── docker-compose.yml             # Local PostgreSQL 18.x container
+│       └── docker-compose.yml             # Local PostgreSQL container
 ├── package.json                           # Root pnpm workspace config
 ├── pnpm-workspace.yaml
 └── tsconfig.base.json
@@ -274,9 +274,9 @@ None (New story creation)
 ### Completion Notes List
 
 - Completed implementation of Story 1.1 across all 7 phases:
-  - Phase 1: Workspace & Toolchain Foundation (Node 24, pnpm monorepo, Docker Compose PostgreSQL 18, GitHub Actions CI).
+  - Phase 1: Workspace & Toolchain Foundation (Node 24, pnpm monorepo, Docker Compose PostgreSQL, GitHub Actions CI).
   - Phase 2: Shared API Contracts (`@mahalla-ovozi/api-contracts` with typed Zod schemas for all auth payloads and error envelopes).
-  - Phase 3: Relational Persistence & Migrations (PostgreSQL 18, Drizzle schemas for `accounts`, `sessions`, `audit_events`, `sign_in_rate_limits`, versioned SQL migration, deterministic migration runner).
+  - Phase 3: Relational Persistence & Migrations (PostgreSQL, Drizzle schemas for `accounts`, `sessions`, `audit_events`, `sign_in_rate_limits`, versioned SQL migration, deterministic migration runner).
   - Phase 4: Credential Security & PO CLI Management (Unicode password validator 15-128 chars, offline blocklist, Argon2id hasher/verifier, CLI with masked inputs).
   - Phase 5: Fastify Backend Auth Module & Defenses (Origin guard, rate limiter with IP+username failure budget, 256-bit cryptographically secure sessions with SHA-256 hash in DB, sliding 12h idle / 24h absolute lifetime, credential version concurrency safety, privacy-safe audit logging).
   - Phase 6: Frontend React & Ant Design Application (`@mahalla-ovozi/web` with Ant Design theme tokens from `DESIGN.md`, Uzbek Cyrillic UI, TanStack Query auth client/provider, ProtectedRoute, Protected PO landing surface).

@@ -125,7 +125,7 @@ The Product Owner selected the focused correction path. No PRD, UX, Architecture
 
 ### Greenfield Foundation
 
-Story 1.1 now requires a minimal GitHub Actions CI baseline using the approved Node.js 24 / pnpm 11 workspace and committed lockfile. CI runs the repository-supported typecheck, build, and focused automated tests for current implemented scope. It introduces no deployment/CD workflow and no production secrets.
+Story 1.1 now requires a minimal GitHub Actions CI baseline using the approved Node.js 24 / pnpm 10 workspace and committed lockfile. CI runs the repository-supported typecheck, build, and focused automated tests for current implemented scope. It introduces no deployment/CD workflow and no production secrets.
 
 ### Epic 3 Decomposition
 

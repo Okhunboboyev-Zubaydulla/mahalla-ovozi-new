@@ -73,13 +73,13 @@ These approved product semantics constrain architecture and are not implementati
 
 - **Binds:** browser application, HTTP/API, Telegram webhook handling, asynchronous workers, shared contracts, package management, runtime/tooling choices, and the primary UI component/styling system.
 - **Prevents:** parallel backend ecosystems, SSR/server-action coupling without a requirement, incompatible TypeScript toolchains, duplicated application logic between HTTP and worker runtimes, and competing frontend component/styling systems.
-- **Rule:** Use a pnpm TypeScript workspace targeting Node.js 24 LTS. Fastify 5.x serves the private JSON API and Telegram webhook transport. HTTP/webhook and worker entrypoints share the same backend modules. The private browser application is a React 19.2 SPA built with Vite 8.x and minimal React Router. Use Ant Design 6.x as the primary UI component and styling system: implement the approved UX through Ant Design component APIs and `ConfigProvider` theme/design tokens, using narrowly scoped custom CSS only where Ant Design cannot reasonably express a required product-specific layout or behavior. Do not introduce Tailwind or another general-purpose UI component/styling framework without a later concrete requirement. Start on TypeScript 6.0.x. Do not introduce Next.js, SSR, React Server Components, or server actions without a later concrete requirement.
+- **Rule:** Use a pnpm TypeScript workspace targeting Node.js 24 LTS. Fastify 5.x serves the private JSON API and Telegram webhook transport. HTTP/webhook and worker entrypoints share the same backend modules. The private browser application is a React 19.x SPA built with Vite 6.x and React Router 7.x. Use Ant Design 5.x as the primary UI component and styling system: implement the approved UX through Ant Design component APIs and `ConfigProvider` theme/design tokens, using narrowly scoped custom CSS only where Ant Design cannot reasonably express a required product-specific layout or behavior. Do not introduce Tailwind or another general-purpose UI component/styling framework without a later concrete requirement. Start on TypeScript 5.x. Do not introduce Next.js, SSR, React Server Components, or server actions without a later concrete requirement.
 
 ### AD-3 — PostgreSQL system of record and PostgreSQL-backed durable jobs [ADOPTED]
 
 - **Binds:** authoritative application state, Telegram intake durability, asynchronous processing, retries, ordering-sensitive work, and idempotency.
 - **Prevents:** split-brain persistence, database-to-broker dual-write gaps, Redis/broker operational complexity, duplicate business effects from retryable work, nondeterministic processing where source order affects shared state, and success acknowledgement before durable intake.
-- **Rule:** PostgreSQL 18.x is the sole MVP application system of record and pg-boss 12.x is the durable job mechanism. Persist authoritative state and enqueue consequential asynchronous work atomically whenever correctness requires both. A Telegram update is acknowledged as successful only after the authorized update and its required asynchronous work are durable. Duplicate Telegram deliveries and retryable jobs must resolve to one logical intake/business effect through application-level idempotency. Processing paths where source order affects same-day context or shared Topic state must preserve deterministic source order, including across retries and concurrent workers. Use stable District+Mahalla+Uzbekistan-day queue serialization as the default coordination mechanism for that ordering-sensitive work; independent and order-insensitive scopes may run concurrently. Queue ordering remains coordination, never the final correctness boundary.
+- **Rule:** PostgreSQL 16+ is the sole MVP application system of record and pg-boss 10.x is the durable job mechanism. Persist authoritative state and enqueue consequential asynchronous work atomically whenever correctness requires both. A Telegram update is acknowledged as successful only after the authorized update and its required asynchronous work are durable. Duplicate Telegram deliveries and retryable jobs must resolve to one logical intake/business effect through application-level idempotency. Processing paths where source order affects same-day context or shared Topic state must preserve deterministic source order, including across retries and concurrent workers. Use stable District+Mahalla+Uzbekistan-day queue serialization as the default coordination mechanism for that ordering-sensitive work; independent and order-insensitive scopes may run concurrently. Queue ordering remains coordination, never the final correctness boundary.
 
 ### AD-4 — Drizzle schema ownership and reviewable SQL migrations [ADOPTED]
 
@@ -109,13 +109,13 @@ These approved product semantics constrain architecture and are not implementati
 
 - **Binds:** all production AI calls, provider adapters, prompt/schema configuration, validation, retries, traceability, and AI failure handling.
 - **Prevents:** provider SDK types leaking into domain/application contracts, historical configuration mutating in place, schema-conformant hallucinations committing, provider-specific failure semantics spreading across modules, and partial AI success.
-- **Rule:** All production AI operations pass through a Mahalla Ovozi-owned typed AI gateway. Provider SDKs, native responses, and native errors remain inside adapters. Operation outputs use project-owned Zod 4 schemas converted only to a deliberately portable JSON-Schema subset for provider structured-output features. Every provider result must pass application structural validation and operation-specific semantic validation before commit. AI profiles are immutable/versioned and capture operation, provider adapter, exact model identifier, prompt/schema versions, generation parameters, limits, retry policy, and capability configuration; activation is prospective and never replays historical completed message-level decisions. Logical AI operations and provider attempts have separate identifiers. A logical operation pins its immutable AI profile version when created; retries of that logical operation use the same profile, while newer source generations created after profile activation use the then-active profile rather than mutating the older operation. Normalize provider outcomes into explicit application failure categories and commit no partial result. Prompt caching is optional adapter behavior only and may never alter canonical context semantics.
+- **Rule:** All production AI operations pass through a Mahalla Ovozi-owned typed AI gateway. Provider SDKs, native responses, and native errors remain inside adapters. Operation outputs use project-owned Zod 3.x schemas converted only to a deliberately portable JSON-Schema subset for provider structured-output features. Every provider result must pass application structural validation and operation-specific semantic validation before commit. AI profiles are immutable/versioned and capture operation, provider adapter, exact model identifier, prompt/schema versions, generation parameters, limits, retry policy, and capability configuration; activation is prospective and never replays historical completed message-level decisions. Logical AI operations and provider attempts have separate identifiers. A logical operation pins its immutable AI profile version when created; retries of that logical operation use the same profile, while newer source generations created after profile activation use the then-active profile rather than mutating the older operation. Normalize provider outcomes into explicit application failure categories and commit no partial result. Prompt caching is optional adapter behavior only and may never alter canonical context semantics.
 
 ### AD-9 — Database-backed sessions, explicit District scope, and encrypted District secrets [ADOPTED]
 
 - **Binds:** authentication, authorization, tenant isolation, sessions, District-owned data, Telegram bot credentials, lifecycle/offboarding, and browser credential handling.
 - **Prevents:** identity-framework requirements contaminating the product model, long-lived unrevocable bearer authorization, IDOR/cross-District access, cross-District foreign-key mistakes, plaintext stored bot tokens, and secret leakage.
-- **Rule:** Use project-owned username/password authentication backed by PostgreSQL. Hash passwords with Argon2id using stable `argon2` 0.45.x. Sessions are opaque, revocable, database-backed records; persist only a hash of the browser session token and deliver the usable token only through a host-scoped Secure, HttpOnly, SameSite=Strict cookie over HTTPS. Rate-limit login attempts and enforce trusted same-origin/Origin/Fetch-Metadata checks for protected state-changing browser requests. Authentication produces a server-derived `ActorContext`: Hokim is bound to exactly one District; Product Owner may act globally but must name an explicit target District for District-scoped operations. Client District state is never authorization evidence. All District-owned records carry `district_id`; repository contracts require explicit District scope and database relationships preserve District identity. Background jobs carry explicit District scope and re-check relevant lifecycle/access state before external or AI side effects; Product Owner cross-District/global operations use dedicated explicit global administrative contracts, never an omitted District scope. PostgreSQL RLS is deferred for MVP. Deployment secrets remain outside the database/repository. District Telegram bot tokens are stored only as authenticated ciphertext under a deployment-held versioned key, and plaintext credentials never enter logs, audit payloads, telemetry, URLs, or browser persistence. Rotation/offboarding removes obsolete active credentials according to lifecycle rules.
+- **Rule:** Use project-owned username/password authentication backed by PostgreSQL. Hash passwords with Argon2id using stable `argon2` 0.41.x. Sessions are opaque, revocable, database-backed records; persist only a hash of the browser session token and deliver the usable token only through a host-scoped Secure, HttpOnly, SameSite=Strict cookie over HTTPS. Rate-limit login attempts and enforce trusted same-origin/Origin/Fetch-Metadata checks for protected state-changing browser requests. Authentication produces a server-derived `ActorContext`: Hokim is bound to exactly one District; Product Owner may act globally but must name an explicit target District for District-scoped operations. Client District state is never authorization evidence. All District-owned records carry `district_id`; repository contracts require explicit District scope and database relationships preserve District identity. Background jobs carry explicit District scope and re-check relevant lifecycle/access state before external or AI side effects; Product Owner cross-District/global operations use dedicated explicit global administrative contracts, never an omitted District scope. PostgreSQL RLS is deferred for MVP. Deployment secrets remain outside the database/repository. District Telegram bot tokens are stored only as authenticated ciphertext under a deployment-held versioned key, and plaintext credentials never enter logs, audit payloads, telemetry, URLs, or browser persistence. Rotation/offboarding removes obsolete active credentials according to lifecycle rules.
 
 ### AD-10 — Same-origin REST contracts and scoped frontend server state [ADOPTED]
 
@@ -127,7 +127,7 @@ These approved product semantics constrain architecture and are not implementati
 
 - **Binds:** production topology, public ingress, process deployment, backups, WAL archiving, restore readiness, disaster recovery, deletion reconciliation, protected-backup expiry, metrics/traces/logs, and System Health separation.
 - **Prevents:** unnecessary orchestration complexity, publicly exposed internal services, same-host-only backups, untested recovery assumptions, deleted District resurrection after restore, retention-incompatible backup persistence, observability becoming a second resident-content store, and product health depending on a telemetry vendor.
-- **Rule:** Deploy the MVP on one Linux host using Docker Compose. Caddy 2.11.x is the only public edge, terminates HTTPS, serves the built SPA, and reverse-proxies API/Telegram webhook traffic to Fastify. HTTP and worker runtimes use the same backend image/codebase; PostgreSQL and internal service ports are private. Use pgBackRest 2.59.x with continuous PostgreSQL WAL archiving to an encrypted off-primary S3-compatible object-store repository. Configuration and scheduled isolated restore drills must demonstrate RPO ≤1 hour and RTO ≤8 hours. Protected whole-system backups containing data removed by a District live deletion must expire within 30 days after that live deletion, and backup expiry is a separately verifiable lifecycle milestone. Normal application/ingestion access remains disabled after a disaster restore until lifecycle/deletion reconciliation proves permanently deleted Districts and normally expired data cannot reappear operationally. Maintain a minimal current deletion-tombstone reconciliation source outside restorable PostgreSQL backup history; it contains only privacy-safe lifecycle identifiers/metadata, never resident evidence or secrets. Use OpenTelemetry for stable backend traces/metrics through an OTLP/collector boundary and structured privacy-safe JSON application logs; raw resident evidence, AI context, search text, credentials, and secrets must not enter routine telemetry. Capture intake, queue age/backlog, retries, stale snapshots, context evidence/bytes/tokens, AI/end-to-end latency, cost, failure/overflow, Topic refresh/coalescing, database/WAL/backup, protected-backup-expiry, and restore-drill measurements. Evaluate grouping quality using explicit labeled/pilot evaluation data, not invented operational metrics. Product Owner System Health is application-owned sanitized state and must remain available independently of the engineering telemetry backend.
+- **Rule:** Deploy the MVP on one Linux host using Docker Compose. Caddy 2.x is the only public edge, terminates HTTPS, serves the built SPA, and reverse-proxies API/Telegram webhook traffic to Fastify. HTTP and worker runtimes use the same backend image/codebase; PostgreSQL and internal service ports are private. Use pgBackRest 2.x with continuous PostgreSQL WAL archiving to an encrypted off-primary S3-compatible object-store repository. Configuration and scheduled isolated restore drills must demonstrate RPO ≤1 hour and RTO ≤8 hours. Protected whole-system backups containing data removed by a District live deletion must expire within 30 days after that live deletion, and backup expiry is a separately verifiable lifecycle milestone. Normal application/ingestion access remains disabled after a disaster restore until lifecycle/deletion reconciliation proves permanently deleted Districts and normally expired data cannot reappear operationally. Maintain a minimal current deletion-tombstone reconciliation source outside restorable PostgreSQL backup history; it contains only privacy-safe lifecycle identifiers/metadata, never resident evidence or secrets. Use OpenTelemetry for stable backend traces/metrics through an OTLP/collector boundary and structured privacy-safe JSON application logs; raw resident evidence, AI context, search text, credentials, and secrets must not enter routine telemetry. Capture intake, queue age/backlog, retries, stale snapshots, context evidence/bytes/tokens, AI/end-to-end latency, cost, failure/overflow, Topic refresh/coalescing, database/WAL/backup, protected-backup-expiry, and restore-drill measurements. Evaluate grouping quality using explicit labeled/pilot evaluation data, not invented operational metrics. Product Owner System Health is application-owned sanitized state and must remain available independently of the engineering telemetry backend.
 
 ## Consistency Conventions
 
@@ -146,38 +146,43 @@ These approved product semantics constrain architecture and are not implementati
 | AI context | Raw evidence is verbatim, complete for required same-day scope, deterministically ordered, fingerprinted/versioned, and never silently truncated or summarized. |
 | Secrets/logging | Redact/exclude credentials, raw resident evidence, AI context, and ephemeral search text from routine logs, metrics, traces, raw errors, URLs, and browser persistence. |
 | Audit | Audit History is append-only and immutable while retained; normal application contracts expose no edit/delete operation. Record privacy-safe operational/admin metadata such as actor, District/scope, action, timestamp, outcome, supplied reason where required, and safe identifiers/old-new non-secret values. Never store raw resident evidence or credentials in audit payloads. Removal occurs only through approved retention or District lifecycle deletion paths. |
-| Tests | Use Vitest 4.1.x for backend/frontend test execution and Playwright 1.60.x for critical browser journeys; favor integration/E2E behavior over low-value implementation-detail tests. |
-| Workspace | Use pnpm 11.x workspaces and commit the lockfile; package boundaries must follow the architecture modules rather than become a generic shared-code dumping ground. |
+| Tests | Use Vitest 3.x for backend/frontend test execution and Playwright 1.x for critical browser journeys; favor integration/E2E behavior over low-value implementation-detail tests. |
+| Workspace | Use pnpm 10.x workspaces and commit the lockfile; package boundaries must follow the architecture modules rather than become a generic shared-code dumping ground. |
 
 ## Stack
 
-Verified-current seed at architecture finalization; once implementation exists, the repository lockfile/configuration owns exact patch versions.
+Major ecosystem baselines defined at architecture finalization. Repository package manifests (`package.json`) and lockfiles (`pnpm-lock.yaml`) own exact patch/minor versions.
 
-| Name | Version |
+| Name | Baseline / Major Version |
 | --- | --- |
 | Node.js | 24 LTS |
-| pnpm | 11.x |
-| TypeScript | 6.0.x |
-| Fastify | 5.10.x |
-| fastify-type-provider-zod | 7.0.x |
-| React | 19.2.x |
-| React Router | 8.3.x |
-| Vite | 8.1.x |
-| Ant Design | 6.6.x |
-| PostgreSQL | 18.4 |
-| pg-boss | 12.26.x |
-| Drizzle ORM | 0.45.2 |
-| Drizzle Kit | 0.31.10 |
-| Zod | 4.4.x |
-| TanStack Query | 5.101.x |
-| argon2 | 0.45.x |
-| Vitest | 4.1.x |
-| Playwright | 1.60.x |
-| Caddy | 2.11.x |
-| pgBackRest | 2.59.x |
-| OpenTelemetry JS | 2.10.x |
-| Docker Engine | 29.x |
-| Docker Compose | 5.x |
+| pnpm | 10.x |
+| TypeScript | 5.x |
+| Fastify | 5.x |
+| fastify-type-provider-zod | 4.x |
+| React | 19.x |
+| React Router | 7.x |
+| Vite | 6.x |
+| Ant Design | 5.x |
+| PostgreSQL | 16+ / 17+ |
+| pg-boss | 10.x |
+| Drizzle ORM | 0.45.x |
+| Drizzle Kit | 0.31.x |
+| Zod | 3.x |
+| TanStack Query | 5.x |
+| argon2 | 0.41.x |
+| Vitest | 3.x |
+| Playwright | 1.x |
+| Caddy | 2.x |
+| pgBackRest | 2.x |
+| OpenTelemetry JS | 2.x |
+| Docker Engine / Compose | Compose v2 |
+
+### Stack Governance & Versioning Authority
+
+- **Architectural Scope:** The Architecture Spine defines technology choices, major architectural baselines, compatibility boundaries, and structural invariants (e.g., React 19.x SPA, Ant Design 5.x, Fastify 5.x, PostgreSQL 16+).
+- **Implementation Authority:** The repository configuration files (`package.json`, `pnpm-lock.yaml`, `tsconfig.base.json`, `.github/workflows/ci.yml`, etc.) are the single source of truth for exact dependency versions, build scripts, and runtime toolchains.
+- **Evolution Policy:** Routine patch or minor dependency upgrades within approved major baselines do not require architecture revisions unless an upgrade introduces breaking architectural changes or new paradigms.
 
 ## Structural Seed
 
@@ -253,7 +258,7 @@ flowchart LR
 - **Historical/full-history retrieval:** no historical RAG, embeddings, vector database, HNSW, reranking, or semantic retrieval in MVP; revisit only if measured pilot evidence demonstrates a concrete requirement the approved one-day model cannot meet.
 - **Prompt caching:** optional provider-adapter optimization only after measurements justify it; never part of correctness.
 - **PostgreSQL RLS:** optional defense-in-depth after the explicit District-scope model is implemented and tested; do not add during MVP merely for architectural symmetry.
-- **TypeScript 7:** toolchain upgrade after ecosystem/compiler-API compatibility is suitable; not an architecture change.
+- **TypeScript evolution / major upgrades:** toolchain upgrades after ecosystem and compiler-API compatibility are verified; not an architecture change.
 - **Multi-host/high availability:** single-host downtime is an accepted MVP limitation; revisit only when availability or measured load requires it.
 - **Second frontend component/styling system:** Ant Design is the MVP baseline. Revisit only if implementation demonstrates a concrete requirement Ant Design plus narrowly scoped custom CSS cannot meet efficiently; do not add another general-purpose UI/styling system for convenience alone.
 - **Local/self-hosted AI:** not required for MVP; may be evaluated later behind the existing AI adapter contract.
