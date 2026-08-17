@@ -1,15 +1,21 @@
 import { test, expect } from '@playwright/test';
 import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const testUsername = `po_e2e_${Date.now()}`;
 const testPassword = 'Secure-E2E-Password-2026!';
 
+const rootDir = fileURLToPath(new URL('../../../../', import.meta.url));
+
 test.beforeAll(async () => {
-  // F7: Use the backend management CLI instead of importing backend source directly.
-  // Direct cross-package imports violate the monorepo's contract-only boundary (AD-10).
+  // F7 & CLI Security: Pipe password through stdin to prevent command-line exposure
   execSync(
-    `pnpm --filter @mahalla-ovozi/backend cli:manage-po -- --username "${testUsername}" --password "${testPassword}"`,
-    { stdio: 'pipe', cwd: new URL('../../../../', import.meta.url).pathname }
+    `pnpm --filter @mahalla-ovozi/backend cli:manage-po -- --username "${testUsername}"`,
+    {
+      input: `${testPassword}\n${testPassword}\n`,
+      stdio: ['pipe', 'pipe', 'inherit'],
+      cwd: rootDir,
+    }
   );
 });
 

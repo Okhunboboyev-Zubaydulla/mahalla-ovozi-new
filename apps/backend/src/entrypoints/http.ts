@@ -3,6 +3,7 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
 import { createDbPool, createDbClient, DbClient } from '../adapters/db/client.js';
 import { registerAuthRoutes } from '../modules/auth/auth-routes.js';
+import { registerDistrictRoutes } from '../modules/districts/districts-routes.js';
 import pg from 'pg';
 
 // Plain HTTP error with statusCode + code fields — Fastify's error handler maps these correctly.
@@ -86,6 +87,7 @@ export async function buildHttpServer(options?: {
 
   // Register domain module routes
   registerAuthRoutes(server, db);
+  registerDistrictRoutes(server, db);
 
   return server;
 }

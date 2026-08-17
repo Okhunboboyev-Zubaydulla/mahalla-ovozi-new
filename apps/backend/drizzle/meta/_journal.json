@@ -8,6 +8,13 @@
       "when": 1786950820215,
       "tag": "0000_burly_george_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786961316476,
+      "tag": "0001_wise_the_order",
+      "breakpoints": true
     }
   ]
 }

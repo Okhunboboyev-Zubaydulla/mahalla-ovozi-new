@@ -11,6 +11,9 @@ export const mahallaTheme: ThemeConfig = {
     colorTextSecondary: '#52615E',
     colorBorder: '#C9D5D1',
     colorError: '#BA1A1A',
+    // P5-I: Warning color tokens for status tags
+    colorWarning: '#6B4B00',
+    colorWarningBg: '#FFF4D6',
     borderRadius: 8,
     controlHeight: 44,
     fontSize: 15,
@@ -35,6 +38,14 @@ export const mahallaTheme: ThemeConfig = {
     Card: {
       borderRadiusLG: 12,
       colorBorderSecondary: '#E2EAE7',
+    },
+    // P5-B: Menu component tokens
+    Menu: {
+      itemSelectedColor: '#0F5C5E',
+      itemSelectedBg: '#EDF3F1',
+      itemHoverBg: '#EDF3F1',
+      itemColor: '#172321',
+      itemActiveBg: '#EDF3F1',
     },
   },
 };

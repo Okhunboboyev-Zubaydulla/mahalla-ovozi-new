@@ -1,8 +1,27 @@
+import fs from 'node:fs';
 import readline from 'node:readline';
 import { createDbPool, createDbClient } from '../adapters/db/client.js';
 import { createOrResetProductOwner } from '../modules/auth/account-service.js';
 
+let pipedLines: string[] | null = null;
+
+function readNextPipedLine(): string {
+  if (pipedLines === null) {
+    try {
+      const raw = fs.readFileSync(0, 'utf-8');
+      pipedLines = raw.split(/\r?\n/);
+    } catch {
+      pipedLines = [];
+    }
+  }
+  return pipedLines.shift() ?? '';
+}
+
 function promptLine(prompt: string): Promise<string> {
+  if (!process.stdin.isTTY) {
+    return Promise.resolve(readNextPipedLine().trim());
+  }
+
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -16,20 +35,11 @@ function promptLine(prompt: string): Promise<string> {
 }
 
 function promptHiddenPassword(prompt: string): Promise<string> {
-  return new Promise((resolve) => {
-    if (!process.stdin.isTTY) {
-      // Piped input fallback
-      const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-      });
-      rl.question(prompt, (answer) => {
-        rl.close();
-        resolve(answer.replace(/[\r\n]+$/, ''));
-      });
-      return;
-    }
+  if (!process.stdin.isTTY) {
+    return Promise.resolve(readNextPipedLine().replace(/[\r\n]+$/, ''));
+  }
 
+  return new Promise((resolve) => {
     process.stdout.write(prompt);
     let password = '';
     process.stdin.setRawMode(true);

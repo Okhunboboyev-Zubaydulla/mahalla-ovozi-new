@@ -51,7 +51,7 @@ development_status:
   # ── Epic 1: Secure District Onboarding & Access ──
   epic-1: in-progress
   1-1-secure-product-owner-sign-in: review
-  1-2-create-and-select-a-district-in-the-product-owner-console: ready-for-dev
+  1-2-create-and-select-a-district-in-the-product-owner-console: review
   1-3-resume-district-onboarding-and-track-activation-readiness: backlog
   1-4-connect-and-validate-a-district-telegram-bot: backlog
   1-5-configure-and-validate-telegram-group-to-mahalla-mappings: backlog
