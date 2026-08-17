@@ -147,7 +147,13 @@ export const ConsoleLayout: React.FC = () => {
           </Text>
 
           {/* District context switcher in persistent header */}
-          <DistrictSelector onOpenCreateDrawer={() => handleMenuClick({ key: '/districts' })} />
+          <DistrictSelector
+            onOpenCreateDrawer={() => {
+              attemptTransition(() => {
+                navigate('/districts?action=create');
+              });
+            }}
+          />
         </Space>
 
         <Space direction="horizontal" size="middle" align="center">

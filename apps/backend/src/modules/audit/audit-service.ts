@@ -32,8 +32,10 @@ export function sanitizeMetadata(metadata?: Record<string, unknown>): Record<str
   return sanitized;
 }
 
+export type DbOrTx = DbClient | Parameters<Parameters<DbClient['transaction']>[0]>[0];
+
 export async function recordAuditEvent(
-  db: DbClient,
+  db: DbOrTx,
   params: {
     actorId?: string | null;
     actorRole?: string | null;

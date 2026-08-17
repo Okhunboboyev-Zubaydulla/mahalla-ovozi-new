@@ -20,7 +20,10 @@ export type District = z.infer<typeof DistrictSchema>;
 export const CreateDistrictRequestSchema = z.object({
   // P1-C: .trim() first, then code-point length refines using spread [...val].length (B10)
   name: z
-    .string()
+    .string({
+      required_error: 'Туман номи киритилиши шарт.',
+      invalid_type_error: 'Туман номи матн кўринишида бўлиши керак.',
+    })
     .trim()
     .refine((val) => [...val].length >= 2, {
       message: 'Туман номи камида 2 та белгидан иборат бўлиши керак.',
@@ -29,12 +32,14 @@ export const CreateDistrictRequestSchema = z.object({
       message: 'Туман номи 100 та белгидан ошмаслиги керак.',
     }),
   region: z
-    .string()
+    .string({
+      invalid_type_error: 'Вилоят/ҳудуд номи матн кўринишида бўлиши керак.',
+    })
     .trim()
     .refine((val) => [...val].length <= 100, {
       message: 'Вилоят/ҳудуд номи 100 та белгидан ошмаслиги керак.',
     })
-    .optional()
+    .nullish()
     .transform((val) => (val && val.length > 0 ? val : undefined)),
 });
 export type CreateDistrictRequest = z.infer<typeof CreateDistrictRequestSchema>;

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, index, uniqueIndex, check } from 'drizzle-orm/pg-core';
 
 export const districts = pgTable(
   'districts',
@@ -12,6 +12,11 @@ export const districts = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    // Status check constraint matching database migration
+    check(
+      'districts_status_check',
+      sql`${table.status} IN ('SETUP_INCOMPLETE', 'ACTIVE', 'SUSPENDED', 'CANCELLED')`
+    ),
     // Functional unique index — enforces case-insensitive name uniqueness at DB level (P2-A)
     uniqueIndex('districts_name_lower_idx').on(sql`LOWER(${table.name})`),
     // Name index for text search lookups

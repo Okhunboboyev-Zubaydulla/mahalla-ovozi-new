@@ -3,9 +3,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  --antd-motion-duration-slow: 0ms;
-  --antd-motion-duration-mid: 0ms;
-  --antd-motion-duration-fast: 0ms;
+  :root {
+    --antd-motion-duration-slow: 0ms;
+    --antd-motion-duration-mid: 0ms;
+    --antd-motion-duration-fast: 0ms;
+  }
   * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

@@ -74,10 +74,16 @@ export async function buildHttpServer(options?: {
         ? (error as { code: string }).code
         : 'INTERNAL_ERROR';
 
+    // Preserve client-safe error messages for 4xx status codes; fallback to generic 500 message for internal errors
+    let errorMessage = 'Серверда кутилмаган хатолик юз берди.';
+    if (statusCode < 500 && error instanceof Error && error.message) {
+      errorMessage = error.message;
+    }
+
     reply.status(statusCode).send({
       error: {
         code: errorCode,
-        message: 'Серверда кутилмаган хатолик юз берди.',
+        message: errorMessage,
       },
     });
   });
@@ -99,7 +105,7 @@ export async function startServer() {
 
   try {
     const address = await server.listen({ port, host });
-    console.log(`[http] Mahalla Ovozi backend listening on ${address}`);
+    console.log('[http] Mahalla Ovozi backend listening', { address });
   } catch (err) {
     console.error('[http] Failed to start server:', err);
     process.exit(1);

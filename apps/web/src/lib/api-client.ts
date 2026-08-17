@@ -7,9 +7,9 @@ export class ApiError extends Error {
 
   constructor(
     message: string,
-    code: string = 'UNKNOWN_ERROR',
-    statusCode: number = 500,
-    isNetworkError: boolean = false
+    code: string,
+    statusCode: number,
+    isNetworkError: boolean
   ) {
     super(message);
     this.name = 'ApiError';
@@ -39,7 +39,11 @@ export async function request<T>(
       credentials: 'include', // Include host-scoped session cookies
       headers,
     });
-  } catch (_networkErr) {
+  } catch (networkErr: unknown) {
+    // Let intentionally aborted queries propagate without classifying as network outages
+    if (networkErr instanceof DOMException && networkErr.name === 'AbortError') {
+      throw networkErr;
+    }
     // Network uncertainty: server unreachable, DNS failure, offline
     throw new ApiError(
       'Сервер билан алоқа мавжуд эмас. Тармоқни текширинг.',
@@ -62,22 +66,25 @@ export async function request<T>(
       throw new ApiError(
         errorParsed.data.error.message,
         errorParsed.data.error.code,
-        response.status
+        response.status,
+        false
       );
     }
     throw new ApiError(
       'Серверда кутилмаган хатолик юз берди.',
       'SERVER_ERROR',
-      response.status
+      response.status,
+      false
     );
   }
 
   const result = schema.safeParse(body);
-  if (!result.success || !result.data) {
+  if (!result.success || result.data === undefined) {
     throw new ApiError(
       'Сервердан нотўғри форматдаги маълумот олинди.',
       'INVALID_RESPONSE',
-      response.status
+      response.status,
+      false
     );
   }
 

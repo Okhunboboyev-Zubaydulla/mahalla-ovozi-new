@@ -55,10 +55,18 @@ export const CreateDistrictDrawer: React.FC<CreateDistrictDrawerProps> = ({ open
     },
     onError: (err: unknown) => {
       let serverMsg = 'Серверда кутилмаган хатолик юз берди.';
+      let isNameConflict = false;
       if (err instanceof ApiError) {
         serverMsg = err.message;
+        if (err.code === 'DISTRICT_NAME_EXISTS') {
+          isNameConflict = true;
+        }
       }
-      setFieldErrors({ server: serverMsg });
+      if (isNameConflict) {
+        setFieldErrors({ name: serverMsg });
+      } else {
+        setFieldErrors({ server: serverMsg });
+      }
       // P5-E: Imperatively move focus to error summary
       setTimeout(() => {
         errorSummaryRef.current?.focus();
@@ -94,9 +102,12 @@ export const CreateDistrictDrawer: React.FC<CreateDistrictDrawerProps> = ({ open
   };
 
   const handleSubmit = async () => {
+    if (mutation.isPending) return;
+
+    const values = form.getFieldsValue() as { name?: string; region?: string };
     const rawValues = {
-      name: formValues.name,
-      region: formValues.region,
+      name: values.name || '',
+      region: values.region || '',
     };
 
     // Client-side Zod validation
@@ -229,13 +240,6 @@ export const CreateDistrictDrawer: React.FC<CreateDistrictDrawerProps> = ({ open
             ref={nameInputRef}
             id="district-name-input"
             placeholder="Масалан: Юнусобод"
-            value={formValues.name}
-            onChange={(e) => {
-              setFormValues((prev) => ({ ...prev, name: e.target.value }));
-              if (fieldErrors.name || fieldErrors.server) {
-                setFieldErrors((prev) => ({ ...prev, name: undefined, server: undefined }));
-              }
-            }}
             maxLength={100}
             disabled={mutation.isPending}
           />
@@ -251,13 +255,6 @@ export const CreateDistrictDrawer: React.FC<CreateDistrictDrawerProps> = ({ open
             ref={regionInputRef}
             id="district-region-input"
             placeholder="Масалан: Тошкент шаҳри (ихтиёрий)"
-            value={formValues.region}
-            onChange={(e) => {
-              setFormValues((prev) => ({ ...prev, region: e.target.value }));
-              if (fieldErrors.region || fieldErrors.server) {
-                setFieldErrors((prev) => ({ ...prev, region: undefined, server: undefined }));
-              }
-            }}
             maxLength={100}
             disabled={mutation.isPending}
           />

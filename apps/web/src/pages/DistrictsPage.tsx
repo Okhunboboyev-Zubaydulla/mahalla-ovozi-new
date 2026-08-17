@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   Typography,
@@ -6,8 +6,10 @@ import {
   Tag,
   Button,
   Empty,
+  Alert,
 } from 'antd';
 import { PlusOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { districtClient } from '../district/district-client.js';
 import { useDistrict } from '../district/district-context.js';
@@ -33,10 +35,24 @@ function formatTashkentDate(isoString: string): string {
 }
 
 export const DistrictsPage: React.FC = () => {
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [drawerOpen, setDrawerOpen] = useState(searchParams.get('action') === 'create');
   const { activeDistrictId, switchDistrict } = useDistrict();
 
-  const { data, isLoading } = useQuery({
+  useEffect(() => {
+    if (searchParams.get('action') === 'create') {
+      setDrawerOpen(true);
+    }
+  }, [searchParams]);
+
+  const handleCloseDrawer = () => {
+    setDrawerOpen(false);
+    if (searchParams.get('action') === 'create') {
+      setSearchParams({}, { replace: true });
+    }
+  };
+
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['districts', 'list'],
     queryFn: districtClient.listDistricts,
   });
@@ -89,6 +105,7 @@ export const DistrictsPage: React.FC = () => {
         return (
           <Button
             type="link"
+            aria-label={`Танлаш: ${record.name}`}
             onClick={() => void switchDistrict(record.id)}
             style={{ padding: 0 }}
           >
@@ -112,7 +129,7 @@ export const DistrictsPage: React.FC = () => {
                 Тизимдаги барча туманлар рўйхати ва янги туман қўшиш
               </Paragraph>
             </div>
-            {districts.length > 0 && (
+            {districts.length > 0 && !isError && (
               <Button
                 id="create-district-button"
                 type="primary"
@@ -125,8 +142,22 @@ export const DistrictsPage: React.FC = () => {
           </div>
         }
       >
-        {/* AC 2: Honest Empty State for Zero Districts */}
-        {!isLoading && districts.length === 0 ? (
+        {isError ? (
+          <div style={{ padding: '24px 0' }}>
+            <Alert
+              type="error"
+              showIcon
+              message="Туманлар рўйхатини юклаб бўлмади"
+              description="Сервер билан боғланишда хатолик юз берди. Илтимос, қайта уриниб кўринг."
+              action={
+                <Button type="primary" danger onClick={() => void refetch()}>
+                  Қайта уриниш
+                </Button>
+              }
+            />
+          </div>
+        ) : !isLoading && districts.length === 0 ? (
+          /* AC 2: Honest Empty State for Zero Districts */
           <div style={{ padding: '48px 0', textAlign: 'center' }}>
             <Empty
               description={
@@ -166,7 +197,7 @@ export const DistrictsPage: React.FC = () => {
       {/* P5-D: Create District Drawer */}
       <CreateDistrictDrawer
         open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+        onClose={handleCloseDrawer}
       />
     </div>
   );

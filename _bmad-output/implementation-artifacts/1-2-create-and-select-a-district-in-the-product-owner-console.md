@@ -414,6 +414,22 @@ So that subsequent configuration is always attached to the correct District and 
 
     The assertion referencing text from `ProtectedLandingPage` (e.g., `Масъул ходим бошқарув панели`) will fail after Story 1.2 replaces it with `ConsoleLayout` + `OverviewPage`. Update the assertion to verify the new Console landing state — for example the persistent header wordmark `Маҳалла Овози` or the `Умумий кўриниш` section heading. Run `pnpm test:e2e` after the update to confirm all existing E2E tests still pass.
 
+### Review Findings
+
+- [x] [Review][Patch] Catch PostgreSQL unique constraint violation (code 23505) and return 409 DISTRICT_NAME_EXISTS [`apps/backend/src/modules/districts/districts-routes.ts:42-53`]
+- [x] [Review][Patch] Preserve client error messages for status < 500 in global error handler [`apps/backend/src/entrypoints/http.ts:60-83`]
+- [x] [Review][Patch] Fix modal dismissal in UnsavedChangesModal so backdrop click/ESC cancels transition without data loss [`apps/web/src/components/UnsavedChangesModal.tsx:14-20`]
+- [x] [Review][Patch] Propagate DOMException AbortError in api-client instead of misclassifying as NETWORK_ERROR [`apps/web/src/lib/api-client.ts:42-50`]
+- [x] [Review][Patch] Align direct district activation with 4-step atomic query cancellation and cache purge sequence [`apps/web/src/district/district-context.tsx:101-103`]
+- [x] [Review][Patch] Render error banner with retry button on district list query failure instead of misleading empty state [`apps/web/src/pages/DistrictsPage.tsx:128-163`]
+- [x] [Review][Patch] Wrap prefers-reduced-motion custom properties in selector block in CSS [`apps/web/src/index.css:5-15`]
+- [x] [Review][Patch] Make ApiError constructor parameters explicit to conform to repo coding standards [`apps/web/src/lib/api-client.ts:8-19`]
+- [x] [Review][Patch] Introduce typed domain error classes for DistrictNotFoundError and DistrictNameExistsError [`apps/backend/src/modules/districts/districts-service.ts:43,65`]
+- [x] [Review][Patch] Add distinct accessible aria-label to table action buttons [`apps/web/src/pages/DistrictsPage.tsx:90-97`]
+- [x] [Review][Patch] Support opening create drawer directly from header dropdown on any route including /districts [`apps/web/src/components/ConsoleLayout.tsx:97-103,150`]
+- [x] [Review][Patch] Add status check constraint to Drizzle schema definition and support nullish region in API contract [`apps/backend/src/adapters/db/schema/districts.ts:10`, `packages/api-contracts/src/districts.ts:31-39`]
+- [x] [Review][Patch] Route audit event insertion through centralized recordAuditEvent service [`apps/backend/src/modules/districts/districts-service.ts:98-105`]
+
 ## Dev Notes
 
 ### Architecture Compliance & Invariants

@@ -7,6 +7,8 @@ import {
   listDistricts,
   getDistrictById,
   createDistrict,
+  DistrictNameExistsError,
+  DistrictNotFoundError,
 } from './districts-service.js';
 
 export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): void {
@@ -36,15 +38,22 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
         }
 
         try {
-          const district = await createDistrict(db, parseResult.data, req.actor);
+          const district = await createDistrict(
+            db,
+            parseResult.data,
+            req.actor,
+            {
+              ipAddress: req.ip || null,
+              userAgent: (req.headers['user-agent'] as string) || null,
+            }
+          );
           // P3-G: Returns HTTP 201 Created on success
           return reply.status(201).send({ district });
-        } catch (err) {
-          const message = err instanceof Error ? err.message : '';
-          if (message === 'DISTRICT_NAME_EXISTS') {
+        } catch (err: unknown) {
+          if (err instanceof DistrictNameExistsError) {
             return reply.status(409).send({
               error: {
-                code: 'DISTRICT_NAME_EXISTS',
+                code: err.code,
                 message: 'Бу номдаги туман аллақачон мавжуд.',
               },
             });
@@ -59,15 +68,23 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
       '/api/v1/districts/:districtId',
       async (req: FastifyRequest<{ Params: { districtId: string } }>, reply: FastifyReply) => {
         const { districtId } = req.params;
+        if (!districtId || typeof districtId !== 'string' || districtId.trim() === '') {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Туман идентификатори талаб қилинади.',
+            },
+          });
+        }
+
         try {
           const district = await getDistrictById(db, districtId);
           return reply.status(200).send({ district });
-        } catch (err) {
-          const message = err instanceof Error ? err.message : '';
-          if (message === 'DISTRICT_NOT_FOUND') {
+        } catch (err: unknown) {
+          if (err instanceof DistrictNotFoundError) {
             return reply.status(404).send({
               error: {
-                code: 'DISTRICT_NOT_FOUND',
+                code: err.code,
                 message: 'Туман топилмади.',
               },
             });

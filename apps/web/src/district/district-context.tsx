@@ -51,19 +51,24 @@ export function DistrictProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const switchSeqRef = useRef<number>(0);
+
   // P4-B: Atomic district switch sequence in strict order
   const executeSwitch = useCallback(
-    async (nextId: string) => {
+    async (nextId: string | null) => {
+      const seq = ++switchSeqRef.current;
       const prevId = activeDistrictIdRef.current;
-      if (prevId) {
+      if (prevId && prevId !== nextId) {
         // 1. Signal abort to in-flight prior-district queries (async — await settlement)
         await queryClient.cancelQueries({ queryKey: ['district', prevId] });
         // 2. Purge prior-district cache (sync — must fire AFTER cancelQueries resolves)
         queryClient.removeQueries({ queryKey: ['district', prevId] });
       }
+      // Drop late execution if a newer switch was initiated
+      if (seq !== switchSeqRef.current) return;
       // 3. Clear local interaction state & dirty registry
       setDirtySet(new Set());
-      // 4. Activate new district — triggers District B queries
+      // 4. Activate new district context
       setActiveDistrictId(nextId);
     },
     [queryClient]
@@ -98,9 +103,12 @@ export function DistrictProvider({ children }: { children: ReactNode }) {
     [dirtySet, executeSwitch]
   );
 
-  const setActiveDistrictDirectly = useCallback((id: string | null) => {
-    setActiveDistrictId(id);
-  }, []);
+  const setActiveDistrictDirectly = useCallback(
+    (id: string | null) => {
+      void executeSwitch(id);
+    },
+    [executeSwitch]
+  );
 
   const confirmDiscard = useCallback(() => {
     if (pendingTransition) {

@@ -62,6 +62,27 @@ describe('District API Contracts', () => {
       }
     });
 
+    it('accepts null region and transforms it to undefined', () => {
+      const payload = {
+        name: 'Учтепа',
+        region: null,
+      };
+      const result = CreateDistrictRequestSchema.safeParse(payload);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.name).toBe('Учтепа');
+        expect(result.data.region).toBeUndefined();
+      }
+    });
+
+    it('returns custom Uzbek error message when name is omitted', () => {
+      const result = CreateDistrictRequestSchema.safeParse({});
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.errors[0]?.message).toBe('Туман номи киритилиши шарт.');
+      }
+    });
+
     it('trims district name before checking length (P1-C)', () => {
       // "  a  " trimmed has length 1, which must fail the >= 2 check
       const payload = {
