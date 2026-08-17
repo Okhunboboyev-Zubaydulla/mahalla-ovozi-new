@@ -93,7 +93,7 @@ Prefer `git merge` over `git squash` unless squash explicitly requested.
 Uncommitted changes = user's review state. Keep changes uncommitted until asked so the diff stays clean.
 
 ## MODULE: WORKFLOW
-Read existing code + relevant project instructions before editing.
+Read existing code + relevant project instructions before deciding, editing or implementing.
 Smallest useful diff; change only needed lines; no unrelated improvements unless asked.
 Match existing repo style even if it differs from preference. New code must look like the same author.
 Keep files small/cohesive. Split by feature/responsibility if project has no established structure.
