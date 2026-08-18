@@ -9,35 +9,21 @@ import {
   Alert,
 } from 'antd';
 import { PlusOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { districtClient } from '../district/district-client.js';
 import { useDistrict } from '../district/district-context.js';
 import { CreateDistrictDrawer } from '../components/CreateDistrictDrawer.js';
 import { District } from '@mahalla-ovozi/api-contracts';
+import { formatTashkentDate } from '../lib/formatters.js';
 
 const { Title, Paragraph } = Typography;
 
-function formatTashkentDate(isoString: string): string {
-  try {
-    const date = new Date(isoString);
-    return new Intl.DateTimeFormat('uz-UZ', {
-      timeZone: 'Asia/Tashkent',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date);
-  } catch {
-    return isoString;
-  }
-}
-
 export const DistrictsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(searchParams.get('action') === 'create');
-  const { activeDistrictId, switchDistrict } = useDistrict();
+  const { activeDistrictId, switchDistrict, attemptTransition } = useDistrict();
 
   useEffect(() => {
     if (searchParams.get('action') === 'create') {
@@ -95,22 +81,40 @@ export const DistrictsPage: React.FC = () => {
       key: 'actions',
       render: (_: unknown, record: District) => {
         const isSelected = activeDistrictId === record.id;
-        if (isSelected) {
-          return (
-            <Tag color="success" icon={<CheckCircleOutlined />}>
-              Танланган
-            </Tag>
-          );
-        }
         return (
-          <Button
-            type="link"
-            aria-label={`Танлаш: ${record.name}`}
-            onClick={() => void switchDistrict(record.id)}
-            style={{ padding: 0 }}
-          >
-            Танлаш
-          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isSelected ? (
+              <Tag color="success" icon={<CheckCircleOutlined />}>
+                Танланган
+              </Tag>
+            ) : (
+              <Button
+                type="link"
+                aria-label={`Танлаш: ${record.name}`}
+                onClick={() => void switchDistrict(record.id)}
+                style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
+              >
+                Танлаш
+              </Button>
+            )}
+            {record.status === 'SETUP_INCOMPLETE' && (
+              <Button
+                type="link"
+                aria-label={`Созлаш: ${record.name}`}
+                onClick={() => {
+                  attemptTransition(async () => {
+                    if (!isSelected) {
+                      await switchDistrict(record.id);
+                    }
+                    navigate('/');
+                  });
+                }}
+                style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
+              >
+                Созлаш
+              </Button>
+            )}
+          </div>
         );
       },
     },

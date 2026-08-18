@@ -15,6 +15,13 @@
       "when": 1786961316476,
       "tag": "0001_wise_the_order",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787033390352,
+      "tag": "0002_strong_reavers",
+      "breakpoints": true
     }
   ]
 }

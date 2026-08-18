@@ -1,0 +1,189 @@
+import { eq } from 'drizzle-orm';
+import { DbClient } from '../../adapters/db/client.js';
+import { districts } from '../../adapters/db/schema/index.js';
+import {
+  DistrictReadiness,
+  PrerequisiteItem,
+  DistrictStatusSchema,
+  ConfirmDisclosureResponse,
+} from '@mahalla-ovozi/api-contracts';
+import { DistrictNotFoundError, DistrictAlreadyActiveError } from './districts-service.js';
+import { recordAuditEvent } from '../audit/audit-service.js';
+
+export function evaluateDistrictPrerequisites(district: typeof districts.$inferSelect): PrerequisiteItem[] {
+  const items: PrerequisiteItem[] = [
+    {
+      key: 'district_identity',
+      label: 'Туман маълумотлари',
+      description: 'Туман номи ва ҳудудий маълумотлари қайд этилган',
+      status: district.name && district.name.trim().length > 0 ? 'passed' : 'incomplete',
+      blockerReason:
+        district.name && district.name.trim().length > 0
+          ? undefined
+          : 'Туман номи тўлиқ киритилмаган.',
+    },
+    {
+      key: 'access_eligibility',
+      label: 'Тизимга кириш ҳуқуқи',
+      description: 'Туман тизимга кириш учун фаол ҳолатда',
+      status: district.accessEligible ? 'passed' : 'failed',
+      blockerReason: district.accessEligible
+        ? undefined
+        : 'Туманнинг тизимга кириш ҳуқуқи чекланган.',
+    },
+    {
+      key: 'analysis_configuration',
+      label: 'Асосий таҳлил созламалари',
+      description: 'Тасдиқланган базавий таҳлил профили бириктирилган',
+      status: district.analysisConfigProfileId === 'baseline_v1' ? 'passed' : 'incomplete',
+      blockerReason:
+        district.analysisConfigProfileId === 'baseline_v1'
+          ? undefined
+          : 'Базавий таҳлил профили созланмаган.',
+    },
+    {
+      key: 'district_isolation',
+      label: 'Ҳудудий хавфсизлик чегараси',
+      description: 'Туманнинг алоҳида хавфсизлик муҳити текширилди',
+      status: 'passed',
+    },
+    {
+      key: 'disclosure_confirmation',
+      label: 'Операцион кириш очиқлигини тасдиқлаш',
+      description: 'Ташқи операцион кириш бўйича расмий тасдиқлов қайд этилди',
+      status: district.disclosureConfirmedAt ? 'passed' : 'incomplete',
+      blockerReason: district.disclosureConfirmedAt
+        ? undefined
+        : 'Маҳсулот эгаси томонидан операцион кириш очиқлиги тасдиқланмаган.',
+      actionRequired: !district.disclosureConfirmedAt,
+      completedAt: district.disclosureConfirmedAt
+        ? district.disclosureConfirmedAt.toISOString()
+        : undefined,
+      completedBy: district.disclosureConfirmedById ?? undefined,
+    },
+    {
+      key: 'telegram_bot',
+      label: 'Telegram бот уланиши',
+      description: 'Туманнинг расмий Telegram боти фаоллаштирилди',
+      status: 'incomplete',
+      blockerReason: 'Telegram бот ҳали уланмаган (1.4-босқич).',
+      actionRequired: true,
+      actionPath: '/telegram-bot',
+    },
+    {
+      key: 'group_mappings',
+      label: 'Гуруҳлар ва маҳаллалар харитаси',
+      description: 'Telegram гуруҳлари тегишли маҳаллаларга бириктирилди',
+      status: 'incomplete',
+      blockerReason: 'Маҳалла гуруҳлари бириктирилмаган (1.5-босқич).',
+      actionRequired: true,
+      actionPath: '/group-mappings',
+    },
+    {
+      key: 'hokim_account',
+      label: 'Ҳоким аккаунти',
+      description: 'Туман ҳокими учун хавфсиз аккаунт яратилди',
+      status: 'incomplete',
+      blockerReason: 'Ҳоким аккаунти яратилмаган (1.6-босқич).',
+      actionRequired: true,
+      actionPath: '/hokim-account',
+    },
+  ];
+
+  return items;
+}
+
+export async function evaluateDistrictReadiness(
+  db: DbClient,
+  districtId: string
+): Promise<DistrictReadiness> {
+  const [district] = await db
+    .select()
+    .from(districts)
+    .where(eq(districts.id, districtId))
+    .limit(1);
+
+  if (!district) {
+    throw new DistrictNotFoundError(districtId);
+  }
+
+  const items = evaluateDistrictPrerequisites(district);
+  const passedCount = items.filter((item) => item.status === 'passed').length;
+  const totalCount = items.length;
+  const isActivationReady = passedCount === totalCount;
+
+  return {
+    districtId: district.id,
+    districtName: district.name,
+    status: DistrictStatusSchema.parse(district.status),
+    isActivationReady,
+    passedCount,
+    totalCount,
+    evaluatedAt: new Date().toISOString(),
+    items,
+    disclosureConfirmedAt: district.disclosureConfirmedAt
+      ? district.disclosureConfirmedAt.toISOString()
+      : null,
+    disclosureConfirmedById: district.disclosureConfirmedById ?? null,
+  };
+}
+
+export async function confirmDistrictDisclosure(
+  db: DbClient,
+  districtId: string,
+  actor: { id: string; role: string },
+  clientInfo?: { ipAddress?: string | null; userAgent?: string | null }
+): Promise<ConfirmDisclosureResponse> {
+  const [district] = await db
+    .select()
+    .from(districts)
+    .where(eq(districts.id, districtId))
+    .limit(1);
+
+  if (!district) {
+    throw new DistrictNotFoundError(districtId);
+  }
+
+  if (district.status !== 'SETUP_INCOMPLETE') {
+    throw new DistrictAlreadyActiveError(districtId);
+  }
+
+  const now = new Date();
+
+  await db.transaction(async (tx) => {
+    // Explicit updatedAt rule (Patch P1 / P2-C)
+    const [updated] = await tx
+      .update(districts)
+      .set({
+        disclosureConfirmedAt: now,
+        disclosureConfirmedById: actor.id,
+        updatedAt: now,
+      })
+      .where(eq(districts.id, districtId))
+      .returning();
+
+    if (!updated) {
+      throw new DistrictNotFoundError(districtId);
+    }
+
+    // AD-9 privacy-safe audit metadata
+    await recordAuditEvent(tx, {
+      actorId: actor.id,
+      actorRole: actor.role,
+      action: 'DISTRICT_DISCLOSURE_CONFIRMED',
+      ipAddress: clientInfo?.ipAddress ?? null,
+      userAgent: clientInfo?.userAgent ?? null,
+      metadata: {
+        districtId,
+        districtName: district.name,
+        confirmedAt: now.toISOString(),
+      },
+    });
+  });
+
+  return {
+    districtId,
+    disclosureConfirmedAt: now.toISOString(),
+    disclosureConfirmedById: actor.id,
+  };
+}

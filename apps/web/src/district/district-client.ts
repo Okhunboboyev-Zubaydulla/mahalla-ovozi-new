@@ -3,9 +3,13 @@ import {
   CreateDistrictResponse,
   ListDistrictsResponse,
   GetDistrictResponse,
+  GetDistrictReadinessResponse,
+  ConfirmDisclosureResponse,
   CreateDistrictResponseSchema,
   ListDistrictsResponseSchema,
   GetDistrictResponseSchema,
+  GetDistrictReadinessResponseSchema,
+  ConfirmDisclosureResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
 
@@ -33,11 +37,32 @@ export const districtClient = {
 
   getDistrict(districtId: string): Promise<GetDistrictResponse> {
     return request<GetDistrictResponse>(
-      `/api/v1/districts/${districtId}`,
+      `/api/v1/districts/${encodeURIComponent(districtId)}`,
       {
         method: 'GET',
       },
       GetDistrictResponseSchema
     );
   },
+
+  getDistrictReadiness(districtId: string): Promise<GetDistrictReadinessResponse> {
+    return request<GetDistrictReadinessResponse>(
+      `/api/v1/districts/${encodeURIComponent(districtId)}/readiness`,
+      {
+        method: 'GET',
+      },
+      GetDistrictReadinessResponseSchema
+    );
+  },
+
+  confirmDisclosure(districtId: string): Promise<ConfirmDisclosureResponse> {
+    return request<ConfirmDisclosureResponse>(
+      `/api/v1/districts/${encodeURIComponent(districtId)}/disclosure-confirmation`,
+      {
+        method: 'POST',
+      },
+      ConfirmDisclosureResponseSchema
+    );
+  },
 };
+

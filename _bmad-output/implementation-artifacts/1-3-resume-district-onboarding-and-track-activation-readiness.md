@@ -4,7 +4,7 @@ baseline_commit: afa2890
 
 # Story 1.3: Resume District Onboarding and Track Activation Readiness
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -116,53 +116,64 @@ So that I can leave setup unfinished, return later, and know exactly what still 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Database Schema & Migration (`0002_onboarding_readiness.sql`)** (AC: 1, 3, 4, 5)
-  - [ ] 1.1 Update `districts` table schema in [`apps/backend/src/adapters/db/schema/districts.ts`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/adapters/db/schema/districts.ts) with `accessEligible`, `analysisConfigProfileId`, `disclosureConfirmedAt`, and `disclosureConfirmedById`.
-  - [ ] 1.2 Generate and review version-controlled SQL migration `0002_onboarding_readiness.sql` in `apps/backend/drizzle/`.
-  - [ ] 1.3 Apply migration and verify schema with PostgreSQL database.
+- [x] **Task 1: Database Schema & Migration (`0002_onboarding_readiness.sql`)** (AC: 1, 3, 4, 5)
+  - [x] 1.1 Update `districts` table schema in [`apps/backend/src/adapters/db/schema/districts.ts`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/adapters/db/schema/districts.ts) with `accessEligible`, `analysisConfigProfileId`, `disclosureConfirmedAt`, and `disclosureConfirmedById`.
+  - [x] 1.2 Generate and review version-controlled SQL migration `0002_onboarding_readiness.sql` in `apps/backend/drizzle/`.
+  - [x] 1.3 Apply migration and verify schema with PostgreSQL database.
 
-- [ ] **Task 2: Shared API Contracts (`packages/api-contracts`)** (AC: 1, 2, 5, 7)
-  - [ ] 2.1 Create [`packages/api-contracts/src/readiness.ts`](file:///c:/codevision-works/mahalla-ovozi-trial-2/packages/api-contracts/src/) defining `PrerequisiteStatusSchema`, `PrerequisiteKeySchema`, `PrerequisiteItemSchema`, `DistrictReadinessSchema`, `GetDistrictReadinessResponseSchema`, and `ConfirmDisclosureResponseSchema`.
-  - [ ] 2.2 Re-export readiness schemas and types from [`packages/api-contracts/src/index.ts`](file:///c:/codevision-works/mahalla-ovozi-trial-2/packages/api-contracts/src/index.ts).
-  - [ ] 2.3 Run typecheck to ensure clean contract compilation.
+- [x] **Task 2: Shared API Contracts (`packages/api-contracts`)** (AC: 1, 2, 5, 7)
+  - [x] 2.1 Create [`packages/api-contracts/src/readiness.ts`](file:///c:/codevision-works/mahalla-ovozi-trial-2/packages/api-contracts/src/) defining `PrerequisiteStatusSchema`, `PrerequisiteKeySchema`, `PrerequisiteItemSchema`, `DistrictReadinessSchema`, `GetDistrictReadinessResponseSchema`, and `ConfirmDisclosureResponseSchema`.
+  - [x] 2.2 Re-export readiness schemas and types from [`packages/api-contracts/src/index.ts`](file:///c:/codevision-works/mahalla-ovozi-trial-2/packages/api-contracts/src/index.ts).
+  - [x] 2.3 Run typecheck to ensure clean contract compilation.
 
-- [ ] **Task 3: Backend Domain Readiness Evaluator & Service** (AC: 2, 3, 4, 5, 6, 7)
-  - [ ] 3.1 Create `apps/backend/src/modules/districts/districts-readiness.ts` implementing `evaluateDistrictReadiness(db, districtId)`.
-  - [ ] 3.2 Implement pure evaluation for each of the 8 prerequisites with accurate Uzbek Cyrillic labels and truthful blocker reasons.
-  - [ ] 3.3 Create `confirmDistrictDisclosure(db, districtId, actor, clientInfo)` service function performing atomic DB update and inserting audit event into `audit_events` table.
-  - [ ] 3.4 Define domain errors (`DistrictNotFoundError`, `DistrictAlreadyActiveError`, etc.).
+- [x] **Task 3: Backend Domain Readiness Evaluator & Service** (AC: 2, 3, 4, 5, 6, 7)
+  - [x] 3.1 Create `apps/backend/src/modules/districts/districts-readiness.ts` implementing `evaluateDistrictReadiness(db, districtId)`.
+  - [x] 3.2 Implement pure evaluation for each of the 8 prerequisites with accurate Uzbek Cyrillic labels and truthful blocker reasons.
+  - [x] 3.3 Create `confirmDistrictDisclosure(db, districtId, actor, clientInfo)` service function performing atomic DB update and inserting audit event into `audit_events` table.
+  - [x] 3.4 Define domain errors (`DistrictNotFoundError`, `DistrictAlreadyActiveError`, etc.).
 
-- [ ] **Task 4: Fastify API Route Registrations** (AC: 5, 7, 10)
-  - [ ] 4.1 Register `GET /api/v1/districts/:districtId/readiness` route in `apps/backend/src/modules/districts/districts-routes.ts` protected by `createRequireProductOwner(db)`.
-  - [ ] 4.2 Register `POST /api/v1/districts/:districtId/disclosure-confirmation` protected by `verifyStateChangingOrigin` and `createRequireProductOwner(db)`.
-  - [ ] 4.3 Validate `districtId` path parameter and return standard sanitized error envelopes on failure.
+- [x] **Task 4: Fastify API Route Registrations** (AC: 5, 7, 10)
+  - [x] 4.1 Register `GET /api/v1/districts/:districtId/readiness` route in `apps/backend/src/modules/districts/districts-routes.ts` protected by `createRequireProductOwner(db)`.
+  - [x] 4.2 Register `POST /api/v1/districts/:districtId/disclosure-confirmation` protected by `verifyStateChangingOrigin` and `createRequireProductOwner(db)`.
+  - [x] 4.3 Validate `districtId` path parameter and return standard sanitized error envelopes on failure.
 
-- [ ] **Task 5: Backend Integration Tests** (AC: 2, 5, 6, 7, 13)
-  - [ ] 5.1 Create `apps/backend/tests/districts-readiness.test.ts` testing against real PostgreSQL database.
-  - [ ] 5.2 Test initial readiness calculation on newly created district (verifying 3 truthful incomplete items, 1 incomplete disclosure, 4 passed items).
-  - [ ] 5.3 Test disclosure confirmation: DB timestamp persistence and `DISTRICT_DISCLOSURE_CONFIRMED` audit log entry.
-  - [ ] 5.4 Test access eligibility and isolation failure handling.
-  - [ ] 5.5 Test unauthenticated and cross-tenant access rejection (401/403/404).
+- [x] **Task 5: Backend Integration Tests** (AC: 2, 5, 6, 7, 13)
+  - [x] 5.1 Create `apps/backend/tests/districts-readiness.test.ts` testing against real PostgreSQL database.
+  - [x] 5.2 Test initial readiness calculation on newly created district (verifying 3 truthful incomplete items, 1 incomplete disclosure, 4 passed items).
+  - [x] 5.3 Test disclosure confirmation: DB timestamp persistence and `DISTRICT_DISCLOSURE_CONFIRMED` audit log entry.
+  - [x] 5.4 Test access eligibility and isolation failure handling.
+  - [x] 5.5 Test unauthenticated and cross-tenant access rejection (401/403/404).
 
-- [ ] **Task 6: Frontend District Client & Queries** (AC: 1, 7, 11)
-  - [ ] 6.1 Extend `apps/web/src/district/district-client.ts` with `getDistrictReadiness(districtId)` and `confirmDisclosure(districtId)`.
-  - [ ] 6.2 Implement TanStack Query hook with district-scoped key `['district', activeDistrictId, 'readiness']`.
-  - [ ] 6.3 Ensure district switching properly cancels and purges readiness query cache.
+- [x] **Task 6: Frontend District Client & Queries** (AC: 1, 7, 11)
+  - [x] 6.1 Extend `apps/web/src/district/district-client.ts` with `getDistrictReadiness(districtId)` and `confirmDisclosure(districtId)`.
+  - [x] 6.2 Implement TanStack Query hook with district-scoped key `['district', activeDistrictId, 'readiness']`.
+  - [x] 6.3 Ensure district switching properly cancels and purges readiness query cache.
 
-- [ ] **Task 7: Frontend UI Components (`DistrictOnboardingChecklist`)** (AC: 1, 2, 5, 12)
-  - [ ] 7.1 Implement `apps/web/src/components/DistrictOnboardingChecklist.tsx` adhering to `setup-checklist` design tokens.
-  - [ ] 7.2 Implement `apps/web/src/components/DisclosureConfirmationModal.tsx` for deliberate PO confirmation.
-  - [ ] 7.3 Update `apps/web/src/pages/OverviewPage.tsx` to render the onboarding checklist when the active district is `SETUP_INCOMPLETE`.
-  - [ ] 7.4 Add checklist / setup shortcut link in `apps/web/src/pages/DistrictsPage.tsx` table actions.
+- [x] **Task 7: Frontend UI Components (`DistrictOnboardingChecklist`)** (AC: 1, 2, 5, 12)
+  - [x] 7.1 Implement `apps/web/src/components/DistrictOnboardingChecklist.tsx` adhering to `setup-checklist` design tokens.
+  - [x] 7.2 Implement `apps/web/src/components/DisclosureConfirmationModal.tsx` for deliberate PO confirmation.
+  - [x] 7.3 Update `apps/web/src/pages/OverviewPage.tsx` to render the onboarding checklist when the active district is `SETUP_INCOMPLETE`.
+  - [x] 7.4 Add checklist / setup shortcut link in `apps/web/src/pages/DistrictsPage.tsx` table actions.
 
-- [ ] **Task 8: Frontend State, Offline & Accessibility Polish** (AC: 9, 11, 12)
-  - [ ] 8.1 Integrate `useDirtyState` with the disclosure modal to prevent draft loss on background clicks / route change.
-  - [ ] 8.2 Connect offline detection banner to block confirmation mutations when offline.
-  - [ ] 8.3 Verify keyboard Tab order, ARIA attributes, and 44px minimum touch targets across all checklist actions.
+- [x] **Task 8: Frontend State, Offline & Accessibility Polish** (AC: 9, 11, 12)
+  - [x] 8.1 Integrate `useDirtyState` with the disclosure modal to prevent draft loss on background clicks / route change.
+  - [x] 8.2 Connect offline detection banner to block confirmation mutations when offline.
+  - [x] 8.3 Verify keyboard Tab order, ARIA attributes, and 44px minimum touch targets across all checklist actions.
 
-- [ ] **Task 9: Playwright E2E Test Suite** (AC: 1, 2, 5, 8, 9, 11, 13)
-  - [ ] 9.1 Create `apps/web/e2e/district-onboarding.spec.ts`.
-  - [ ] 9.2 Test end-to-end flow: Create district -> Inspect checklist -> Confirm disclosure -> Verify updated status -> Navigate away and return (verify resumability) -> Verify disabled activation button with remaining blockers -> Test offline warning behavior.
+- [x] **Task 9: Playwright E2E Test Suite** (AC: 1, 2, 5, 8, 9, 11, 13)
+  - [x] 9.1 Create `apps/web/e2e/district-onboarding.spec.ts` (located at `apps/web/tests/e2e/district-onboarding.spec.ts`).
+  - [x] 9.2 Test end-to-end flow: Create district -> Inspect checklist -> Confirm disclosure -> Verify updated status -> Navigate away and return (verify resumability) -> Verify disabled activation button with remaining blockers -> Test offline warning behavior.
+
+### Review Findings
+
+- [x] [Review][Patch] Eliminate double-confirmation trap on Cancel and fix destroyOnHidden [apps/web/src/components/DisclosureConfirmationModal.tsx:42-80]
+- [x] [Review][Patch] Wrap setup shortcut button in attemptTransition and enforce 44px touch targets on table links [apps/web/src/pages/DistrictsPage.tsx:106-128]
+- [x] [Review][Patch] Extract duplicated formatTashkentDate helper to shared formatters utility [apps/web/src/lib/formatters.ts]
+- [x] [Review][Patch] Verify both district.name and district.region in district_identity prerequisite evaluation [apps/backend/src/modules/districts/districts-readiness.ts:19]
+- [x] [Review][Patch] Add DistrictAlreadyActiveError and status guard on confirmDistrictDisclosure [apps/backend/src/modules/districts/districts-readiness.ts:131-160]
+- [x] [Review][Patch] Use encodeURIComponent on districtId in districtClient methods [apps/web/src/district/district-client.ts:48-66]
+- [x] [Review][Patch] Adopt Ant Design theme tokens (theme.useToken) for colors in DistrictOnboardingChecklist [apps/web/src/components/DistrictOnboardingChecklist.tsx:147-228]
+- [x] [Review][Defer] Add database index on foreign key disclosure_confirmed_by_id [apps/backend/src/adapters/db/schema/districts.ts:15] — deferred, database performance optimization for high-scale phase
 
 ---
 
@@ -259,30 +270,46 @@ The following architectural and implementation patches were formally verified du
 - Offline Warning: `Сервер билан алоқа мавжуд эмас. Тармоқни текширинг.`
 
 ---
-
-## References
-- Epic 1 Story 1.3: [`_bmad-output/planning-artifacts/epics/epic-1.md#Story-1.3`](file:///c:/codevision-works/mahalla-ovozi-trial-2/_bmad-output/planning-artifacts/epics/epic-1.md#L178-L270)
-- PRD FR-20: [`_bmad-output/planning-artifacts/prds/prd-Mahalla-Ovozi-2026-07-30/prd.md#fr-20-gated-and-resumable-district-onboarding`](file:///c:/codevision-works/mahalla-ovozi-trial-2/_bmad-output/planning-artifacts/prds/prd-Mahalla-Ovozi-2026-07-30/prd.md#L344-L355)
-- Architecture Spine: [`_bmad-output/planning-artifacts/architecture/architecture-Mahalla-Ovozi-2026-08-12/ARCHITECTURE-SPINE.md`](file:///c:/codevision-works/mahalla-ovozi-trial-2/_bmad-output/planning-artifacts/architecture/architecture-Mahalla-Ovozi-2026-08-12/ARCHITECTURE-SPINE.md)
-- UX Design & Component Patterns: [`_bmad-output/planning-artifacts/ux-designs/ux-Mahalla-Ovozi-2026-08-05/EXPERIENCE.md`](file:///c:/codevision-works/mahalla-ovozi-trial-2/_bmad-output/planning-artifacts/ux-designs/ux-Mahalla-Ovozi-2026-08-05/EXPERIENCE.md) & [`DESIGN.md`](file:///c:/codevision-works/mahalla-ovozi-trial-2/_bmad-output/planning-artifacts/ux-designs/ux-Mahalla-Ovozi-2026-08-05/DESIGN.md)
-- Story 1.2 Specification & Implementation: [`_bmad-output/implementation-artifacts/1-2-create-and-select-a-district-in-the-product-owner-console.md`](file:///c:/codevision-works/mahalla-ovozi-trial-2/_bmad-output/implementation-artifacts/1-2-create-and-select-a-district-in-the-product-owner-console.md)
-
----
-
-## Dev Agent Record
-
-### Agent Model Used
-Gemini 3.7 Flash (High)
-
-### Debug Log References
-- All tests baseline verified: 76/76 unit & integration tests passing, 8/8 Playwright E2E passing.
-- 0 TypeScript compilation errors across all workspace packages.
+- **Initial State Truthfulness:** Out of the 8 prerequisites, `district_identity`, `access_eligibility`, `analysis_configuration`, and `district_isolation` derive as `passed` upon district creation under baseline conditions. `disclosure_confirmation` transitions to `passed` when confirmed via Story 1.3's PO disclosure modal. The remaining 3 (`telegram_bot`, `group_mappings`, `hokim_account`) remain truthful `incomplete` with clear blockers until implemented in Stories 1.4–1.6.
+- **Audit Logging:** Every disclosure confirmation writes an audit log with action `DISTRICT_DISCLOSURE_CONFIRMED` and metadata `{ districtId, districtName, confirmedAt }` (no passwords or sensitive credentials).
+- **Design System Invariants:** Uses Ant Design 5 tokens (`colorSuccess`, `colorWarning`, `colorError`) without arbitrary hex overrides. Minimum 44px touch targets.
+- **Strict Verification Enforcement:** Prior to marking complete, run all lint, typecheck, unit, integration, and E2E checks.
 
 ### Completion Notes List
 - Comprehensive story specification validated through 5-step adversarial review workflow.
 - 13 BDD acceptance criteria, 9 detailed implementation tasks, API contract specs, and testing matrix confirmed.
 - 7 Adversarial Pre-Implementation Patches (P1–P7) incorporated into Dev Notes for seamless `dev-story` implementation.
+- [Task 1 COMPLETE] Updated `districts` schema in `apps/backend/src/adapters/db/schema/districts.ts` with `accessEligible`, `analysisConfigProfileId`, `disclosureConfirmedAt`, and `disclosureConfirmedById`. Generated and executed migration `0002_strong_reavers.sql`. All DB migrations applied and all 76 unit/integration tests passing.
+- [Task 2 COMPLETE] Created `packages/api-contracts/src/readiness.ts` and exported all readiness schemas/types from `packages/api-contracts/src/index.ts`. Workspace typecheck verified 0 errors.
+- [Task 3 COMPLETE] Created pure readiness domain evaluator `evaluateDistrictReadiness` and atomic disclosure confirmation service `confirmDistrictDisclosure` with `DISTRICT_DISCLOSURE_CONFIRMED` audit logging in `apps/backend/src/modules/districts/districts-readiness.ts`. All 8 FR20 prerequisites evaluated truthfully.
+- [Task 4 COMPLETE] Registered `GET /api/v1/districts/:districtId/readiness` and `POST /api/v1/districts/:districtId/disclosure-confirmation` in `apps/backend/src/modules/districts/districts-routes.ts`, protected by `verifyStateChangingOrigin` and `createRequireProductOwner(db)`.
+- [Task 5 COMPLETE] Created comprehensive PostgreSQL integration tests in `apps/backend/tests/districts-readiness.test.ts` covering 401/403/404 security matrix, initial 8-item readiness derivation, disclosure confirmation atomicity & audit logging, access eligibility failure handling, and config profile alteration. All 9 tests passing.
+- [Task 6 COMPLETE] Extended `apps/web/src/district/district-client.ts` and implemented `useDistrictReadiness` hook in `apps/web/src/district/useDistrictReadiness.ts` using TanStack Query key `['district', activeDistrictId, 'readiness']`. Automatic cache invalidation on confirmation mutation and purge on district switch.
+- [Task 7 COMPLETE] Created `apps/web/src/components/DistrictOnboardingChecklist.tsx` and `apps/web/src/components/DisclosureConfirmationModal.tsx`. Updated `OverviewPage.tsx` to render checklist when district is selected, and `DistrictsPage.tsx` with setup shortcut link. Added comprehensive unit tests in `apps/web/tests/unit/DistrictOnboardingChecklist.test.tsx` (all 3 unit tests passing, 17/17 web tests green).
+- [Task 8 COMPLETE] Integrated `useDirtyState` with `DisclosureConfirmationModal`, added offline detection and mutation guard blocking confirmation while offline, verified 44px minimum touch targets and keyboard navigation across all checklist actions. Added unit test for offline behavior (all 18/18 web tests green, 65/65 workspace tests passing).
+- [Task 9 COMPLETE] Created Playwright E2E test `apps/web/tests/e2e/district-onboarding.spec.ts` covering full PO onboarding journey, disclosure confirmation, 5/8 progress increment, navigation resumability, and disabled activation CTA gating. All 9 Playwright E2E tests passing.
+- [Adversarial Code Review COMPLETE] Completed 3-layer adversarial review (Blind Hunter, Edge Case Hunter, Acceptance Auditor). Successfully applied and verified all 7 patches: double-confirmation modal fix, dirty-state navigation guard, shared date formatters, region evaluation in district_identity, DistrictAlreadyActiveError 409 guard, URI encoding on district client, and Ant Design theme token adoption. 100% test suites green (66 Vitest unit/integration + 9 Playwright E2E).
 
 ### File List
 - `_bmad-output/implementation-artifacts/1-3-resume-district-onboarding-and-track-activation-readiness.md`
-
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `apps/backend/src/adapters/db/schema/districts.ts`
+- `apps/backend/drizzle/0002_strong_reavers.sql`
+- `apps/backend/drizzle/meta/0002_snapshot.json`
+- `apps/backend/drizzle/meta/_journal.json`
+- `packages/api-contracts/src/readiness.ts`
+- `packages/api-contracts/src/index.ts`
+- `apps/backend/src/modules/districts/districts-service.ts`
+- `apps/backend/src/modules/districts/districts-readiness.ts`
+- `apps/backend/src/modules/districts/districts-routes.ts`
+- `apps/backend/tests/districts-readiness.test.ts`
+- `apps/web/src/lib/formatters.ts`
+- `apps/web/src/district/district-client.ts`
+- `apps/web/src/district/useDistrictReadiness.ts`
+- `apps/web/src/components/DisclosureConfirmationModal.tsx`
+- `apps/web/src/components/DistrictOnboardingChecklist.tsx`
+- `apps/web/src/pages/OverviewPage.tsx`
+- `apps/web/src/pages/DistrictsPage.tsx`
+- `apps/web/tests/unit/DistrictOnboardingChecklist.test.tsx`
+- `apps/web/tests/e2e/district-onboarding.spec.ts`

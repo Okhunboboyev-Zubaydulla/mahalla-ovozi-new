@@ -9,7 +9,12 @@ import {
   createDistrict,
   DistrictNameExistsError,
   DistrictNotFoundError,
+  DistrictAlreadyActiveError,
 } from './districts-service.js';
+import {
+  evaluateDistrictReadiness,
+  confirmDistrictDisclosure,
+} from './districts-readiness.js';
 
 export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): void {
   // P3-D & P3-E: Encapsulate district routes in a plugin scope so requireProductOwner only applies here
@@ -93,5 +98,93 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
         }
       }
     );
+
+    // 4. Get district activation readiness
+    scope.get(
+      '/api/v1/districts/:districtId/readiness',
+      async (req: FastifyRequest<{ Params: { districtId: string } }>, reply: FastifyReply) => {
+        const { districtId } = req.params;
+        if (!districtId || typeof districtId !== 'string' || districtId.trim() === '') {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Туман идентификатори талаб қилинади.',
+            },
+          });
+        }
+
+        try {
+          const readiness = await evaluateDistrictReadiness(db, districtId);
+          return reply.status(200).send({ readiness });
+        } catch (err: unknown) {
+          if (err instanceof DistrictNotFoundError) {
+            return reply.status(404).send({
+              error: {
+                code: err.code,
+                message: 'Туман топилмади.',
+              },
+            });
+          }
+          throw err;
+        }
+      }
+    );
+
+    // 5. Confirm district external disclosure
+    scope.post(
+      '/api/v1/districts/:districtId/disclosure-confirmation',
+      async (req: FastifyRequest<{ Params: { districtId: string } }>, reply: FastifyReply) => {
+        const { districtId } = req.params;
+        if (!districtId || typeof districtId !== 'string' || districtId.trim() === '') {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Туман идентификатори талаб қилинади.',
+            },
+          });
+        }
+
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHENTICATED',
+              message: 'Авторизациядан ўтилмаган.',
+            },
+          });
+        }
+
+        try {
+          const result = await confirmDistrictDisclosure(
+            db,
+            districtId,
+            req.actor,
+            {
+              ipAddress: req.ip || null,
+              userAgent: (req.headers['user-agent'] as string) || null,
+            }
+          );
+          return reply.status(200).send(result);
+        } catch (err: unknown) {
+          if (err instanceof DistrictNotFoundError) {
+            return reply.status(404).send({
+              error: {
+                code: err.code,
+                message: 'Туман топилмади.',
+              },
+            });
+          }
+          if (err instanceof DistrictAlreadyActiveError) {
+            return reply.status(409).send({
+              error: {
+                code: err.code,
+                message: 'Туман аллақачон фаоллаштирилган.',
+              },
+            });
+          }
+          throw err;
+        }
+      }
+    );
   });
 }
+

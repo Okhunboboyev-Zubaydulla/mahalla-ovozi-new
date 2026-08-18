@@ -33,6 +33,14 @@ export class DistrictCreationError extends Error {
   }
 }
 
+export class DistrictAlreadyActiveError extends Error {
+  readonly code = 'DISTRICT_ALREADY_ACTIVE' as const;
+  constructor(districtId: string) {
+    super(`Туман аллақачон фаоллаштирилган (ID: ${districtId}).`);
+    this.name = 'DistrictAlreadyActiveError';
+  }
+}
+
 export function formatDistrict(row: {
   id: string;
   name: string;

@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, timestamp, index, uniqueIndex, check } from 'drizzle-orm/pg-core';
+import { pgTable, text, boolean, timestamp, index, uniqueIndex, check } from 'drizzle-orm/pg-core';
+import { accounts } from './accounts.js';
 
 export const districts = pgTable(
   'districts',
@@ -8,6 +9,12 @@ export const districts = pgTable(
     name: text('name').notNull(),
     region: text('region'),
     status: text('status').notNull().default('SETUP_INCOMPLETE'),
+    accessEligible: boolean('access_eligible').notNull().default(true),
+    analysisConfigProfileId: text('analysis_config_profile_id').notNull().default('baseline_v1'),
+    disclosureConfirmedAt: timestamp('disclosure_confirmed_at', { withTimezone: true }),
+    disclosureConfirmedById: text('disclosure_confirmed_by_id').references(() => accounts.id, {
+      onDelete: 'set null',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
