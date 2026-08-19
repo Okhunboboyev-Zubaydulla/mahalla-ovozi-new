@@ -10,11 +10,6 @@ Activation: If a skill is clearly relevant — coding skill, persona skill (PM, 
 Framework preference: BMAD method is the primary development framework in this repo. When applicable, prefer available BMAD workflows, personas, phases, and checklists matched to the user's request.
 Scope: Skill instructions apply only while the relevant task is active. When the task ends, revert to standard rules.
 On conflict: skill vs user request → user wins. Skill vs safety/verification → refuse that part and state why.
-## MODULE: LEARNING LOG
-`@.agents/LEARNING_LOG.md` is opt-in.
-If present: read at session start. Append when patterns found, when corrected, or when a useful lesson emerges.
-Only append if user created it from `@.agents/LEARNING_LOG.md.example`.
-Keep entries concise.
 ## MODULE: CHANGE MANAGEMENT (Software Exception)
 Exception to base stop-on-fail: clearly-defined failing tests/CI/lint with obvious root cause → fix autonomously, then report.
 ## MODULE: AUTONOMY & BUG FIXING
@@ -32,13 +27,14 @@ Large refactors (>5 independent files): if harness supports parallel sub-tasks/c
 Phased execution: never multi-file refactor in one response. Complete phase, verify, wait for explicit approval before next. Each phase ≤5 files.
 File reads: cap ~2000 lines/read. Files >500 LOC → read in offset/limit chunks. Do not assume one read = complete.
 Large tool/search outputs may be truncated. If results look incomplete, re-run with narrower scope and state suspected truncation.
+Batching applies to cross-cutting changes and refactors. For TDD and feature development, prefer vertical slicing (see TESTING).
 ## MODULE: CODE STYLE
 Ecosystem: prefer JS/TS; another stack only when JS/TS is unsuitable or clearly superior for the task.
 Package manager: prefer pnpm for new JS/TS tooling; follow existing lockfile/packageManager/workspace config unless migration is approved.
 Comments in English only.
 Prefer functional programming over OOP. Use OOP classes only for connectors/interfaces to external systems.
 Write pure functions: modify return values only, never input params or global state.
-DRY, KISS, YAGNI.
+Architecture: apply KISS, YAGNI, DRY, separation of concerns, SOLID where applicable. On tension: simplicity and YAGNI beat forced DRY, reusability, and speculative scalability; never trade correctness or security for simplicity. Prefer cohesive single-purpose domain logic; keep mutations at clear system boundaries.
 Prefer simple, native, vendor-recommended solutions. Avoid premature abstraction.
 Strict typing for returns, variables, collections, complex data. Validate external/API data at runtime. Require needed fields, ignore unrelated extras. Prefer structured models over loose dicts. Avoid weak types (`Any`, `unknown`, `List[Dict[str, Any]]`).
 Check if logic already exists before writing new code.
@@ -57,11 +53,14 @@ Scope note: "no fallbacks" applies to code-level silent error masking, not to ev
 Respect repo test strategy. Add only minimum useful tests for the change.
 Prefer smoke, integration, e2e over narrow unit/regression. Do not test static text/prompts/config unless behavior depends on them.
 Prefer red-green-refactor when possible.
-No fake/mock tests by default. Use real integrations when practical, even if slightly costly.
+Mock at system boundaries only: external APIs, databases (prefer test DB), time/randomness, file system. Don't mock your own classes/modules/internal collaborators. Use real integrations when practical, even if slightly costly.
 UI tests/automations: stable IDs / test IDs / accessibility IDs, not visible text. Fail fast, no fallback clicks.
 UI/Frontend boundary: Do not manipulate the browser for visual/manual UI verification by default. Run non-interactive checks, then ask the user to manually verify the UI with concise steps, unless browser automation is explicitly approved.
 For substantial behavior changes, bug fixes, or business-critical flows, prefer test-first development when an established test setup exists. Use a code → test → diagnose → fix loop. When checks fail, diagnose whether the cause is implementation, expectation, environment, dependency, or pre-existing state. Fix errors caused by the approved change; report unrelated pre-existing failures separately.
 Do not remove, skip, or weaken verification just to pass checks.
+Test quality: test behavior through public interfaces, not implementation details. Tests should survive refactors. One logical assertion per test.
+Anti-patterns: implementation-coupled tests (mock internal collaborators, test private methods, verify through side channels — test breaks on refactor without behavior change); tautological tests (expected value recomputed the way code does — must come from independent source of truth: known literal, worked example, spec); horizontal slicing (all tests first, then all implementation) — work in vertical slices instead (one test → one implementation → repeat).
+Seams: test at public boundaries only. Confirm seams with user before writing tests for new features or architecture. Exception: regression tests for autonomous bug fixes do not require seam confirmation. See tdd skill in .agents folder for reference when relevant.
 ## MODULE: DEBUGGING
 Form multiple hypotheses before fixing. Validate assumptions with targeted logging/tests. No shotgun debugging.
 ## MODULE: DEPENDENCIES & LIBRARIES
