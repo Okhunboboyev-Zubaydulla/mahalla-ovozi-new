@@ -3,7 +3,7 @@ import { FastifyInstance } from 'fastify';
 import { buildHttpServer } from '../src/entrypoints/http.js';
 import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/client.js';
 import { createOrResetProductOwner } from '../src/modules/auth/account-service.js';
-import { auditEvents, districts, districtTelegramGroups } from '../src/adapters/db/schema/index.js';
+import { auditEvents, districts, districtTelegramGroups, accounts } from '../src/adapters/db/schema/index.js';
 import { PrerequisiteItem } from '@mahalla-ovozi/api-contracts';
 import { eq, desc } from 'drizzle-orm';
 import pg from 'pg';
@@ -394,6 +394,61 @@ describe('Districts Activation Readiness & Disclosure Integration Tests', () => 
 
       // Clean up
       await db.delete(districtTelegramGroups).where(eq(districtTelegramGroups.id, groupId));
+    });
+
+    it('dynamically evaluates Prerequisite 8 (hokim_account) from accounts table (Story 1.6 / AC 13)', async () => {
+      // 1. Initial state: no Hokim account -> incomplete
+      let res = await server.inject({
+        method: 'GET',
+        url: `/api/v1/districts/${testDistrictId}/readiness`,
+        headers: { cookie: authCookie },
+      });
+      let hokimItem = res.json().readiness.items.find((i: any) => i.key === 'hokim_account');
+      expect(hokimItem.status).toBe('incomplete');
+      expect(hokimItem.actionRequired).toBe(true);
+      expect(hokimItem.actionPath).toBe('/hokim-accounts');
+
+      // 2. Create active Hokim account -> passed
+      const username = `hokim_readiness_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`;
+      const createRes = await server.inject({
+        method: 'POST',
+        url: `/api/v1/districts/${testDistrictId}/hokim-account`,
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: authCookie },
+        payload: { username },
+      });
+      expect(createRes.statusCode).toBe(201);
+      const { account } = createRes.json();
+
+      res = await server.inject({
+        method: 'GET',
+        url: `/api/v1/districts/${testDistrictId}/readiness`,
+        headers: { cookie: authCookie },
+      });
+      hokimItem = res.json().readiness.items.find((i: any) => i.key === 'hokim_account');
+      expect(hokimItem.status).toBe('passed');
+      expect(hokimItem.actionRequired).toBe(false);
+      expect(hokimItem.description).toContain(`@${username}`);
+      expect(hokimItem.completedAt).toBeDefined();
+
+      // 3. Disable Hokim account -> transitions back to incomplete
+      const disRes = await server.inject({
+        method: 'POST',
+        url: `/api/v1/districts/${testDistrictId}/hokim-account/disable`,
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: authCookie },
+      });
+      expect(disRes.statusCode).toBe(200);
+
+      res = await server.inject({
+        method: 'GET',
+        url: `/api/v1/districts/${testDistrictId}/readiness`,
+        headers: { cookie: authCookie },
+      });
+      hokimItem = res.json().readiness.items.find((i: any) => i.key === 'hokim_account');
+      expect(hokimItem.status).toBe('incomplete');
+      expect(hokimItem.actionRequired).toBe(true);
+
+      // Clean up
+      await db.delete(accounts).where(eq(accounts.id, account.id));
     });
   });
 });

@@ -386,5 +386,132 @@ describe('Database Schema & Migration Verification', () => {
     // Clean up
     await db.delete(districts).where(eq(districts.id, districtId));
   });
+
+  describe('Story 1.6: Accounts Schema & Hokim Constraints', () => {
+    it('enforces accounts role and status check constraints', async () => {
+      const districtId = `dist_${crypto.randomUUID()}`;
+      await db.insert(districts).values({
+        id: districtId,
+        name: `HokimDistrict_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'SETUP_INCOMPLETE',
+      });
+
+      // Invalid role
+      await expect(
+        db.insert(accounts).values({
+          id: `acc_${crypto.randomUUID()}`,
+          username: `user_${crypto.randomUUID().slice(0, 8)}`,
+          passwordHash: 'dummyhash',
+          role: 'SUPER_ADMIN',
+          status: 'ACTIVE',
+        })
+      ).rejects.toThrow();
+
+      // Invalid status
+      await expect(
+        db.insert(accounts).values({
+          id: `acc_${crypto.randomUUID()}`,
+          username: `user_${crypto.randomUUID().slice(0, 8)}`,
+          passwordHash: 'dummyhash',
+          role: 'PRODUCT_OWNER',
+          status: 'PENDING',
+        })
+      ).rejects.toThrow();
+
+      // Clean up
+      await db.delete(districts).where(eq(districts.id, districtId));
+    });
+
+    it('enforces accounts role-district relationship check constraint', async () => {
+      const districtId = `dist_${crypto.randomUUID()}`;
+      await db.insert(districts).values({
+        id: districtId,
+        name: `HokimRelDistrict_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'SETUP_INCOMPLETE',
+      });
+
+      // PRODUCT_OWNER with districtId must fail
+      await expect(
+        db.insert(accounts).values({
+          id: `acc_${crypto.randomUUID()}`,
+          username: `po_with_district_${crypto.randomUUID().slice(0, 8)}`,
+          passwordHash: 'dummyhash',
+          role: 'PRODUCT_OWNER',
+          status: 'ACTIVE',
+          districtId,
+        })
+      ).rejects.toThrow();
+
+      // DISTRICT_HOKIM without districtId must fail
+      await expect(
+        db.insert(accounts).values({
+          id: `acc_${crypto.randomUUID()}`,
+          username: `hokim_no_district_${crypto.randomUUID().slice(0, 8)}`,
+          passwordHash: 'dummyhash',
+          role: 'DISTRICT_HOKIM',
+          status: 'ACTIVE',
+          districtId: null,
+        })
+      ).rejects.toThrow();
+
+      // Clean up
+      await db.delete(districts).where(eq(districts.id, districtId));
+    });
+
+    it('enforces strict single active Hokim per district partial unique index (AC 12)', async () => {
+      const districtId = `dist_${crypto.randomUUID()}`;
+      await db.insert(districts).values({
+        id: districtId,
+        name: `HokimUniqueDistrict_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'SETUP_INCOMPLETE',
+      });
+
+      const acc1Id = `acc_${crypto.randomUUID()}`;
+      const acc2Id = `acc_${crypto.randomUUID()}`;
+      const acc3Id = `acc_${crypto.randomUUID()}`;
+
+      // 1. First active Hokim creates successfully
+      await db.insert(accounts).values({
+        id: acc1Id,
+        username: `hokim1_${crypto.randomUUID().slice(0, 8)}`,
+        passwordHash: 'dummyhash',
+        role: 'DISTRICT_HOKIM',
+        status: 'ACTIVE',
+        districtId,
+      });
+
+      // 2. Second concurrent active Hokim for same district MUST fail unique constraint
+      await expect(
+        db.insert(accounts).values({
+          id: acc2Id,
+          username: `hokim2_${crypto.randomUUID().slice(0, 8)}`,
+          passwordHash: 'dummyhash',
+          role: 'DISTRICT_HOKIM',
+          status: 'ACTIVE',
+          districtId,
+        })
+      ).rejects.toThrow();
+
+      // 3. Disabling first Hokim allows creating a new active Hokim
+      await db.update(accounts).set({ status: 'DISABLED' }).where(eq(accounts.id, acc1Id));
+
+      await db.insert(accounts).values({
+        id: acc3Id,
+        username: `hokim3_${crypto.randomUUID().slice(0, 8)}`,
+        passwordHash: 'dummyhash',
+        role: 'DISTRICT_HOKIM',
+        status: 'ACTIVE',
+        districtId,
+      });
+
+      // Both disabled and active Hokim coexist for the district
+      const districtAccounts = await db.select().from(accounts).where(eq(accounts.districtId, districtId));
+      expect(districtAccounts).toHaveLength(2);
+
+      // Clean up
+      await db.delete(accounts).where(eq(accounts.districtId, districtId));
+      await db.delete(districts).where(eq(districts.id, districtId));
+    });
+  });
 });
 

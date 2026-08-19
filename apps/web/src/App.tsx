@@ -12,7 +12,7 @@ import { DistrictsPage } from './pages/DistrictsPage.js';
 import { SystemHealthPage } from './pages/placeholders/SystemHealthPage.js';
 import { TelegramSetupPage } from './pages/TelegramSetupPage.js';
 import { SubscriptionsPage } from './pages/placeholders/SubscriptionsPage.js';
-import { HokimAccountsPage } from './pages/placeholders/HokimAccountsPage.js';
+import { HokimAccountsPage } from './pages/HokimAccountsPage.js';
 import { AiOperationsPage } from './pages/placeholders/AiOperationsPage.js';
 import { AuditHistoryPage } from './pages/placeholders/AuditHistoryPage.js';
 import { AppErrorBoundary } from './components/AppErrorBoundary.js';

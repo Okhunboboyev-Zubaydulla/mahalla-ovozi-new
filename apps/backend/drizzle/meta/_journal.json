@@ -36,6 +36,13 @@
       "when": 1787070197250,
       "tag": "0004_icy_vance_astro",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787080000000,
+      "tag": "0005_warm_hokim_accounts",
+      "breakpoints": true
     }
   ]
 }

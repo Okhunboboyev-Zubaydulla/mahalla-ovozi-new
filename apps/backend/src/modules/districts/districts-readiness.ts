@@ -1,9 +1,10 @@
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { DbClient } from '../../adapters/db/client.js';
 import {
   districts,
   districtTelegramBots,
   districtTelegramGroups,
+  accounts,
 } from '../../adapters/db/schema/index.js';
 import {
   DistrictReadiness,
@@ -18,12 +19,15 @@ export function evaluateDistrictPrerequisites(
   district: typeof districts.$inferSelect,
   telegramBot?: typeof districtTelegramBots.$inferSelect | null,
   telegramGroups?: Array<typeof districtTelegramGroups.$inferSelect>,
+  hokimAccount?: typeof accounts.$inferSelect | null,
 ): PrerequisiteItem[] {
   const isBotValid = Boolean(telegramBot && telegramBot.status === 'VALID');
   const groups = telegramGroups ?? [];
   const hasGroups = groups.length > 0;
   const allGroupsValid = hasGroups && groups.every((g) => g.status === 'VALID');
   const invalidGroupCount = groups.filter((g) => g.status !== 'VALID').length;
+
+  const isHokimValid = Boolean(hokimAccount && hokimAccount.status === 'ACTIVE');
 
   const items: PrerequisiteItem[] = [
     {
@@ -113,11 +117,14 @@ export function evaluateDistrictPrerequisites(
     {
       key: 'hokim_account',
       label: 'Ҳоким аккаунти',
-      description: 'Туман ҳокими учун хавфсиз аккаунт яратилди',
-      status: 'incomplete',
-      blockerReason: 'Ҳоким аккаунти яратилмаган (1.6-босқич).',
-      actionRequired: true,
-      actionPath: '/hokim-account',
+      description: isHokimValid && hokimAccount
+        ? `Туман ҳокими учун хавфсиз аккаунт яратилди (@${hokimAccount.username})`
+        : 'Туман ҳокими учун хавфсиз аккаунт яратилди',
+      status: isHokimValid ? 'passed' : 'incomplete',
+      blockerReason: isHokimValid ? undefined : 'Ҳоким аккаунти яратилмаган (1.6-босқич).',
+      actionRequired: !isHokimValid,
+      actionPath: !isHokimValid ? '/hokim-accounts' : undefined,
+      completedAt: isHokimValid && hokimAccount ? hokimAccount.createdAt.toISOString() : undefined,
     },
   ];
 
@@ -149,7 +156,19 @@ export async function evaluateDistrictReadiness(
     .from(districtTelegramGroups)
     .where(eq(districtTelegramGroups.districtId, districtId));
 
-  const items = evaluateDistrictPrerequisites(district, botRow, groupRows);
+  const [hokimAccount] = await db
+    .select()
+    .from(accounts)
+    .where(
+      and(
+        eq(accounts.districtId, districtId),
+        eq(accounts.role, 'DISTRICT_HOKIM'),
+        eq(accounts.status, 'ACTIVE'),
+      ),
+    )
+    .limit(1);
+
+  const items = evaluateDistrictPrerequisites(district, botRow, groupRows, hokimAccount);
   const passedCount = items.filter((item) => item.status === 'passed').length;
   const totalCount = items.length;
   const isActivationReady = passedCount === totalCount;

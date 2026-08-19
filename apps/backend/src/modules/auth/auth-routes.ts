@@ -3,7 +3,7 @@ import {
   SignInRequestSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
-import { accounts } from '../../adapters/db/schema/index.js';
+import { accounts, districts } from '../../adapters/db/schema/index.js';
 import { eq } from 'drizzle-orm';
 import { hashPassword, verifyPassword } from '../../adapters/crypto/argon2.js';
 import {
@@ -105,6 +105,66 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
       });
     }
 
+    // Security check: Verify account status is ACTIVE only AFTER password verification
+    // to prevent probing disabled account statuses.
+    if (account.status !== 'ACTIVE') {
+      await recordFailedAttempt(db, rateLimitKey);
+      await recordAuditEvent(db, {
+        actorId: account.id,
+        actorRole: account.role,
+        action: 'AUTH_SIGN_IN_FAILURE',
+        ipAddress: ip,
+        userAgent: req.headers['user-agent'],
+        metadata: { username, reason: 'ACCOUNT_DISABLED' },
+      });
+      return reply.status(401).send({
+        error: {
+          code: 'INVALID_CREDENTIALS',
+          message: 'Нотўғри фойдаланувчи номи ёки парол.',
+        },
+      });
+    }
+
+    // Security check: If role is DISTRICT_HOKIM, ensure assigned district is ACTIVE (AC 6)
+    if (account.role === 'DISTRICT_HOKIM') {
+      if (!account.districtId) {
+        return reply.status(403).send({
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Ҳоким аккаунти туманга бириктирилмаган.',
+          },
+        });
+      }
+
+      const [district] = await db
+        .select()
+        .from(districts)
+        .where(eq(districts.id, account.districtId))
+        .limit(1);
+
+      if (!district || district.status !== 'ACTIVE') {
+        await recordAuditEvent(db, {
+          actorId: account.id,
+          actorRole: account.role,
+          action: 'AUTH_SIGN_IN_FAILURE',
+          ipAddress: ip,
+          userAgent: req.headers['user-agent'],
+          metadata: {
+            username,
+            districtId: account.districtId,
+            districtStatus: district?.status ?? 'NOT_FOUND',
+            reason: 'DISTRICT_NOT_ACTIVE',
+          },
+        });
+        return reply.status(403).send({
+          error: {
+            code: 'DISTRICT_NOT_ACTIVE',
+            message: 'Туман ҳали фаоллаштирилмаган ёки фаолияти тўхтатилган.',
+          },
+        });
+      }
+    }
+
     // Reset rate limiter on successful authentication
     await resetRateLimit(db, rateLimitKey);
 
@@ -154,6 +214,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
         id: account.id,
         role: account.role,
         username: account.username,
+        districtId: account.districtId ?? null,
       },
       session: {
         expiresAt: sessionResult.expiresAt.toISOString(),
@@ -215,6 +276,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
         id: validation.account.id,
         role: validation.account.role,
         username: validation.account.username,
+        districtId: validation.account.districtId ?? null,
       },
       session: {
         expiresAt: validation.session.expiresAt.toISOString(),

@@ -1,12 +1,13 @@
 import { z } from 'zod';
 
-export const ActorRoleSchema = z.enum(['PRODUCT_OWNER']);
+export const ActorRoleSchema = z.enum(['PRODUCT_OWNER', 'DISTRICT_HOKIM']);
 export type ActorRole = z.infer<typeof ActorRoleSchema>;
 
 export const ActorContextSchema = z.object({
   id: z.string().min(1),
   role: ActorRoleSchema,
   username: z.string().min(1),
+  districtId: z.string().nullable().optional(),
 });
 export type ActorContext = z.infer<typeof ActorContextSchema>;
 
