@@ -17,6 +17,7 @@ import {
   PlusOutlined,
   PlayCircleOutlined,
   DeleteOutlined,
+  EditOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
   SyncOutlined,
@@ -44,6 +45,7 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
 
   const [searchText, setSearchText] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [drawerStep, setDrawerStep] = useState<number>(0);
   const [selectedGroup, setSelectedGroup] = useState<TelegramGroupMapping | null>(null);
   const [groupToDelete, setGroupToDelete] = useState<TelegramGroupMapping | null>(null);
 
@@ -60,11 +62,19 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
 
   const handleOpenAddDrawer = () => {
     setSelectedGroup(null);
+    setDrawerStep(0);
+    setIsDrawerOpen(true);
+  };
+
+  const handleOpenEditDrawer = (group: TelegramGroupMapping) => {
+    setSelectedGroup(group);
+    setDrawerStep(0);
     setIsDrawerOpen(true);
   };
 
   const handleOpenTestDrawer = (group: TelegramGroupMapping) => {
     setSelectedGroup(group);
+    setDrawerStep(1);
     setIsDrawerOpen(true);
   };
 
@@ -154,6 +164,16 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
       key: 'actions',
       render: (_: unknown, record: TelegramGroupMapping) => (
         <Space size="small">
+          <Button
+            type="default"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleOpenEditDrawer(record)}
+            disabled={isOffline}
+            style={{ minHeight: '36px' }}
+          >
+            Таҳрирлаш
+          </Button>
           {record.status !== 'VALID' && (
             <Button
               type="primary"
@@ -161,7 +181,7 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
               icon={<PlayCircleOutlined />}
               onClick={() => handleOpenTestDrawer(record)}
               disabled={isOffline}
-              style={{ minHeight: '32px' }}
+              style={{ minHeight: '36px' }}
             >
               Синовдан ўтказиш
             </Button>
@@ -173,7 +193,7 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
             icon={<DeleteOutlined />}
             onClick={() => setGroupToDelete(record)}
             disabled={isOffline}
-            style={{ minHeight: '32px' }}
+            style={{ minHeight: '36px' }}
           >
             Ўчириш
           </Button>
@@ -246,7 +266,7 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
             pagination={{ pageSize: 10, showSizeChanger: false }}
           />
         ) : (
-          /* Mobile Card List View (<768px) */
+          /* Mobile Card List View (<768px) with WCAG >=44px touch targets */
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             {filteredGroups.map((group) => (
               <Card key={group.id} size="small" style={{ borderRadius: '8px' }}>
@@ -266,15 +286,25 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
                     <Text code>{group.telegramChatId}</Text>
                   </div>
                   <Divider style={{ margin: '8px 0' }} />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '8px' }}>
+                    <Button
+                      type="default"
+                      size="large"
+                      icon={<EditOutlined />}
+                      onClick={() => handleOpenEditDrawer(group)}
+                      disabled={isOffline}
+                      style={{ minHeight: '44px' }}
+                    >
+                      Таҳрирлаш
+                    </Button>
                     {group.status !== 'VALID' && (
                       <Button
                         type="primary"
-                        size="small"
+                        size="large"
                         icon={<PlayCircleOutlined />}
                         onClick={() => handleOpenTestDrawer(group)}
                         disabled={isOffline}
-                        style={{ minHeight: '36px' }}
+                        style={{ minHeight: '44px' }}
                       >
                         Синов
                       </Button>
@@ -282,11 +312,11 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
                     <Button
                       danger
                       type="default"
-                      size="small"
+                      size="large"
                       icon={<DeleteOutlined />}
                       onClick={() => setGroupToDelete(group)}
                       disabled={isOffline}
-                      style={{ minHeight: '36px' }}
+                      style={{ minHeight: '44px' }}
                     >
                       Ўчириш
                     </Button>
@@ -298,7 +328,7 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
         )}
       </Space>
 
-      {/* Group Create/Test Drawer */}
+      {/* Group Create/Edit/Test Drawer */}
       <TelegramGroupDrawer
         open={isDrawerOpen}
         onClose={() => {
@@ -310,6 +340,7 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
           refetch();
         }}
         initialGroup={selectedGroup}
+        initialStep={drawerStep}
       />
 
       {/* Delete Group Confirmation Modal */}

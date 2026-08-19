@@ -257,7 +257,7 @@ describe('Telegram Groups Management & Validation Integration Tests', () => {
       Promise.resolve({
         ok: true,
         status: 200,
-        json: async () => ({ ok: true, result: { status: 'member', id: -100, title: 'Chat' } }),
+        json: async () => ({ ok: true, result: { status: 'member', id: -100, title: 'Chat', type: 'supergroup' } }),
       }),
     ) as any;
 
@@ -305,7 +305,7 @@ describe('Telegram Groups Management & Validation Integration Tests', () => {
       Promise.resolve({
         ok: true,
         status: 200,
-        json: async () => ({ ok: true, result: { status: 'member', id: -100, title: 'Chat' } }),
+        json: async () => ({ ok: true, result: { status: 'member', id: -100, title: 'Chat', type: 'supergroup' } }),
       }),
     ) as any;
 
@@ -348,7 +348,7 @@ describe('Telegram Groups Management & Validation Integration Tests', () => {
       return Promise.resolve({
         ok: true,
         status: 200,
-        json: async () => ({ ok: true, result: { id: -100, title: 'Chat' } }),
+        json: async () => ({ ok: true, result: { id: -100, title: 'Chat', type: 'supergroup' } }),
       });
     }) as any;
 
@@ -370,6 +370,46 @@ describe('Telegram Groups Management & Validation Integration Tests', () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe('BOT_IS_ADMIN_FORBIDDEN');
+  });
+
+  it('rejects group mapping if chat type is channel or private', async () => {
+    const chatId = `-100${crypto.randomUUID().replace(/\D/g, '').slice(0, 10)}`;
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      const urlStr = String(url);
+      if (urlStr.includes('/getChat')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true, result: { id: -100, title: 'Channel', type: 'channel' } }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, result: { status: 'member' } }),
+      });
+    }) as any;
+
+    const res = await server.inject({
+      method: 'POST',
+      url: `/api/v1/districts/${testDistrictId}/groups`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+        'content-type': 'application/json',
+      },
+      payload: {
+        mahallaName: 'Channel Mahalla',
+        telegramChatId: chatId,
+      },
+    });
+
+    globalThis.fetch = originalFetch;
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_CHAT_TYPE');
   });
 
   it('runs interactive test session with simulation endpoint (AC 6, 7, 8, 10)', async () => {

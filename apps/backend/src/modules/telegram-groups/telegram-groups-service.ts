@@ -21,6 +21,7 @@ import {
   getTelegramChat,
   verifyBotGroupMembership,
   checkGroupPrivacyMode,
+  TelegramIntegrationError,
 } from '../../adapters/telegram/telegram-client.js';
 import { filterTelegramMessage, TelegramIncomingMessage } from '../../adapters/telegram/telegram-message-filter.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
@@ -209,6 +210,13 @@ export async function createDistrictTelegramGroup(
 
   // Authoritative Telegram API validation OUTSIDE DB transaction (AD-1)
   const chatInfo = await getTelegramChat(token, trimmedChatId);
+  if (chatInfo.chatType !== 'group' && chatInfo.chatType !== 'supergroup') {
+    throw new TelegramIntegrationError(
+      'Фақат Telegram гуруҳларини (гуруҳ ёки супергуруҳ) бириктириш мумкин. Канал ёки шахсий ёзишмалар қабул қилинмайди.',
+      'INVALID_CHAT_TYPE',
+      400,
+    );
+  }
   await verifyBotGroupMembership(token, trimmedChatId, botRow.botId);
   const isPrivacyDisabled = await checkGroupPrivacyMode(token);
 
@@ -335,6 +343,7 @@ export async function updateDistrictTelegramGroup(
   input: UpdateTelegramGroupRequest,
   actor?: Actor,
   clientInfo?: ClientInfo,
+  options: GroupServiceOptions = {},
 ): Promise<TelegramGroupMapping> {
   const [group] = await db
     .select()
@@ -364,6 +373,12 @@ export async function updateDistrictTelegramGroup(
   const newMahallaName = input.mahallaName ? input.mahallaName.trim() : group.mahallaName;
   const newChatId = input.telegramChatId ? input.telegramChatId.trim() : group.telegramChatId;
   const isChatChanged = newChatId !== group.telegramChatId;
+  const isMahallaChanged = newMahallaName.toLowerCase() !== group.mahallaName.toLowerCase();
+
+  // No-op check (Patch 10): return existing mapping without DB write or audit log
+  if (!isChatChanged && !isMahallaChanged && input.mahallaName === undefined && input.telegramChatId === undefined) {
+    return formatTelegramGroup(group);
+  }
 
   let chatInfo = {
     chatTitle: group.telegramChatTitle,
@@ -379,12 +394,26 @@ export async function updateDistrictTelegramGroup(
     });
 
     const info = await getTelegramChat(token, newChatId);
+    if (info.chatType !== 'group' && info.chatType !== 'supergroup') {
+      throw new TelegramIntegrationError(
+        'Фақат Telegram гуруҳларини (гуруҳ ёки супергуруҳ) бириктириш мумкин. Канал ёки шахсий ёзишмалар қабул қилинмайди.',
+        'INVALID_CHAT_TYPE',
+        400,
+      );
+    }
     await verifyBotGroupMembership(token, newChatId, botRow.botId);
     isPrivacyDisabled = await checkGroupPrivacyMode(token);
     chatInfo = {
       chatTitle: info.chatTitle,
       chatUsername: info.chatUsername,
     };
+
+    // Invalidate any open test session on chat change
+    (options.sessionManager ?? globalTestSessionManager).resolveSessionFailure(
+      districtId,
+      groupId,
+      'Гуруҳ Chat ID ўзгартирилди',
+    );
   }
 
   const now = new Date();
@@ -478,6 +507,7 @@ export async function deleteDistrictTelegramGroup(
   groupId: string,
   actor?: Actor,
   clientInfo?: ClientInfo,
+  options: GroupServiceOptions = {},
 ): Promise<{ success: boolean; deletedGroupId: string }> {
   const [group] = await db
     .select()
@@ -493,6 +523,13 @@ export async function deleteDistrictTelegramGroup(
   if (!group) {
     throw new TelegramGroupNotFoundError(groupId);
   }
+
+  // Clean up any in-memory test session for deleted group
+  (options.sessionManager ?? globalTestSessionManager).resolveSessionFailure(
+    districtId,
+    groupId,
+    'Гуруҳ ўчирилди',
+  );
 
   await db.transaction(async (tx) => {
     const [deleted] = await tx
@@ -710,6 +747,10 @@ export async function handleIncomingWebhookMessage(
   if (!activeSession) {
     // No active test session open for this chat during onboarding; discard immediately
     return { handled: true, accepted: false, reason: 'NO_ACTIVE_SESSION' };
+  }
+
+  if (activeSession.botId !== _botId) {
+    return { handled: true, accepted: false, reason: 'BOT_MISMATCH' };
   }
 
   const now = new Date();

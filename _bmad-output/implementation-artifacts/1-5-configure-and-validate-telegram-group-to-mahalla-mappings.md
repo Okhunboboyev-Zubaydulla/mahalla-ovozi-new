@@ -4,7 +4,7 @@ baseline_commit: c4fbf8b1c0125bbadc83ac293aab06824fc65f2f
 
 # Story 1.5: Configure and Validate Telegram Group-to-Mahalla Mappings
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -164,6 +164,20 @@ So that future Telegram evidence can be attributed deterministically to the corr
   - [x] 6.1 Create Playwright E2E test `apps/web/tests/e2e/telegram-group-mappings.spec.ts` covering mapping creation, duplicate conflict feedback, test message resolution, and checklist update.
   - [x] 6.2 Execute forced verification commands across the entire monorepo (`pnpm typecheck`, `pnpm test`, `pnpm --filter @mahalla-ovozi/web test:e2e`).
   - [x] 6.3 Update sprint status tracking in `sprint-status.yaml` and story file status to `review`.
+
+### Review Findings
+
+- [x] [Review][Patch] Enforce Telegram chat type ('group' | 'supergroup') to prevent mapping private chats or broadcast channels [apps/backend/src/modules/telegram-groups/telegram-groups-service.ts:211]
+- [x] [Review][Patch] Support editing and re-testing of failed groups in TelegramGroupDrawer without 409 conflict [apps/web/src/components/TelegramGroupDrawer.tsx:71]
+- [x] [Review][Patch] Add Edit mapping action button in TelegramGroupTable [apps/web/src/components/TelegramGroupTable.tsx:160]
+- [x] [Review][Patch] Verify webhook botId URL parameter against active session botId in handleIncomingWebhookMessage [apps/backend/src/modules/telegram-groups/telegram-groups-service.ts:690]
+- [x] [Review][Patch] Add TTL eviction and bounded capacity pruning in TelegramTestSessionManager [apps/backend/src/modules/telegram-groups/telegram-test-session-manager.ts:22]
+- [x] [Review][Patch] Synchronize test timeout to backend on countdown expiration in TelegramGroupDrawer [apps/web/src/components/TelegramGroupDrawer.tsx:156]
+- [x] [Review][Patch] Ensure WCAG >=44px touch target heights on TelegramGroupTable action buttons [apps/web/src/components/TelegramGroupTable.tsx:165]
+- [x] [Review][Patch] Reset district group mappings status to PENDING on district bot replacement or disconnect [apps/backend/src/modules/telegram-bot/telegram-bot-service.ts:160]
+- [x] [Review][Patch] Add numeric chat ID format validation in api-contracts [packages/api-contracts/src/telegram-groups.ts:23]
+- [x] [Review][Patch] Prevent no-op update mutations from triggering unnecessary DB updates and audit logs [apps/backend/src/modules/telegram-groups/telegram-groups-service.ts:370]
+- [x] [Review][Patch] Add Back navigation button to return to input form from live test step in drawer [apps/web/src/components/TelegramGroupDrawer.tsx:280]
 
 ---
 

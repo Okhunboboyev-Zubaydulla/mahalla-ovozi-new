@@ -54,8 +54,8 @@ development_status:
   1-2-create-and-select-a-district-in-the-product-owner-console: done
   1-3-resume-district-onboarding-and-track-activation-readiness: done
   1-4-connect-and-validate-a-district-telegram-bot: done
-  1-5-configure-and-validate-telegram-group-to-mahalla-mappings: review
-  1-6-create-and-manage-the-district-hokim-account: backlog
+  1-5-configure-and-validate-telegram-group-to-mahalla-mappings: done
+  1-6-create-and-manage-the-district-hokim-account: ready-for-dev
   1-7-validate-and-activate-a-district: backlog
   epic-1-retrospective: optional
 

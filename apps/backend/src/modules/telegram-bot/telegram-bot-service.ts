@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { DbClient } from '../../adapters/db/client.js';
-import { districts, districtTelegramBots, DistrictTelegramBot } from '../../adapters/db/schema/index.js';
+import { districts, districtTelegramBots, districtTelegramGroups, DistrictTelegramBot } from '../../adapters/db/schema/index.js';
 import {
   TelegramBotInfo,
   TelegramBotStatusSchema,
@@ -152,6 +152,7 @@ export async function connectDistrictTelegramBot(
         .limit(1);
 
       if (existingForDistrict) {
+        const isBotChanged = existingForDistrict.botId !== validatedBot.botId;
         const [updated] = await tx
           .update(districtTelegramBots)
           .set({
@@ -170,6 +171,20 @@ export async function connectDistrictTelegramBot(
           .where(eq(districtTelegramBots.id, existingForDistrict.id))
           .returning();
         savedRow = updated;
+
+        // Reset existing group mappings to PENDING if bot identity changed
+        if (isBotChanged) {
+          await tx
+            .update(districtTelegramGroups)
+            .set({
+              status: 'PENDING',
+              testMessageReceivedAt: null,
+              lastValidatedAt: null,
+              lastError: null,
+              updatedAt: now,
+            })
+            .where(eq(districtTelegramGroups.districtId, districtId));
+        }
       } else {
         const [inserted] = await tx
           .insert(districtTelegramBots)
@@ -300,6 +315,18 @@ export async function disconnectDistrictTelegramBot(
     if (!deleted) {
       throw new TelegramBotNotFoundError(districtId);
     }
+
+    // Invalidate group mappings for this district upon bot disconnect
+    await tx
+      .update(districtTelegramGroups)
+      .set({
+        status: 'PENDING',
+        testMessageReceivedAt: null,
+        lastValidatedAt: null,
+        lastError: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(districtTelegramGroups.districtId, districtId));
 
     await recordAuditEvent(tx, {
       actorId: actor?.id || null,

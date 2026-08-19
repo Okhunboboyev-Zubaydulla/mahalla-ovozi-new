@@ -19,14 +19,47 @@ export interface CreateSessionParams {
 }
 
 export class TelegramTestSessionManager {
+  private static readonly MAX_SESSIONS = 5000;
   private sessionsByGroup = new Map<string, TestSession>();
   private groupKeyByChatId = new Map<string, string>();
+  private sweepTimer: NodeJS.Timeout | null = null;
+
+  constructor() {
+    // Active cleanup every 30 seconds, unref'd so it doesn't block process shutdown
+    this.sweepTimer = setInterval(() => this.sweepExpired(), 30_000);
+    this.sweepTimer.unref();
+  }
 
   private makeGroupKey(districtId: string, groupId: string): string {
     return `${districtId}:${groupId}`;
   }
 
+  public sweepExpired(): void {
+    const now = Date.now();
+    for (const [key, session] of this.sessionsByGroup.entries()) {
+      if (now > session.expiresAt.getTime()) {
+        this.groupKeyByChatId.delete(session.chatId);
+        this.sessionsByGroup.delete(key);
+      }
+    }
+  }
+
   createSession(params: CreateSessionParams): TestSession {
+    // Bounded capacity check
+    if (this.sessionsByGroup.size >= TelegramTestSessionManager.MAX_SESSIONS) {
+      this.sweepExpired();
+      if (this.sessionsByGroup.size >= TelegramTestSessionManager.MAX_SESSIONS) {
+        const firstKey = this.sessionsByGroup.keys().next().value;
+        if (firstKey) {
+          const oldSession = this.sessionsByGroup.get(firstKey);
+          if (oldSession) {
+            this.groupKeyByChatId.delete(oldSession.chatId);
+          }
+          this.sessionsByGroup.delete(firstKey);
+        }
+      }
+    }
+
     const groupKey = this.makeGroupKey(params.districtId, params.groupId);
     const ttl = params.ttlMs ?? 65_000;
     const now = new Date();
@@ -119,6 +152,15 @@ export class TelegramTestSessionManager {
     this.groupKeyByChatId.delete(session.chatId);
 
     return session;
+  }
+
+  dispose(): void {
+    if (this.sweepTimer) {
+      clearInterval(this.sweepTimer);
+      this.sweepTimer = null;
+    }
+    this.sessionsByGroup.clear();
+    this.groupKeyByChatId.clear();
   }
 
   clear(): void {

@@ -45,8 +45,13 @@ export function registerTelegramGroupRoutes(fastify: FastifyInstance, db: DbClie
       reply: FastifyReply,
     ) => {
       const { botId } = req.params;
-      const result = await handleIncomingWebhookMessage(db, botId, req.body);
-      return reply.status(200).send({ ok: true, result });
+      try {
+        const result = await handleIncomingWebhookMessage(db, botId, req.body);
+        return reply.status(200).send({ ok: true, result });
+      } catch (err: unknown) {
+        req.log.error({ err, botId }, 'Error handling incoming Telegram webhook');
+        return reply.status(200).send({ ok: true, handled: false, error: 'INTERNAL_ERROR' });
+      }
     },
   );
 

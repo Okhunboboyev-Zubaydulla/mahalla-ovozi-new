@@ -10,6 +10,7 @@ import {
   Statistic,
   Progress,
   Steps,
+  Grid,
 } from 'antd';
 import {
   PlusOutlined,
@@ -19,12 +20,14 @@ import {
   SyncOutlined,
   InfoCircleOutlined,
   SendOutlined,
+  ArrowLeftOutlined,
 } from '@ant-design/icons';
 import { TelegramGroupMapping } from '@mahalla-ovozi/api-contracts';
 import { telegramGroupClient } from '../district/telegram-group-client.js';
 
 const { Text, Paragraph } = Typography;
 const { Countdown } = Statistic;
+const { useBreakpoint } = Grid;
 
 interface TelegramGroupDrawerProps {
   open: boolean;
@@ -32,6 +35,7 @@ interface TelegramGroupDrawerProps {
   districtId: string;
   onGroupSaved?: () => void;
   initialGroup?: TelegramGroupMapping | null;
+  initialStep?: number;
 }
 
 export function TelegramGroupDrawer({
@@ -40,7 +44,9 @@ export function TelegramGroupDrawer({
   districtId,
   onGroupSaved,
   initialGroup,
+  initialStep,
 }: TelegramGroupDrawerProps) {
+  const screens = useBreakpoint();
   const [form] = Form.useForm();
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,7 +74,9 @@ export function TelegramGroupDrawer({
           mahallaName: initialGroup.mahallaName,
           telegramChatId: initialGroup.telegramChatId,
         });
-        if (initialGroup.status === 'PENDING' || initialGroup.status === 'TESTING') {
+        if (initialStep === 0) {
+          setCurrentStep(0);
+        } else if (['PENDING', 'TESTING', 'FAILED'].includes(initialGroup.status)) {
           setCurrentStep(1);
           startLiveTest(initialGroup);
         } else {
@@ -137,14 +145,25 @@ export function TelegramGroupDrawer({
     setSubmitError(null);
 
     try {
-      const res = await telegramGroupClient.createGroup(districtId, {
-        mahallaName: values.mahallaName.trim(),
-        telegramChatId: values.telegramChatId.trim(),
-      });
-      setActiveGroup(res.group);
-      setCurrentStep(1);
-      onGroupSaved?.();
-      await startLiveTest(res.group);
+      if (initialGroup) {
+        const res = await telegramGroupClient.updateGroup(districtId, initialGroup.id, {
+          mahallaName: values.mahallaName.trim(),
+          telegramChatId: values.telegramChatId.trim(),
+        });
+        setActiveGroup(res.group);
+        setCurrentStep(1);
+        onGroupSaved?.();
+        await startLiveTest(res.group);
+      } else {
+        const res = await telegramGroupClient.createGroup(districtId, {
+          mahallaName: values.mahallaName.trim(),
+          telegramChatId: values.telegramChatId.trim(),
+        });
+        setActiveGroup(res.group);
+        setCurrentStep(1);
+        onGroupSaved?.();
+        await startLiveTest(res.group);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Гуруҳни бириктиришда хатолик юз берди.';
       setSubmitError(msg);
@@ -153,11 +172,20 @@ export function TelegramGroupDrawer({
     }
   };
 
-  const handleTimeout = () => {
+  const handleTimeout = async () => {
     if (testStatus === 'PENDING') {
       setTestStatus('TIMEOUT');
       setTestError('60 сониялик синов вақти тугади. Бот гуруҳдан инсон хабарини қабул қила олмади.');
       stopPolling();
+      if (activeGroup) {
+        try {
+          const res = await telegramGroupClient.getTestStatus(districtId, activeGroup.id);
+          if (res.lastError) setTestError(res.lastError);
+        } catch {
+          // Keep local state on network error
+        }
+        onGroupSaved?.();
+      }
     }
   };
 
@@ -198,7 +226,7 @@ export function TelegramGroupDrawer({
         </Space>
       }
       placement="right"
-      width={typeof window !== 'undefined' && window.innerWidth < 640 ? '100%' : 540}
+      width={screens.xs ? '100%' : 540}
       onClose={() => {
         stopPolling();
         onClose();
@@ -375,26 +403,43 @@ export function TelegramGroupDrawer({
               </Button>
             )}
 
-            <Space style={{ width: '100%', justifyContent: 'flex-end', marginTop: '16px' }}>
-              {(testStatus === 'TIMEOUT' || testStatus === 'FAILED') && activeGroup && (
+            <Space style={{ width: '100%', justifyContent: 'space-between', marginTop: '16px' }}>
+              <div>
+                {testStatus !== 'SUCCESS' && (
+                  <Button
+                    type="default"
+                    icon={<ArrowLeftOutlined />}
+                    onClick={() => {
+                      stopPolling();
+                      setCurrentStep(0);
+                    }}
+                    style={{ minHeight: '44px' }}
+                  >
+                    Орқага
+                  </Button>
+                )}
+              </div>
+              <Space>
+                {(testStatus === 'TIMEOUT' || testStatus === 'FAILED') && activeGroup && (
+                  <Button
+                    type="default"
+                    onClick={() => startLiveTest(activeGroup)}
+                    style={{ minHeight: '44px' }}
+                  >
+                    Қайта синаб кўриш
+                  </Button>
+                )}
                 <Button
-                  type="default"
-                  onClick={() => startLiveTest(activeGroup)}
+                  type="primary"
+                  onClick={() => {
+                    stopPolling();
+                    onClose();
+                  }}
                   style={{ minHeight: '44px' }}
                 >
-                  Қайта синаб кўриш
+                  {testStatus === 'SUCCESS' ? 'Якунлаш' : 'Ёпиш'}
                 </Button>
-              )}
-              <Button
-                type="primary"
-                onClick={() => {
-                  stopPolling();
-                  onClose();
-                }}
-                style={{ minHeight: '44px' }}
-              >
-                {testStatus === 'SUCCESS' ? 'Якунлаш' : 'Ёпиш'}
-              </Button>
+              </Space>
             </Space>
           </Space>
         )}

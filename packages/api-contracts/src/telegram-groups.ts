@@ -26,6 +26,8 @@ export const ListTelegramGroupsResponseSchema = z.object({
 });
 export type ListTelegramGroupsResponse = z.infer<typeof ListTelegramGroupsResponseSchema>;
 
+export const TELEGRAM_GROUP_CHAT_ID_REGEX = /^-(?:100\d{9,13}|[1-9]\d{5,13})$/;
+
 export const CreateTelegramGroupRequestSchema = z.object({
   mahallaName: z
     .string({
@@ -42,7 +44,11 @@ export const CreateTelegramGroupRequestSchema = z.object({
     })
     .trim()
     .min(1, 'Telegram гуруҳ Chat ID киритилиши шарт.')
-    .max(50, 'Chat ID 50 та белгидан ошмаслиги керак.'),
+    .max(50, 'Chat ID 50 та белгидан ошмаслиги керак.')
+    .regex(
+      TELEGRAM_GROUP_CHAT_ID_REGEX,
+      'Telegram гуруҳ Chat ID манфий рақамли форматда бўлиши шарт (масалан: -1001234567890 ёки -123456789).',
+    ),
 });
 export type CreateTelegramGroupRequest = z.infer<typeof CreateTelegramGroupRequestSchema>;
 
@@ -53,7 +59,16 @@ export type CreateTelegramGroupResponse = z.infer<typeof CreateTelegramGroupResp
 
 export const UpdateTelegramGroupRequestSchema = z.object({
   mahallaName: z.string().trim().min(1).max(100).optional(),
-  telegramChatId: z.string().trim().min(1).max(50).optional(),
+  telegramChatId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(50)
+    .regex(
+      TELEGRAM_GROUP_CHAT_ID_REGEX,
+      'Telegram гуруҳ Chat ID манфий рақамли форматда бўлиши шарт (масалан: -1001234567890 ёки -123456789).',
+    )
+    .optional(),
 });
 export type UpdateTelegramGroupRequest = z.infer<typeof UpdateTelegramGroupRequestSchema>;
 
