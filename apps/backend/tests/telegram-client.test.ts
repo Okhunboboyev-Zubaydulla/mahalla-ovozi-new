@@ -117,6 +117,25 @@ describe('Telegram API Integration Adapter (telegram-client)', () => {
       ).rejects.toThrow(TelegramInvalidTokenError);
     });
 
+    it('throws TelegramInvalidTokenError when Telegram returns 400 Bad Request', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        json: async () => ({
+          ok: false,
+          error_code: 400,
+          description: 'Bad Request: invalid token',
+        }),
+      });
+
+      await expect(
+        validateTelegramBot(sampleToken, {
+          customFetch: mockFetch as unknown as typeof fetch,
+        }),
+      ).rejects.toThrow(TelegramInvalidTokenError);
+    });
+
     it('throws TelegramInvalidTokenError when Telegram returns 401 Unauthorized', async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: false,

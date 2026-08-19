@@ -430,13 +430,31 @@ describe('Telegram Bot Domain Module & Integration Tests', () => {
       await db.delete(districts).where(eq(districts.id, districtId));
     });
 
-    it('returns 400 for syntactically invalid token', async () => {
+    it('returns 400 VALIDATION_ERROR for syntactically invalid token failing schema', async () => {
       const res = await server.inject({
         method: 'POST',
         url: `/api/v1/districts/${districtId}/telegram-bot`,
         headers: { cookie: authCookie, ...SAME_ORIGIN_HEADERS },
         payload: { token: 'invalid_token' },
       });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('returns 400 TELEGRAM_INVALID_TOKEN when Telegram API responds with 400 Bad Request', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({ ok: false, error_code: 400, description: 'Bad Request: invalid token' }),
+      } as Response);
+
+      const res = await server.inject({
+        method: 'POST',
+        url: `/api/v1/districts/${districtId}/telegram-bot`,
+        headers: { cookie: authCookie, ...SAME_ORIGIN_HEADERS },
+        payload: { token: '123456789:ABCdefGHIjklMNOpqrSTUvwxYZ_Invalid' },
+      });
+
       expect(res.statusCode).toBe(400);
       expect(res.json().error.code).toBe('TELEGRAM_INVALID_TOKEN');
     });

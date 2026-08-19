@@ -61,8 +61,10 @@ export function useTelegramBot(districtId: string | null) {
     connectBot: connectMutation.mutateAsync,
     isConnecting: connectMutation.isPending,
     connectError: connectMutation.error,
+    resetConnectError: connectMutation.reset,
     disconnectBot: disconnectMutation.mutateAsync,
     isDisconnecting: disconnectMutation.isPending,
     disconnectError: disconnectMutation.error,
+    resetDisconnectError: disconnectMutation.reset,
   };
 }

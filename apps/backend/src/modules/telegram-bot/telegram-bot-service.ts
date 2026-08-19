@@ -131,6 +131,20 @@ export async function connectDistrictTelegramBot(
 
   try {
     await db.transaction(async (tx) => {
+      const [districtInTx] = await tx
+        .select({ id: districts.id, status: districts.status })
+        .from(districts)
+        .where(eq(districts.id, districtId))
+        .limit(1);
+
+      if (!districtInTx) {
+        throw new DistrictNotFoundError(districtId);
+      }
+
+      if (districtInTx.status !== 'SETUP_INCOMPLETE') {
+        throw new DistrictAlreadyActiveError(districtId);
+      }
+
       const [existingForDistrict] = await tx
         .select()
         .from(districtTelegramBots)
@@ -209,7 +223,11 @@ export async function connectDistrictTelegramBot(
         detail.includes('bot_id') ||
         constraint.includes('bot_id') ||
         fullErr.includes('bot_id') ||
-        fullErr.includes('district_telegram_bots_bot_id_idx')
+        fullErr.includes('district_telegram_bots_bot_id_idx') ||
+        detail.includes('district_id') ||
+        constraint.includes('district_id') ||
+        fullErr.includes('district_id') ||
+        fullErr.includes('district_telegram_bots_district_id_idx')
       ) {
         throw new BotAlreadyAssignedError(validatedBot.botId);
       }
@@ -217,7 +235,11 @@ export async function connectDistrictTelegramBot(
     throw err;
   }
 
-  return formatTelegramBotInfo(savedRow!);
+  if (!savedRow) {
+    throw new Error('Failed to persist telegram bot record.');
+  }
+
+  return formatTelegramBotInfo(savedRow);
 }
 
 /**
@@ -256,9 +278,28 @@ export async function disconnectDistrictTelegramBot(
   }
 
   await db.transaction(async (tx) => {
-    await tx
+    const [districtInTx] = await tx
+      .select({ id: districts.id, status: districts.status })
+      .from(districts)
+      .where(eq(districts.id, districtId))
+      .limit(1);
+
+    if (!districtInTx) {
+      throw new DistrictNotFoundError(districtId);
+    }
+
+    if (districtInTx.status !== 'SETUP_INCOMPLETE') {
+      throw new DistrictAlreadyActiveError(districtId);
+    }
+
+    const [deleted] = await tx
       .delete(districtTelegramBots)
-      .where(eq(districtTelegramBots.id, existingBot.id));
+      .where(eq(districtTelegramBots.id, existingBot.id))
+      .returning();
+
+    if (!deleted) {
+      throw new TelegramBotNotFoundError(districtId);
+    }
 
     await recordAuditEvent(tx, {
       actorId: actor?.id || null,

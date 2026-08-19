@@ -70,7 +70,7 @@ export function evaluateDistrictPrerequisites(
       key: 'telegram_bot',
       label: 'Telegram бот уланиши',
       description: isBotValid && telegramBot
-        ? `Туманнинг расмий Telegram боти (@${telegramBot.botUsername || telegramBot.botFirstName}) фаоллаштирилди`
+        ? `Туманнинг расмий Telegram боти (${telegramBot.botUsername ? `@${telegramBot.botUsername}` : telegramBot.botFirstName}) фаоллаштирилди`
         : 'Туманнинг расмий Telegram боти фаоллаштирилди',
       status: isBotValid ? 'passed' : 'incomplete',
       blockerReason: isBotValid ? undefined : 'Telegram бот ҳали уланмаган (1.4-босқич).',

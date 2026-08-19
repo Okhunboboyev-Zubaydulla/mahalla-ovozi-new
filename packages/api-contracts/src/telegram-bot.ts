@@ -17,6 +17,8 @@ export const TelegramBotInfoSchema = z.object({
 });
 export type TelegramBotInfo = z.infer<typeof TelegramBotInfoSchema>;
 
+export const TELEGRAM_BOT_TOKEN_REGEX = /^\d{6,16}:[a-zA-Z0-9_-]{20,50}$/;
+
 export const ConnectTelegramBotRequestSchema = z.object({
   token: z
     .string({
@@ -25,7 +27,11 @@ export const ConnectTelegramBotRequestSchema = z.object({
     })
     .trim()
     .min(1, 'Telegram бот токени киритилиши шарт.')
-    .max(100, 'Telegram бот токени 100 та белгидан ошмаслиги керак.'),
+    .max(100, 'Telegram бот токени 100 та белгидан ошмаслиги керак.')
+    .regex(
+      TELEGRAM_BOT_TOKEN_REGEX,
+      'Telegram бот токени нотўғри форматда (масалан: 123456789:ABCdefGHIjkl...).',
+    ),
 });
 export type ConnectTelegramBotRequest = z.infer<typeof ConnectTelegramBotRequestSchema>;
 

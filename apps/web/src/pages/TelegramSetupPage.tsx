@@ -52,9 +52,11 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
     connectBot,
     isConnecting,
     connectError,
+    resetConnectError,
     disconnectBot,
     isDisconnecting,
     disconnectError,
+    resetDisconnectError,
   } = useTelegramBot(effectiveDistrictId);
 
   const [isOffline, setIsOffline] = useState(
@@ -78,6 +80,17 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  const handleOpenReplaceModal = () => {
+    resetConnectError();
+    replaceForm.resetFields();
+    setIsReplaceModalOpen(true);
+  };
+
+  const handleOpenDisconnectModal = () => {
+    resetDisconnectError();
+    setIsDisconnectModalOpen(true);
+  };
 
   const handleConnectSubmit = async (values: { token: string }) => {
     try {
@@ -215,7 +228,7 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
                   type="default"
                   icon={<SwapOutlined />}
                   size="large"
-                  onClick={() => setIsReplaceModalOpen(true)}
+                  onClick={handleOpenReplaceModal}
                   disabled={isOffline || isConnecting || isDisconnecting}
                   style={{ minHeight: '44px' }}
                 >
@@ -226,7 +239,7 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
                   type="default"
                   icon={<DisconnectOutlined />}
                   size="large"
-                  onClick={() => setIsDisconnectModalOpen(true)}
+                  onClick={handleOpenDisconnectModal}
                   disabled={isOffline || isConnecting || isDisconnecting}
                   loading={isDisconnecting}
                   style={{ minHeight: '44px' }}
@@ -281,6 +294,7 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
                     { required: true, message: 'Илтимос, Telegram бот токенини киритинг.' },
                     {
                       pattern: BOT_TOKEN_REGEX,
+                      transform: (value: string) => value?.trim(),
                       message:
                         'Илтимос, тўғри Telegram бот токенини киритинг (масалан: 123456789:ABCdefGHIjkl...).',
                     },
@@ -329,6 +343,7 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
           if (!isConnecting) {
             setIsReplaceModalOpen(false);
             replaceForm.resetFields();
+            resetConnectError();
           }
         }}
         footer={null}
@@ -357,6 +372,7 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
                 { required: true, message: 'Илтимос, янги Telegram бот токенини киритинг.' },
                 {
                   pattern: BOT_TOKEN_REGEX,
+                  transform: (value: string) => value?.trim(),
                   message:
                     'Илтимос, тўғри Telegram бот токенини киритинг (масалан: 123456789:ABCdefGHIjkl...).',
                 },
@@ -377,6 +393,7 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
                 onClick={() => {
                   setIsReplaceModalOpen(false);
                   replaceForm.resetFields();
+                  resetConnectError();
                 }}
                 disabled={isConnecting}
                 size="large"
@@ -407,11 +424,19 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
           </Space>
         }
         open={isDisconnectModalOpen}
-        onCancel={() => !isDisconnecting && setIsDisconnectModalOpen(false)}
+        onCancel={() => {
+          if (!isDisconnecting) {
+            setIsDisconnectModalOpen(false);
+            resetDisconnectError();
+          }
+        }}
         footer={[
           <Button
             key="cancel"
-            onClick={() => setIsDisconnectModalOpen(false)}
+            onClick={() => {
+              setIsDisconnectModalOpen(false);
+              resetDisconnectError();
+            }}
             disabled={isDisconnecting}
             size="large"
             style={{ minHeight: '44px' }}

@@ -4,7 +4,7 @@ baseline_commit: 9e47d4120ff1ee55fb59fea0777b0fe6b272c499
 
 # Story 1.4: Connect and Validate a District Telegram Bot
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -198,6 +198,22 @@ So that the District has a verified passive Telegram connection before approved 
   - [x] 11.2 Test entering token, connecting bot, verifying masked details card, navigating back to Overview, and seeing `telegram_bot` prerequisite marked `passed`.
   - [x] 11.3 Run full verification: `pnpm typecheck`, `pnpm test`, and `pnpm --filter @mahalla-ovozi/web test:e2e`.
 
+### Review Findings
+
+- [x] [Review][Patch] Intercept PostgreSQL 23505 district_id unique index collision on concurrent connect [apps/backend/src/modules/telegram-bot/telegram-bot-service.ts:204-216]
+- [x] [Review][Patch] Check deleted row count inside transaction to prevent duplicate disconnect audit events [apps/backend/src/modules/telegram-bot/telegram-bot-service.ts:258-275]
+- [x] [Review][Patch] Re-verify district status SETUP_INCOMPLETE inside transaction to prevent TOCTOU race [apps/backend/src/modules/telegram-bot/telegram-bot-service.ts:133-140]
+- [x] [Review][Patch] Guard unknown error type casting in telegram-client catch block [apps/backend/src/adapters/telegram/telegram-client.ts:95-107]
+- [x] [Review][Patch] Map Telegram HTTP 400 Bad Request to TelegramInvalidTokenError [apps/backend/src/adapters/telegram/telegram-client.ts:110-120]
+- [x] [Review][Patch] Fix handle formatting when bot username is null in prerequisite description [apps/backend/src/modules/districts/districts-readiness.ts:73]
+- [x] [Review][Patch] Reset mutation error state when opening Replace and Disconnect modals via exported reset handlers [apps/web/src/district/useTelegramBot.ts, apps/web/src/pages/TelegramSetupPage.tsx:218,229]
+- [x] [Review][Patch] Add whitespace transform to Ant Design Form token validation rules [apps/web/src/pages/TelegramSetupPage.tsx:283,359]
+- [x] [Review][Patch] Add regex token format validation to Zod API contract schema [packages/api-contracts/src/telegram-bot.ts:21-29]
+- [x] [Review][Patch] Trim environment variable ENCRYPTION_KEY in getEncryptionKey [apps/backend/src/adapters/crypto/token-cipher.ts:27]
+- [x] [Review][Patch] Support token redaction for URLs without trailing slashes [apps/backend/src/adapters/telegram/telegram-client.ts:46]
+- [x] [Review][Patch] Replace any with typed TelegramApiResponse in telegram-client [apps/backend/src/adapters/telegram/telegram-client.ts:122-132]
+- [x] [Review][Patch] Add explicit null guard on savedRow before formatTelegramBotInfo [apps/backend/src/modules/telegram-bot/telegram-bot-service.ts:220]
+
 ---
 
 ## Dev Notes
@@ -318,6 +334,7 @@ N/A (Specification phase)
 - Step 11 (Task 9): Full Ant Design 5.x `TelegramSetupPage.tsx` implemented with district scoping, offline detection banner, "Not Configured" state with masked input, "Connected / Valid" state with bot metadata & passive receipt notice, replace & disconnect confirmation modals, and 7 unit tests in `TelegramSetupPage.test.tsx`.
 - Step 12 (Task 10): In `DistrictOnboardingChecklist.tsx`, added action button navigation to `/telegram-setup` for the `telegram_bot` prerequisite item when `incomplete`, and added unit test verification in `DistrictOnboardingChecklist.test.tsx`.
 - Step 13 (Task 11): Created Playwright E2E test suite `apps/web/tests/e2e/telegram-bot.spec.ts` testing full browser journeys (district creation, checklist action button click, token entry & connection, masked card display, checklist transition to passed, bot token replacement, bot disconnection, and checklist rollback to incomplete). Verified 10/10 Playwright tests passing, `pnpm typecheck` 0 errors, and 128/128 unit/integration tests green.
+- [x] Step 14 (Code Review): Executed `bmad-code-review` workflow with 3 parallel review layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor), verified against live MCP tools (`antd_doc`, `context7`, `search_web`), triaged and applied 13 code patches (concurrency collision handling, atomic disconnect deletion guard, in-transaction status re-verification, safe error casting, Telegram 400 Bad Request mapping, clean handle formatting, modal error reset, whitespace input transformation, Zod contract regex validation, ENCRYPTION_KEY trimming, URL redaction regex, response typing, and non-null assertion guard). Full verification confirmed 130/130 unit/integration tests green, 10/10 Playwright E2E tests green, and clean typecheck across all workspace packages. Status updated to `done`.
 
 ### File List
 

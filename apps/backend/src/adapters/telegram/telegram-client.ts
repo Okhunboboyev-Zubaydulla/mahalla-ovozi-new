@@ -43,7 +43,7 @@ export class TelegramApiError extends TelegramIntegrationError {
  * Sanitizes Telegram API URLs and text occurrences to ensure tokens are never leaked into logs or errors.
  */
 export function redactTokenFromUrl(text: string, token?: string): string {
-  let result = text.replace(/\/bot[^/]+\//g, '/bot[REDACTED]/');
+  let result = text.replace(/\/bot[^/]+/g, '/bot[REDACTED]');
   if (token) {
     result = result.replaceAll(token, '[REDACTED]');
   }
@@ -60,6 +60,18 @@ export interface ValidateTelegramBotOptions {
   timeoutMs?: number;
   baseUrl?: string;
   customFetch?: typeof fetch;
+}
+
+interface TelegramGetMeResponse {
+  ok?: boolean;
+  result?: {
+    id?: number | string;
+    is_bot?: boolean;
+    first_name?: string;
+    username?: string;
+  };
+  description?: string;
+  error_code?: number;
 }
 
 const TELEGRAM_TOKEN_REGEX = /^\d{6,16}:[a-zA-Z0-9_-]{20,50}$/;
@@ -93,21 +105,22 @@ export async function validateTelegramBot(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err: unknown) {
-    const error = err as Error;
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    const errorName = err instanceof Error ? err.name : '';
     const isTimeout =
-      error.name === 'TimeoutError' ||
-      error.name === 'AbortError' ||
-      /timeout|abort/i.test(error.message);
+      errorName === 'TimeoutError' ||
+      errorName === 'AbortError' ||
+      /timeout|abort/i.test(errorMessage);
 
     if (isTimeout) {
       throw new TelegramNetworkTimeoutError();
     }
 
-    const sanitizedMessage = redactTokenFromUrl(error.message, trimmedToken);
+    const sanitizedMessage = redactTokenFromUrl(errorMessage, trimmedToken);
     throw new TelegramApiError(`Telegram API сўрови бажарилмади: ${sanitizedMessage}`);
   }
 
-  if (response.status === 401 || response.status === 404) {
+  if (response.status === 400 || response.status === 401 || response.status === 404) {
     throw new TelegramInvalidTokenError();
   }
 
@@ -119,9 +132,9 @@ export async function validateTelegramBot(
     throw new TelegramApiError();
   }
 
-  let data: any;
+  let data: TelegramGetMeResponse | undefined;
   try {
-    data = await response.json();
+    data = (await response.json()) as TelegramGetMeResponse;
   } catch {
     throw new TelegramApiError('Telegram жавобини ўқиб бўлмади.');
   }

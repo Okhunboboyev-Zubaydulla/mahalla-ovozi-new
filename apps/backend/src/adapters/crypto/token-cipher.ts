@@ -24,7 +24,7 @@ export const FALLBACK_DEV_KEY = 'dev_encryption_key_32_bytes_len!';
  * - Exact 32-byte UTF-8 string
  */
 export function getEncryptionKey(overrideKey?: string): Buffer {
-  const rawKey = overrideKey ?? process.env.ENCRYPTION_KEY;
+  const rawKey = (overrideKey ?? process.env.ENCRYPTION_KEY)?.trim();
 
   if (!rawKey) {
     if (process.env.NODE_ENV === 'production') {
