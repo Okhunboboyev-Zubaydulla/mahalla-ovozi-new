@@ -1,6 +1,10 @@
 import { eq } from 'drizzle-orm';
 import { DbClient } from '../../adapters/db/client.js';
-import { districts, districtTelegramBots } from '../../adapters/db/schema/index.js';
+import {
+  districts,
+  districtTelegramBots,
+  districtTelegramGroups,
+} from '../../adapters/db/schema/index.js';
 import {
   DistrictReadiness,
   PrerequisiteItem,
@@ -13,8 +17,13 @@ import { recordAuditEvent } from '../audit/audit-service.js';
 export function evaluateDistrictPrerequisites(
   district: typeof districts.$inferSelect,
   telegramBot?: typeof districtTelegramBots.$inferSelect | null,
+  telegramGroups?: Array<typeof districtTelegramGroups.$inferSelect>,
 ): PrerequisiteItem[] {
   const isBotValid = Boolean(telegramBot && telegramBot.status === 'VALID');
+  const groups = telegramGroups ?? [];
+  const hasGroups = groups.length > 0;
+  const allGroupsValid = hasGroups && groups.every((g) => g.status === 'VALID');
+  const invalidGroupCount = groups.filter((g) => g.status !== 'VALID').length;
 
   const items: PrerequisiteItem[] = [
     {
@@ -69,9 +78,10 @@ export function evaluateDistrictPrerequisites(
     {
       key: 'telegram_bot',
       label: 'Telegram бот уланиши',
-      description: isBotValid && telegramBot
-        ? `Туманнинг расмий Telegram боти (${telegramBot.botUsername ? `@${telegramBot.botUsername}` : telegramBot.botFirstName}) фаоллаштирилди`
-        : 'Туманнинг расмий Telegram боти фаоллаштирилди',
+      description:
+        isBotValid && telegramBot
+          ? `Туманнинг расмий Telegram боти (${telegramBot.botUsername ? `@${telegramBot.botUsername}` : telegramBot.botFirstName}) фаоллаштирилди`
+          : 'Туманнинг расмий Telegram боти фаоллаштирилди',
       status: isBotValid ? 'passed' : 'incomplete',
       blockerReason: isBotValid ? undefined : 'Telegram бот ҳали уланмаган (1.4-босқич).',
       actionRequired: !isBotValid,
@@ -81,11 +91,24 @@ export function evaluateDistrictPrerequisites(
     {
       key: 'group_mappings',
       label: 'Гуруҳлар ва маҳаллалар харитаси',
-      description: 'Telegram гуруҳлари тегишли маҳаллаларга бириктирилди',
-      status: 'incomplete',
-      blockerReason: 'Маҳалла гуруҳлари бириктирилмаган (1.5-босқич).',
-      actionRequired: true,
-      actionPath: '/group-mappings',
+      description: allGroupsValid
+        ? `${groups.length} та маҳалла Telegram гуруҳи муваффақиятли бириктирилди ва синовдан ўтди`
+        : 'Telegram гуруҳлари тегишли маҳаллаларга бириктирилди',
+      status: allGroupsValid ? 'passed' : 'incomplete',
+      blockerReason: !hasGroups
+        ? 'Маҳалла Telegram гуруҳлари ҳали бириктирилмаган.'
+        : !allGroupsValid
+          ? `${invalidGroupCount} та гуруҳ ҳали тўлиқ синовдан ўтмаган ёки тасдиқланмаган.`
+          : undefined,
+      actionRequired: !allGroupsValid,
+      actionPath: !allGroupsValid ? '/telegram-setup' : undefined,
+      completedAt: allGroupsValid
+        ? (groups
+            .map((g) => g.lastValidatedAt || g.testMessageReceivedAt || g.updatedAt)
+            .filter(Boolean)
+            .sort((a, b) => (b ? new Date(b).getTime() : 0) - (a ? new Date(a).getTime() : 0))[0]
+            ?.toISOString() ?? undefined)
+        : undefined,
     },
     {
       key: 'hokim_account',
@@ -103,7 +126,7 @@ export function evaluateDistrictPrerequisites(
 
 export async function evaluateDistrictReadiness(
   db: DbClient,
-  districtId: string
+  districtId: string,
 ): Promise<DistrictReadiness> {
   const [district] = await db
     .select()
@@ -121,7 +144,12 @@ export async function evaluateDistrictReadiness(
     .where(eq(districtTelegramBots.districtId, districtId))
     .limit(1);
 
-  const items = evaluateDistrictPrerequisites(district, botRow);
+  const groupRows = await db
+    .select()
+    .from(districtTelegramGroups)
+    .where(eq(districtTelegramGroups.districtId, districtId));
+
+  const items = evaluateDistrictPrerequisites(district, botRow, groupRows);
   const passedCount = items.filter((item) => item.status === 'passed').length;
   const totalCount = items.length;
   const isActivationReady = passedCount === totalCount;

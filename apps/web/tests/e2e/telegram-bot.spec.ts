@@ -7,40 +7,45 @@ const testUsername = `po_tg_e2e_${Date.now()}`;
 const testPassword = 'Secure-Telegram-Password-2026!';
 const rootDir = fileURLToPath(new URL('../../../../', import.meta.url));
 
+const validBotId = (600000000 + Math.floor(Math.random() * 100000)).toString();
+const validToken = `${validBotId}:ABCdefGHIjklMNOpqrSTUvwxYZ_Valid1`;
+const replaceBotId = (900000000 + Math.floor(Math.random() * 100000)).toString();
+const replaceToken = `${replaceBotId}:ABCdefGHIjklMNOpqrSTUvwxYZ_Replacement1`;
+
 let mockTelegramServer: http.Server | null = null;
 
 test.beforeAll(async () => {
   // 1. Spin up mock Telegram API server on port 3099
   mockTelegramServer = http.createServer((req, res) => {
     const url = req.url || '';
-    if (url.includes('123456789:ABCdefGHIjklMNOpqrSTUvwxYZ_Valid1')) {
+    if (url.includes(validToken)) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({
           ok: true,
           result: {
-            id: 123456789,
+            id: Number(validBotId),
             is_bot: true,
             first_name: 'Chilonzor Mahalla Bot',
             username: 'chilonzor_mahalla_bot',
           },
-        })
+        }),
       );
       return;
     }
 
-    if (url.includes('987654321:ABCdefGHIjklMNOpqrSTUvwxYZ_Replacement1')) {
+    if (url.includes(replaceToken)) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({
           ok: true,
           result: {
-            id: 987654321,
+            id: Number(replaceBotId),
             is_bot: true,
             first_name: 'New Chilonzor Bot',
             username: 'new_chilonzor_bot',
           },
-        })
+        }),
       );
       return;
     }
@@ -51,7 +56,7 @@ test.beforeAll(async () => {
         ok: false,
         error_code: 401,
         description: 'Unauthorized: invalid bot token',
-      })
+      }),
     );
   });
 
@@ -130,7 +135,7 @@ test.describe('Story 1.4: Telegram Bot Connection & Validation E2E Journeys', ()
 
     // 4. Test Token Input and Connect valid bot
     const tokenInput = page.locator('input[placeholder="123456789:AAF..."]');
-    await tokenInput.fill('123456789:ABCdefGHIjklMNOpqrSTUvwxYZ_Valid1');
+    await tokenInput.fill(validToken);
 
     const submitBtn = page.getByRole('button', { name: 'Ботни текшириш ва улаш' });
     await submitBtn.click();
@@ -140,7 +145,7 @@ test.describe('Story 1.4: Telegram Bot Connection & Validation E2E Journeys', ()
     await expect(page.locator('text=ФАОЛ / УЛАНГАН')).toBeVisible();
     await expect(page.locator('text=Chilonzor Mahalla Bot')).toBeVisible();
     await expect(page.locator('text=@chilonzor_mahalla_bot')).toBeVisible();
-    await expect(page.locator('text=123456789:••••••••••••')).toBeVisible();
+    await expect(page.locator(`text=${validBotId}:••••••••••••`)).toBeVisible();
     await expect(page.locator('text=AES-256-GCM билан ҳимояланган')).toBeVisible();
     await expect(page.locator('text=Пассив қабул режими')).toBeVisible();
 
@@ -167,7 +172,7 @@ test.describe('Story 1.4: Telegram Bot Connection & Validation E2E Journeys', ()
     await expect(replaceModal.locator('.ant-modal-title')).toContainText('Telegram ботни алмаштириш');
 
     const modalInput = replaceModal.locator('input[placeholder="123456789:AAF..."]');
-    await modalInput.fill('987654321:ABCdefGHIjklMNOpqrSTUvwxYZ_Replacement1');
+    await modalInput.fill(replaceToken);
 
     const confirmReplaceBtn = replaceModal.getByRole('button', { name: 'Алмаштиришни тасдиқлаш' });
     await confirmReplaceBtn.click();

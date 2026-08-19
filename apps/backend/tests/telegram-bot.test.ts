@@ -123,8 +123,10 @@ describe('Telegram Bot Domain Module & Integration Tests', () => {
 
   describe('Bot Lifecycle: Connect, Read, Replace, Disconnect & Audit', () => {
     let districtId: string;
-    const initialToken = '123456789:ABCdefGHIjklMNOpqrSTUvwxYZ_Initial1';
-    const initialBotId = '123456789';
+    const initialBotId = (500000000 + Math.floor(Math.random() * 100000)).toString();
+    const initialToken = `${initialBotId}:ABCdefGHIjklMNOpqrSTUvwxYZ_Initial1`;
+    const replacementBotId = (550000000 + Math.floor(Math.random() * 100000)).toString();
+    const replacementToken = `${replacementBotId}:XYZabcReplacementBotToken_2026`;
 
     beforeAll(async () => {
       districtId = `dist_${crypto.randomUUID()}`;
@@ -179,7 +181,7 @@ describe('Telegram Bot Domain Module & Integration Tests', () => {
       expect(data.bot.botId).toBe(initialBotId);
       expect(data.bot.botUsername).toBe('chilonzor_mahalla_bot');
       expect(data.bot.botFirstName).toBe('Chilonzor Mahalla Bot');
-      expect(data.bot.tokenMasked).toBe('123456789:••••••••••••');
+      expect(data.bot.tokenMasked).toBe(`${initialBotId}:••••••••••••`);
       expect(data.bot.status).toBe('VALID');
 
       // Secret Exclusion Invariant: Response must NEVER contain raw token or cipher keys
@@ -242,7 +244,7 @@ describe('Telegram Bot Domain Module & Integration Tests', () => {
       expect(data.bot).toBeDefined();
       expect(data.bot.botId).toBe(initialBotId);
       expect(data.bot.botUsername).toBe('chilonzor_mahalla_bot');
-      expect(data.bot.tokenMasked).toBe('123456789:••••••••••••');
+      expect(data.bot.tokenMasked).toBe(`${initialBotId}:••••••••••••`);
       expect(data.bot.status).toBe('VALID');
       expect(data.bot).not.toHaveProperty('encryptedToken');
     });
@@ -310,9 +312,6 @@ describe('Telegram Bot Domain Module & Integration Tests', () => {
     });
 
     it('replaces existing bot atomically with a new valid bot (AC 10)', async () => {
-      const replacementToken = '987654321:XYZabcReplacementBotToken_2026';
-      const replacementBotId = '987654321';
-
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -338,7 +337,7 @@ describe('Telegram Bot Domain Module & Integration Tests', () => {
       const data = replaceRes.json();
       expect(data.bot.botId).toBe(replacementBotId);
       expect(data.bot.botUsername).toBe('replaced_bot');
-      expect(data.bot.tokenMasked).toBe('987654321:••••••••••••');
+      expect(data.bot.tokenMasked).toBe(`${replacementBotId}:••••••••••••`);
 
       // Verify DB updated to replacement
       const [updatedBot] = await db
@@ -366,7 +365,7 @@ describe('Telegram Bot Domain Module & Integration Tests', () => {
       expect(deleteRes.statusCode).toBe(200);
       expect(deleteRes.json()).toEqual({
         success: true,
-        disconnectedBotId: '987654321',
+        disconnectedBotId: replacementBotId,
       });
 
       // Verify deleted from DB
@@ -386,7 +385,7 @@ describe('Telegram Bot Domain Module & Integration Tests', () => {
       expect(auditEvent).toBeDefined();
       expect(auditEvent!.metadata).toMatchObject({
         districtId,
-        botId: '987654321',
+        botId: replacementBotId,
       });
 
       // Verify Readiness prerequisite returns to incomplete

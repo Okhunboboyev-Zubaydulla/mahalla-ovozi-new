@@ -29,6 +29,7 @@ import { useDistrict } from '../district/district-context.js';
 import { useTelegramBot } from '../district/useTelegramBot.js';
 import { districtClient } from '../district/district-client.js';
 import { useQuery } from '@tanstack/react-query';
+import { TelegramGroupTable } from '../components/TelegramGroupTable.js';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -176,6 +177,7 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
           />
         ) : bot && bot.status === 'VALID' ? (
           /* Connected / Valid State */
+          <>
           <Card
             title={
               <Space>
@@ -249,8 +251,11 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
               </Space>
             </Space>
           </Card>
+          <TelegramGroupTable districtId={effectiveDistrictId || bot.districtId} isOffline={isOffline} />
+        </>
         ) : (
           /* Not Configured State */
+          <>
           <Card
             title={
               <Space>
@@ -327,6 +332,14 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
               </Form>
             </Space>
           </Card>
+          <Alert
+            message="Маҳалла гуруҳларини бириктириш"
+            description="Маҳаллалар учун Telegram гуруҳларини қўшиш ва синовдан ўтказиш учун аввал юқоридаги расмий ботни фаоллаштиринг."
+            type="info"
+            showIcon
+            icon={<InfoCircleOutlined />}
+          />
+        </>
         )}
       </Space>
 

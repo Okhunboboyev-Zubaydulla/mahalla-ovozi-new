@@ -38,6 +38,11 @@ export async function verifyStateChangingOrigin(req: FastifyRequest, reply: Fast
     return;
   }
 
+  // Exempt server-to-server webhooks from browser origin checks
+  if (req.url.startsWith('/api/v1/telegram/webhook')) {
+    return;
+  }
+
   // 1. Check Sec-Fetch-Site if provided by browser — same-origin/same-site requests are safe
   const secFetchSite = req.headers['sec-fetch-site'];
   if (typeof secFetchSite === 'string') {

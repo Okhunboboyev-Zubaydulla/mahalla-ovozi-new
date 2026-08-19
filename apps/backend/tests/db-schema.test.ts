@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/client.js';
-import { accounts, sessions, auditEvents, signInRateLimits, districts, districtTelegramBots } from '../src/adapters/db/schema/index.js';
+import { accounts, sessions, auditEvents, signInRateLimits, districts, districtTelegramBots, districtTelegramGroups } from '../src/adapters/db/schema/index.js';
 import { eq } from 'drizzle-orm';
 import pg from 'pg';
 import crypto from 'node:crypto';
@@ -242,6 +242,144 @@ describe('Database Schema & Migration Verification', () => {
         tokenMasked: 'mask',
         status: 'UNAUTHORIZED_STATUS' as unknown as 'VALID',
         lastValidatedAt: new Date(),
+      })
+    ).rejects.toThrow();
+
+    // Clean up
+    await db.delete(districts).where(eq(districts.id, districtId));
+  });
+
+  it('can query district_telegram_groups table', async () => {
+    const rows = await db.select().from(districtTelegramGroups).limit(1);
+    expect(Array.isArray(rows)).toBe(true);
+  });
+
+  it('cascades deletion of district_telegram_groups when district is deleted', async () => {
+    const districtId = `dist_${crypto.randomUUID()}`;
+    const groupId = `dtg_${crypto.randomUUID()}`;
+    const chatId = `-100${crypto.randomUUID().replace(/\D/g, '').slice(0, 10)}`;
+
+    await db.insert(districts).values({
+      id: districtId,
+      name: `CascadeGroupDist_${crypto.randomUUID().slice(0, 8)}`,
+      status: 'SETUP_INCOMPLETE',
+    });
+
+    await db.insert(districtTelegramGroups).values({
+      id: groupId,
+      districtId,
+      mahallaName: 'Bogbonlar',
+      telegramChatId: chatId,
+      telegramChatTitle: 'Bogbonlar Mahalla Guruhi',
+      status: 'PENDING',
+    });
+
+    const [groupBefore] = await db
+      .select()
+      .from(districtTelegramGroups)
+      .where(eq(districtTelegramGroups.id, groupId));
+    expect(groupBefore).toBeDefined();
+
+    // Delete parent district
+    await db.delete(districts).where(eq(districts.id, districtId));
+
+    // Verify child group was cascade-deleted
+    const [groupAfter] = await db
+      .select()
+      .from(districtTelegramGroups)
+      .where(eq(districtTelegramGroups.id, groupId));
+    expect(groupAfter).toBeUndefined();
+  });
+
+  it('enforces case-insensitive uniqueness on mahallaName within a district (AC 2)', async () => {
+    const districtId = `dist_${crypto.randomUUID()}`;
+    const group1Id = `dtg_${crypto.randomUUID()}`;
+    const group2Id = `dtg_${crypto.randomUUID()}`;
+
+    await db.insert(districts).values({
+      id: districtId,
+      name: `MahallaUniqDist_${crypto.randomUUID().slice(0, 8)}`,
+      status: 'SETUP_INCOMPLETE',
+    });
+
+    await db.insert(districtTelegramGroups).values({
+      id: group1Id,
+      districtId,
+      mahallaName: 'Navbahor',
+      telegramChatId: `-100${crypto.randomUUID().replace(/\D/g, '').slice(0, 10)}`,
+      telegramChatTitle: 'Navbahor Guruhi 1',
+      status: 'PENDING',
+    });
+
+    // Attempt insert with different casing (NAVBAHOR / navbahor) for the same district must fail
+    await expect(
+      db.insert(districtTelegramGroups).values({
+        id: group2Id,
+        districtId,
+        mahallaName: 'NAVBAHOR',
+        telegramChatId: `-100${crypto.randomUUID().replace(/\D/g, '').slice(0, 10)}`,
+        telegramChatTitle: 'Navbahor Guruhi 2',
+        status: 'PENDING',
+      })
+    ).rejects.toThrow();
+
+    // Clean up
+    await db.delete(districts).where(eq(districts.id, districtId));
+  });
+
+  it('enforces global uniqueness on telegramChatId across districts (AC 3)', async () => {
+    const district1Id = `dist_${crypto.randomUUID()}`;
+    const district2Id = `dist_${crypto.randomUUID()}`;
+    const sharedChatId = `-100${crypto.randomUUID().replace(/\D/g, '').slice(0, 10)}`;
+
+    await db.insert(districts).values([
+      { id: district1Id, name: `DistrictA_${crypto.randomUUID().slice(0, 8)}`, status: 'SETUP_INCOMPLETE' },
+      { id: district2Id, name: `DistrictB_${crypto.randomUUID().slice(0, 8)}`, status: 'SETUP_INCOMPLETE' },
+    ]);
+
+    await db.insert(districtTelegramGroups).values({
+      id: `dtg_${crypto.randomUUID()}`,
+      districtId: district1Id,
+      mahallaName: 'Mahalla A',
+      telegramChatId: sharedChatId,
+      telegramChatTitle: 'Shared Group',
+      status: 'VALID',
+    });
+
+    // Attempting to attach the same telegramChatId to district 2 must fail
+    await expect(
+      db.insert(districtTelegramGroups).values({
+        id: `dtg_${crypto.randomUUID()}`,
+        districtId: district2Id,
+        mahallaName: 'Mahalla B',
+        telegramChatId: sharedChatId,
+        telegramChatTitle: 'Shared Group',
+        status: 'VALID',
+      })
+    ).rejects.toThrow();
+
+    // Clean up
+    await db.delete(districts).where(eq(districts.id, district1Id));
+    await db.delete(districts).where(eq(districts.id, district2Id));
+  });
+
+  it('enforces CHECK constraint on district_telegram_groups status values', async () => {
+    const districtId = `dist_${crypto.randomUUID()}`;
+
+    await db.insert(districts).values({
+      id: districtId,
+      name: `CheckStatusGroup_${crypto.randomUUID().slice(0, 8)}`,
+      status: 'SETUP_INCOMPLETE',
+    });
+
+    await expect(
+      db.insert(districtTelegramGroups).values({
+        id: `dtg_${crypto.randomUUID()}`,
+        districtId,
+        mahallaName: 'Chilonzor',
+        telegramChatId: `-100${crypto.randomUUID().replace(/\D/g, '').slice(0, 10)}`,
+        telegramChatTitle: 'Chilonzor Guruhi',
+        status: 'INVALID_GROUP_STATUS',
       })
     ).rejects.toThrow();
 

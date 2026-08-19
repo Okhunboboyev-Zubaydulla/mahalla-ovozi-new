@@ -4,7 +4,7 @@ baseline_commit: c4fbf8b1c0125bbadc83ac293aab06824fc65f2f
 
 # Story 1.5: Configure and Validate Telegram Group-to-Mahalla Mappings
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -130,39 +130,40 @@ So that future Telegram evidence can be attributed deterministically to the corr
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Database Schema & Migration Finalization** (AC: 1, 2, 3)
-  - [ ] 1.1 Create `apps/backend/src/adapters/db/schema/district-telegram-groups.ts` with `districtTelegramGroups` table matching migration `0004_icy_vance_astro.sql`.
-  - [ ] 1.2 Export from `apps/backend/src/adapters/db/schema/index.ts`.
-  - [ ] 1.3 Verify unique indexes: `district_telegram_groups_chat_id_idx` (`telegram_chat_id`) and `district_telegram_groups_district_mahalla_lower_idx` (`[district_id, LOWER(mahalla_name)]`).
+- [x] **Task 1: Database Schema & Migration Finalization** (AC: 1, 2, 3)
+  - [x] 1.1 Create `apps/backend/src/adapters/db/schema/district-telegram-groups.ts` with `districtTelegramGroups` table matching migration `0004_icy_vance_astro.sql`.
+  - [x] 1.2 Export from `apps/backend/src/adapters/db/schema/index.ts`.
+  - [x] 1.3 Verify unique indexes: `district_telegram_groups_chat_id_idx` (`telegram_chat_id`) and `district_telegram_groups_district_mahalla_lower_idx` (`[district_id, LOWER(mahalla_name)]`).
 
-- [ ] **Task 2: Telegram Client Group Verification Adapter & Message Filtering** (AC: 4, 5, 7, 8)
-  - [ ] 2.1 Enhance `apps/backend/src/adapters/telegram/telegram-client.ts` with `getChat(token, chatId)`, `getChatMember(token, chatId, botId)`, and `checkGroupPrivacyMode(token)`.
-  - [ ] 2.2 Define domain errors: `TelegramChatNotFoundError`, `TelegramBotNotMemberError`, `TelegramBotIsAdminError`, `TelegramPrivacyModeEnabledError`.
-  - [ ] 2.3 Implement pure `filterTelegramMessage(message)` predicate in `apps/backend/src/adapters/telegram/telegram-message-filter.ts` enforcing rejection of bot senders, channels, forwarded content, and bot commands.
-  - [ ] 2.4 Add unit tests in `apps/backend/tests/telegram-message-filter.test.ts` and `apps/backend/tests/telegram-client-group.test.ts`.
+- [x] **Task 2: Telegram Client Group Verification Adapter & Message Filtering** (AC: 4, 5, 7, 8)
+  - [x] 2.1 Enhance `apps/backend/src/adapters/telegram/telegram-client.ts` with `getChat(token, chatId)`, `getChatMember(token, chatId, botId)`, and `checkGroupPrivacyMode(token)`.
+  - [x] 2.2 Define domain errors: `TelegramChatNotFoundError`, `TelegramBotNotMemberError`, `TelegramBotIsAdminError`, `TelegramPrivacyModeEnabledError`.
+  - [x] 2.3 Implement pure `filterTelegramMessage(message)` predicate in `apps/backend/src/adapters/telegram/telegram-message-filter.ts` enforcing rejection of bot senders, channels, forwarded content, and bot commands.
+  - [x] 2.4 Add unit tests in `apps/backend/tests/telegram-message-filter.test.ts` and `apps/backend/tests/telegram-client-group.test.ts`.
 
-- [ ] **Task 3: In-Memory Test Validation Manager & Webhook Handler** (AC: 6, 7, 8, 9, 10)
-  - [ ] 3.1 Create `apps/backend/src/modules/telegram-groups/telegram-test-session-manager.ts` with TTL-based test session registry (`(districtId, chatId)` with 65s expiry, status `PENDING | SUCCESS | TIMEOUT | FAILED`).
-  - [ ] 3.2 Implement webhook ingestion route `POST /api/v1/telegram/webhook/:botId` capturing test messages during `SETUP_INCOMPLETE` without writing to production evidence tables or enqueuing AI jobs.
-  - [ ] 3.3 Create test simulation route `POST /api/v1/districts/:districtId/groups/:groupId/simulate-test-message` enabled only when `NODE_ENV !== 'production'`.
+- [x] **Task 3: In-Memory Test Validation Manager & Webhook Handler** (AC: 6, 7, 8, 9, 10)
+  - [x] 3.1 Create `apps/backend/src/modules/telegram-groups/telegram-test-session-manager.ts` with TTL-based test session registry (`(districtId, chatId)` with 65s expiry, status `PENDING | SUCCESS | TIMEOUT | FAILED`).
+  - [x] 3.2 Implement webhook ingestion route `POST /api/v1/telegram/webhook/:botId` capturing test messages during `SETUP_INCOMPLETE` without writing to production evidence tables or enqueuing AI jobs.
+  - [x] 3.3 Create test simulation route `POST /api/v1/districts/:districtId/groups/:groupId/simulate-test-message` enabled only when `NODE_ENV !== 'production'`.
 
-- [ ] **Task 4: Group Mappings Service, API Contracts & Routes** (AC: 1, 2, 3, 11, 12, 13)
-  - [ ] 4.1 Define Zod schemas in `packages/api-contracts/src/telegram-groups.ts` and export from `packages/api-contracts/src/index.ts`.
-  - [ ] 4.2 Create `apps/backend/src/modules/telegram-groups/telegram-groups-service.ts` implementing CRUD, group access validation, test session initiation, and audit logging (`DISTRICT_GROUP_MAPPED`, `DISTRICT_GROUP_UNMAPPED`, `DISTRICT_GROUP_VALIDATED`).
-  - [ ] 4.3 Update `apps/backend/src/modules/districts/districts-readiness.ts` to dynamically evaluate Prerequisite 7 (`group_mappings`) based on `districtTelegramGroups` table records.
-  - [ ] 4.4 Create `apps/backend/src/modules/telegram-groups/telegram-groups-routes.ts` and register in `apps/backend/src/entrypoints/http.ts`.
-  - [ ] 4.5 Add integration tests in `apps/backend/tests/telegram-groups.test.ts` and update `apps/backend/tests/districts-readiness.test.ts`.
+- [x] **Task 4: Group Mappings Service, API Contracts & Routes** (AC: 1, 2, 3, 11, 12, 13)
+  - [x] 4.1 Define Zod schemas in `packages/api-contracts/src/telegram-groups.ts` and export from `packages/api-contracts/src/index.ts`.
+  - [x] 4.2 Create `apps/backend/src/modules/telegram-groups/telegram-groups-service.ts` implementing CRUD, group access validation, test session initiation, and audit logging (`DISTRICT_GROUP_MAPPED`, `DISTRICT_GROUP_UNMAPPED`, `DISTRICT_GROUP_VALIDATED`).
+  - [x] 4.3 Update `apps/backend/src/modules/districts/districts-readiness.ts` to dynamically evaluate Prerequisite 7 (`group_mappings`) based on `districtTelegramGroups` table records.
+  - [x] 4.4 Create `apps/backend/src/modules/telegram-groups/telegram-groups-routes.ts` and register in `apps/backend/src/entrypoints/http.ts`.
+  - [x] 4.5 Add integration tests in `apps/backend/tests/telegram-groups.test.ts` and update `apps/backend/tests/districts-readiness.test.ts`.
 
-- [ ] **Task 5: Frontend Group Mappings Table, Drawer & Test-Waiting UI** (AC: 1, 6, 9, 11, 14)
-  - [ ] 5.1 Create `apps/web/src/district/telegram-group-client.ts` and `apps/web/src/district/useTelegramGroups.ts` with TanStack Query hooks.
-  - [ ] 5.2 Create `apps/web/src/components/TelegramGroupDrawer.tsx` with multi-step setup, Ant Design `Form`, and `Statistic.Countdown` / `Progress` spinner for live test message waiting.
-  - [ ] 5.3 Create `apps/web/src/components/TelegramGroupTable.tsx` with search filtering and responsive reflow to stacked `<Card />` list via `Grid.useBreakpoint()`.
-  - [ ] 5.4 Update `apps/web/src/pages/TelegramSetupPage.tsx` integrating the Mappings Table below the Bot Connection Card.
-  - [ ] 5.5 Add unit tests in `apps/web/tests/unit/TelegramGroupTable.test.tsx` and `apps/web/tests/unit/TelegramGroupDrawer.test.tsx`.
+- [x] **Task 5: Frontend Group Mappings Table, Drawer & Test-Waiting UI** (AC: 1, 6, 9, 11, 14)
+  - [x] 5.1 Create `apps/web/src/district/telegram-group-client.ts` and `apps/web/src/district/useTelegramGroups.ts` with TanStack Query hooks.
+  - [x] 5.2 Create `apps/web/src/components/TelegramGroupDrawer.tsx` with multi-step setup, Ant Design `Form`, and `Statistic.Countdown` / `Progress` spinner for live test message waiting.
+  - [x] 5.3 Create `apps/web/src/components/TelegramGroupTable.tsx` with search filtering and responsive reflow to stacked `<Card />` list via `Grid.useBreakpoint()`.
+  - [x] 5.4 Update `apps/web/src/pages/TelegramSetupPage.tsx` integrating the Mappings Table below the Bot Connection Card.
+  - [x] 5.5 Add unit tests in `apps/web/tests/unit/TelegramGroupTable.test.tsx` and `apps/web/tests/unit/TelegramGroupDrawer.test.tsx`.
 
-- [ ] **Task 6: E2E Verification, Full Test Suite & Codebase Quality Gate** (AC: 15)
-  - [ ] 6.1 Create Playwright E2E test `apps/web/tests/e2e/telegram-group-mappings.spec.ts` covering mapping creation, duplicate conflict feedback, test message resolution, and checklist update.
-  - [ ] 6.2 Run `pnpm typecheck`, `pnpm test`, and `pnpm --filter @mahalla-ovozi/web test:e2e`.
+- [x] **Task 6: E2E Verification, Full Test Suite & Codebase Quality Gate** (AC: 15)
+  - [x] 6.1 Create Playwright E2E test `apps/web/tests/e2e/telegram-group-mappings.spec.ts` covering mapping creation, duplicate conflict feedback, test message resolution, and checklist update.
+  - [x] 6.2 Execute forced verification commands across the entire monorepo (`pnpm typecheck`, `pnpm test`, `pnpm --filter @mahalla-ovozi/web test:e2e`).
+  - [x] 6.3 Update sprint status tracking in `sprint-status.yaml` and story file status to `review`.
 
 ---
 

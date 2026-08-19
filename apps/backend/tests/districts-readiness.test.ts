@@ -3,7 +3,7 @@ import { FastifyInstance } from 'fastify';
 import { buildHttpServer } from '../src/entrypoints/http.js';
 import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/client.js';
 import { createOrResetProductOwner } from '../src/modules/auth/account-service.js';
-import { auditEvents, districts } from '../src/adapters/db/schema/index.js';
+import { auditEvents, districts, districtTelegramGroups } from '../src/adapters/db/schema/index.js';
 import { PrerequisiteItem } from '@mahalla-ovozi/api-contracts';
 import { eq, desc } from 'drizzle-orm';
 import pg from 'pg';
@@ -192,7 +192,7 @@ describe('Districts Activation Readiness & Disclosure Integration Tests', () => 
       // 7. Group Mappings -> truthful incomplete (pending Story 1.5)
       const mappings = itemMap.get('group_mappings')!;
       expect(mappings.status).toBe('incomplete');
-      expect(mappings.blockerReason).toContain('1.5');
+      expect(mappings.blockerReason).toBe('Маҳалла Telegram гуруҳлари ҳали бириктирилмаган.');
 
       // 8. Hokim Account -> truthful incomplete (pending Story 1.6)
       const hokim = itemMap.get('hokim_account')!;
@@ -341,6 +341,59 @@ describe('Districts Activation Readiness & Disclosure Integration Tests', () => 
         .update(districts)
         .set({ status: 'SETUP_INCOMPLETE' })
         .where(eq(districts.id, testDistrictId));
+    });
+
+    it('evaluates group_mappings prerequisite dynamically based on database state (AC 12)', async () => {
+      const groupId = `dtg_${Date.now()}`;
+      const chatId = `-100${Date.now()}`;
+
+      // 1. Initially 0 groups -> incomplete
+      let res = await server.inject({
+        method: 'GET',
+        url: `/api/v1/districts/${testDistrictId}/readiness`,
+        headers: { cookie: authCookie },
+      });
+      let groupItem = res.json().readiness.items.find((i: any) => i.key === 'group_mappings');
+      expect(groupItem.status).toBe('incomplete');
+      expect(groupItem.blockerReason).toBe('Маҳалла Telegram гуруҳлари ҳали бириктирилмаган.');
+
+      // 2. Insert PENDING group -> still incomplete
+      await db.insert(districtTelegramGroups).values({
+        id: groupId,
+        districtId: testDistrictId,
+        mahallaName: 'Dinamo Mahalla',
+        telegramChatId: chatId,
+        telegramChatTitle: 'Dinamo Chat',
+        status: 'PENDING',
+      });
+
+      res = await server.inject({
+        method: 'GET',
+        url: `/api/v1/districts/${testDistrictId}/readiness`,
+        headers: { cookie: authCookie },
+      });
+      groupItem = res.json().readiness.items.find((i: any) => i.key === 'group_mappings');
+      expect(groupItem.status).toBe('incomplete');
+      expect(groupItem.blockerReason).toContain('тўлиқ синовдан ўтмаган');
+
+      // 3. Mark group as VALID -> becomes passed
+      await db
+        .update(districtTelegramGroups)
+        .set({ status: 'VALID', lastValidatedAt: new Date() })
+        .where(eq(districtTelegramGroups.id, groupId));
+
+      res = await server.inject({
+        method: 'GET',
+        url: `/api/v1/districts/${testDistrictId}/readiness`,
+        headers: { cookie: authCookie },
+      });
+      groupItem = res.json().readiness.items.find((i: any) => i.key === 'group_mappings');
+      expect(groupItem.status).toBe('passed');
+      expect(groupItem.description).toContain('1 та маҳалла Telegram гуруҳи муваффақиятли бириктирилди');
+      expect(groupItem.completedAt).toBeDefined();
+
+      // Clean up
+      await db.delete(districtTelegramGroups).where(eq(districtTelegramGroups.id, groupId));
     });
   });
 });
