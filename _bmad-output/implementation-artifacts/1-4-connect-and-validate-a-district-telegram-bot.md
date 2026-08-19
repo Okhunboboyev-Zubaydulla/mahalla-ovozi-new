@@ -1,6 +1,10 @@
+---
+baseline_commit: 9e47d4120ff1ee55fb59fea0777b0fe6b272c499
+---
+
 # Story 1.4: Connect and Validate a District Telegram Bot
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -125,74 +129,74 @@ So that the District has a verified passive Telegram connection before approved 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Cryptographic Cipher Adapter & Unit Tests** (AC: 3, 9, 12, 15)
-  - [ ] 1.1 Create `apps/backend/src/adapters/crypto/token-cipher.ts` implementing `encryptToken(token, keyVersion?)`, `decryptToken(payload)`, and `maskBotToken(token)` using Node.js native `crypto` (AES-256-GCM, 12-byte IV, 16-byte auth tag, `process.env.ENCRYPTION_KEY`).
-  - [ ] 1.2 Implement multi-format `ENCRYPTION_KEY` normalization: support 64-char hex, 44-char base64, or 32-byte string; validate 32-byte length in production; use dev fallback key in test/development if unset.
-  - [ ] 1.3 Implement resilient `maskBotToken(token)` using regex `/^(\d{6,16}):.+$/` returning `${botId}:••••••••••••` or safe `••••••••••••` for malformed input without leaking secrets.
-  - [ ] 1.4 Create `apps/backend/tests/token-cipher.test.ts` with unit tests covering roundtrip encryption/decryption, authentication tag tampering detection, key format parsing, key versioning, and token masking edge cases.
+- [x] **Task 1: Cryptographic Cipher Adapter & Unit Tests** (AC: 3, 9, 12, 15)
+  - [x] 1.1 Create `apps/backend/src/adapters/crypto/token-cipher.ts` implementing `encryptToken(token, keyVersion?)`, `decryptToken(payload)`, and `maskBotToken(token)` using Node.js native `crypto` (AES-256-GCM, 12-byte IV, 16-byte auth tag, `process.env.ENCRYPTION_KEY`).
+  - [x] 1.2 Implement multi-format `ENCRYPTION_KEY` normalization: support 64-char hex, 44-char base64, or 32-byte string; validate 32-byte length in production; use dev fallback key in test/development if unset.
+  - [x] 1.3 Implement resilient `maskBotToken(token)` using regex `/^(\d{6,16}):.+$/` returning `${botId}:••••••••••••` or safe `••••••••••••` for malformed input without leaking secrets.
+  - [x] 1.4 Create `apps/backend/tests/token-cipher.test.ts` with unit tests covering roundtrip encryption/decryption, authentication tag tampering detection, key format parsing, key versioning, and token masking edge cases.
 
-- [ ] **Task 2: Database Schema & Migration (`0003_district_telegram_bots.sql`)** (AC: 1, 3, 5, 7, 10)
-  - [ ] 2.1 Create `apps/backend/src/adapters/db/schema/district-telegram-bots.ts` defining `districtTelegramBots` table with `id`, `districtId` (unique FK referencing `districts.id` with cascade delete), `botId` (unique text), `botUsername` (nullable text), `botFirstName` (text), `encryptedToken` (text), `tokenIv` (text), `tokenTag` (text), `tokenKeyVersion` (text default 'v1'), `tokenMasked` (text), `status` (text check constraint `VALID` | `INVALID`), `lastValidatedAt`, `createdAt`, `updatedAt`.
-  - [ ] 2.2 Re-export from `apps/backend/src/adapters/db/schema/index.ts`.
-  - [ ] 2.3 Generate and apply Drizzle SQL migration `0003_district_telegram_bots.sql`.
-  - [ ] 2.4 Verify database unique indexes (`district_telegram_bots_district_id_idx` and `district_telegram_bots_bot_id_idx`).
+- [x] **Task 2: Database Schema & Migration (`0003_district_telegram_bots.sql`)** (AC: 1, 3, 5, 7, 10)
+  - [x] 2.1 Create `apps/backend/src/adapters/db/schema/district-telegram-bots.ts` defining `districtTelegramBots` table with `id`, `districtId` (unique FK referencing `districts.id` with cascade delete), `botId` (unique text), `botUsername` (nullable text), `botFirstName` (text), `encryptedToken` (text), `tokenIv` (text), `tokenTag` (text), `tokenKeyVersion` (text default 'v1'), `tokenMasked` (text), `status` (text check constraint `VALID` | `INVALID`), `lastValidatedAt`, `createdAt`, `updatedAt`.
+  - [x] 2.2 Re-export from `apps/backend/src/adapters/db/schema/index.ts`.
+  - [x] 2.3 Generate and apply Drizzle SQL migration `0003_district_telegram_bots.sql`.
+  - [x] 2.4 Verify database unique indexes (`district_telegram_bots_district_id_idx` and `district_telegram_bots_bot_id_idx`).
 
-- [ ] **Task 3: Telegram API Integration Adapter with URL Redaction** (AC: 4, 6, 7, 8)
-  - [ ] 3.1 Create `apps/backend/src/adapters/telegram/telegram-client.ts` implementing `validateTelegramBot(token: string)` calling `https://api.telegram.org/bot<token>/getMe` with an `AbortSignal.timeout(5000)`.
-  - [ ] 3.2 Define custom domain errors: `TelegramInvalidTokenError` (400), `TelegramNetworkTimeoutError` (504), `TelegramRateLimitError` (429), `TelegramApiError` (502).
-  - [ ] 3.3 Ensure token redaction (`/bot[REDACTED]/getMe`) from all error messages, logs, and stack traces.
-  - [ ] 3.4 Validate `ok: true`, `is_bot: true`, and extract `id`, `first_name`, `username` (`string | null`).
-  - [ ] 3.5 Ensure pure HTTP execution strictly outside database transactions.
+- [x] **Task 3: Telegram API Integration Adapter with URL Redaction** (AC: 4, 6, 7, 8)
+  - [x] 3.1 Create `apps/backend/src/adapters/telegram/telegram-client.ts` implementing `validateTelegramBot(token: string)` calling `https://api.telegram.org/bot<token>/getMe` with an `AbortSignal.timeout(5000)`.
+  - [x] 3.2 Define custom domain errors: `TelegramInvalidTokenError` (400), `TelegramNetworkTimeoutError` (504), `TelegramRateLimitError` (429), `TelegramApiError` (502).
+  - [x] 3.3 Ensure token redaction (`/bot[REDACTED]/getMe`) from all error messages, logs, and stack traces.
+  - [x] 3.4 Validate `ok: true`, `is_bot: true`, and extract `id`, `first_name`, `username` (`string | null`).
+  - [x] 3.5 Ensure pure HTTP execution strictly outside database transactions.
 
-- [ ] **Task 4: Shared API Contracts (`packages/api-contracts`)** (AC: 1, 7, 9)
-  - [ ] 4.1 Create `packages/api-contracts/src/telegram-bot.ts` defining `ConnectTelegramBotRequestSchema`, `TelegramBotInfoSchema` (with nullable `botUsername`), `GetTelegramBotResponseSchema`, `ConnectTelegramBotResponseSchema`, and `DisconnectTelegramBotResponseSchema`.
-  - [ ] 4.2 Re-export schemas and types from `packages/api-contracts/src/index.ts`.
-  - [ ] 4.3 Run `pnpm typecheck` to confirm clean compilation.
+- [x] **Task 4: Shared API Contracts (`packages/api-contracts`)** (AC: 1, 7, 9)
+  - [x] 4.1 Create `packages/api-contracts/src/telegram-bot.ts` defining `ConnectTelegramBotRequestSchema`, `TelegramBotInfoSchema` (with nullable `botUsername`), `GetTelegramBotResponseSchema`, `ConnectTelegramBotResponseSchema`, and `DisconnectTelegramBotResponseSchema`.
+  - [x] 4.2 Re-export schemas and types from `packages/api-contracts/src/index.ts`.
+  - [x] 4.3 Run `pnpm typecheck` to confirm clean compilation.
 
-- [ ] **Task 5: Backend Telegram Bot Domain Service & Routes** (AC: 1, 3, 4, 5, 6, 7, 9, 10, 12)
-  - [ ] 5.1 Create `apps/backend/src/modules/telegram-bot/telegram-bot-service.ts` implementing `getDistrictTelegramBot(db, districtId)`, `connectDistrictTelegramBot(db, districtId, token, actor, clientInfo)`, and `disconnectDistrictTelegramBot(db, districtId, actor, clientInfo)`.
-  - [ ] 5.2 Implement domain error handling: `DistrictNotFoundError` (404), `DistrictAlreadyActiveError` (409), `BotAlreadyAssignedError` (409 on DB `bot_id` conflict), `TelegramBotNotFoundError` (404 on disconnect when none exists).
-  - [ ] 5.3 Implement status check enforcing `SETUP_INCOMPLETE` for connect, replace, and disconnect mutations.
-  - [ ] 5.4 Implement privacy-safe audit logging for `DISTRICT_TELEGRAM_BOT_CONNECTED` and `DISTRICT_TELEGRAM_BOT_DISCONNECTED` (zero token/ciphertext leakage).
-  - [ ] 5.5 Create `apps/backend/src/modules/telegram-bot/telegram-bot-routes.ts` registering `GET`, `POST`, and `DELETE` endpoints under `/api/v1/districts/:districtId/telegram-bot` protected by `verifyStateChangingOrigin` and `createRequireProductOwner(db)`.
-  - [ ] 5.6 Register routes in `apps/backend/src/entrypoints/http.ts`.
+- [x] **Task 5: Backend Telegram Bot Domain Service & Routes** (AC: 1, 3, 4, 5, 6, 7, 9, 10, 12)
+  - [x] 5.1 Create `apps/backend/src/modules/telegram-bot/telegram-bot-service.ts` implementing `getDistrictTelegramBot(db, districtId)`, `connectDistrictTelegramBot(db, districtId, token, actor, clientInfo)`, and `disconnectDistrictTelegramBot(db, districtId, actor, clientInfo)`.
+  - [x] 5.2 Implement domain error handling: `DistrictNotFoundError` (404), `DistrictAlreadyActiveError` (409), `BotAlreadyAssignedError` (409 on DB `bot_id` conflict), `TelegramBotNotFoundError` (404 on disconnect when none exists).
+  - [x] 5.3 Implement status check enforcing `SETUP_INCOMPLETE` for connect, replace, and disconnect mutations.
+  - [x] 5.4 Implement privacy-safe audit logging for `DISTRICT_TELEGRAM_BOT_CONNECTED` and `DISTRICT_TELEGRAM_BOT_DISCONNECTED` (zero token/ciphertext leakage).
+  - [x] 5.5 Create `apps/backend/src/modules/telegram-bot/telegram-bot-routes.ts` registering `GET`, `POST`, and `DELETE` endpoints under `/api/v1/districts/:districtId/telegram-bot` protected by `verifyStateChangingOrigin` and `createRequireProductOwner(db)`.
+  - [x] 5.6 Register routes in `apps/backend/src/entrypoints/http.ts`.
 
-- [ ] **Task 6: District Readiness Evaluator Integration & Route Fix** (AC: 7, 11)
-  - [ ] 6.1 Update `evaluateDistrictPrerequisites` in `apps/backend/src/modules/districts/districts-readiness.ts` to accept optional `telegramBot` record.
-  - [ ] 6.2 Update `evaluateDistrictReadiness` in `apps/backend/src/modules/districts/districts-readiness.ts` to query `districtTelegramBots` for the district.
-  - [ ] 6.3 If bot exists and `status === 'VALID'`, mark prerequisite `telegram_bot` as `passed` with `description = 'Туманнинг расмий Telegram боти (@${bot.botUsername || bot.botFirstName}) фаоллаштирилди'` and `completedAt = bot.lastValidatedAt.toISOString()`.
-  - [ ] 6.4 If bot does not exist, keep prerequisite `telegram_bot` as `incomplete` with `actionRequired = true` and `actionPath = '/telegram-setup'` (fixing `/telegram-bot` path discrepancy).
+- [x] **Task 6: District Readiness Evaluator Integration & Route Fix** (AC: 7, 11)
+  - [x] 6.1 Update `evaluateDistrictPrerequisites` in `apps/backend/src/modules/districts/districts-readiness.ts` to accept optional `telegramBot` record.
+  - [x] 6.2 Update `evaluateDistrictReadiness` in `apps/backend/src/modules/districts/districts-readiness.ts` to query `districtTelegramBots` for the district.
+  - [x] 6.3 If bot exists and `status === 'VALID'`, mark prerequisite `telegram_bot` as `passed` with `description = 'Туманнинг расмий Telegram боти (@${bot.botUsername || bot.botFirstName}) фаоллаштирилди'` and `completedAt = bot.lastValidatedAt.toISOString()`.
+  - [x] 6.4 If bot does not exist, keep prerequisite `telegram_bot` as `incomplete` with `actionRequired = true` and `actionPath = '/telegram-setup'` (fixing `/telegram-bot` path discrepancy).
 
-- [ ] **Task 7: Backend Integration Tests** (AC: 3, 4, 5, 6, 7, 9, 10, 11, 12, 15)
-  - [ ] 7.1 Create `apps/backend/tests/telegram-bot.test.ts` testing against real PostgreSQL database and mocked Telegram API.
-  - [ ] 7.2 Test successful bot connection: `POST /api/v1/districts/:districtId/telegram-bot` returns masked bot info, DB stores ciphertext, audit record created.
-  - [ ] 7.3 Test invalid bot token rejection (400 / 401).
-  - [ ] 7.4 Test cross-district bot collision rejection (409 `BOT_ALREADY_ASSIGNED`).
-  - [ ] 7.5 Test `GET` endpoint returns safe masked metadata without secret leakage.
-  - [ ] 7.6 Test atomic replacement and disconnect operations.
-  - [ ] 7.7 Test active district mutation rejection (409 `DISTRICT_ALREADY_ACTIVE`).
-  - [ ] 7.8 Test readiness endpoint returns prerequisite `telegram_bot` as `passed` after connection and `incomplete` after disconnect.
+- [x] **Task 7: Backend Integration Tests** (AC: 3, 4, 5, 6, 7, 9, 10, 11, 12, 15)
+  - [x] 7.1 Create `apps/backend/tests/telegram-bot.test.ts` testing against real PostgreSQL database and mocked Telegram API.
+  - [x] 7.2 Test successful bot connection: `POST /api/v1/districts/:districtId/telegram-bot` returns masked bot info, DB stores ciphertext, audit record created.
+  - [x] 7.3 Test invalid bot token rejection (400 / 401).
+  - [x] 7.4 Test cross-district bot collision rejection (409 `BOT_ALREADY_ASSIGNED`).
+  - [x] 7.5 Test `GET` endpoint returns safe masked metadata without secret leakage.
+  - [x] 7.6 Test atomic replacement and disconnect operations.
+  - [x] 7.7 Test active district mutation rejection (409 `DISTRICT_ALREADY_ACTIVE`).
+  - [x] 7.8 Test readiness endpoint returns prerequisite `telegram_bot` as `passed` after connection and `incomplete` after disconnect.
 
-- [ ] **Task 8: Frontend Client & React Query Hooks** (AC: 1, 2, 9, 11, 13)
-  - [ ] 8.1 Create `apps/web/src/district/telegram-bot-client.ts` with `getDistrictTelegramBot(districtId)`, `connectDistrictTelegramBot(districtId, token)`, and `disconnectDistrictTelegramBot(districtId)`.
-  - [ ] 8.2 Create `apps/web/src/district/useTelegramBot.ts` implementing TanStack Query hooks with district scoping `['district', activeDistrictId, 'telegram-bot']`.
-  - [ ] 8.3 Invalidate both `['district', activeDistrictId, 'telegram-bot']` and `['district', activeDistrictId, 'readiness']` upon connection/disconnection.
+- [x] **Task 8: Frontend Client & React Query Hooks** (AC: 1, 2, 9, 11, 13)
+  - [x] 8.1 Create `apps/web/src/district/telegram-bot-client.ts` with `getDistrictTelegramBot(districtId)`, `connectDistrictTelegramBot(districtId, token)`, and `disconnectDistrictTelegramBot(districtId)`.
+  - [x] 8.2 Create `apps/web/src/district/useTelegramBot.ts` implementing TanStack Query hooks with district scoping `['district', activeDistrictId, 'telegram-bot']`.
+  - [x] 8.3 Invalidate both `['district', activeDistrictId, 'telegram-bot']` and `['district', activeDistrictId, 'readiness']` upon connection/disconnection.
 
-- [ ] **Task 9: Frontend Telegram Setup Page UI (`TelegramSetupPage.tsx`)** (AC: 1, 2, 6, 9, 10, 13, 14)
-  - [ ] 9.1 Replace placeholder in `apps/web/src/pages/TelegramSetupPage.tsx` with full Ant Design 5.x implementation.
-  - [ ] 9.2 Build "Not Configured" state with masked token input (`Input.Password`), validation rules, help text, and "Ботни текшириш ва улаш" action.
-  - [ ] 9.3 Build "Connected / Valid" state displaying `@bot_username` (or first name), display name, masked token, last verified date, passive receipt notice, and "Ботни алмаштириш" / "Ботни узиш" actions.
-  - [ ] 9.4 Implement confirmation modals for bot replacement and bot disconnection.
-  - [ ] 9.5 Handle offline state (`navigator.onLine === false`: disable actions, show offline warning alert).
-  - [ ] 9.6 Ensure 100% Uzbek Cyrillic microcopy and 44px min touch targets.
+- [x] **Task 9: Frontend Telegram Setup Page UI (`TelegramSetupPage.tsx`)** (AC: 1, 2, 6, 9, 10, 13, 14)
+  - [x] 9.1 Replace placeholder in `apps/web/src/pages/TelegramSetupPage.tsx` with full Ant Design 5.x implementation.
+  - [x] 9.2 Build "Not Configured" state with masked token input (`Input.Password`), validation rules, help text, and "Ботни текшириш ва улаш" action.
+  - [x] 9.3 Build "Connected / Valid" state displaying `@bot_username` (or first name), display name, masked token, last verified date, passive receipt notice, and "Ботни алмаштириш" / "Ботни узиш" actions.
+  - [x] 9.4 Implement confirmation modals for bot replacement and bot disconnection.
+  - [x] 9.5 Handle offline state (`navigator.onLine === false`: disable actions, show offline warning alert).
+  - [x] 9.6 Ensure 100% Uzbek Cyrillic microcopy and 44px min touch targets.
 
-- [ ] **Task 10: Update Onboarding Checklist Navigation** (AC: 1, 11, 14)
-  - [ ] 10.1 In `apps/web/src/components/DistrictOnboardingChecklist.tsx`, render action button for prerequisite `telegram_bot` when `incomplete` navigating to `/telegram-setup`.
+- [x] **Task 10: Update Onboarding Checklist Navigation** (AC: 1, 11, 14)
+  - [x] 10.1 In `apps/web/src/components/DistrictOnboardingChecklist.tsx`, render action button for prerequisite `telegram_bot` when `incomplete` navigating to `/telegram-setup`.
 
-- [ ] **Task 11: End-to-End Playwright Tests & Verification** (AC: 1, 2, 7, 11, 14, 15)
-  - [ ] 11.1 Create `apps/web/tests/e2e/telegram-bot.spec.ts` testing bot setup flow in browser.
-  - [ ] 11.2 Test entering token, connecting bot, verifying masked details card, navigating back to Overview, and seeing `telegram_bot` prerequisite marked `passed`.
-  - [ ] 11.3 Run full verification: `pnpm typecheck`, `pnpm test`, and `pnpm --filter @mahalla-ovozi/web test:e2e`.
+- [x] **Task 11: End-to-End Playwright Tests & Verification** (AC: 1, 2, 7, 11, 14, 15)
+  - [x] 11.1 Create `apps/web/tests/e2e/telegram-bot.spec.ts` testing bot setup flow in browser.
+  - [x] 11.2 Test entering token, connecting bot, verifying masked details card, navigating back to Overview, and seeing `telegram_bot` prerequisite marked `passed`.
+  - [x] 11.3 Run full verification: `pnpm typecheck`, `pnpm test`, and `pnpm --filter @mahalla-ovozi/web test:e2e`.
 
 ---
 
@@ -303,7 +307,45 @@ N/A (Specification phase)
 
 - Step 1: Adversarial & Edge-Case Review completed and cross-referenced with live authoritative documentation (`search_web`, `context7`, `antd`).
 - Step 2: Story 1.4 specification updated with 5 comprehensive patches (P1: Cipher & Key parsing, P2: URL Redaction & Error sanitization, P3: District status guard, P4: Readiness path & nullable username typings, P5: Domain error mapping matrix).
+- Step 3 (Task 1): Cryptographic cipher adapter implemented in `apps/backend/src/adapters/crypto/token-cipher.ts` with AES-256-GCM authenticated encryption/decryption, 12-byte random IVs, 16-byte post-final auth tags, multi-format key parsing (hex, base64, raw 32-byte), and safe regex token masking (`maskBotToken`). 16/16 unit tests passing in `apps/backend/tests/token-cipher.test.ts`.
+- Step 4 (Task 2): Database schema defined in `apps/backend/src/adapters/db/schema/district-telegram-bots.ts` with foreign key cascade deletion, 1-bot-per-district unique index, and platform-wide unique `bot_id` index (AC 5). Generated and executed Drizzle migration `drizzle/0003_sticky_wong.sql`. Added 5 schema constraint tests in `apps/backend/tests/db-schema.test.ts` (12/12 passing).
+- Step 5 (Task 3): Telegram API client adapter implemented in `apps/backend/src/adapters/telegram/telegram-client.ts` with strict URL and token redaction (`/bot[REDACTED]/getMe`), 5000ms timeout guard, domain error mapping hierarchy, and bot metadata extraction (with nullable username support). 12/12 unit tests passing in `apps/backend/tests/telegram-client.test.ts`.
+- Step 6 (Task 4): Shared Zod API contracts authored in `packages/api-contracts/src/telegram-bot.ts` and re-exported from `packages/api-contracts/src/index.ts`. Typecheck passing cleanly across all monorepo packages.
+- Step 7 (Task 5): Backend Telegram bot service (`telegram-bot-service.ts`) and Fastify routes (`telegram-bot-routes.ts`) implemented with atomic transactions, status guards (`SETUP_INCOMPLETE`), privacy-safe audit logging (`DISTRICT_TELEGRAM_BOT_CONNECTED`, `DISTRICT_TELEGRAM_BOT_DISCONNECTED`), and full domain error mapping matrix. Routes registered in `apps/backend/src/entrypoints/http.ts`.
+- Step 8 (Task 6): District readiness evaluator (`districts-readiness.ts`) updated to query `districtTelegramBots` dynamically, marking prerequisite 6 (`telegram_bot`) as `passed` when attached, and updating action route to `/telegram-setup`.
+- Step 9 (Task 7): Comprehensive backend integration tests authored in `apps/backend/tests/telegram-bot.test.ts` (18/18 integration tests passing against real PostgreSQL and mocked Telegram API, verifying encryption, decryption, audit logs, collision rejection, atomic replace, disconnect, and readiness transitions).
+- Step 10 (Task 8): Frontend API client (`telegram-bot-client.ts`), React Query hook (`useTelegramBot.ts`), and unit test suite (`useTelegramBot.test.tsx`) created with TanStack Query v5 cache invalidation for both `telegram-bot` and `readiness` queries.
+- Step 11 (Task 9): Full Ant Design 5.x `TelegramSetupPage.tsx` implemented with district scoping, offline detection banner, "Not Configured" state with masked input, "Connected / Valid" state with bot metadata & passive receipt notice, replace & disconnect confirmation modals, and 7 unit tests in `TelegramSetupPage.test.tsx`.
+- Step 12 (Task 10): In `DistrictOnboardingChecklist.tsx`, added action button navigation to `/telegram-setup` for the `telegram_bot` prerequisite item when `incomplete`, and added unit test verification in `DistrictOnboardingChecklist.test.tsx`.
+- Step 13 (Task 11): Created Playwright E2E test suite `apps/web/tests/e2e/telegram-bot.spec.ts` testing full browser journeys (district creation, checklist action button click, token entry & connection, masked card display, checklist transition to passed, bot token replacement, bot disconnection, and checklist rollback to incomplete). Verified 10/10 Playwright tests passing, `pnpm typecheck` 0 errors, and 128/128 unit/integration tests green.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/1-4-connect-and-validate-a-district-telegram-bot.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `apps/backend/src/adapters/crypto/token-cipher.ts`
+- `apps/backend/tests/token-cipher.test.ts`
+- `apps/backend/src/adapters/db/schema/district-telegram-bots.ts`
+- `apps/backend/src/adapters/db/schema/index.ts`
+- `apps/backend/drizzle/0003_sticky_wong.sql`
+- `apps/backend/drizzle/meta/_journal.json`
+- `apps/backend/tests/db-schema.test.ts`
+- `apps/backend/src/adapters/telegram/telegram-client.ts`
+- `apps/backend/tests/telegram-client.test.ts`
+- `packages/api-contracts/src/telegram-bot.ts`
+- `packages/api-contracts/src/index.ts`
+- `apps/backend/src/modules/telegram-bot/telegram-bot-service.ts`
+- `apps/backend/src/modules/telegram-bot/telegram-bot-routes.ts`
+- `apps/backend/src/entrypoints/http.ts`
+- `apps/backend/src/modules/districts/districts-readiness.ts`
+- `apps/backend/tests/telegram-bot.test.ts`
+- `apps/web/src/district/telegram-bot-client.ts`
+- `apps/web/src/district/useTelegramBot.ts`
+- `apps/web/tests/unit/useTelegramBot.test.tsx`
+- `apps/web/src/pages/TelegramSetupPage.tsx`
+- `apps/web/src/App.tsx`
+- `apps/web/tests/unit/TelegramSetupPage.test.tsx`
+- `apps/web/src/components/DistrictOnboardingChecklist.tsx`
+- `apps/web/tests/unit/DistrictOnboardingChecklist.test.tsx`
+- `apps/web/tests/e2e/telegram-bot.spec.ts`
+- `apps/web/playwright.config.ts`

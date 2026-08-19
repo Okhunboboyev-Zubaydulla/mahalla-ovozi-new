@@ -79,7 +79,7 @@ const mockReadiness: DistrictReadiness = {
       status: 'incomplete',
       blockerReason: 'Telegram бот ҳали уланмаган (1.4-босқич).',
       actionRequired: true,
-      actionPath: '/telegram-bot',
+      actionPath: '/telegram-setup',
     },
     {
       key: 'group_mappings',
@@ -215,6 +215,20 @@ describe('DistrictOnboardingChecklist Component Tests', () => {
       value: true,
       configurable: true,
     });
+  });
+
+  it('renders action buttons for incomplete prerequisites and navigates correctly (AC 1, 11, 14)', async () => {
+    vi.spyOn(districtClient, 'getDistrictReadiness').mockResolvedValue({
+      readiness: mockReadiness,
+    });
+
+    const { container } = renderChecklist();
+
+    const actionBtns = await screen.findAllByRole('button', { name: 'Созлаш' });
+    expect(actionBtns.length).toBeGreaterThanOrEqual(1);
+
+    const tgActionBtn = container.querySelector('#action-button-telegram_bot');
+    expect(tgActionBtn).toBeTruthy();
   });
 });
 

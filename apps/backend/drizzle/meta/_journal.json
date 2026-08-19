@@ -22,6 +22,20 @@
       "when": 1787033390352,
       "tag": "0002_strong_reavers",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787039553208,
+      "tag": "0003_sticky_wong",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787070197250,
+      "tag": "0004_icy_vance_astro",
+      "breakpoints": true
     }
   ]
 }

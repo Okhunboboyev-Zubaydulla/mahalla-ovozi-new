@@ -10,7 +10,7 @@ import { ConsoleLayout } from './components/ConsoleLayout.js';
 import { OverviewPage } from './pages/OverviewPage.js';
 import { DistrictsPage } from './pages/DistrictsPage.js';
 import { SystemHealthPage } from './pages/placeholders/SystemHealthPage.js';
-import { TelegramSetupPage } from './pages/placeholders/TelegramSetupPage.js';
+import { TelegramSetupPage } from './pages/TelegramSetupPage.js';
 import { SubscriptionsPage } from './pages/placeholders/SubscriptionsPage.js';
 import { HokimAccountsPage } from './pages/placeholders/HokimAccountsPage.js';
 import { AiOperationsPage } from './pages/placeholders/AiOperationsPage.js';

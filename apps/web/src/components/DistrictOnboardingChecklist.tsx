@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   Typography,
@@ -31,6 +32,7 @@ interface DistrictOnboardingChecklistProps {
 export const DistrictOnboardingChecklist: React.FC<DistrictOnboardingChecklistProps> = ({
   districtId,
 }) => {
+  const navigate = useNavigate();
   const { token } = theme.useToken();
   const { readiness, isLoading, isError, refetch } = useDistrictReadiness(districtId);
   const [disclosureModalOpen, setDisclosureModalOpen] = useState(false);
@@ -100,6 +102,19 @@ export const DistrictOnboardingChecklist: React.FC<DistrictOnboardingChecklistPr
           style={{ minHeight: 44 }}
         >
           Тасдиқлаш
+        </Button>
+      );
+    }
+
+    if (item.actionRequired && item.actionPath && item.status !== 'passed') {
+      return (
+        <Button
+          id={`action-button-${item.key}`}
+          type="primary"
+          onClick={() => navigate(item.actionPath!)}
+          style={{ minHeight: 44 }}
+        >
+          Созлаш
         </Button>
       );
     }

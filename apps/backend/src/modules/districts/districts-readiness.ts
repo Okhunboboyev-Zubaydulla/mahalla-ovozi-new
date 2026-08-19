@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { DbClient } from '../../adapters/db/client.js';
-import { districts } from '../../adapters/db/schema/index.js';
+import { districts, districtTelegramBots } from '../../adapters/db/schema/index.js';
 import {
   DistrictReadiness,
   PrerequisiteItem,
@@ -10,7 +10,12 @@ import {
 import { DistrictNotFoundError, DistrictAlreadyActiveError } from './districts-service.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
 
-export function evaluateDistrictPrerequisites(district: typeof districts.$inferSelect): PrerequisiteItem[] {
+export function evaluateDistrictPrerequisites(
+  district: typeof districts.$inferSelect,
+  telegramBot?: typeof districtTelegramBots.$inferSelect | null,
+): PrerequisiteItem[] {
+  const isBotValid = Boolean(telegramBot && telegramBot.status === 'VALID');
+
   const items: PrerequisiteItem[] = [
     {
       key: 'district_identity',
@@ -64,11 +69,14 @@ export function evaluateDistrictPrerequisites(district: typeof districts.$inferS
     {
       key: 'telegram_bot',
       label: 'Telegram бот уланиши',
-      description: 'Туманнинг расмий Telegram боти фаоллаштирилди',
-      status: 'incomplete',
-      blockerReason: 'Telegram бот ҳали уланмаган (1.4-босқич).',
-      actionRequired: true,
-      actionPath: '/telegram-bot',
+      description: isBotValid && telegramBot
+        ? `Туманнинг расмий Telegram боти (@${telegramBot.botUsername || telegramBot.botFirstName}) фаоллаштирилди`
+        : 'Туманнинг расмий Telegram боти фаоллаштирилди',
+      status: isBotValid ? 'passed' : 'incomplete',
+      blockerReason: isBotValid ? undefined : 'Telegram бот ҳали уланмаган (1.4-босқич).',
+      actionRequired: !isBotValid,
+      actionPath: !isBotValid ? '/telegram-setup' : undefined,
+      completedAt: isBotValid && telegramBot ? telegramBot.lastValidatedAt.toISOString() : undefined,
     },
     {
       key: 'group_mappings',
@@ -107,7 +115,13 @@ export async function evaluateDistrictReadiness(
     throw new DistrictNotFoundError(districtId);
   }
 
-  const items = evaluateDistrictPrerequisites(district);
+  const [botRow] = await db
+    .select()
+    .from(districtTelegramBots)
+    .where(eq(districtTelegramBots.districtId, districtId))
+    .limit(1);
+
+  const items = evaluateDistrictPrerequisites(district, botRow);
   const passedCount = items.filter((item) => item.status === 'passed').length;
   const totalCount = items.length;
   const isActivationReady = passedCount === totalCount;
