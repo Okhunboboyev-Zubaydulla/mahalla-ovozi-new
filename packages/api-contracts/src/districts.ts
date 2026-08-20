@@ -14,6 +14,8 @@ export const DistrictSchema = z.object({
   region: z.string().optional(),
   status: DistrictStatusSchema,
   createdAt: z.string().datetime(), // UTC ISO 8601 — frontend converts to Asia/Tashkent
+  activatedAt: z.string().datetime().nullable().optional(),
+  activatedById: z.string().nullable().optional(),
 });
 export type District = z.infer<typeof DistrictSchema>;
 
@@ -58,3 +60,11 @@ export const GetDistrictResponseSchema = z.object({
   district: DistrictSchema,
 });
 export type GetDistrictResponse = z.infer<typeof GetDistrictResponseSchema>;
+
+export const ActivateDistrictResponseSchema = z.object({
+  district: DistrictSchema,
+  activatedAt: z.string().datetime(),
+  activatedById: z.string().min(1),
+});
+export type ActivateDistrictResponse = z.infer<typeof ActivateDistrictResponseSchema>;
+

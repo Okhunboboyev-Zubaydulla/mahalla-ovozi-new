@@ -5,11 +5,13 @@ import {
   GetDistrictResponse,
   GetDistrictReadinessResponse,
   ConfirmDisclosureResponse,
+  ActivateDistrictResponse,
   CreateDistrictResponseSchema,
   ListDistrictsResponseSchema,
   GetDistrictResponseSchema,
   GetDistrictReadinessResponseSchema,
   ConfirmDisclosureResponseSchema,
+  ActivateDistrictResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
 
@@ -64,5 +66,16 @@ export const districtClient = {
       ConfirmDisclosureResponseSchema
     );
   },
+
+  activateDistrict(districtId: string): Promise<ActivateDistrictResponse> {
+    return request<ActivateDistrictResponse>(
+      `/api/v1/districts/${encodeURIComponent(districtId)}/activate`,
+      {
+        method: 'POST',
+      },
+      ActivateDistrictResponseSchema
+    );
+  },
 };
+
 

@@ -19,3 +19,5 @@ export function createDbClient(pool: pg.Pool) {
 }
 
 export type DbClient = ReturnType<typeof createDbClient>;
+export type DbOrTx = DbClient | Parameters<Parameters<DbClient['transaction']>[0]>[0];
+

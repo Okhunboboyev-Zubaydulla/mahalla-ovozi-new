@@ -208,6 +208,7 @@ export async function createDistrictHokimAccount(
           role: 'DISTRICT_HOKIM',
           status: 'ACTIVE',
           districtId,
+          mustChangePassword: true,
           credentialVersion: 1,
           createdAt: now,
           updatedAt: now,
@@ -301,6 +302,7 @@ export async function resetDistrictHokimPassword(
       .update(accounts)
       .set({
         passwordHash,
+        mustChangePassword: true,
         credentialVersion: activeAccount.credentialVersion + 1,
         updatedAt: now,
       })
@@ -524,6 +526,7 @@ export async function replaceDistrictHokimAccount(
           role: 'DISTRICT_HOKIM',
           status: 'ACTIVE',
           districtId,
+          mustChangePassword: true,
           credentialVersion: 1,
           createdAt: now,
           updatedAt: now,

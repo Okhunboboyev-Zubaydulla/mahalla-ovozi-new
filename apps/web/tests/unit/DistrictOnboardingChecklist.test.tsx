@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -107,6 +107,10 @@ describe('DistrictOnboardingChecklist Component Tests', () => {
 
   beforeEach(() => {
     setupMatchMedia();
+    Object.defineProperty(window.navigator, 'onLine', {
+      value: true,
+      configurable: true,
+    });
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -230,5 +234,85 @@ describe('DistrictOnboardingChecklist Component Tests', () => {
     const tgActionBtn = container.querySelector('#action-button-telegram_bot');
     expect(tgActionBtn).toBeTruthy();
   });
+
+  it('opens DistrictActivationModal when isActivationReady is true and confirms activation (AC 1, 7, 16)', async () => {
+    const readyMockReadiness: DistrictReadiness = {
+      ...mockReadiness,
+      isActivationReady: true,
+      passedCount: 8,
+      status: 'SETUP_INCOMPLETE',
+      items: mockReadiness.items.map((item) => ({ ...item, status: 'passed' })),
+    };
+
+    vi.spyOn(districtClient, 'getDistrictReadiness').mockResolvedValue({
+      readiness: readyMockReadiness,
+    });
+
+    const activateSpy = vi.spyOn(districtClient, 'activateDistrict').mockResolvedValueOnce({
+      district: {
+        id: 'dist_test_1',
+        name: 'Чилонзор',
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString(),
+        activatedAt: new Date().toISOString(),
+      },
+      activatedAt: new Date().toISOString(),
+      activatedById: 'acc_po',
+    });
+
+    renderChecklist();
+
+    const activateBtn = await screen.findByRole('button', {
+      name: 'Туманни фаоллаштириш',
+    });
+    expect(activateBtn.hasAttribute('disabled')).toBe(false);
+
+    fireEvent.click(activateBtn);
+
+    // Modal should appear
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'Туманни фаоллаштиришни тасдиқлаш',
+      })
+    ).toBeTruthy();
+    expect(screen.getByText('Тайёрлик талаблари текширилди')).toBeTruthy();
+
+    const submitBtn = screen.getByRole('button', {
+      name: 'Фаоллаштиришни тасдиқлаш',
+    });
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    await waitFor(() => {
+      expect(activateSpy).toHaveBeenCalledWith('dist_test_1');
+    });
+  });
+
+  it('renders persistent active banner and disables activation when status is ACTIVE (AC 8, 17)', async () => {
+    const activeMockReadiness: DistrictReadiness = {
+      ...mockReadiness,
+      status: 'ACTIVE',
+      isActivationReady: true,
+      passedCount: 8,
+      items: mockReadiness.items.map((item) => ({
+        ...item,
+        status: 'passed',
+        completedAt: '2026-08-20T10:00:00.000Z',
+      })),
+    };
+
+    vi.spyOn(districtClient, 'getDistrictReadiness').mockResolvedValue({
+      readiness: activeMockReadiness,
+    });
+
+    renderChecklist();
+
+    expect(await screen.findByText('Туман расман фаоллаштирилган')).toBeTruthy();
+    expect(screen.getByText('✓ Туман аллақачон фаоллаштирилган')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Туманни фаоллаштириш' })).toBeNull();
+  });
 });
+
 

@@ -513,5 +513,62 @@ describe('Database Schema & Migration Verification', () => {
       await db.delete(districts).where(eq(districts.id, districtId));
     });
   });
+
+  describe('Story 1.7: Activation Metadata & Password Change Flag', () => {
+    it('defaults mustChangePassword to false on accounts', async () => {
+      const accId = `acc_${crypto.randomUUID()}`;
+      await db.insert(accounts).values({
+        id: accId,
+        username: `po_test_${crypto.randomUUID().slice(0, 8)}`,
+        passwordHash: 'dummyhash',
+        role: 'PRODUCT_OWNER',
+        status: 'ACTIVE',
+      });
+
+      const [row] = await db.select().from(accounts).where(eq(accounts.id, accId));
+      expect(row).toBeDefined();
+      expect(row!.mustChangePassword).toBe(false);
+
+      await db.delete(accounts).where(eq(accounts.id, accId));
+    });
+
+    it('persists activatedAt and activatedById on districts and sets activatedById to null on account deletion', async () => {
+      const poId = `acc_${crypto.randomUUID()}`;
+      const districtId = `dist_${crypto.randomUUID()}`;
+      const now = new Date();
+
+      await db.insert(accounts).values({
+        id: poId,
+        username: `po_activator_${crypto.randomUUID().slice(0, 8)}`,
+        passwordHash: 'dummyhash',
+        role: 'PRODUCT_OWNER',
+        status: 'ACTIVE',
+      });
+
+      await db.insert(districts).values({
+        id: districtId,
+        name: `ActivationTestDist_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
+        activatedAt: now,
+        activatedById: poId,
+      });
+
+      const [distBefore] = await db.select().from(districts).where(eq(districts.id, districtId));
+      expect(distBefore).toBeDefined();
+      expect(distBefore!.activatedAt).toBeInstanceOf(Date);
+      expect(distBefore!.activatedById).toBe(poId);
+
+      // Deleting the PO account should set activatedById to null (onDelete: 'set null')
+      await db.delete(accounts).where(eq(accounts.id, poId));
+
+      const [distAfter] = await db.select().from(districts).where(eq(districts.id, districtId));
+      expect(distAfter).toBeDefined();
+      expect(distAfter!.activatedById).toBeNull();
+
+      // Clean up
+      await db.delete(districts).where(eq(districts.id, districtId));
+    });
+  });
 });
+
 

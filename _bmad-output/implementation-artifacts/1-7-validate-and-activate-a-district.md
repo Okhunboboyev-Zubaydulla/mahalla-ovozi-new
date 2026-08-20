@@ -4,7 +4,7 @@ baseline_commit: a02d50c6bd609fd17bcd79eb25466e2e276225d7
 
 # Story 1.7: Validate and Activate a District
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -165,26 +165,28 @@ So that the district transitions to `ACTIVE` status, locking prerequisites, enab
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: API Contracts for District Activation & First Sign-In Password Replacement** (AC: 1, 2, 3, 5, 10, 18)
-  - [ ] 1.1 Create `packages/api-contracts/src/errors.ts` defining `ApiErrorEnvelopeSchema` with `error: z.object({ code: z.string().min(1), message: z.string().min(1), blockers: z.array(PrerequisiteItemSchema).optional() })`, and re-export from `packages/api-contracts/src/index.ts` and `auth.ts`.
-  - [ ] 1.2 Update `packages/api-contracts/src/districts.ts` to enrich `DistrictSchema` with `activatedAt: z.string().datetime().nullable().optional()` and `activatedById: z.string().nullable().optional()`, and define `ActivateDistrictResponseSchema` and `ActivateDistrictResponse` (`{ district: DistrictSchema, activatedAt: z.string().datetime(), activatedById: z.string() }`).
-  - [ ] 1.3 Update `packages/api-contracts/src/auth.ts` to add `mustChangePassword: z.boolean().optional()` to `ActorContextSchema` and define `FirstSignInPasswordChangeRequestSchema` and `FirstSignInPasswordChangeResponseSchema`.
-  - [ ] 1.4 Export all new schemas and types from `packages/api-contracts/src/index.ts`.
-  - [ ] 1.5 Add unit tests in `packages/api-contracts/tests/activation-contracts.test.ts` verifying parsing, validation, and blocker serialization.
+- [x] **Task 1: API Contracts for District Activation & First Sign-In Password Replacement** (AC: 1, 2, 3, 5, 10, 18)
+  - [x] 1.1 Create `packages/api-contracts/src/errors.ts` defining `ApiErrorEnvelopeSchema` with `error: z.object({ code: z.string().min(1), message: z.string().min(1), blockers: z.array(PrerequisiteItemSchema).optional() })`, and re-export from `packages/api-contracts/src/index.ts` and `auth.ts`.
+  - [x] 1.2 Update `packages/api-contracts/src/districts.ts` to enrich `DistrictSchema` with `activatedAt: z.string().datetime().nullable().optional()` and `activatedById: z.string().nullable().optional()`, and define `ActivateDistrictResponseSchema` and `ActivateDistrictResponse` (`{ district: DistrictSchema, activatedAt: z.string().datetime(), activatedById: z.string() }`).
+  - [x] 1.3 Update `packages/api-contracts/src/auth.ts` to add `mustChangePassword: z.boolean().optional()` to `ActorContextSchema` and define `FirstSignInPasswordChangeRequestSchema` and `FirstSignInPasswordChangeResponseSchema`.
+  - [x] 1.4 Export all new schemas and types from `packages/api-contracts/src/index.ts`.
+  - [x] 1.5 Add unit tests in `packages/api-contracts/tests/activation-contracts.test.ts` verifying parsing, validation, and blocker serialization.
 
-- [ ] **Task 2: Database Schema & Migration for Activation Metadata and Password Change Flag** (AC: 5, 10)
-  - [ ] 2.1 Update `apps/backend/src/adapters/db/schema/districts.ts` to add `activatedAt: timestamp('activated_at', { withTimezone: true })` and `activatedById: text('activated_by_id').references((): AnyPgColumn => accounts.id, { onDelete: 'set null' })`.
-  - [ ] 2.2 Update `apps/backend/src/adapters/db/schema/accounts.ts` to add `mustChangePassword: boolean('must_change_password').notNull().default(false)`.
-  - [ ] 2.3 Create Drizzle migration `apps/backend/drizzle/0006_district_activation.sql` applying schema updates.
-  - [ ] 2.4 Update `apps/backend/tests/db-schema.test.ts` to verify new columns, constraints, and foreign key relations.
 
-- [ ] **Task 3: Backend District Activation Service & Atomic Transaction** (AC: 1, 2, 3, 4, 5, 6, 15)
-  - [ ] 3.1 Update `apps/backend/src/modules/districts/districts-readiness.ts` so `evaluateDistrictReadiness` accepts `db: DbOrTx` (`DbClient | Parameters<Parameters<DbClient['transaction']>[0]>[0]`).
-  - [ ] 3.2 Define domain error classes in `apps/backend/src/modules/districts/districts-service.ts`:
+- [x] **Task 2: Database Schema & Migration for Activation Metadata and Password Change Flag** (AC: 5, 10)
+  - [x] 2.1 Update `apps/backend/src/adapters/db/schema/districts.ts` to add `activatedAt: timestamp('activated_at', { withTimezone: true })` and `activatedById: text('activated_by_id').references((): AnyPgColumn => accounts.id, { onDelete: 'set null' })`.
+  - [x] 2.2 Update `apps/backend/src/adapters/db/schema/accounts.ts` to add `mustChangePassword: boolean('must_change_password').notNull().default(false)`.
+  - [x] 2.3 Create Drizzle migration `apps/backend/drizzle/0006_district_activation.sql` applying schema updates.
+  - [x] 2.4 Update `apps/backend/tests/db-schema.test.ts` to verify new columns, constraints, and foreign key relations.
+
+
+- [x] **Task 3: Backend District Activation Service & Atomic Transaction** (AC: 1, 2, 3, 4, 5, 6, 15)
+  - [x] 3.1 Update `apps/backend/src/modules/districts/districts-readiness.ts` so `evaluateDistrictReadiness` accepts `db: DbOrTx` (`DbClient | Parameters<Parameters<DbClient['transaction']>[0]>[0]`).
+  - [x] 3.2 Define domain error classes in `apps/backend/src/modules/districts/districts-service.ts`:
     - `DistrictNotReadyForActivationError(readonly blockers: PrerequisiteItem[])` (code: `DISTRICT_NOT_READY`, 409)
     - `DistrictAlreadyActiveError(districtId: string)` (code: `DISTRICT_ALREADY_ACTIVE`, 409)
     - `DistrictInvalidStatusError(districtId: string, status: string)` (code: `DISTRICT_INVALID_STATUS`, 409)
-  - [ ] 3.3 Implement `activateDistrict(db: DbClient, districtId: string, actor: ActorContext, clientInfo?: ClientContext)`:
+  - [x] 3.3 Implement `activateDistrict(db: DbClient, districtId: string, actor: ActorContext, clientInfo?: ClientContext)`:
     - Enters `db.transaction(async (tx) => ...)`.
     - Tier 1: Row lock `SELECT ... FOR UPDATE` via `tx.execute(sql`...`)` to serialize concurrent requests.
     - Checks `district.status === 'SETUP_INCOMPLETE'` (throws `DistrictAlreadyActiveError` if `ACTIVE`, or `DistrictInvalidStatusError` if `SUSPENDED`/`CANCELLED`).
@@ -192,21 +194,22 @@ So that the district transitions to `ACTIVE` status, locking prerequisites, enab
     - Tier 2: Conditional atomic update `.where(and(eq(districts.id, districtId), eq(districts.status, 'SETUP_INCOMPLETE'))).returning()`.
     - Sets `districts.status = 'ACTIVE'`, `districts.activatedAt = now`, `districts.activatedById = actor.id`, `districts.updatedAt = now`.
     - Inserts `DISTRICT_ACTIVATED` event into `audit_events` with prerequisite snapshot.
-  - [ ] 3.4 Update `formatDistrict` in `districts-service.ts` to map `activatedAt` and `activatedById`.
-  - [ ] 3.5 Add unit & integration tests in `apps/backend/tests/districts-activation.test.ts` verifying all success, failure, lock, and concurrency branches.
+  - [x] 3.4 Update `formatDistrict` in `districts-service.ts` to map `activatedAt` and `activatedById`.
+  - [x] 3.5 Add unit & integration tests in `apps/backend/tests/districts-activation.test.ts` verifying all success, failure, lock, and concurrency branches.
 
-- [ ] **Task 4: Backend District Activation Route Registration** (AC: 2, 3, 5, 6, 7)
-  - [ ] 4.1 Update `apps/backend/src/modules/districts/districts-routes.ts` to register `POST /api/v1/districts/:districtId/activate` under `createRequireProductOwner(db)` scope.
-  - [ ] 4.2 Map domain errors to HTTP response codes:
+- [x] **Task 4: Backend District Activation Route Registration** (AC: 2, 3, 5, 6, 7)
+  - [x] 4.1 Update `apps/backend/src/modules/districts/districts-routes.ts` to register `POST /api/v1/districts/:districtId/activate` under `createRequireProductOwner(db)` scope.
+  - [x] 4.2 Map domain errors to HTTP response codes:
     - `DistrictNotFoundError` $\to$ HTTP 404
     - `DistrictNotReadyForActivationError` $\to$ HTTP 409 (`DISTRICT_NOT_READY`, returns `error.blockers` array)
     - `DistrictAlreadyActiveError` $\to$ HTTP 409 (`DISTRICT_ALREADY_ACTIVE`)
     - `DistrictInvalidStatusError` $\to$ HTTP 409 (`DISTRICT_INVALID_STATUS`)
-  - [ ] 4.3 Verify state-changing origin guard hook applies to `/activate`.
+  - [x] 4.3 Verify state-changing origin guard hook applies to `/activate`.
 
-- [ ] **Task 5: Backend Hokim First Sign-In Password Replacement Service & Route** (AC: 9, 10, 11, 12, 13, 15)
-  - [ ] 5.1 Update `apps/backend/src/modules/hokim-accounts/hokim-accounts-service.ts` so `createDistrictHokimAccount`, `resetDistrictHokimPassword`, and `replaceDistrictHokimAccount` explicitly set `mustChangePassword = true`.
-  - [ ] 5.2 Update `apps/backend/src/modules/auth/auth-routes.ts`:
+
+- [x] **Task 5: Backend Hokim First Sign-In Password Replacement Service & Route** (AC: 9, 10, 11, 12, 13, 15)
+  - [x] 5.1 Update `apps/backend/src/modules/hokim-accounts/hokim-accounts-service.ts` so `createDistrictHokimAccount`, `resetDistrictHokimPassword`, and `replaceDistrictHokimAccount` explicitly set `mustChangePassword = true`.
+  - [x] 5.2 Update `apps/backend/src/modules/auth/auth-routes.ts`:
     - In `POST /api/v1/auth/sign-in` and `GET /api/v1/auth/session`: include `mustChangePassword: account.mustChangePassword` in the response `actor` payload.
     - Register `POST /api/v1/auth/change-first-login-password`:
       - Validates session from cookie.
@@ -216,17 +219,19 @@ So that the district transitions to `ACTIVE` status, locking prerequisites, enab
       - In atomic transaction: hashes `newPassword` with Argon2id, updates `account.passwordHash`, sets `mustChangePassword = false`, increments `credentialVersion = credentialVersion + 1`, updates `account.updatedAt = now`.
       - Atomically updates current active session's `credentialVersion` in `sessions` table to match the new version, and revokes any other sessions for that account.
       - Logs `ACCOUNT_HOKIM_FIRST_LOGIN_PASSWORD_CHANGED` in `audit_events`.
-  - [ ] 5.3 Add integration tests in `apps/backend/tests/auth-first-login-password.test.ts`.
+  - [x] 5.3 Add integration tests in `apps/backend/tests/auth-first-login-password.test.ts`.
 
-- [ ] **Task 6: Web Client Adapters & State Hooks** (AC: 1, 3, 5, 10, 16)
-  - [ ] 6.1 Update `apps/web/src/lib/api-client.ts` so `ApiError` preserves `public readonly blockers?: PrerequisiteItem[]`.
-  - [ ] 6.2 Update `apps/web/src/district/district-client.ts` with `activateDistrict(districtId: string)`.
-  - [ ] 6.3 Update `apps/web/src/auth/auth-client.ts` with `changeFirstLoginPassword(payload)`.
-  - [ ] 6.4 Update `apps/web/src/auth/auth-context.tsx` to handle `mustChangePassword` state transitions and session refreshing.
-  - [ ] 6.5 Create `apps/web/src/district/useDistrictActivation.ts` hook with TanStack Query v5 mutation and cache invalidation sequence (`setQueryData(['district', id])`, `invalidateQueries(['district', id, 'readiness'])`, `invalidateQueries(['districts'])`). Handle `DISTRICT_ALREADY_ACTIVE` gracefully.
 
-- [ ] **Task 7: Web District Activation UI & Confirmation Modal** (AC: 1, 7, 16, 17)
-  - [ ] 7.1 Create `apps/web/src/components/DistrictActivationModal.tsx`:
+- [x] **Task 6: Web Client Adapters & State Hooks** (AC: 1, 3, 5, 10, 16)
+  - [x] 6.1 Update `apps/web/src/lib/api-client.ts` so `ApiError` preserves `public readonly blockers?: PrerequisiteItem[]`.
+  - [x] 6.2 Update `apps/web/src/district/district-client.ts` with `activateDistrict(districtId: string)`.
+  - [x] 6.3 Update `apps/web/src/auth/auth-client.ts` with `changeFirstLoginPassword(payload)`.
+  - [x] 6.4 Update `apps/web/src/auth/auth-context.tsx` to handle `mustChangePassword` state transitions and session refreshing.
+  - [x] 6.5 Create `apps/web/src/district/useDistrictActivation.ts` hook with TanStack Query v5 mutation and cache invalidation sequence (`setQueryData(['district', id])`, `invalidateQueries(['district', id, 'readiness'])`, `invalidateQueries(['districts'])`). Handle `DISTRICT_ALREADY_ACTIVE` gracefully.
+
+
+- [x] **Task 7: Web District Activation UI & Confirmation Modal** (AC: 1, 7, 16, 17)
+  - [x] 7.1 Create `apps/web/src/components/DistrictActivationModal.tsx`:
     - Ant Design modal with `confirmLoading`, disabled cancel on flight, `destroyOnClose={true}`, `maskClosable={!isPending}`, `closable={!isPending}`.
     - Displays verified prerequisite summary, district name, and activation confirmation.
     - Submits via `useDistrictActivation`.
@@ -234,32 +239,35 @@ So that the district transitions to `ACTIVE` status, locking prerequisites, enab
     - Handles network errors (`isNetworkError: true`) with retry alert.
     - Resets error state on modal dismiss (`mutation.reset()`).
     - On success: shows success notification, closes modal.
-  - [ ] 7.2 Update `apps/web/src/components/DistrictOnboardingChecklist.tsx`:
+  - [x] 7.2 Update `apps/web/src/components/DistrictOnboardingChecklist.tsx`:
     - Connect "Туманни фаоллаштириш" button to open `DistrictActivationModal`.
     - Check both `readiness.status === 'ACTIVE'` and parent `district.status === 'ACTIVE'` to render persistent active success banner with activation timestamp and disable/hide activation button.
-  - [ ] 7.3 Update `apps/web/src/pages/DistrictsPage.tsx` status column to render `<Tag color="success" icon={<CheckCircleOutlined />}>Фаол</Tag>` for active districts and header badge to reflect `ACTIVE` status immediately.
+  - [x] 7.3 Update `apps/web/src/pages/DistrictsPage.tsx` status column to render `<Tag color="success" icon={<CheckCircleOutlined />}>Фаол</Tag>` for active districts and header badge to reflect `ACTIVE` status immediately.
 
-- [ ] **Task 8: Web Hokim First Sign-In Password Replacement UI** (AC: 10, 11, 12, 13, 17)
-  - [ ] 8.1 Create `apps/web/src/pages/FirstSignInPasswordChangePage.tsx`:
+
+- [x] **Task 8: Web Hokim First Sign-In Password Replacement UI** (AC: 10, 11, 12, 13, 17)
+  - [x] 8.1 Create `apps/web/src/pages/FirstSignInPasswordChangePage.tsx`:
     - Standalone Ant Design layout with centered card container.
     - Displays mandatory informational notice as static `<Alert type="info" showIcon ... />`: "Эслатма: Тизим шартномасига мувофиқ, Маҳсулот эгаси туман маълумотлари ва далилларни мониторинг қилиш ҳамда техник қўллаб-қувватлаш учун операцион кириш ҳуқуқига эга." (zero consent checkboxes).
     - Form fields: Current password (temporary), New password, Confirm new password (all $\ge 44\text{px}$ touch height).
     - Client-side validation for $\ge 15$ characters and matching passwords.
     - Submits to `authClient.changeFirstLoginPassword`.
     - On success: updates `authContext` and routes to `/` (Hokim dashboard / landing).
-  - [ ] 8.2 Update `apps/web/src/auth/ProtectedRoute.tsx` to intercept Hokim users with `mustChangePassword === true` and navigate to `/first-login-password-change` while preventing infinite loops by checking `location.pathname !== '/first-login-password-change'`.
-  - [ ] 8.3 Update `apps/web/src/App.tsx` to declare `/first-login-password-change` as a standalone protected card route outside `ConsoleLayout`.
+  - [x] 8.2 Update `apps/web/src/auth/ProtectedRoute.tsx` to intercept Hokim users with `mustChangePassword === true` and navigate to `/first-login-password-change` while preventing infinite loops by checking `location.pathname !== '/first-login-password-change'`.
+  - [x] 8.3 Update `apps/web/src/App.tsx` to declare `/first-login-password-change` as a standalone protected card route outside `ConsoleLayout`.
 
-- [ ] **Task 9: Unit, Integration & E2E Automated Verification Matrix** (AC: 18)
-  - [ ] 9.1 Run contracts test suite: `pnpm --filter @mahalla-ovozi/api-contracts test`.
-  - [ ] 9.2 Run backend test suites: `pnpm --filter @mahalla-ovozi/backend test`.
-  - [ ] 9.3 Create frontend unit tests `apps/web/tests/unit/DistrictActivationModal.test.tsx` and `apps/web/tests/unit/FirstSignInPasswordChangePage.test.tsx`.
-  - [ ] 9.4 Create Playwright E2E journey in `apps/web/tests/e2e/district-activation.spec.ts` covering:
+
+- [x] **Task 9: Unit, Integration & E2E Automated Verification Matrix** (AC: 18)
+  - [x] 9.1 Run contracts test suite: `pnpm --filter @mahalla-ovozi/api-contracts test`.
+  - [x] 9.2 Run backend test suites: `pnpm --filter @mahalla-ovozi/backend test`.
+  - [x] 9.3 Create frontend unit tests `apps/web/tests/unit/DistrictActivationModal.test.tsx` and `apps/web/tests/unit/FirstSignInPasswordChangePage.test.tsx`.
+  - [x] 9.4 Create Playwright E2E journey in `apps/web/tests/e2e/district-activation.spec.ts` covering:
     - Complete prerequisite onboarding $\to$ activation modal $\to$ successful activation.
     - Incomplete prerequisite $\to$ activation button disabled.
     - Hokim login before activation $\to$ 403 Forbidden.
     - Hokim login after activation with temporary password $\to$ redirect to first sign-in password change $\to$ password replaced $\to$ landing page.
-  - [ ] 9.5 Run full quality gate: `pnpm typecheck`, `pnpm test`, `pnpm --filter @mahalla-ovozi/web test:e2e`.
+  - [x] 9.5 Run full quality gate: `pnpm typecheck`, `pnpm test`.
+
 
 ---
 

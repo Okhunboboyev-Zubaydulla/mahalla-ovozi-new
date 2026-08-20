@@ -8,6 +8,7 @@ export const ActorContextSchema = z.object({
   role: ActorRoleSchema,
   username: z.string().min(1),
   districtId: z.string().nullable().optional(),
+  mustChangePassword: z.boolean().optional(),
 });
 export type ActorContext = z.infer<typeof ActorContextSchema>;
 
@@ -45,10 +46,23 @@ export const SignOutResponseSchema = z.object({
 });
 export type SignOutResponse = z.infer<typeof SignOutResponseSchema>;
 
-export const ApiErrorEnvelopeSchema = z.object({
-  error: z.object({
-    code: z.string().min(1),
-    message: z.string().min(1),
-  }),
+export const FirstSignInPasswordChangeRequestSchema = z.object({
+  currentPassword: z.string().min(1, { message: 'Жорий парол киритилиши шарт.' }),
+  newPassword: z
+    .string()
+    .min(15, { message: 'Янги парол камида 15 та белгидан иборат бўлиши керак.' })
+    .refine(
+      (val) => [...val].length <= 128,
+      { message: 'Парол узунлиги 128 белгидан ошмаслиги керак.' }
+    ),
 });
-export type ApiErrorEnvelope = z.infer<typeof ApiErrorEnvelopeSchema>;
+export type FirstSignInPasswordChangeRequest = z.infer<typeof FirstSignInPasswordChangeRequestSchema>;
+
+export const FirstSignInPasswordChangeResponseSchema = z.object({
+  success: z.literal(true),
+  actor: ActorContextSchema,
+});
+export type FirstSignInPasswordChangeResponse = z.infer<typeof FirstSignInPasswordChangeResponseSchema>;
+
+export { ApiErrorEnvelopeSchema, type ApiErrorEnvelope } from './errors.js';
+

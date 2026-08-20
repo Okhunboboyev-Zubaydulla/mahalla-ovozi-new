@@ -107,4 +107,26 @@ describe('DistrictsPage & CreateDistrictDrawer Component Tests', () => {
     // Error summary should be visible
     expect(await screen.findByText(/Тўлдиришда хатоликлар мавжуд/i)).toBeTruthy();
   });
+
+  it('renders ACTIVE status tag with check icon for active districts (AC 8, 17)', async () => {
+    vi.spyOn(districtClient, 'listDistricts').mockResolvedValueOnce({
+      districts: [
+        {
+          id: '01951234-5678-7000-8000-000000000002',
+          name: 'Миробод',
+          region: 'Тошкент шаҳри',
+          status: 'ACTIVE',
+          createdAt: '2026-08-18T10:00:00.000Z',
+          activatedAt: '2026-08-19T12:00:00.000Z',
+        },
+      ],
+    });
+
+    renderDistrictsPage();
+
+    expect(await screen.findByText('Миробод')).toBeTruthy();
+    expect(screen.getByText('Фаол')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Кўриш: Миробод/i })).toBeTruthy();
+  });
 });
+

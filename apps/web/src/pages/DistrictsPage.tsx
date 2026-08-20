@@ -63,6 +63,13 @@ export const DistrictsPage: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => {
+        if (status === 'ACTIVE') {
+          return (
+            <Tag color="success" icon={<CheckCircleOutlined />}>
+              Фаол
+            </Tag>
+          );
+        }
         if (status === 'SETUP_INCOMPLETE') {
           // P5-I: Use warning preset mapped to design system tokens
           return <Tag color="warning">Созлаш тугалланмаган</Tag>;
@@ -97,23 +104,21 @@ export const DistrictsPage: React.FC = () => {
                 Танлаш
               </Button>
             )}
-            {record.status === 'SETUP_INCOMPLETE' && (
-              <Button
-                type="link"
-                aria-label={`Созлаш: ${record.name}`}
-                onClick={() => {
-                  attemptTransition(async () => {
-                    if (!isSelected) {
-                      await switchDistrict(record.id);
-                    }
-                    navigate('/');
-                  });
-                }}
-                style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
-              >
-                Созлаш
-              </Button>
-            )}
+            <Button
+              type="link"
+              aria-label={record.status === 'SETUP_INCOMPLETE' ? `Созлаш: ${record.name}` : `Кўриш: ${record.name}`}
+              onClick={() => {
+                attemptTransition(async () => {
+                  if (!isSelected) {
+                    await switchDistrict(record.id);
+                  }
+                  navigate('/');
+                });
+              }}
+              style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
+            >
+              {record.status === 'SETUP_INCOMPLETE' ? 'Созлаш' : 'Кўриш'}
+            </Button>
           </div>
         );
       },

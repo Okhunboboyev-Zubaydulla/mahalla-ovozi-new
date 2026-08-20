@@ -3,9 +3,12 @@ import {
   SignInResponse,
   SessionResponse,
   SignOutResponse,
+  FirstSignInPasswordChangeRequest,
+  FirstSignInPasswordChangeResponse,
   SignInResponseSchema,
   SessionResponseSchema,
   SignOutResponseSchema,
+  FirstSignInPasswordChangeResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request, ApiError } from '../lib/api-client.js';
 
@@ -43,4 +46,18 @@ export const authClient = {
       SessionResponseSchema
     );
   },
+
+  changeFirstLoginPassword(
+    payload: FirstSignInPasswordChangeRequest
+  ): Promise<FirstSignInPasswordChangeResponse> {
+    return request<FirstSignInPasswordChangeResponse>(
+      '/api/v1/auth/change-first-login-password',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      FirstSignInPasswordChangeResponseSchema
+    );
+  },
 };
+

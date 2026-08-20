@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, integer, timestamp, check, uniqueIndex, AnyPgColumn } from 'drizzle-orm/pg-core';
+import { pgTable, text, boolean, integer, timestamp, check, uniqueIndex, AnyPgColumn } from 'drizzle-orm/pg-core';
 import { districts } from './districts.js';
+
 
 export const accounts = pgTable(
   'accounts',
@@ -13,6 +14,7 @@ export const accounts = pgTable(
     districtId: text('district_id').references((): AnyPgColumn => districts.id, {
       onDelete: 'cascade',
     }),
+    mustChangePassword: boolean('must_change_password').notNull().default(false),
     credentialVersion: integer('credential_version').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

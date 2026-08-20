@@ -20,6 +20,7 @@ import {
 } from '@ant-design/icons';
 import { useDistrictReadiness } from '../district/useDistrictReadiness.js';
 import { DisclosureConfirmationModal } from './DisclosureConfirmationModal.js';
+import { DistrictActivationModal } from './DistrictActivationModal.js';
 import { PrerequisiteItem } from '@mahalla-ovozi/api-contracts';
 import { formatTashkentDate } from '../lib/formatters.js';
 
@@ -36,6 +37,7 @@ export const DistrictOnboardingChecklist: React.FC<DistrictOnboardingChecklistPr
   const { token } = theme.useToken();
   const { readiness, isLoading, isError, refetch } = useDistrictReadiness(districtId);
   const [disclosureModalOpen, setDisclosureModalOpen] = useState(false);
+  const [activationModalOpen, setActivationModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -66,6 +68,7 @@ export const DistrictOnboardingChecklist: React.FC<DistrictOnboardingChecklistPr
     );
   }
 
+  const isAlreadyActive = readiness.status === 'ACTIVE';
   const progressPercent = Math.round((readiness.passedCount / readiness.totalCount) * 100);
 
   const renderStatusTag = (item: PrerequisiteItem) => {
@@ -93,6 +96,17 @@ export const DistrictOnboardingChecklist: React.FC<DistrictOnboardingChecklistPr
   };
 
   const renderItemAction = (item: PrerequisiteItem) => {
+    if (isAlreadyActive) {
+      if (item.completedAt) {
+        return (
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {formatTashkentDate(item.completedAt)}
+          </Text>
+        );
+      }
+      return null;
+    }
+
     if (item.key === 'disclosure_confirmation' && item.status !== 'passed') {
       return (
         <Button
@@ -134,14 +148,34 @@ export const DistrictOnboardingChecklist: React.FC<DistrictOnboardingChecklistPr
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <Card variant="borderless" style={{ borderRadius: 12 }}>
         <div style={{ marginBottom: 20 }}>
-          <Title level={3} style={{ margin: 0 }}>
-            Туманни фаоллаштиришга тайёрлаш
-          </Title>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Title level={3} style={{ margin: 0 }}>
+              Туманни фаоллаштиришга тайёрлаш
+            </Title>
+            {isAlreadyActive && (
+              <Tag color="success" icon={<CheckCircleOutlined />} style={{ fontSize: 14, padding: '4px 12px' }}>
+                Фаол туман
+              </Tag>
+            )}
+          </div>
           <Paragraph type="secondary" style={{ marginTop: 4, marginBottom: 0 }}>
-            Туманни тизимга тўлиқ улаш учун қуйидаги барча {readiness.totalCount} та талаб бажарилиши
-            шарт.
+            {isAlreadyActive
+              ? 'Ушбу туман муваффақиятли фаоллаштирилган ва тизимда тўлиқ ишламоқда.'
+              : `Туманни тизимга тўлиқ улаш учун қуйидаги барча ${readiness.totalCount} та талаб бажарилиши шарт.`}
           </Paragraph>
         </div>
+
+        {/* Active Banner */}
+        {isAlreadyActive && (
+          <Alert
+            type="success"
+            showIcon
+            icon={<CheckCircleOutlined />}
+            message="Туман расман фаоллаштирилган"
+            description="Барча созламалар ва хавфсизлик талаблари тасдиқланган. Ҳоким аккаунти ва таҳлил тизими фаол ҳолатда."
+            style={{ marginBottom: 24 }}
+          />
+        )}
 
         {/* Progress summary */}
         <div
@@ -161,13 +195,13 @@ export const DistrictOnboardingChecklist: React.FC<DistrictOnboardingChecklistPr
             }}
           >
             <Text strong>Умумий тайёрлик ҳолати</Text>
-            <Tag color={readiness.isActivationReady ? 'success' : 'processing'}>
+            <Tag color={isAlreadyActive || readiness.isActivationReady ? 'success' : 'processing'}>
               {readiness.passedCount} / {readiness.totalCount} та талаб бажарилди
             </Tag>
           </div>
           <Progress
             percent={progressPercent}
-            status={readiness.isActivationReady ? 'success' : 'active'}
+            status={isAlreadyActive || readiness.isActivationReady ? 'success' : 'active'}
             strokeColor={token.colorPrimary}
           />
         </div>
@@ -221,7 +255,11 @@ export const DistrictOnboardingChecklist: React.FC<DistrictOnboardingChecklistPr
           }}
         >
           <div>
-            {!readiness.isActivationReady ? (
+            {isAlreadyActive ? (
+              <Text strong style={{ color: token.colorSuccess }}>
+                ✓ Туман аллақачон фаоллаштирилган
+              </Text>
+            ) : !readiness.isActivationReady ? (
               <Text type="secondary" style={{ fontSize: 13 }}>
                 Фаоллаштириш учун барча талаблар бажарилиши керак ({readiness.passedCount}/
                 {readiness.totalCount})
@@ -233,25 +271,28 @@ export const DistrictOnboardingChecklist: React.FC<DistrictOnboardingChecklistPr
             )}
           </div>
 
-          <Tooltip
-            title={
-              !readiness.isActivationReady
-                ? 'Фаоллаштириш учун барча талаблар бажарилиши керак'
-                : undefined
-            }
-          >
-            <span>
-              <Button
-                id="activate-district-button"
-                type="primary"
-                size="large"
-                disabled={!readiness.isActivationReady}
-                style={{ minHeight: 44, minWidth: 200 }}
-              >
-                Туманни фаоллаштириш
-              </Button>
-            </span>
-          </Tooltip>
+          {!isAlreadyActive && (
+            <Tooltip
+              title={
+                !readiness.isActivationReady
+                  ? 'Фаоллаштириш учун барча талаблар бажарилиши керак'
+                  : undefined
+              }
+            >
+              <span>
+                <Button
+                  id="activate-district-button"
+                  type="primary"
+                  size="large"
+                  disabled={!readiness.isActivationReady}
+                  onClick={() => setActivationModalOpen(true)}
+                  style={{ minHeight: 44, minWidth: 200 }}
+                >
+                  Туманни фаоллаштириш
+                </Button>
+              </span>
+            </Tooltip>
+          )}
         </div>
       </Card>
 
@@ -262,6 +303,15 @@ export const DistrictOnboardingChecklist: React.FC<DistrictOnboardingChecklistPr
         districtId={districtId}
         districtName={readiness.districtName}
       />
+
+      {/* District Activation Modal */}
+      <DistrictActivationModal
+        open={activationModalOpen}
+        onClose={() => setActivationModalOpen(false)}
+        districtId={districtId}
+        districtName={readiness.districtName}
+      />
     </div>
   );
 };
+

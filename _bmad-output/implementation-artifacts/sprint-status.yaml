@@ -56,7 +56,7 @@ development_status:
   1-4-connect-and-validate-a-district-telegram-bot: done
   1-5-configure-and-validate-telegram-group-to-mahalla-mappings: done
   1-6-create-and-manage-the-district-hokim-account: done
-  1-7-validate-and-activate-a-district: ready-for-dev
+  1-7-validate-and-activate-a-district: review
   epic-1-retrospective: optional
 
   # ── Epic 2: Authorized Telegram Signals Become Traceable Topics ──

@@ -1,11 +1,13 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import {
   SignInRequestSchema,
+  FirstSignInPasswordChangeRequestSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
-import { accounts, districts } from '../../adapters/db/schema/index.js';
-import { eq } from 'drizzle-orm';
+import { accounts, districts, sessions } from '../../adapters/db/schema/index.js';
+import { eq, and, ne, isNull } from 'drizzle-orm';
 import { hashPassword, verifyPassword } from '../../adapters/crypto/argon2.js';
+import { validatePassword } from '../../adapters/crypto/password-policy.js';
 import {
   checkRateLimit,
   recordFailedAttempt,
@@ -20,6 +22,7 @@ import {
 } from './session-manager.js';
 import { verifyStateChangingOrigin } from './origin-guard.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
+
 
 // Pre-computed dummy hash to equalise timing when the account is not found (B1).
 // This prevents user enumeration via response-time measurement.
@@ -215,6 +218,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
         role: account.role,
         username: account.username,
         districtId: account.districtId ?? null,
+        mustChangePassword: account.mustChangePassword,
       },
       session: {
         expiresAt: sessionResult.expiresAt.toISOString(),
@@ -277,10 +281,172 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
         role: validation.account.role,
         username: validation.account.username,
         districtId: validation.account.districtId ?? null,
+        mustChangePassword: validation.account.mustChangePassword,
       },
       session: {
         expiresAt: validation.session.expiresAt.toISOString(),
       },
     });
   });
+
+  // 4. Change First Login Password (AC 10, 11, 12, 13, 15)
+  fastify.post(
+    '/api/v1/auth/change-first-login-password',
+    async (req: FastifyRequest<{ Body: unknown }>, reply: FastifyReply) => {
+      const rawToken = req.cookies[COOKIE_NAME];
+      if (!rawToken) {
+        return reply.status(401).send({
+          error: {
+            code: 'UNAUTHENTICATED',
+            message: 'Сессия топилмади ёки муддати тугаган.',
+          },
+        });
+      }
+
+      const validation = await validateAndTouchSession(db, rawToken);
+      if (!validation.isValid || !validation.account || !validation.session) {
+        reply.clearCookie(COOKIE_NAME, {
+          path: '/',
+          httpOnly: true,
+          sameSite: 'strict',
+          secure: true,
+        });
+        return reply.status(401).send({
+          error: {
+            code: 'UNAUTHENTICATED',
+            message: 'Сессия топилмади ёки муддати тугаган.',
+          },
+        });
+      }
+
+      const { account, session } = validation;
+
+      if (account.role !== 'DISTRICT_HOKIM' || !account.mustChangePassword) {
+        return reply.status(400).send({
+          error: {
+            code: 'INVALID_ACTION',
+            message: 'Ушбу аккаунт учун паролни мажбурий ўзгартириш талаб қилинмайди.',
+          },
+        });
+      }
+
+      const parseResult = FirstSignInPasswordChangeRequestSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return reply.status(400).send({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: parseResult.error.errors[0]?.message || 'Киритилган маълумотлар нотўғри.',
+          },
+        });
+      }
+
+      const { currentPassword, newPassword } = parseResult.data;
+
+      // Verify current temporary password with Argon2id
+      const isCurrentValid = await verifyPassword(account.passwordHash, currentPassword);
+      if (!isCurrentValid) {
+        await recordAuditEvent(db, {
+          actorId: account.id,
+          actorRole: account.role,
+          action: 'AUTH_FIRST_LOGIN_PASSWORD_CHANGE_FAILED',
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+          metadata: { username: account.username, reason: 'INVALID_CURRENT_PASSWORD' },
+        });
+        return reply.status(401).send({
+          error: {
+            code: 'INVALID_CREDENTIALS',
+            message: 'Жорий парол нотўғри.',
+          },
+        });
+      }
+
+      // Validate new password against policy (>=15 chars, <=128 code points, not on blocklist)
+      const policyResult = validatePassword(newPassword);
+      if (!policyResult.isValid) {
+        return reply.status(400).send({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: policyResult.message || 'Янги парол талабларга жавоб бермайди.',
+          },
+        });
+      }
+
+      // Hash new password with Argon2id
+      const newPasswordHash = await hashPassword(newPassword);
+      const now = new Date();
+      const newCredentialVersion = account.credentialVersion + 1;
+
+      // Atomic transaction: update account, sync current session version, revoke other sessions, log audit event
+      await db.transaction(async (tx) => {
+        const [updatedAccount] = await tx
+          .update(accounts)
+          .set({
+            passwordHash: newPasswordHash,
+            mustChangePassword: false,
+            credentialVersion: newCredentialVersion,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(accounts.id, account.id),
+              eq(accounts.credentialVersion, account.credentialVersion)
+            )
+          )
+          .returning();
+
+        if (!updatedAccount) {
+          throw new Error('CREDENTIAL_CONCURRENCY_CONFLICT');
+        }
+
+        // Atomically update current session's credentialVersion so it remains valid
+        await tx
+          .update(sessions)
+          .set({
+            credentialVersion: newCredentialVersion,
+            lastActiveAt: now,
+          })
+          .where(eq(sessions.id, session.id));
+
+        // Revoke all other active sessions for that account
+        await tx
+          .update(sessions)
+          .set({ revokedAt: now })
+          .where(
+            and(
+              eq(sessions.accountId, account.id),
+              ne(sessions.id, session.id),
+              isNull(sessions.revokedAt)
+            )
+          );
+
+        // Record audit event
+        await recordAuditEvent(tx, {
+          actorId: account.id,
+          actorRole: account.role,
+          action: 'ACCOUNT_HOKIM_FIRST_LOGIN_PASSWORD_CHANGED',
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+          metadata: {
+            accountId: account.id,
+            districtId: account.districtId,
+            username: account.username,
+            credentialVersion: newCredentialVersion,
+          },
+        });
+      });
+
+      return reply.status(200).send({
+        success: true,
+        actor: {
+          id: account.id,
+          role: account.role,
+          username: account.username,
+          districtId: account.districtId ?? null,
+          mustChangePassword: false,
+        },
+      });
+    }
+  );
 }
+

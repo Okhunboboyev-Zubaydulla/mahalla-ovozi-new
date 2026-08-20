@@ -6,6 +6,7 @@ import { AuthProvider } from './auth/auth-context.js';
 import { DistrictProvider } from './district/district-context.js';
 import { ProtectedRoute } from './auth/ProtectedRoute.js';
 import { SignInPage } from './pages/SignInPage.js';
+import { FirstSignInPasswordChangePage } from './pages/FirstSignInPasswordChangePage.js';
 import { ConsoleLayout } from './components/ConsoleLayout.js';
 import { OverviewPage } from './pages/OverviewPage.js';
 import { DistrictsPage } from './pages/DistrictsPage.js';
@@ -37,6 +38,14 @@ export function App() {
               <BrowserRouter>
                 <Routes>
                   <Route path="/sign-in" element={<SignInPage />} />
+                  <Route
+                    path="/first-login-password-change"
+                    element={
+                      <ProtectedRoute>
+                        <FirstSignInPasswordChangePage />
+                      </ProtectedRoute>
+                    }
+                  />
                   
                   {/* P4-F: React Router 7 nested layout route with Outlet */}
                   <Route

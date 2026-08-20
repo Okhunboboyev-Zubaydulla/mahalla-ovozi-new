@@ -4,8 +4,9 @@ import { buildHttpServer } from '../src/entrypoints/http.js';
 import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/client.js';
 import { createOrResetProductOwner } from '../src/modules/auth/account-service.js';
 import { auditEvents } from '../src/adapters/db/schema/index.js';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import pg from 'pg';
+
 import crypto from 'node:crypto';
 
 // P6-G: Simulate a same-origin browser request — all state-changing requests must pass the B3 origin guard.
@@ -19,6 +20,7 @@ describe('Districts Domain Module & Lifecycle Integration Tests', () => {
   const testUsername = `po_dist_${Date.now()}`;
   const testPassword = 'Secure-PO-Password-2026-Test!';
   let authCookie: string;
+  let poAccountId: string;
 
   beforeAll(async () => {
     pool = createDbPool();
@@ -43,6 +45,7 @@ describe('Districts Domain Module & Lifecycle Integration Tests', () => {
       },
     });
     expect(signInRes.statusCode).toBe(200);
+    poAccountId = signInRes.json().actor.id;
     const setCookie = signInRes.headers['set-cookie'];
     const cookieHeader = Array.isArray(setCookie) ? setCookie[0] : setCookie;
     expect(cookieHeader).toBeDefined();
@@ -186,11 +189,16 @@ describe('Districts Domain Module & Lifecycle Integration Tests', () => {
       expect(response.statusCode).toBe(201);
       const createdDistrictId = response.json().district.id;
 
-      // Check audit event
+      // Check audit event scoped to test actor
       const [audit] = await db
         .select()
         .from(auditEvents)
-        .where(eq(auditEvents.action, 'DISTRICT_CREATED'))
+        .where(
+          and(
+            eq(auditEvents.action, 'DISTRICT_CREATED'),
+            eq(auditEvents.actorId, poAccountId),
+          ),
+        )
         .orderBy(desc(auditEvents.createdAt))
         .limit(1);
 

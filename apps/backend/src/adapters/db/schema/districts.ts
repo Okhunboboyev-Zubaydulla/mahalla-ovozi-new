@@ -15,6 +15,10 @@ export const districts = pgTable(
     disclosureConfirmedById: text('disclosure_confirmed_by_id').references((): AnyPgColumn => accounts.id, {
       onDelete: 'set null',
     }),
+    activatedAt: timestamp('activated_at', { withTimezone: true }),
+    activatedById: text('activated_by_id').references((): AnyPgColumn => accounts.id, {
+      onDelete: 'set null',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

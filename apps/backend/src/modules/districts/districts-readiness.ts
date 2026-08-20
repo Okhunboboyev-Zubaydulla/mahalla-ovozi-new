@@ -1,5 +1,5 @@
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { DbClient } from '../../adapters/db/client.js';
+import { DbClient, DbOrTx } from '../../adapters/db/client.js';
 import {
   districts,
   districtTelegramBots,
@@ -139,9 +139,10 @@ export function evaluateDistrictPrerequisites(
 }
 
 export async function evaluateDistrictReadiness(
-  db: DbClient,
+  db: DbOrTx,
   districtId: string,
 ): Promise<DistrictReadiness> {
+
   const [district] = await db
     .select()
     .from(districts)

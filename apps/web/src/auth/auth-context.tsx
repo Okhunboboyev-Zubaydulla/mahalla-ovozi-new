@@ -1,16 +1,27 @@
 import { createContext, useContext, ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ActorContext, SignInRequest, SignInResponse } from '@mahalla-ovozi/api-contracts';
+import {
+  ActorContext,
+  SignInRequest,
+  SignInResponse,
+  FirstSignInPasswordChangeRequest,
+  FirstSignInPasswordChangeResponse,
+} from '@mahalla-ovozi/api-contracts';
 import { authClient } from './auth-client.js';
 
 interface AuthContextValue {
   actor: ActorContext | null;
   isAuthenticated: boolean;
+  mustChangePassword: boolean;
   isLoading: boolean;
   signIn: (credentials: SignInRequest) => Promise<SignInResponse>;
   signOut: () => Promise<void>;
+  changeFirstLoginPassword: (
+    payload: FirstSignInPasswordChangeRequest
+  ) => Promise<FirstSignInPasswordChangeResponse>;
   isSigningIn: boolean;
   isSigningOut: boolean;
+  isChangingPassword: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -40,6 +51,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const changePasswordMutation = useMutation({
+    mutationFn: (payload: FirstSignInPasswordChangeRequest) =>
+      authClient.changeFirstLoginPassword(payload),
+    onSuccess: (data) => {
+      queryClient.setQueryData(
+        ['auth', 'session'],
+        (old: { actor: ActorContext; session: { expiresAt: string } } | undefined) => {
+          if (!old) return old;
+          return {
+            ...old,
+            actor: data.actor,
+          };
+        }
+      );
+      queryClient.invalidateQueries({ queryKey: ['auth', 'session'] });
+    },
+  });
+
   const signIn = async (credentials: SignInRequest) => {
     return await signInMutation.mutateAsync(credentials);
   };
@@ -55,25 +84,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const changeFirstLoginPassword = async (payload: FirstSignInPasswordChangeRequest) => {
+    return await changePasswordMutation.mutateAsync(payload);
+  };
+
   const actor = sessionData?.actor || null;
   const isAuthenticated = !!actor;
+  const mustChangePassword = Boolean(actor?.mustChangePassword);
 
   return (
     <AuthContext.Provider
       value={{
         actor,
         isAuthenticated,
+        mustChangePassword,
         isLoading,
         signIn,
         signOut,
+        changeFirstLoginPassword,
         isSigningIn: signInMutation.isPending,
         isSigningOut: signOutMutation.isPending,
+        isChangingPassword: changePasswordMutation.isPending,
       }}
     >
       {children}
     </AuthContext.Provider>
   );
 }
+
 
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);

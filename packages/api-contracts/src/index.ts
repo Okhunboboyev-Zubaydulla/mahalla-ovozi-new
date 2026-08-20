@@ -4,3 +4,5 @@ export * from './readiness.js';
 export * from './telegram-bot.js';
 export * from './telegram-groups.js';
 export * from './hokim-accounts.js';
+export * from './errors.js';
+

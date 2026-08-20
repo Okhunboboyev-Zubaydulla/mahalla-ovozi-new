@@ -1,23 +1,27 @@
-import { ApiErrorEnvelopeSchema } from '@mahalla-ovozi/api-contracts';
+import { ApiErrorEnvelopeSchema, PrerequisiteItem } from '@mahalla-ovozi/api-contracts';
 
 export class ApiError extends Error {
   code: string;
   statusCode: number;
   isNetworkError: boolean;
+  blockers?: PrerequisiteItem[];
 
   constructor(
     message: string,
     code: string,
     statusCode: number,
-    isNetworkError: boolean
+    isNetworkError: boolean,
+    blockers?: PrerequisiteItem[]
   ) {
     super(message);
     this.name = 'ApiError';
     this.code = code;
     this.statusCode = statusCode;
     this.isNetworkError = isNetworkError;
+    this.blockers = blockers;
   }
 }
+
 
 export async function request<T>(
   url: string,
@@ -67,7 +71,8 @@ export async function request<T>(
         errorParsed.data.error.message,
         errorParsed.data.error.code,
         response.status,
-        false
+        false,
+        errorParsed.data.error.blockers
       );
     }
     throw new ApiError(
