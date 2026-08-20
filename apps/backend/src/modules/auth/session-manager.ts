@@ -94,7 +94,13 @@ export async function validateAndTouchSession(
     return { isValid: false, reason: 'REVOKED' };
   }
 
-  // 2. Check credential version
+  // 2. Check if account is active
+  if (account.status !== 'ACTIVE') {
+    await db.update(sessions).set({ revokedAt: now }).where(eq(sessions.id, session.id));
+    return { isValid: false, reason: 'REVOKED' };
+  }
+
+  // 3. Check credential version
   if (session.credentialVersion !== account.credentialVersion) {
     await db.update(sessions).set({ revokedAt: now }).where(eq(sessions.id, session.id));
     return { isValid: false, reason: 'CREDENTIAL_VERSION_MISMATCH' };

@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { DbClient } from '../../adapters/db/client.js';
 import {
   districts,
@@ -28,6 +28,7 @@ export function evaluateDistrictPrerequisites(
   const invalidGroupCount = groups.filter((g) => g.status !== 'VALID').length;
 
   const isHokimValid = Boolean(hokimAccount && hokimAccount.status === 'ACTIVE');
+  const isHokimDisabled = Boolean(hokimAccount && hokimAccount.status === 'DISABLED');
 
   const items: PrerequisiteItem[] = [
     {
@@ -121,10 +122,16 @@ export function evaluateDistrictPrerequisites(
         ? `Туман ҳокими учун хавфсиз аккаунт яратилди (@${hokimAccount.username})`
         : 'Туман ҳокими учун хавфсиз аккаунт яратилди',
       status: isHokimValid ? 'passed' : 'incomplete',
-      blockerReason: isHokimValid ? undefined : 'Ҳоким аккаунти яратилмаган (1.6-босқич).',
+      blockerReason: isHokimValid
+        ? undefined
+        : isHokimDisabled
+          ? 'Ҳоким аккаунти фаолсизлантирилган (1.6-босқич). Янги аккаунт яратинг ёки алмаштиринг.'
+          : 'Ҳоким аккаунти яратилмаган (1.6-босқич).',
       actionRequired: !isHokimValid,
       actionPath: !isHokimValid ? '/hokim-accounts' : undefined,
-      completedAt: isHokimValid && hokimAccount ? hokimAccount.createdAt.toISOString() : undefined,
+      completedAt: isHokimValid && hokimAccount
+        ? (hokimAccount.updatedAt || hokimAccount.createdAt).toISOString()
+        : undefined,
     },
   ];
 
@@ -163,8 +170,11 @@ export async function evaluateDistrictReadiness(
       and(
         eq(accounts.districtId, districtId),
         eq(accounts.role, 'DISTRICT_HOKIM'),
-        eq(accounts.status, 'ACTIVE'),
       ),
+    )
+    .orderBy(
+      sql`CASE WHEN ${accounts.status} = 'ACTIVE' THEN 1 ELSE 2 END`,
+      desc(accounts.updatedAt),
     )
     .limit(1);
 

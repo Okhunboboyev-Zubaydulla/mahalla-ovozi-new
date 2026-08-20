@@ -4,7 +4,7 @@ baseline_commit: b02af6b22dafe0ab82a317f366b4323829d36607
 
 # Story 1.6: Create and Manage the District Hokim Account
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -181,6 +181,17 @@ So that the District has a securely provisioned Hokim identity whose access is d
   - [x] 6.2 Run full monorepo typecheck (`pnpm typecheck`) and resolve all TypeScript errors.
   - [x] 6.3 Run full monorepo test suite (`pnpm test` and `pnpm --filter @mahalla-ovozi/web test:e2e`).
   - [x] 6.4 Update `_bmad-output/implementation-artifacts/sprint-status.yaml` and story file status to `review`.
+
+### Review Findings
+
+- [x] [Review][Patch] Check `account.status === 'ACTIVE'` in `validateAndTouchSession()` and revoke if disabled [apps/backend/src/modules/auth/session-manager.ts:89]
+- [x] [Review][Patch] Handle PostgreSQL unique constraint error 23505 in Hokim service/routes and map to 409 Conflict [apps/backend/src/modules/hokim-accounts/hokim-accounts-service.ts:167]
+- [x] [Review][Patch] Perform active account lookup and deactivation inside atomic transaction in `replaceDistrictHokimAccount` [apps/backend/src/modules/hokim-accounts/hokim-accounts-service.ts:488]
+- [x] [Review][Patch] Remove default parameter value and add integer validation in `generateTemporaryPassword` [apps/backend/src/adapters/crypto/temporary-password.ts:43]
+- [x] [Review][Patch] Distinguish disabled Hokim account in readiness prerequisite blocker message and use latest timestamp for `completedAt` [apps/backend/src/modules/districts/districts-readiness.ts:124]
+- [x] [Review][Patch] Call `form.resetFields()` on modal Cancel buttons in Create and Replace Hokim modals [apps/web/src/components/CreateHokimModal.tsx:80]
+- [x] [Review][Defer] Dynamic session invalidation when linked district transitions to suspended/cancelled [apps/backend/src/modules/auth/session-manager.ts:65] — deferred, to be handled in Story 1.7 district lifecycle transitions
+- [x] [Review][Defer] Change `accounts.district_id` foreign key onDelete behavior from cascade to restrict [apps/backend/src/adapters/db/schema/accounts.ts:13] — deferred, schema evolution candidate
 
 ---
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   generateTemporaryPassword,
+  DEFAULT_TEMPORARY_PASSWORD_LENGTH,
   UNAMBIGUOUS_ALPHABET,
   UPPERCASE_CHARS,
   LOWERCASE_CHARS,
@@ -10,8 +11,8 @@ import {
 import { validatePassword } from '../src/adapters/crypto/password-policy.js';
 
 describe('Temporary Password Generator (CSPRNG & Unambiguous Alphabet)', () => {
-  it('generates an 18-character password by default', () => {
-    const password = generateTemporaryPassword();
+  it('generates an 18-character password when requested', () => {
+    const password = generateTemporaryPassword(DEFAULT_TEMPORARY_PASSWORD_LENGTH);
     expect(password).toHaveLength(18);
   });
 
@@ -25,10 +26,12 @@ describe('Temporary Password Generator (CSPRNG & Unambiguous Alphabet)', () => {
     expect(p64).toHaveLength(64);
   });
 
-  it('throws an error for lengths < 15 or > 128', () => {
+  it('throws an error for lengths < 15, > 128, or non-integers', () => {
     expect(() => generateTemporaryPassword(14)).toThrow('Password length must be between 15 and 128 characters.');
     expect(() => generateTemporaryPassword(0)).toThrow('Password length must be between 15 and 128 characters.');
     expect(() => generateTemporaryPassword(129)).toThrow('Password length must be between 15 and 128 characters.');
+    expect(() => generateTemporaryPassword(NaN)).toThrow('Password length must be between 15 and 128 characters.');
+    expect(() => generateTemporaryPassword(18.5)).toThrow('Password length must be between 15 and 128 characters.');
   });
 
   it('contains exactly 64 characters in the unambiguous alphabet without homoglyphs', () => {

@@ -40,8 +40,8 @@ function shuffleArray<T>(array: T[]): T[] {
  * @param length Desired password length (default: 18, min: 15, max: 128)
  * @returns Cryptographically secure plaintext temporary password
  */
-export function generateTemporaryPassword(length: number = DEFAULT_TEMPORARY_PASSWORD_LENGTH): string {
-  if (typeof length !== 'number' || length < MIN_PASSWORD_LENGTH || length > MAX_PASSWORD_LENGTH) {
+export function generateTemporaryPassword(length: number): string {
+  if (typeof length !== 'number' || !Number.isInteger(length) || length < MIN_PASSWORD_LENGTH || length > MAX_PASSWORD_LENGTH) {
     throw new Error(`Password length must be between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH} characters.`);
   }
 

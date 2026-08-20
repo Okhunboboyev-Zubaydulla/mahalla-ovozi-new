@@ -23,6 +23,11 @@ export const ReplaceHokimModal: React.FC<ReplaceHokimModalProps> = ({
 }) => {
   const [form] = Form.useForm();
 
+  const handleCancel = () => {
+    form.resetFields();
+    onClose();
+  };
+
   const handleFinish = async (values: { newUsername: string }) => {
     await onSubmit(values);
     form.resetFields();
@@ -31,10 +36,7 @@ export const ReplaceHokimModal: React.FC<ReplaceHokimModalProps> = ({
   return (
     <Modal
       open={isOpen}
-      onCancel={() => {
-        form.resetFields();
-        onClose();
-      }}
+      onCancel={handleCancel}
       title={
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <SwapOutlined style={{ color: '#1677ff' }} />
@@ -94,7 +96,7 @@ export const ReplaceHokimModal: React.FC<ReplaceHokimModalProps> = ({
           </Form.Item>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
-            <Button onClick={onClose} disabled={isLoading} style={{ height: 44 }}>
+            <Button onClick={handleCancel} disabled={isLoading} style={{ height: 44 }}>
               Бекор қилиш
             </Button>
             <Button

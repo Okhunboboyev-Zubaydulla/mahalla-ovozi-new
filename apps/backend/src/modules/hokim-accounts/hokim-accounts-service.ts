@@ -197,47 +197,58 @@ export async function createDistrictHokimAccount(
   const now = new Date();
 
   // 4. Atomic database creation & privacy-safe audit logging
-  const createdAccount = await db.transaction(async (tx) => {
-    const [inserted] = await tx
-      .insert(accounts)
-      .values({
-        id: accountId,
-        username: normalizedUsername,
-        passwordHash,
-        role: 'DISTRICT_HOKIM',
-        status: 'ACTIVE',
-        districtId,
-        credentialVersion: 1,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
+  try {
+    const createdAccount = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(accounts)
+        .values({
+          id: accountId,
+          username: normalizedUsername,
+          passwordHash,
+          role: 'DISTRICT_HOKIM',
+          status: 'ACTIVE',
+          districtId,
+          credentialVersion: 1,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
 
-    if (!inserted) {
-      throw new Error('Failed to create Hokim account');
-    }
+      if (!inserted) {
+        throw new Error('Failed to create Hokim account');
+      }
 
-    await recordAuditEvent(tx, {
-      actorId: actor.id,
-      actorRole: actor.role,
-      action: 'ACCOUNT_HOKIM_CREATED',
-      ipAddress: clientInfo?.ipAddress ?? null,
-      userAgent: clientInfo?.userAgent ?? null,
-      metadata: {
-        districtId,
-        districtName: district.name,
-        createdAccountId: accountId,
-        username: normalizedUsername,
-      },
+      await recordAuditEvent(tx, {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: 'ACCOUNT_HOKIM_CREATED',
+        ipAddress: clientInfo?.ipAddress ?? null,
+        userAgent: clientInfo?.userAgent ?? null,
+        metadata: {
+          districtId,
+          districtName: district.name,
+          createdAccountId: accountId,
+          username: normalizedUsername,
+        },
+      });
+
+      return inserted;
     });
 
-    return inserted;
-  });
-
-  return {
-    account: toDistrictHokimAccount(createdAccount),
-    temporaryPassword,
-  };
+    return {
+      account: toDistrictHokimAccount(createdAccount),
+      temporaryPassword,
+    };
+  } catch (err: unknown) {
+    const pgErr = err as { code?: string; constraint?: string; message?: string };
+    if (pgErr && pgErr.code === '23505') {
+      if (pgErr.constraint?.includes('district') || pgErr.message?.includes('accounts_active_district_hokim_idx')) {
+        throw new DistrictHokimAlreadyExistsError(districtId);
+      }
+      throw new UsernameAlreadyTakenError(normalizedUsername);
+    }
+    throw err;
+  }
 }
 
 /**
@@ -445,39 +456,6 @@ export async function replaceDistrictHokimAccount(
     throw new UsernameAlreadyTakenError(normalizedUsername);
   }
 
-  // Look for existing active or disabled account to identify previous account ID
-  const [activeAccount] = await db
-    .select()
-    .from(accounts)
-    .where(
-      and(
-        eq(accounts.districtId, districtId),
-        eq(accounts.role, 'DISTRICT_HOKIM'),
-        eq(accounts.status, 'ACTIVE'),
-      ),
-    )
-    .limit(1);
-
-  let previousAccountId = activeAccount?.id;
-  if (!previousAccountId) {
-    const [latestDisabled] = await db
-      .select()
-      .from(accounts)
-      .where(
-        and(
-          eq(accounts.districtId, districtId),
-          eq(accounts.role, 'DISTRICT_HOKIM'),
-        ),
-      )
-      .orderBy(desc(accounts.updatedAt))
-      .limit(1);
-
-    if (!latestDisabled) {
-      throw new HokimAccountNotFoundError(districtId);
-    }
-    previousAccountId = latestDisabled.id;
-  }
-
   // Generate credentials for the new account
   const temporaryPassword = generateTemporaryPassword(18);
   const passwordHash = await hashPassword(temporaryPassword);
@@ -485,65 +463,115 @@ export async function replaceDistrictHokimAccount(
   const now = new Date();
 
   // Atomic transition in a single transaction
-  const createdAccount = await db.transaction(async (tx) => {
-    // If active account exists, disable it and revoke sessions
-    if (activeAccount) {
-      await tx
-        .update(accounts)
-        .set({
-          status: 'DISABLED',
-          credentialVersion: activeAccount.credentialVersion + 1,
+  try {
+    let resolvedPreviousAccountId: string | undefined;
+
+    const createdAccount = await db.transaction(async (tx) => {
+      // Find active Hokim account within transaction
+      const [currentActive] = await tx
+        .select()
+        .from(accounts)
+        .where(
+          and(
+            eq(accounts.districtId, districtId),
+            eq(accounts.role, 'DISTRICT_HOKIM'),
+            eq(accounts.status, 'ACTIVE'),
+          ),
+        )
+        .limit(1);
+
+      if (currentActive) {
+        resolvedPreviousAccountId = currentActive.id;
+        await tx
+          .update(accounts)
+          .set({
+            status: 'DISABLED',
+            credentialVersion: currentActive.credentialVersion + 1,
+            updatedAt: now,
+          })
+          .where(eq(accounts.id, currentActive.id));
+
+        await tx
+          .update(sessions)
+          .set({ revokedAt: now })
+          .where(and(eq(sessions.accountId, currentActive.id), isNull(sessions.revokedAt)));
+      } else {
+        const [latestDisabled] = await tx
+          .select()
+          .from(accounts)
+          .where(
+            and(
+              eq(accounts.districtId, districtId),
+              eq(accounts.role, 'DISTRICT_HOKIM'),
+            ),
+          )
+          .orderBy(desc(accounts.updatedAt))
+          .limit(1);
+
+        if (!latestDisabled) {
+          throw new HokimAccountNotFoundError(districtId);
+        }
+        resolvedPreviousAccountId = latestDisabled.id;
+      }
+
+      // Insert new active account
+      const [inserted] = await tx
+        .insert(accounts)
+        .values({
+          id: newAccountId,
+          username: normalizedUsername,
+          passwordHash,
+          role: 'DISTRICT_HOKIM',
+          status: 'ACTIVE',
+          districtId,
+          credentialVersion: 1,
+          createdAt: now,
           updatedAt: now,
         })
-        .where(eq(accounts.id, activeAccount.id));
+        .returning();
 
-      await tx
-        .update(sessions)
-        .set({ revokedAt: now })
-        .where(and(eq(sessions.accountId, activeAccount.id), isNull(sessions.revokedAt)));
-    }
+      if (!inserted) {
+        throw new Error('Failed to insert replacement Hokim account');
+      }
 
-    // Insert new active account
-    const [inserted] = await tx
-      .insert(accounts)
-      .values({
-        id: newAccountId,
-        username: normalizedUsername,
-        passwordHash,
-        role: 'DISTRICT_HOKIM',
-        status: 'ACTIVE',
-        districtId,
-        credentialVersion: 1,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
+      await recordAuditEvent(tx, {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: 'ACCOUNT_HOKIM_REPLACED',
+        ipAddress: clientInfo?.ipAddress ?? null,
+        userAgent: clientInfo?.userAgent ?? null,
+        metadata: {
+          districtId,
+          districtName: district.name,
+          previousAccountId: resolvedPreviousAccountId,
+          newAccountId,
+          newUsername: normalizedUsername,
+        },
+      });
 
-    if (!inserted) {
-      throw new Error('Failed to insert replacement Hokim account');
-    }
-
-    await recordAuditEvent(tx, {
-      actorId: actor.id,
-      actorRole: actor.role,
-      action: 'ACCOUNT_HOKIM_REPLACED',
-      ipAddress: clientInfo?.ipAddress ?? null,
-      userAgent: clientInfo?.userAgent ?? null,
-      metadata: {
-        districtId,
-        districtName: district.name,
-        previousAccountId,
-        newAccountId,
-        newUsername: normalizedUsername,
-      },
+      return inserted;
     });
 
-    return inserted;
-  });
-
-  return {
-    account: toDistrictHokimAccount(createdAccount),
-    temporaryPassword,
-    previousAccountId,
-  };
+    return {
+      account: toDistrictHokimAccount(createdAccount),
+      temporaryPassword,
+      previousAccountId: resolvedPreviousAccountId!,
+    };
+  } catch (err: unknown) {
+    if (
+      err instanceof DistrictNotFoundError ||
+      err instanceof HokimAccountNotFoundError ||
+      err instanceof UsernameAlreadyTakenError
+    ) {
+      throw err;
+    }
+    const pgErr = err as { code?: string; constraint?: string; message?: string };
+    if (pgErr && pgErr.code === '23505') {
+      if (pgErr.constraint?.includes('district') || pgErr.message?.includes('accounts_active_district_hokim_idx')) {
+        throw new DistrictHokimAlreadyExistsError(districtId);
+      }
+      throw new UsernameAlreadyTakenError(normalizedUsername);
+    }
+    throw err;
+  }
 }

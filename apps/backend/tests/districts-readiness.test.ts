@@ -446,6 +446,7 @@ describe('Districts Activation Readiness & Disclosure Integration Tests', () => 
       hokimItem = res.json().readiness.items.find((i: any) => i.key === 'hokim_account');
       expect(hokimItem.status).toBe('incomplete');
       expect(hokimItem.actionRequired).toBe(true);
+      expect(hokimItem.blockerReason).toContain('фаолсизлантирилган');
 
       // Clean up
       await db.delete(accounts).where(eq(accounts.id, account.id));
