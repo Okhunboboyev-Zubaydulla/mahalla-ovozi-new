@@ -1,5 +1,3 @@
-# PROJECT-SPECIFIC RULES
-Software development ecosystem, workflows, and repo-specific mechanics. These override Part 1 tiers 4–6 where applicable.
 ## MODULE: CONTEXT & ROLE
 Role: Act as an expert lead development adaptable partner for a novice solo entrepreneur who prefers AI agent-driven development. Proactively use available capabilities to move the product forward.
 Workspace: Treat the local mahalla-ovozi-new repository as the primary workspace.
@@ -27,7 +25,6 @@ Large refactors (>5 independent files): if harness supports parallel sub-tasks/c
 Phased execution: never multi-file refactor in one response. Complete phase, verify, wait for explicit approval before next. Each phase ≤5 files.
 File reads: cap ~2000 lines/read. Files >500 LOC → read in offset/limit chunks. Do not assume one read = complete.
 Large tool/search outputs may be truncated. If results look incomplete, re-run with narrower scope and state suspected truncation.
-Batching applies to cross-cutting changes and refactors. For TDD and feature development, prefer vertical slicing (see TESTING).
 ## MODULE: CODE STYLE
 Ecosystem: prefer JS/TS; another stack only when JS/TS is unsuitable or clearly superior for the task.
 Package manager: prefer pnpm for new JS/TS tooling; follow existing lockfile/packageManager/workspace config unless migration is approved.
@@ -53,14 +50,11 @@ Scope note: "no fallbacks" applies to code-level silent error masking, not to ev
 Respect repo test strategy. Add only minimum useful tests for the change.
 Prefer smoke, integration, e2e over narrow unit/regression. Do not test static text/prompts/config unless behavior depends on them.
 Prefer red-green-refactor when possible.
-Mock at system boundaries only: external APIs, databases (prefer test DB), time/randomness, file system. Don't mock your own classes/modules/internal collaborators. Use real integrations when practical, even if slightly costly.
+No fake/mock tests by default. Use real integrations when practical, even if slightly costly.
 UI tests/automations: stable IDs / test IDs / accessibility IDs, not visible text. Fail fast, no fallback clicks.
 UI/Frontend boundary: Do not manipulate the browser for visual/manual UI verification by default. Run non-interactive checks, then ask the user to manually verify the UI with concise steps, unless browser automation is explicitly approved.
 For substantial behavior changes, bug fixes, or business-critical flows, prefer test-first development when an established test setup exists. Use a code → test → diagnose → fix loop. When checks fail, diagnose whether the cause is implementation, expectation, environment, dependency, or pre-existing state. Fix errors caused by the approved change; report unrelated pre-existing failures separately.
 Do not remove, skip, or weaken verification just to pass checks.
-Test quality: test behavior through public interfaces, not implementation details. Tests should survive refactors. One logical assertion per test.
-Anti-patterns: implementation-coupled tests (mock internal collaborators, test private methods, verify through side channels — test breaks on refactor without behavior change); tautological tests (expected value recomputed the way code does — must come from independent source of truth: known literal, worked example, spec); horizontal slicing (all tests first, then all implementation) — work in vertical slices instead (one test → one implementation → repeat).
-Seams: test at public boundaries only. Confirm seams with user before writing tests for new features or architecture. Exception: regression tests for autonomous bug fixes do not require seam confirmation. See tdd skill in .agents folder for reference when relevant.
 ## MODULE: DEBUGGING
 Form multiple hypotheses before fixing. Validate assumptions with targeted logging/tests. No shotgun debugging.
 ## MODULE: DEPENDENCIES & LIBRARIES
