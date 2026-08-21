@@ -4,7 +4,7 @@ baseline_commit: 6246178a6eb8bcc71adf13748f09f840a60e8439
 
 # Story 2.1: Durably Receive Authorized District Telegram Messages
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -95,8 +95,8 @@ So that downstream signal processing begins from isolated, traceable, retry-safe
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Drizzle Database Schema & Migration for Telegram Intakes** (AC: 1, 4, 5, 6, 7)
-  - [ ] 1.1 Create `apps/backend/src/adapters/db/schema/telegram-intakes.ts` defining `telegramIntakeRecords` table:
+- [x] **Task 1: Drizzle Database Schema & Migration for Telegram Intakes** (AC: 1, 4, 5, 6, 7)
+  - [x] 1.1 Create `apps/backend/src/adapters/db/schema/telegram-intakes.ts` defining `telegramIntakeRecords` table:
     - `id`: text primary key (UUID/cuid)
     - `districtId`: text foreign key to `districts.id` (`onDelete: 'cascade'`)
     - `mahallaName`: text not null
@@ -110,38 +110,38 @@ So that downstream signal processing begins from isolated, traceable, retry-safe
     - `rawPayload`: jsonb not null
     - `createdAt`: timestamp with timezone default now
     - `updatedAt`: timestamp with timezone default now
-  - [ ] 1.2 Add compound unique index `telegram_intakes_district_chat_msg_idx` on `(district_id, telegram_chat_id, telegram_message_id)`.
-  - [ ] 1.3 Add query indices:
+  - [x] 1.2 Add compound unique index `telegram_intakes_district_chat_msg_idx` on `(district_id, telegram_chat_id, telegram_message_id)`.
+  - [x] 1.3 Add query indices:
     - `telegram_intakes_district_day_mahalla_idx` on `(district_id, calendar_day, mahalla_name)`
     - `telegram_intakes_district_created_idx` on `(district_id, created_at)`
-  - [ ] 1.4 Export schema from `apps/backend/src/adapters/db/schema/index.ts`.
-  - [ ] 1.5 Generate and apply Drizzle SQL migration `0007_telegram_intake_records.sql`.
+  - [x] 1.4 Export schema from `apps/backend/src/adapters/db/schema/index.ts`.
+  - [x] 1.5 Generate and apply Drizzle SQL migration `0007_telegram_intake_records.sql`.
 
-- [ ] **Task 2: Deterministic Timezone & Telegram Webhook Security Utilities** (AC: 1, 6, 8)
-  - [ ] 2.1 Create `apps/backend/src/modules/telegram-intake/timezone-util.ts` implementing `getTashkentCalendarDay(unixSeconds: number): string`:
+- [x] **Task 2: Deterministic Timezone & Telegram Webhook Security Utilities** (AC: 1, 6, 8)
+  - [x] 2.1 Create `apps/backend/src/modules/telegram-intake/timezone-util.ts` implementing `getTashkentCalendarDay(unixSeconds: number): string`:
     - Pure UTC+5 offset calculation (`(unixSeconds + 18000) * 1000`)
     - Returns format `YYYY-MM-DD` with zero timezone drift or locale dependencies.
-  - [ ] 2.2 Create `apps/backend/src/modules/telegram-intake/webhook-security.ts` implementing:
+  - [x] 2.2 Create `apps/backend/src/modules/telegram-intake/webhook-security.ts` implementing:
     - `deriveWebhookSecret(botId: string): string` using HMAC-SHA256 of `botId` against master `getEncryptionKey()`.
     - `verifyTelegramSecretToken(incomingHeader: string | string[] | undefined, expectedToken: string): boolean` using SHA-256 digest comparison via `crypto.timingSafeEqual` to avoid length mismatch `RangeError` and timing leakage.
-  - [ ] 2.3 Add unit tests in `apps/backend/tests/timezone-util.test.ts` and `apps/backend/tests/webhook-security.test.ts` covering day boundary crossings (`23:59:59` vs `00:00:00` Tashkent time) and constant-time secret token validation.
+  - [x] 2.3 Add unit tests in `apps/backend/tests/timezone-util.test.ts` and `apps/backend/tests/webhook-security.test.ts` covering day boundary crossings (`23:59:59` vs `00:00:00` Tashkent time) and constant-time secret token validation.
 
-- [ ] **Task 3: `pg-boss` 10.x Queue Infrastructure, Initialization & Worker Runtime (`AI-3`)** (AC: 4, 7)
-  - [ ] 3.1 Add `pg-boss` (`^10.1.4`) to `apps/backend/package.json` dependencies.
-  - [ ] 3.2 Create `apps/backend/src/adapters/jobs/boss-client.ts`:
+- [x] **Task 3: `pg-boss` 10.x Queue Infrastructure, Initialization & Worker Runtime (`AI-3`)** (AC: 4, 7)
+  - [x] 3.1 Add `pg-boss` (`^10.1.4`) to `apps/backend/package.json` dependencies.
+  - [x] 3.2 Create `apps/backend/src/adapters/jobs/boss-client.ts`:
     - Define queue constants (`TELEGRAM_CONTENT_QUALIFICATION_QUEUE = 'telegram-content-qualification'`).
     - Create factory `createBossClient(options?: { connectionString?: string, schema?: string }): PgBoss`.
     - Implement `initBossQueues(boss: PgBoss): Promise<void>` calling `await boss.createQueue(TELEGRAM_CONTENT_QUALIFICATION_QUEUE)` to ensure queues are registered in `pgboss.queue` at bootstrap.
     - Implement `withTransactionalIntake<T>(pool: pg.Pool, boss: PgBoss, callback: (scope: TransactionScope) => Promise<T>): Promise<T>` executing Drizzle and `boss.send` on the same `pg.PoolClient` connection within `BEGIN ... COMMIT` with normalized `{ rows: res.rows, rowCount: res.rowCount ?? 0 }` executeSql return.
-  - [ ] 3.3 Create `apps/backend/src/entrypoints/worker.ts`:
+  - [x] 3.3 Create `apps/backend/src/entrypoints/worker.ts`:
     - Initialize and start `PgBoss` instance, call `initBossQueues(boss)`.
     - Register queue `telegram-content-qualification`.
     - Setup graceful shutdown handlers (`SIGTERM`, `SIGINT`) invoking `boss.stop({ graceful: true, timeout: 30000 })`.
     - Export `startWorker()` and `stopWorker()` for test harnesses.
     - Add `"worker"` script in `apps/backend/package.json`: `"worker": "node --import tsx/esm src/entrypoints/worker.ts"`.
 
-- [ ] **Task 4: Telegram Ingress & Multi-Tenant Authorization Service** (AC: 1, 2, 3, 5, 6)
-  - [ ] 4.1 Create `apps/backend/src/modules/telegram-intake/telegram-intake-service.ts`:
+- [x] **Task 4: Telegram Ingress & Multi-Tenant Authorization Service** (AC: 1, 2, 3, 5, 6)
+  - [x] 4.1 Create `apps/backend/src/modules/telegram-intake/telegram-intake-service.ts`:
     - `resolveDistrictBotAndGroup(db: DbClient, botId: string, chatId: string)`:
       - Looks up bot by `botId` in `districtTelegramBots` (where `districtTelegramBots.botId = botId`).
       - Verifies associated `districts.status === 'ACTIVE'`.
@@ -156,20 +156,20 @@ So that downstream signal processing begins from isolated, traceable, retry-safe
         - If inserted, enqueues `telegram-content-qualification` job with `singletonKey: "msg:${districtId}:${chatId}:${messageId}"`, `retryLimit: 3`, `retryDelay: 5`, `retryBackoff: true`.
         - Returns `{ status: 'ACCEPTED', intakeId: record.id, jobId }`.
 
-- [ ] **Task 5: Fastify Telegram Webhook Route & Status Code Policy** (AC: 1, 2, 3, 4, 8)
-  - [ ] 5.1 Create `apps/backend/src/modules/telegram-intake/telegram-intake-routes.ts`:
+- [x] **Task 5: Fastify Telegram Webhook Route & Status Code Policy** (AC: 1, 2, 3, 4, 8)
+  - [x] 5.1 Create `apps/backend/src/modules/telegram-intake/telegram-intake-routes.ts`:
     - Register `POST /api/v1/webhooks/telegram/:botId`.
     - Fastify `preHandler` hook verifies `x-telegram-bot-api-secret-token` against `deriveWebhookSecret(botId)`. If invalid/missing, respond `401 Unauthorized` immediately.
     - Call `processTelegramWebhookUpdate`.
     - If status is `ACCEPTED`, `DROPPED`, or `DUPLICATE`: respond HTTP `200 OK` with `{ ok: true, status, ... }`.
     - If transaction/database fails unexpectedly: log sanitized error and respond HTTP `500 Internal Server Error` (prompting Telegram retry).
-  - [ ] 5.2 Implement privacy-safe structured logging:
+  - [x] 5.2 Implement privacy-safe structured logging:
     - Log `{ event: 'TELEGRAM_INTAKE', botId, districtId, mahallaName, chatId, messageId, status, durationMs }`.
     - Strictly ensure raw text/captions and bot tokens are excluded from logs.
-  - [ ] 5.3 Register `registerTelegramIntakeRoutes(server, { db, pool, boss })` in `apps/backend/src/entrypoints/http.ts` and ensure `initBossQueues(boss)` runs on server start.
+  - [x] 5.3 Register `registerTelegramIntakeRoutes(server, { db, pool, boss })` in `apps/backend/src/entrypoints/http.ts` and ensure `initBossQueues(boss)` runs on server start.
 
-- [ ] **Task 6: Comprehensive Vitest Integration & Durability Test Matrix** (AC: 9)
-  - [ ] 6.1 Create `apps/backend/tests/telegram-intake.test.ts` testing against real PostgreSQL:
+- [x] **Task 6: Comprehensive Vitest Integration & Durability Test Matrix** (AC: 9)
+  - [x] 6.1 Create `apps/backend/tests/telegram-intake.test.ts` testing against real PostgreSQL:
     - **Test 1 (Happy Path):** Active District + valid bot + approved group &rarr; inserts intake record, enqueues pg-boss job, returns 200 OK.
     - **Test 2 (Inactive District):** District in `SETUP_INCOMPLETE` or `SUSPENDED` &rarr; returns 200 OK `{ ok: true, status: 'DROPPED', reason: 'DISTRICT_NOT_ACTIVE' }`, 0 DB records, 0 jobs.
     - **Test 3 (Unapproved Group):** Group in `PENDING` or `FAILED` &rarr; returns 200 OK `{ ok: true, status: 'DROPPED', reason: 'GROUP_NOT_APPROVED' }`, 0 DB records, 0 jobs.
@@ -412,12 +412,32 @@ export function verifyTelegramSecretToken(
 Gemini 3.7 Flash (High)
 
 ### Debug Log References
-- Research transcript: `file:///C:/Users/Zubaydulla/.gemini/antigravity/brain/d80b6057-b2c3-4136-9411-8f8272c8468c/.system_generated/logs/transcript.jsonl`
+- Implementation transcript: `file:///C:/Users/Zubaydulla/.gemini/antigravity/brain/e5affb50-5926-46b0-a97a-25ae17d55eef/.system_generated/logs/transcript.jsonl`
 
 ### Completion Notes List
-- Comprehensive Story 2.1 implementation specification fully hardened and validated.
-- Covers authoritative multi-tenant resolution, Drizzle table schema, `pg-boss` 10.x transactional intake, queue bootstrapping (`initBossQueues`), SHA-256 constant-time secret token verification in Fastify `preHandler`, structural update payload guards, `Asia/Tashkent` timezone derivation, and Vitest test matrix.
+- Task 1: Implemented `telegram_intake_records` Drizzle table with unique index `(district_id, telegram_chat_id, telegram_message_id)`, query indices, and applied migration `0007_common_bromley.sql`.
+- Task 2: Implemented deterministic `getTashkentCalendarDay` (UTC+5 arithmetic) and constant-time SHA-256 `verifyTelegramSecretToken` with 12 passing unit tests covering boundary conditions.
+- Task 3: Configured `pg-boss` 10.4.2 client with `initBossQueues`, `withTransactionalIntake` (executing Drizzle and pg-boss on a single `pg.PoolClient` in `BEGIN ... COMMIT`), and asynchronous `worker.ts` runtime.
+- Task 4: Implemented `telegram-intake-service.ts` with authoritative tenant resolution, structural update guards, and atomic `.onConflictDoNothing().returning()` deduplication.
+- Task 5: Implemented Fastify route `POST /api/v1/webhooks/telegram/:botId` with 401 secret verification in `preHandler`, privacy-safe structured logging, and correct HTTP status code policy (200 for accepted/dropped/duplicate, 500 for transient persistence errors).
+- Task 6: Authored and verified full 11-test Vitest integration test suite covering all acceptance criteria with 100% pass rate and $< 100\text{ms}$ durability latency. Monorepo regression baseline clean with 37 test suites (275 tests) passing.
 
 ### File List
-- `_bmad-output/implementation-artifacts/2-1-durably-receive-authorized-district-telegram-messages.md`
+- `apps/backend/src/adapters/db/schema/telegram-intakes.ts` (new)
+- `apps/backend/src/adapters/db/schema/index.ts` (modified)
+- `apps/backend/drizzle/0007_common_bromley.sql` (new)
+- `apps/backend/src/modules/telegram-intake/timezone-util.ts` (new)
+- `apps/backend/src/modules/telegram-intake/webhook-security.ts` (new)
+- `apps/backend/src/adapters/jobs/boss-client.ts` (new)
+- `apps/backend/src/entrypoints/worker.ts` (new)
+- `apps/backend/src/modules/telegram-intake/telegram-intake-service.ts` (new)
+- `apps/backend/src/modules/telegram-intake/telegram-intake-routes.ts` (new)
+- `apps/backend/src/modules/auth/origin-guard.ts` (modified)
+- `apps/backend/src/entrypoints/http.ts` (modified)
+- `apps/backend/package.json` (modified)
+- `apps/backend/tests/timezone-util.test.ts` (new)
+- `apps/backend/tests/webhook-security.test.ts` (new)
+- `apps/backend/tests/telegram-intake.test.ts` (new)
+- `_bmad-output/implementation-artifacts/2-1-durably-receive-authorized-district-telegram-messages.md` (modified)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified)
 

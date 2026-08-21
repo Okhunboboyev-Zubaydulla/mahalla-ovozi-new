@@ -11,6 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --import tsx/esm src/adapters/db/migrate.ts",
     "dev": "node --import tsx/esm src/entrypoints/http.ts",
+    "worker": "node --import tsx/esm src/entrypoints/worker.ts",
     "cli:manage-po": "node --import tsx/esm src/cli/manage-product-owner.ts"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "fastify": "^5.2.1",
     "fastify-type-provider-zod": "^4.0.2",
     "pg": "^8.13.3",
+    "pg-boss": "^10.4.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {

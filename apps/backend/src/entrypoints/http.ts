@@ -7,6 +7,9 @@ import { registerDistrictRoutes } from '../modules/districts/districts-routes.js
 import { registerTelegramBotRoutes } from '../modules/telegram-bot/telegram-bot-routes.js';
 import { registerTelegramGroupRoutes } from '../modules/telegram-groups/telegram-groups-routes.js';
 import { registerHokimAccountRoutes } from '../modules/hokim-accounts/hokim-accounts-routes.js';
+import { registerTelegramIntakeRoutes } from '../modules/telegram-intake/telegram-intake-routes.js';
+import { createBossClient, initBossQueues } from '../adapters/jobs/boss-client.js';
+import type PgBoss from 'pg-boss';
 import pg from 'pg';
 
 // Plain HTTP error with statusCode + code fields — Fastify's error handler maps these correctly.
@@ -19,6 +22,7 @@ class ForbiddenOriginError extends Error {
 export async function buildHttpServer(options?: {
   db?: DbClient;
   pool?: pg.Pool;
+  boss?: PgBoss;
 }): Promise<FastifyInstance> {
   const server = Fastify({
     logger: false, // Logging controlled via telemetry adapter
@@ -93,6 +97,10 @@ export async function buildHttpServer(options?: {
 
   const pool = options?.pool || createDbPool();
   const db = options?.db || createDbClient(pool);
+  const boss = options?.boss || createBossClient();
+
+  // Ensure pg-boss queues are bootstrapped
+  await initBossQueues(boss);
 
   // Register domain module routes
   registerAuthRoutes(server, db);
@@ -100,6 +108,7 @@ export async function buildHttpServer(options?: {
   registerTelegramBotRoutes(server, db);
   registerTelegramGroupRoutes(server, db);
   registerHokimAccountRoutes(server, db);
+  registerTelegramIntakeRoutes(server, { pool, boss });
 
   return server;
 }
