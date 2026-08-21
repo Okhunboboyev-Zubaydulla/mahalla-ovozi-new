@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ActorContext,
@@ -69,11 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const signIn = async (credentials: SignInRequest) => {
-    return await signInMutation.mutateAsync(credentials);
-  };
+  const signIn = useCallback(
+    async (credentials: SignInRequest) => {
+      return await signInMutation.mutateAsync(credentials);
+    },
+    [signInMutation]
+  );
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     queryClient.setQueryData(['auth', 'session'], null);
     try {
       await authClient.signOut();
@@ -82,31 +85,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       queryClient.removeQueries({ queryKey: ['auth', 'session'] });
     }
-  };
+  }, [queryClient]);
 
-  const changeFirstLoginPassword = async (payload: FirstSignInPasswordChangeRequest) => {
-    return await changePasswordMutation.mutateAsync(payload);
-  };
+  const changeFirstLoginPassword = useCallback(
+    async (payload: FirstSignInPasswordChangeRequest) => {
+      return await changePasswordMutation.mutateAsync(payload);
+    },
+    [changePasswordMutation]
+  );
 
   const actor = sessionData?.actor || null;
   const isAuthenticated = !!actor;
   const mustChangePassword = Boolean(actor?.mustChangePassword);
 
+  const contextValue = useMemo(
+    () => ({
+      actor,
+      isAuthenticated,
+      mustChangePassword,
+      isLoading,
+      signIn,
+      signOut,
+      changeFirstLoginPassword,
+      isSigningIn: signInMutation.isPending,
+      isSigningOut: signOutMutation.isPending,
+      isChangingPassword: changePasswordMutation.isPending,
+    }),
+    [
+      actor,
+      isAuthenticated,
+      mustChangePassword,
+      isLoading,
+      signIn,
+      signOut,
+      changeFirstLoginPassword,
+      signInMutation.isPending,
+      signOutMutation.isPending,
+      changePasswordMutation.isPending,
+    ]
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        actor,
-        isAuthenticated,
-        mustChangePassword,
-        isLoading,
-        signIn,
-        signOut,
-        changeFirstLoginPassword,
-        isSigningIn: signInMutation.isPending,
-        isSigningOut: signOutMutation.isPending,
-        isChangingPassword: changePasswordMutation.isPending,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

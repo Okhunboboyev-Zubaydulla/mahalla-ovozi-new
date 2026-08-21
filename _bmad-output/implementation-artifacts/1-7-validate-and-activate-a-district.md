@@ -4,7 +4,7 @@ baseline_commit: a02d50c6bd609fd17bcd79eb25466e2e276225d7
 
 # Story 1.7: Validate and Activate a District
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -268,6 +268,19 @@ So that the district transitions to `ACTIVE` status, locking prerequisites, enab
     - Hokim login after activation with temporary password $\to$ redirect to first sign-in password change $\to$ password replaced $\to$ landing page.
   - [x] 9.5 Run full quality gate: `pnpm typecheck`, `pnpm test`.
 
+### Review Findings
+
+- [x] [Review][Patch] TOCTOU race condition in `confirmDistrictDisclosure` — add CAS `status = 'SETUP_INCOMPLETE'` condition to update query [`apps/backend/src/modules/districts/districts-readiness.ts:227-235`]
+- [x] [Review][Patch] Catch `CREDENTIAL_CONCURRENCY_CONFLICT` in `change-first-login-password` route and return structured HTTP 409 response instead of unhandled 500 error [`apps/backend/src/modules/auth/auth-routes.ts:381-401`]
+- [x] [Review][Patch] Reject submission when new password matches current temporary password on both backend and frontend [`apps/backend/src/modules/auth/auth-routes.ts:364-375`, `apps/web/src/pages/FirstSignInPasswordChangePage.tsx:35-38`]
+- [x] [Review][Patch] Add RFC 6265bis compliant `secure: true` to `reply.clearCookie` on `GET /api/v1/auth/session` route [`apps/backend/src/modules/auth/auth-routes.ts:265-270`]
+- [x] [Review][Patch] Replace unsupported `destroyOnHidden` with `destroyOnClose` for Ant Design 5.24 compatibility [`apps/web/src/components/DistrictActivationModal.tsx:98`, `apps/web/src/components/DisclosureConfirmationModal.tsx:80`, `apps/web/src/components/CreateDistrictDrawer.tsx:145`]
+- [x] [Review][Patch] Align form item password length validation to count Unicode code points rather than UTF-16 code units [`apps/web/src/pages/FirstSignInPasswordChangePage.tsx:148-153`]
+- [x] [Review][Patch] Dynamically display `'Туман ҳокими'` role tag for `DISTRICT_HOKIM` accounts in `ConsoleLayout` header [`apps/web/src/components/ConsoleLayout.tsx:161-165`]
+- [x] [Review][Patch] Memoize `AuthProvider` handlers and context value with `useCallback` and `useMemo` to eliminate cascading re-renders [`apps/web/src/auth/auth-context.tsx:72-112`]
+- [x] [Review][Patch] Replace hardcoded hex styling with semantic Ant Design warning theme tokens in `CreateDistrictDrawer` [`apps/web/src/components/CreateDistrictDrawer.tsx:167-221`]
+- [x] [Review][Patch] Add Ant Design `message.success(...)` toast upon successful district activation in modal [`apps/web/src/components/DistrictActivationModal.tsx:74-80`]
+- [x] [Review][Defer] Incomplete audit logging for invalid status activation attempts [`apps/backend/src/modules/districts/districts-service.ts:283-304`] — deferred, pre-existing
 
 ---
 

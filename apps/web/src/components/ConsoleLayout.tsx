@@ -159,7 +159,7 @@ export const ConsoleLayout: React.FC = () => {
         <Space direction="horizontal" size="middle" align="center">
           {actor && (
             <Tag color="cyan" style={{ fontSize: 13, padding: '4px 10px', borderRadius: 6 }}>
-              {actor.username} (Масъул ходим)
+              {actor.username} ({actor.role === 'DISTRICT_HOKIM' ? 'Туман ҳокими' : 'Масъул ходим'})
             </Tag>
           )}
 

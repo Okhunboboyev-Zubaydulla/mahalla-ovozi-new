@@ -223,7 +223,7 @@ export async function confirmDistrictDisclosure(
   const now = new Date();
 
   await db.transaction(async (tx) => {
-    // Explicit updatedAt rule (Patch P1 / P2-C)
+    // Explicit updatedAt rule (Patch P1 / P2-C) & CAS concurrency guard
     const [updated] = await tx
       .update(districts)
       .set({
@@ -231,11 +231,25 @@ export async function confirmDistrictDisclosure(
         disclosureConfirmedById: actor.id,
         updatedAt: now,
       })
-      .where(eq(districts.id, districtId))
+      .where(
+        and(
+          eq(districts.id, districtId),
+          eq(districts.status, 'SETUP_INCOMPLETE')
+        )
+      )
       .returning();
 
     if (!updated) {
-      throw new DistrictNotFoundError(districtId);
+      const [current] = await tx
+        .select({ status: districts.status })
+        .from(districts)
+        .where(eq(districts.id, districtId))
+        .limit(1);
+
+      if (!current) {
+        throw new DistrictNotFoundError(districtId);
+      }
+      throw new DistrictAlreadyActiveError(districtId);
     }
 
     // AD-9 privacy-safe audit metadata

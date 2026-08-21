@@ -266,6 +266,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
         path: '/',
         httpOnly: true,
         sameSite: 'strict',
+        secure: true,
       });
       return reply.status(401).send({
         error: {
@@ -283,101 +284,118 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
         districtId: validation.account.districtId ?? null,
         mustChangePassword: validation.account.mustChangePassword,
       },
-      session: {
-        expiresAt: validation.session.expiresAt.toISOString(),
-      },
     });
   });
 
-  // 4. Change First Login Password (AC 10, 11, 12, 13, 15)
-  fastify.post(
-    '/api/v1/auth/change-first-login-password',
-    async (req: FastifyRequest<{ Body: unknown }>, reply: FastifyReply) => {
-      const rawToken = req.cookies[COOKIE_NAME];
-      if (!rawToken) {
-        return reply.status(401).send({
-          error: {
-            code: 'UNAUTHENTICATED',
-            message: 'Сессия топилмади ёки муддати тугаган.',
-          },
-        });
-      }
+  // 4. Change First Login Temporary Password (DISTRICT_HOKIM only)
+  fastify.post('/api/v1/auth/change-first-login-password', async (req: FastifyRequest, reply: FastifyReply) => {
+    const rawToken = req.cookies[COOKIE_NAME];
+    if (!rawToken) {
+      return reply.status(401).send({
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'Сессия топилмади ёки муддати тугаган.',
+        },
+      });
+    }
 
-      const validation = await validateAndTouchSession(db, rawToken);
-      if (!validation.isValid || !validation.account || !validation.session) {
-        reply.clearCookie(COOKIE_NAME, {
-          path: '/',
-          httpOnly: true,
-          sameSite: 'strict',
-          secure: true,
-        });
-        return reply.status(401).send({
-          error: {
-            code: 'UNAUTHENTICATED',
-            message: 'Сессия топилмади ёки муддати тугаган.',
-          },
-        });
-      }
+    const validation = await validateAndTouchSession(db, rawToken);
+    if (!validation.isValid || !validation.account || !validation.session) {
+      reply.clearCookie(COOKIE_NAME, {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: true,
+      });
+      return reply.status(401).send({
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'Сессия топилмади ёки муддати тугаган.',
+        },
+      });
+    }
 
-      const { account, session } = validation;
+    const { account, session } = validation;
 
-      if (account.role !== 'DISTRICT_HOKIM' || !account.mustChangePassword) {
-        return reply.status(400).send({
-          error: {
-            code: 'INVALID_ACTION',
-            message: 'Ушбу аккаунт учун паролни мажбурий ўзгартириш талаб қилинмайди.',
-          },
-        });
-      }
+    // Role check: Only DISTRICT_HOKIM can use this endpoint
+    if (account.role !== 'DISTRICT_HOKIM') {
+      return reply.status(403).send({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Ушбу амал фақат туман ҳокими ҳисоби учун мўлжалланган.',
+        },
+      });
+    }
 
-      const parseResult = FirstSignInPasswordChangeRequestSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        return reply.status(400).send({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: parseResult.error.errors[0]?.message || 'Киритилган маълумотлар нотўғри.',
-          },
-        });
-      }
+    // Must require password change
+    if (!account.mustChangePassword) {
+      return reply.status(400).send({
+        error: {
+          code: 'INVALID_ACTION',
+          message: 'Ушбу аккаунт учун паролни мажбурий ўзгартириш талаб қилинмайди.',
+        },
+      });
+    }
 
-      const { currentPassword, newPassword } = parseResult.data;
+    const parseResult = FirstSignInPasswordChangeRequestSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return reply.status(400).send({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parseResult.error.errors[0]?.message || 'Киритилган маълумотлар нотўғри.',
+        },
+      });
+    }
 
-      // Verify current temporary password with Argon2id
-      const isCurrentValid = await verifyPassword(account.passwordHash, currentPassword);
-      if (!isCurrentValid) {
-        await recordAuditEvent(db, {
-          actorId: account.id,
-          actorRole: account.role,
-          action: 'AUTH_FIRST_LOGIN_PASSWORD_CHANGE_FAILED',
-          ipAddress: req.ip,
-          userAgent: req.headers['user-agent'],
-          metadata: { username: account.username, reason: 'INVALID_CURRENT_PASSWORD' },
-        });
-        return reply.status(401).send({
-          error: {
-            code: 'INVALID_CREDENTIALS',
-            message: 'Жорий парол нотўғри.',
-          },
-        });
-      }
+    const { currentPassword, newPassword } = parseResult.data;
 
-      // Validate new password against policy (>=15 chars, <=128 code points, not on blocklist)
-      const policyResult = validatePassword(newPassword);
-      if (!policyResult.isValid) {
-        return reply.status(400).send({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: policyResult.message || 'Янги парол талабларга жавоб бермайди.',
-          },
-        });
-      }
+    // Verify current temporary password against stored hash
+    const isCurrentValid = await verifyPassword(account.passwordHash, currentPassword);
+    if (!isCurrentValid) {
+      await recordAuditEvent(db, {
+        actorId: account.id,
+        actorRole: account.role,
+        action: 'AUTH_FIRST_LOGIN_PASSWORD_CHANGE_FAILED',
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: { username: account.username, reason: 'INVALID_CURRENT_PASSWORD' },
+      });
+      return reply.status(401).send({
+        error: {
+          code: 'INVALID_CREDENTIALS',
+          message: 'Жорий парол нотўғри.',
+        },
+      });
+    }
 
-      // Hash new password with Argon2id
-      const newPasswordHash = await hashPassword(newPassword);
-      const now = new Date();
-      const newCredentialVersion = account.credentialVersion + 1;
+    // Disallow retaining identical temporary password
+    if (currentPassword === newPassword) {
+      return reply.status(400).send({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Янги парол вақтинчалик парол билан бир хил бўлиши мумкин эмас.',
+        },
+      });
+    }
 
-      // Atomic transaction: update account, sync current session version, revoke other sessions, log audit event
+    // Validate new password against policy (>=15 chars, <=128 code points, not on blocklist)
+    const policyResult = validatePassword(newPassword);
+    if (!policyResult.isValid) {
+      return reply.status(400).send({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: policyResult.message || 'Янги парол талабларга жавоб бермайди.',
+        },
+      });
+    }
+
+    // Hash new password with Argon2id
+    const newPasswordHash = await hashPassword(newPassword);
+    const now = new Date();
+    const newCredentialVersion = account.credentialVersion + 1;
+
+    // Atomic transaction: update account, sync current session version, revoke other sessions, log audit event
+    try {
       await db.transaction(async (tx) => {
         const [updatedAccount] = await tx
           .update(accounts)
@@ -435,18 +453,28 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
           },
         });
       });
-
-      return reply.status(200).send({
-        success: true,
-        actor: {
-          id: account.id,
-          role: account.role,
-          username: account.username,
-          districtId: account.districtId ?? null,
-          mustChangePassword: false,
-        },
-      });
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message === 'CREDENTIAL_CONCURRENCY_CONFLICT') {
+        return reply.status(409).send({
+          error: {
+            code: 'CREDENTIAL_CONCURRENCY_CONFLICT',
+            message: 'Аккаунт маълумотлари янгиланган. Илтимос, қайта тизимга киринг.',
+          },
+        });
+      }
+      throw err;
     }
-  );
+
+    return reply.status(200).send({
+      success: true,
+      actor: {
+        id: account.id,
+        role: account.role,
+        username: account.username,
+        districtId: account.districtId ?? null,
+        mustChangePassword: false,
+      },
+    });
+  });
 }
 

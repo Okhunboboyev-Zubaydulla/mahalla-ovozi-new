@@ -4,7 +4,7 @@ baseline_commit: 6daf90fd6a2f3d8bbe8de56e09d0946de75733a8
 
 # Story 1.1: Secure Product Owner Sign-In
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

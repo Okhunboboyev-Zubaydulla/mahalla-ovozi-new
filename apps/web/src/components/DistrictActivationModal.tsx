@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Typography, Alert, Space, List } from 'antd';
+import { Modal, Button, Typography, Alert, Space, List, message } from 'antd';
 import { CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useDistrictActivation } from '../district/useDistrictActivation.js';
@@ -30,18 +30,23 @@ export const DistrictActivationModal: React.FC<DistrictActivationModalProps> = (
   const { clearDirty } = useDistrict();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [errorBlockers, setErrorBlockers] = useState<PrerequisiteItem[] | null>(null);
-  const [isOffline, setIsOffline] = useState(
-    typeof navigator !== 'undefined' ? navigator.onLine === false : false
-  );
+  const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+
+    if (typeof window !== 'undefined') {
+      setIsOffline(!window.navigator.onLine);
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+    }
+
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      }
     };
   }, []);
 
@@ -54,6 +59,7 @@ export const DistrictActivationModal: React.FC<DistrictActivationModalProps> = (
   }, [open, reset]);
 
   const handleClose = () => {
+    if (isActivating) return;
     clearDirty('district-activation-modal');
     setErrorMessage(null);
     setErrorBlockers(null);
@@ -62,9 +68,11 @@ export const DistrictActivationModal: React.FC<DistrictActivationModalProps> = (
   };
 
   const handleActivate = async () => {
-    if (isOffline || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
-      setErrorMessage('Сервер билан алоқа мавжуд эмас. Тармоқни текширинг.');
-      setErrorBlockers(null);
+    if (isActivating || isOffline || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+      if (isOffline || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+        setErrorMessage('Сервер билан алоқа мавжуд эмас. Тармоқни текширинг.');
+        setErrorBlockers(null);
+      }
       return;
     }
 
@@ -74,6 +82,7 @@ export const DistrictActivationModal: React.FC<DistrictActivationModalProps> = (
     try {
       await activateDistrict();
       clearDirty('district-activation-modal');
+      message.success('Туман муваффақиятли фаоллаштирилди!');
       if (onSuccess) {
         onSuccess();
       }
@@ -95,7 +104,7 @@ export const DistrictActivationModal: React.FC<DistrictActivationModalProps> = (
       title="Туманни фаоллаштиришни тасдиқлаш"
       open={open}
       onCancel={handleClose}
-      destroyOnHidden
+      destroyOnClose
       centered
       closable={!isActivating}
       maskClosable={!isActivating}

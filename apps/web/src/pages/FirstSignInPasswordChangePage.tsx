@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Form, Input, Button, Alert, Card, Typography, Space, message, theme } from 'antd';
-import { LockOutlined, KeyOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { LockOutlined } from '@ant-design/icons';
 import { useAuth } from '../auth/auth-context.js';
 import { ApiError } from '../auth/auth-client.js';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 export const FirstSignInPasswordChangePage: React.FC = () => {
-  const { actor, changeFirstLoginPassword, isChangingPassword, signOut } = useAuth();
+  const { changeFirstLoginPassword, isChangingPassword, signOut } = useAuth();
   const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isNetworkError, setIsNetworkError] = useState(false);
@@ -34,6 +34,11 @@ export const FirstSignInPasswordChangePage: React.FC = () => {
 
     if (newPassword !== confirmPassword) {
       setErrorMessage('Янги парол ва унинг тасдиғи мос келмади.');
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      setErrorMessage('Янги парол вақтинчалик парол билан бир хил бўлиши мумкин эмас.');
       return;
     }
 
@@ -71,57 +76,56 @@ export const FirstSignInPasswordChangePage: React.FC = () => {
   return (
     <div
       style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
         minHeight: '100vh',
-        backgroundColor: token.colorBgLayout,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: token.colorBgLayout,
         padding: '24px 16px',
       }}
     >
       <Card
         style={{
           width: '100%',
-          maxWidth: 520,
+          maxWidth: 480,
           boxShadow: token.boxShadowSecondary,
           borderRadius: token.borderRadiusLG,
         }}
         variant="borderless"
       >
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          {/* Header */}
           <div style={{ textAlign: 'center' }}>
             <Title level={2} style={{ color: token.colorPrimary, marginBottom: 4 }}>
               Паролни янгилаш
             </Title>
-            <Paragraph style={{ color: token.colorTextSecondary, fontSize: 14, margin: 0 }}>
-              Ҳурматли <strong>{actor?.username ? `@${actor.username}` : 'фойдаланувчи'}</strong>!
-              Тизим хавфсизлиги учун вақтинчалик паролни янги доимий паролга алмаштиришингиз шарт.
-            </Paragraph>
+            <Text type="secondary" style={{ fontSize: 14 }}>
+              Ҳисоб хавфсизлиги: Янги доимий парол ўрнатиш
+            </Text>
           </div>
 
-          {/* AC 11: Mandatory passive notice — zero consent checkboxes */}
+          {/* AC 11: Mandatory Informational Passive Notice (zero consent checkboxes) */}
           <Alert
             type="info"
             showIcon
-            message="Операцион кириш ва мониторинг тўғрисида огоҳлантириш"
+            message="Операцион кириш очиқлиги"
             description="Эслатма: Тизим шартномасига мувофиқ, Маҳсулот эгаси туман маълумотлари ва далилларни мониторинг қилиш ҳамда техник қўллаб-қувватлаш учун операцион кириш ҳуқуқига эга."
             style={{ borderRadius: token.borderRadius }}
           />
 
+          {/* Error Alert */}
           {errorMessage && (
             <Alert
-              message={errorMessage}
               type={isNetworkError ? 'warning' : 'error'}
               showIcon
-              role="alert"
-              aria-live="assertive"
+              message={errorMessage}
               style={{ borderRadius: token.borderRadius }}
             />
           )}
 
+          {/* Form */}
           <Form
             form={form}
-            name="firstSignInPasswordChangeForm"
             layout="vertical"
             onFinish={handleSubmit}
             autoComplete="off"
@@ -130,10 +134,10 @@ export const FirstSignInPasswordChangePage: React.FC = () => {
             <Form.Item
               label={<span style={{ fontWeight: 500, color: token.colorText }}>Жорий (вақтинчалик) парол</span>}
               name="currentPassword"
-              rules={[{ required: true, message: 'Жорий паролни киритинг!' }]}
+              rules={[{ required: true, message: 'Вақтинчалик паролни киритинг!' }]}
             >
               <Input.Password
-                prefix={<KeyOutlined style={{ color: token.colorPrimary }} />}
+                prefix={<LockOutlined style={{ color: token.colorPrimary }} />}
                 placeholder="Сизга берилган вақтинчалик парол"
                 id="current-password-input"
                 autoComplete="current-password"
@@ -147,8 +151,19 @@ export const FirstSignInPasswordChangePage: React.FC = () => {
               name="newPassword"
               rules={[
                 { required: true, message: 'Янги паролни киритинг!' },
-                { min: 15, message: 'Парол камида 15 белгидан иборат бўлиши керак!' },
-                { max: 128, message: 'Парол 128 белгидан ошмаслиги керак!' },
+                {
+                  validator(_, value) {
+                    if (!value) return Promise.resolve();
+                    const codePoints = Array.from(value).length;
+                    if (codePoints < 15) {
+                      return Promise.reject(new Error('Парол камида 15 белгидан иборат бўлиши керак!'));
+                    }
+                    if (codePoints > 128) {
+                      return Promise.reject(new Error('Парол 128 белгидан ошмаслиги керак!'));
+                    }
+                    return Promise.resolve();
+                  },
+                },
               ]}
               extra={
                 <Text type="secondary" style={{ fontSize: 12 }}>
@@ -183,8 +198,8 @@ export const FirstSignInPasswordChangePage: React.FC = () => {
               ]}
             >
               <Input.Password
-                prefix={<CheckCircleOutlined style={{ color: token.colorPrimary }} />}
-                placeholder="Янги паролни такроран киритинг"
+                prefix={<LockOutlined style={{ color: token.colorPrimary }} />}
+                placeholder="Янги паролни қайта киритинг"
                 id="confirm-password-input"
                 autoComplete="new-password"
                 disabled={isChangingPassword}
@@ -192,7 +207,7 @@ export const FirstSignInPasswordChangePage: React.FC = () => {
               />
             </Form.Item>
 
-            <Form.Item style={{ marginBottom: 12, marginTop: 8 }}>
+            <Form.Item style={{ marginTop: 24, marginBottom: 12 }}>
               <Button
                 type="primary"
                 htmlType="submit"

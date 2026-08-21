@@ -49,15 +49,15 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   # ── Epic 1: Secure District Onboarding & Access ──
-  epic-1: in-progress
-  1-1-secure-product-owner-sign-in: review
+  epic-1: done
+  1-1-secure-product-owner-sign-in: done
   1-2-create-and-select-a-district-in-the-product-owner-console: done
   1-3-resume-district-onboarding-and-track-activation-readiness: done
   1-4-connect-and-validate-a-district-telegram-bot: done
   1-5-configure-and-validate-telegram-group-to-mahalla-mappings: done
   1-6-create-and-manage-the-district-hokim-account: done
-  1-7-validate-and-activate-a-district: review
-  epic-1-retrospective: optional
+  1-7-validate-and-activate-a-district: done
+  epic-1-retrospective: done
 
   # ── Epic 2: Authorized Telegram Signals Become Traceable Topics ──
   epic-2: backlog
@@ -112,3 +112,22 @@ development_status:
   6-6-reconcile-disaster-restores-before-re-enabling-service: backlog
   6-7-review-and-diagnose-the-district-deletion-lifecycle: backlog
   epic-6-retrospective: optional
+
+action_items:
+  - epic: 1
+    action: "DB Constraint Catching: Ensure all backend repository/service methods catch PostgreSQL 23505 and map to typed 409 domain errors"
+    owner: "Amelia"
+    status: open
+  - epic: 1
+    action: "Explicit Timestamp Maintenance: Standardize updatedAt: new Date() inclusion across all Drizzle update operations"
+    owner: "Winston"
+    status: open
+  - epic: 1
+    action: "pg-boss 10.x Queue Setup: Configure pg-boss worker runtime in apps/backend/src/entrypoints/worker.ts with transactional job dispatch"
+    owner: "Amelia / Winston"
+    status: open
+  - epic: 1
+    action: "Ant Design Token & Dialog Standard: Maintain theme.useToken() and destroyOnClose across all upcoming dialogs and drawers"
+    owner: "Sally"
+    status: open
+

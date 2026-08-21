@@ -153,6 +153,24 @@ describe('Hokim First Sign-In Password Replacement Integration Tests (AC 10, 11,
     expect(res.json().error.message).toContain('кенг тарқалган');
   });
 
+  it('rejects password change if new password is identical to temporary password with 400', async () => {
+    const res = await server.inject({
+      method: 'POST',
+      url: '/api/v1/auth/change-first-login-password',
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: hokimAuthCookie,
+      },
+      payload: {
+        currentPassword: temporaryPassword,
+        newPassword: temporaryPassword,
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('VALIDATION_ERROR');
+    expect(res.json().error.message).toContain('бир хил бўлиши мумкин эмас');
+  });
+
   it('successfully replaces temporary password, sets mustChangePassword: false, updates credentialVersion, and records audit event (AC 10, 13, 15)', async () => {
     const newPermanentPassword = 'MyBrandNewPermanentSecurePassword2026!';
 

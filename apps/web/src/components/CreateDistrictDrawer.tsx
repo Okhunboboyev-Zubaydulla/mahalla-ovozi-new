@@ -4,6 +4,7 @@ import {
   Form,
   Input,
   Button,
+  theme,
   type InputRef,
 } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -19,6 +20,7 @@ interface CreateDistrictDrawerProps {
 }
 
 export const CreateDistrictDrawer: React.FC<CreateDistrictDrawerProps> = ({ open, onClose }) => {
+  const { token } = theme.useToken();
   const queryClient = useQueryClient();
   const { clearDirty, setActiveDistrictDirectly, attemptTransition } = useDistrict();
   const [form] = Form.useForm();
@@ -33,75 +35,65 @@ export const CreateDistrictDrawer: React.FC<CreateDistrictDrawerProps> = ({ open
   const regionInputRef = useRef<InputRef>(null);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
 
-  // Track if user has typed anything in form fields
-  const isDirty = formValues.name.trim().length > 0 || formValues.region.trim().length > 0;
-  // P4-D: Register dirty state
-  useDirtyState('create-district-drawer', open && isDirty);
+  // Form dirty state management (FR-20)
+  const isDirty = formValues.name.trim() !== '' || formValues.region.trim() !== '';
+  useDirtyState('create-district-drawer', isDirty);
 
   const mutation = useMutation({
-    mutationFn: (payload: CreateDistrictRequest) => districtClient.createDistrict(payload),
-    onSuccess: async (data) => {
-      // Clear dirty state immediately upon successful creation
-      clearDirty('create-district-drawer');
-      // Invalidate list
-      await queryClient.invalidateQueries({ queryKey: ['districts', 'list'] });
-      // Reset form & local state
+    mutationFn: (data: CreateDistrictRequest) => districtClient.createDistrict(data),
+    onSuccess: (data) => {
+      // Invalidate districts list
+      queryClient.invalidateQueries({ queryKey: ['districts'] });
+      // Clear form and dirty state
       form.resetFields();
       setFormValues({ name: '', region: '' });
       setFieldErrors({});
-      // Auto-select the newly created district directly
+      clearDirty('create-district-drawer');
+      // Set active district to the newly created one
       setActiveDistrictDirectly(data.district.id);
       onClose();
     },
-    onError: (err: unknown) => {
-      let serverMsg = 'Серверда кутилмаган хатолик юз берди.';
-      let isNameConflict = false;
-      if (err instanceof ApiError) {
-        serverMsg = err.message;
-        if (err.code === 'DISTRICT_NAME_EXISTS') {
-          isNameConflict = true;
-        }
-      }
-      if (isNameConflict) {
-        setFieldErrors({ name: serverMsg });
+    onError: (error: unknown) => {
+      if (error instanceof ApiError) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          server: error.message,
+        }));
       } else {
-        setFieldErrors({ server: serverMsg });
+        setFieldErrors((prev) => ({
+          ...prev,
+          server: 'Туман яратишда хатолик юз берди. Илтимос, қайта уриниб кўринг.',
+        }));
       }
-      // P5-E: Imperatively move focus to error summary
-      setTimeout(() => {
-        errorSummaryRef.current?.focus();
-      }, 0);
+      setTimeout(() => errorSummaryRef.current?.focus(), 0);
     },
   });
 
   const handleClose = () => {
-    if (isDirty) {
-      attemptTransition(() => {
-        form.resetFields();
-        setFormValues({ name: '', region: '' });
-        setFieldErrors({});
-        onClose();
-      });
-    } else {
+    attemptTransition(() => {
       form.resetFields();
       setFormValues({ name: '', region: '' });
       setFieldErrors({});
+      clearDirty('create-district-drawer');
       onClose();
-    }
+    });
   };
 
-  const handleValuesChange = (_changed: unknown, allValues: { name?: string; region?: string }) => {
+  const handleValuesChange = (_: unknown, allValues: { name?: string; region?: string }) => {
     setFormValues({
       name: allValues.name || '',
       region: allValues.region || '',
     });
-    // Clear errors when typing
-    if (fieldErrors.name || fieldErrors.region || fieldErrors.server) {
-      setFieldErrors({});
+    // Clear field-specific error on change
+    if (fieldErrors.name && allValues.name) {
+      setFieldErrors((prev) => ({ ...prev, name: undefined }));
+    }
+    if (fieldErrors.region && allValues.region) {
+      setFieldErrors((prev) => ({ ...prev, region: undefined }));
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (mutation.isPending) return;
 
     const values = form.getFieldsValue() as { name?: string; region?: string };
@@ -122,7 +114,6 @@ export const CreateDistrictDrawer: React.FC<CreateDistrictDrawerProps> = ({ open
         }
       }
       setFieldErrors(errors);
-      // P5-E: Focus error summary
       setTimeout(() => {
         errorSummaryRef.current?.focus();
       }, 0);
@@ -133,7 +124,7 @@ export const CreateDistrictDrawer: React.FC<CreateDistrictDrawerProps> = ({ open
     mutation.mutate(parsed.data);
   };
 
-  const errorCount = Object.keys(fieldErrors).filter((k) => !!fieldErrors[k as keyof typeof fieldErrors]).length;
+  const errorCount = Object.values(fieldErrors).filter(Boolean).length;
 
   return (
     <Drawer
@@ -141,7 +132,7 @@ export const CreateDistrictDrawer: React.FC<CreateDistrictDrawerProps> = ({ open
       width={480}
       open={open}
       onClose={handleClose}
-      destroyOnHidden
+      destroyOnClose
       footer={
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
           <Button onClick={handleClose} disabled={mutation.isPending}>
@@ -165,15 +156,15 @@ export const CreateDistrictDrawer: React.FC<CreateDistrictDrawerProps> = ({ open
           tabIndex={-1}
           id="create-district-error-summary"
           style={{
-            background: '#FFF4D6',
-            border: '1px solid #6B4B00',
-            borderRadius: 8,
+            background: token.colorWarningBg,
+            border: `1px solid ${token.colorWarningBorder}`,
+            borderRadius: token.borderRadius,
             padding: 16,
             marginBottom: 24,
             outline: 'none',
           }}
         >
-          <div style={{ fontWeight: 600, color: '#6B4B00', marginBottom: 8 }}>
+          <div style={{ fontWeight: 600, color: token.colorWarningText, marginBottom: 8 }}>
             Тўлдиришда хатоликлар мавжуд ({errorCount} та):
           </div>
           <ul style={{ margin: 0, paddingLeft: 20 }}>
@@ -186,7 +177,7 @@ export const CreateDistrictDrawer: React.FC<CreateDistrictDrawerProps> = ({ open
                     background: 'none',
                     border: 'none',
                     padding: 0,
-                    color: '#0F5C5E',
+                    color: token.colorPrimary,
                     textDecoration: 'underline',
                     cursor: 'pointer',
                     fontSize: 14,
@@ -205,7 +196,7 @@ export const CreateDistrictDrawer: React.FC<CreateDistrictDrawerProps> = ({ open
                     background: 'none',
                     border: 'none',
                     padding: 0,
-                    color: '#0F5C5E',
+                    color: token.colorPrimary,
                     textDecoration: 'underline',
                     cursor: 'pointer',
                     fontSize: 14,
@@ -216,7 +207,7 @@ export const CreateDistrictDrawer: React.FC<CreateDistrictDrawerProps> = ({ open
               </li>
             )}
             {fieldErrors.server && (
-              <li style={{ color: '#BA1A1A', fontSize: 14 }}>{fieldErrors.server}</li>
+              <li style={{ color: token.colorError, fontSize: 14 }}>{fieldErrors.server}</li>
             )}
           </ul>
         </div>
