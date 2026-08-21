@@ -1,5 +1,5 @@
 # generated: 2026-08-16
-# last_updated: 2026-08-20
+# last_updated: 2026-08-21
 # project: Mahalla-Ovozi
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-16
-last_updated: 2026-08-20
+last_updated: 2026-08-21
 project: Mahalla-Ovozi
 project_key: NOKEY
 tracking_system: file-system
@@ -60,8 +60,8 @@ development_status:
   epic-1-retrospective: done
 
   # ── Epic 2: Authorized Telegram Signals Become Traceable Topics ──
-  epic-2: backlog
-  2-1-durably-receive-authorized-district-telegram-messages: backlog
+  epic-2: in-progress
+  2-1-durably-receive-authorized-district-telegram-messages: ready-for-dev
   2-2-admit-supported-telegram-content-and-discard-structural-exclusions: backlog
   2-3-decide-semantic-relevance-by-meaning-and-discard-non-qualifying-content: backlog
   2-4-assign-relevant-signals-to-same-day-topics-and-commit-accepted-evidence: backlog
