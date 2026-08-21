@@ -34,4 +34,18 @@ describe('getTashkentCalendarDay Utility', () => {
     const day = getTashkentCalendarDay(unixSeconds);
     expect(day).toBe('2027-01-01');
   });
+
+  it('safely handles millisecond timestamps (> 1e11) by converting to seconds', () => {
+    const unixMs = new Date('2026-08-21T12:00:00Z').getTime();
+    const day = getTashkentCalendarDay(unixMs);
+    expect(day).toBe('2026-08-21');
+  });
+
+  it('safely falls back to current day when passed NaN, non-numeric, or negative timestamps', () => {
+    expect(() => getTashkentCalendarDay(NaN)).not.toThrow();
+    expect(getTashkentCalendarDay(NaN)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(getTashkentCalendarDay(-500)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(getTashkentCalendarDay(null as any)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(getTashkentCalendarDay(undefined as any)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
 });

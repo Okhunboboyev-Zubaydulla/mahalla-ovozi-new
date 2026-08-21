@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import Fastify, { FastifyInstance } from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
@@ -102,6 +104,11 @@ export async function buildHttpServer(options?: {
   // Ensure pg-boss queues are bootstrapped
   await initBossQueues(boss);
 
+  // Teardown hook for Fastify graceful close
+  server.addHook('onClose', async () => {
+    await boss.stop({ graceful: true, timeout: 5000 }).catch(() => {});
+  });
+
   // Register domain module routes
   registerAuthRoutes(server, db);
   registerDistrictRoutes(server, db);
@@ -127,6 +134,10 @@ export async function startServer() {
   }
 }
 
-if (process.argv[1]?.includes('http')) {
+const isMainModule =
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isMainModule) {
   startServer();
 }

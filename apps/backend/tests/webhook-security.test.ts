@@ -53,4 +53,13 @@ describe('Telegram Webhook Security Utilities', () => {
     expect(verifyTelegramSecretToken('', secret)).toBe(false);
     expect(verifyTelegramSecretToken([], secret)).toBe(false);
   });
+
+  it('safely handles non-string or undefined botId and expectedSecret', () => {
+    expect(deriveWebhookSecret(undefined as any)).toBe('');
+    expect(deriveWebhookSecret(null as any)).toBe('');
+    expect(deriveWebhookSecret('' as any)).toBe('');
+    expect(verifyTelegramSecretToken('some-token', undefined as any)).toBe(false);
+    expect(verifyTelegramSecretToken('some-token', null as any)).toBe(false);
+    expect(verifyTelegramSecretToken('some-token', '' as any)).toBe(false);
+  });
 });

@@ -4,7 +4,7 @@ baseline_commit: 6246178a6eb8bcc71adf13748f09f840a60e8439
 
 # Story 2.1: Durably Receive Authorized District Telegram Messages
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -181,6 +181,18 @@ So that downstream signal processing begins from isolated, traceable, retry-safe
     - **Test 9 (Secret Token Verification):** Valid secret token allows request; missing or invalid header returns 401 Unauthorized.
     - **Test 10 (Privacy Guard):** Assert no message text, media captions, or tokens appear in structured logger calls.
     - **Test 11 (NFR3 Latency Benchmark):** Durability response latency under normal load is $< 100\text{ms}$ (well within the $< 1000\text{ms}$ NFR3 target).
+
+### Review Findings
+
+- [x] [Review][Patch] Check bot.status === 'VALID' in resolveDistrictBotAndGroup and handle BOT_NOT_VALID reason [apps/backend/src/modules/telegram-intake/telegram-intake-service.ts:89-98]
+- [x] [Review][Patch] Include chatId, messageId, and duration in ProcessWebhookResult and structured telemetry logs [apps/backend/src/modules/telegram-intake/telegram-intake-routes.ts:59-86]
+- [x] [Review][Patch] Prevent CSRF origin guard bypass by normalizing request URL pathname [apps/backend/src/modules/auth/origin-guard.ts:41-44]
+- [x] [Review][Patch] Fix nullable string coercion bug in update_id and telegram_user_id [apps/backend/src/modules/telegram-intake/telegram-intake-service.ts:174-176]
+- [x] [Review][Patch] Guard non-numeric and NaN timestamps in timezone-util and intake service [apps/backend/src/modules/telegram-intake/timezone-util.ts:9-15]
+- [x] [Review][Patch] Prevent connection pool tainting on failed transaction rollback [apps/backend/src/adapters/jobs/boss-client.ts:77-86]
+- [x] [Review][Patch] Robust ESM main module detection in worker and HTTP server entrypoints [apps/backend/src/entrypoints/worker.ts:50]
+- [x] [Review][Patch] Add defensive parameter type guards to webhook security utilities [apps/backend/src/modules/telegram-intake/webhook-security.ts:8-22]
+- [x] [Review][Patch] Sanitize driver error output in webhook error telemetry logging [apps/backend/src/modules/telegram-intake/telegram-intake-routes.ts:109-114]
 
 ---
 

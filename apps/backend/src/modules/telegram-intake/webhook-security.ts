@@ -6,6 +6,9 @@ import { getEncryptionKey } from '../../adapters/crypto/token-cipher.js';
  * keyed with the application's master encryption key.
  */
 export function deriveWebhookSecret(botId: string): string {
+  if (!botId || typeof botId !== 'string') {
+    return '';
+  }
   const key = getEncryptionKey();
   return crypto.createHmac('sha256', key).update(botId).digest('hex');
 }
@@ -20,7 +23,7 @@ export function verifyTelegramSecretToken(
   incomingHeader: string | string[] | undefined,
   expectedSecret: string,
 ): boolean {
-  if (!incomingHeader) {
+  if (!incomingHeader || !expectedSecret || typeof expectedSecret !== 'string') {
     return false;
   }
   const token = Array.isArray(incomingHeader) ? incomingHeader[0] : incomingHeader;

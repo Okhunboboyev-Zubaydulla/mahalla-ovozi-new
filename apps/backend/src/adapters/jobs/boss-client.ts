@@ -48,6 +48,7 @@ export async function withTransactionalIntake<T>(
   callback: (scope: TransactionScope) => Promise<T>,
 ): Promise<T> {
   const client = await pool.connect();
+  let rollbackError: unknown = null;
   try {
     await client.query('BEGIN');
     const tx = drizzle(client, { schema });
@@ -77,11 +78,11 @@ export async function withTransactionalIntake<T>(
   } catch (error) {
     try {
       await client.query('ROLLBACK');
-    } catch {
-      // rollback error intentionally suppressed
+    } catch (rbErr) {
+      rollbackError = rbErr;
     }
     throw error;
   } finally {
-    client.release();
+    client.release(rollbackError ? true : undefined);
   }
 }

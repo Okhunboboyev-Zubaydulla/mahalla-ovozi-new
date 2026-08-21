@@ -534,6 +534,15 @@ describe('Story 2.1: Telegram Webhook Ingress & Durability Integration Tests', (
       expect(callString).not.toContain(secret);
     }
 
+    // Verify structured telemetry contains chatId, messageId, and latencyMs (AC 8)
+    const telemetryCalls = logSpy.mock.calls.filter((call) => call[0] === '[telemetry:telegram-intake]');
+    expect(telemetryCalls.length).toBeGreaterThan(0);
+    const telemetryPayload = telemetryCalls[0]?.[1] as Record<string, unknown>;
+    expect(telemetryPayload).toBeDefined();
+    expect(telemetryPayload.chatId).toBe(validChatId);
+    expect(telemetryPayload.messageId).toBe(String(messageId));
+    expect(typeof telemetryPayload.latencyMs).toBe('number');
+
     logSpy.mockRestore();
   });
 
@@ -561,5 +570,62 @@ describe('Story 2.1: Telegram Webhook Ingress & Durability Integration Tests', (
     expect(res.statusCode).toBe(200);
     expect(res.json().status).toBe('ACCEPTED');
     expect(latencyMs).toBeLessThan(100); // well within 1000ms NFR3 target
+  });
+
+  // Test 12: Invalid / Revoked Bot Guard
+  it('Test 12 (Invalid/Revoked Bot Guard): Returns 200 OK DROPPED with reason BOT_NOT_VALID when bot.status is INVALID (AC 1, AC 2)', async () => {
+    // 1-to-1 constraint on district_telegram_bots.district_id: create dedicated Active District
+    const distForInvalidBot = `dist_inv_${crypto.randomUUID()}`;
+    await db.insert(districts).values({
+      id: distForInvalidBot,
+      name: `District With Invalid Bot ${crypto.randomUUID().slice(0, 6)}`,
+      status: 'ACTIVE',
+    });
+
+    const invalidBotId = `bot_inv_${crypto.randomUUID().slice(0, 8)}`;
+    const enc = encryptToken(`999999999:ZZ${crypto.randomUUID()}`);
+    await db.insert(districtTelegramBots).values({
+      id: `dtb_${crypto.randomUUID()}`,
+      districtId: distForInvalidBot,
+      botId: invalidBotId,
+      botFirstName: 'Revoked Bot',
+      botUsername: 'revoked_bot',
+      encryptedToken: enc.encryptedToken,
+      tokenIv: enc.tokenIv,
+      tokenTag: enc.tokenTag,
+      tokenKeyVersion: enc.tokenKeyVersion,
+      tokenMasked: `${invalidBotId}:••••••••••••`,
+      status: 'INVALID',
+      lastValidatedAt: new Date(),
+    });
+
+    const secret = deriveWebhookSecret(invalidBotId);
+    const res = await server.inject({
+      method: 'POST',
+      url: `/api/v1/webhooks/telegram/${invalidBotId}`,
+      headers: { 'x-telegram-bot-api-secret-token': secret },
+      payload: {
+        update_id: 5012,
+        message: {
+          message_id: 1012,
+          date: Math.floor(Date.now() / 1000),
+          chat: { id: validChatId },
+          text: 'Message for revoked bot',
+        },
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.ok).toBe(true);
+    expect(body.status).toBe('DROPPED');
+    expect(body.reason).toBe('BOT_NOT_VALID');
+
+    // Verify 0 records inserted
+    const records = await db
+      .select()
+      .from(telegramIntakeRecords)
+      .where(eq(telegramIntakeRecords.telegramBotId, invalidBotId));
+    expect(records.length).toBe(0);
   });
 });

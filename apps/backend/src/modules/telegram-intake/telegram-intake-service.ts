@@ -41,6 +41,7 @@ export interface TelegramUpdate {
 
 export type AuthorizationFailureReason =
   | 'BOT_NOT_FOUND'
+  | 'BOT_NOT_VALID'
   | 'DISTRICT_NOT_ACTIVE'
   | 'GROUP_NOT_APPROVED'
   | 'CROSS_DISTRICT_MISMATCH';
@@ -64,10 +65,14 @@ export type ProcessWebhookResult =
       jobId: string | null;
       districtId: string;
       mahallaName: string;
+      chatId: string;
+      messageId: string;
     }
   | {
       status: 'DROPPED';
       reason: string;
+      chatId?: string;
+      messageId?: string;
     }
   | {
       status: 'DUPLICATE';
@@ -75,6 +80,8 @@ export type ProcessWebhookResult =
       jobId: null;
       districtId: string;
       mahallaName: string;
+      chatId: string;
+      messageId: string;
     };
 
 /**
@@ -97,6 +104,11 @@ export async function resolveDistrictBotAndGroup(
     return { authorized: false, reason: 'BOT_NOT_FOUND' };
   }
 
+  // 1.1 Verify bot is in VALID status
+  if (bot.status !== 'VALID') {
+    return { authorized: false, reason: 'BOT_NOT_VALID' };
+  }
+
   // 2. Authoritatively verify associated District is in ACTIVE status
   const [district] = await db
     .select()
@@ -104,7 +116,7 @@ export async function resolveDistrictBotAndGroup(
     .where(eq(districts.id, bot.districtId))
     .limit(1);
 
-  if (!district || district.status !== 'ACTIVE') {
+  if (!district || district.status !== 'ACTIVE' || district.accessEligible === false) {
     return { authorized: false, reason: 'DISTRICT_NOT_ACTIVE' };
   }
 
@@ -171,8 +183,10 @@ export async function processTelegramWebhookUpdate(
 
   const chatId = String(update.message.chat.id);
   const messageId = String(update.message.message_id);
-  const updateId = update.update_id !== undefined ? String(update.update_id) : null;
-  const userId = update.message.from?.id !== undefined ? String(update.message.from.id) : null;
+  const updateId =
+    update.update_id != null ? String(update.update_id) : null;
+  const userId =
+    update.message.from?.id != null ? String(update.message.from.id) : null;
 
   const db = createDbClient(pool);
   const auth = await resolveDistrictBotAndGroup(db, botId, chatId);
@@ -181,10 +195,16 @@ export async function processTelegramWebhookUpdate(
     return {
       status: 'DROPPED',
       reason: auth.reason,
+      chatId,
+      messageId,
     };
   }
 
-  const unixSeconds = update.message.date ?? Math.floor(Date.now() / 1000);
+  const rawDate = update.message.date;
+  const unixSeconds =
+    typeof rawDate === 'number' && Number.isFinite(rawDate) && rawDate > 0
+      ? (rawDate > 1e11 ? Math.floor(rawDate / 1000) : Math.floor(rawDate))
+      : Math.floor(Date.now() / 1000);
   const originalTimestamp = new Date(unixSeconds * 1000);
   const calendarDay = getTashkentCalendarDay(unixSeconds);
 
@@ -227,6 +247,8 @@ export async function processTelegramWebhookUpdate(
         jobId: null,
         districtId: auth.districtId,
         mahallaName: auth.mahallaName,
+        chatId,
+        messageId,
       };
     }
 
@@ -257,6 +279,8 @@ export async function processTelegramWebhookUpdate(
       jobId,
       districtId: auth.districtId,
       mahallaName: auth.mahallaName,
+      chatId,
+      messageId,
     };
   });
 }

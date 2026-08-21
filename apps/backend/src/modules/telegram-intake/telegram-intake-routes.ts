@@ -19,6 +19,7 @@ export function registerTelegramIntakeRoutes(
   fastify.post(
     '/api/v1/webhooks/telegram/:botId',
     {
+      bodyLimit: 262144, // 256KB max payload limit for Telegram webhook updates
       preHandler: async (
         req: FastifyRequest<{ Params: { botId: string } }>,
         reply: FastifyReply,
@@ -61,10 +62,13 @@ export function registerTelegramIntakeRoutes(
             botId,
             districtId: result.districtId,
             mahallaName: result.mahallaName,
+            chatId: result.chatId,
+            messageId: result.messageId,
             status: 'ACCEPTED',
             intakeId: result.intakeId,
             jobId: result.jobId,
             durationMs,
+            latencyMs: durationMs,
           });
 
           return reply.status(200).send({
@@ -80,8 +84,11 @@ export function registerTelegramIntakeRoutes(
             botId,
             districtId: result.districtId,
             mahallaName: result.mahallaName,
+            chatId: result.chatId,
+            messageId: result.messageId,
             status: 'DUPLICATE',
             durationMs,
+            latencyMs: durationMs,
           });
 
           return reply.status(200).send({
@@ -95,8 +102,11 @@ export function registerTelegramIntakeRoutes(
           event: 'TELEGRAM_INTAKE_DROPPED',
           botId,
           reason: result.reason,
+          chatId: result.chatId,
+          messageId: result.messageId,
           status: 'DROPPED',
           durationMs,
+          latencyMs: durationMs,
         });
 
         return reply.status(200).send({
@@ -106,11 +116,20 @@ export function registerTelegramIntakeRoutes(
         });
       } catch (err: unknown) {
         const durationMs = Math.round(performance.now() - startTime);
+        // AD-11: Sanitize driver error logging without dumping query parameters or raw messages
+        const errorName = err instanceof Error ? err.name : 'UnknownError';
+        const sanitizedMessage =
+          err instanceof Error
+            ? err.message.replace(/VALUES\s*\([\s\S]*?\)/gi, 'VALUES (...)')
+            : 'Internal persistence error';
+
         console.error('[telemetry:telegram-intake-error]', {
           event: 'TELEGRAM_INTAKE_ERROR',
           botId,
-          errorMessage: err instanceof Error ? err.message : String(err),
+          errorName,
+          errorMessage: sanitizedMessage,
           durationMs,
+          latencyMs: durationMs,
         });
 
         // 500 prompts Telegram to retry delivery for retryable/transient persistence errors

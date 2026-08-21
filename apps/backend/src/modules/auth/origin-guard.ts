@@ -39,7 +39,8 @@ export async function verifyStateChangingOrigin(req: FastifyRequest, reply: Fast
   }
 
   // Exempt server-to-server webhooks from browser origin checks
-  if (req.url.startsWith('/api/v1/telegram/webhook') || req.url.startsWith('/api/v1/webhooks/')) {
+  const pathname = new URL(req.url, 'http://localhost').pathname;
+  if (pathname.startsWith('/api/v1/telegram/webhook') || pathname.startsWith('/api/v1/webhooks/')) {
     return;
   }
 
