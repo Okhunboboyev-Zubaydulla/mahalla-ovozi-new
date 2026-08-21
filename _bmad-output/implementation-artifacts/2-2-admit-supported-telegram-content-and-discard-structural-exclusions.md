@@ -1,0 +1,354 @@
+# Story 2.2: Admit Supported Telegram Content and Discard Structural Exclusions
+
+Status: ready-for-dev
+
+<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
+
+## Story
+
+As the **Product Owner**,
+I want authorized Telegram intake to admit only supported human text or textual captions and discard structurally unsupported content before AI,
+So that AI analysis receives only valid candidate content and excluded Telegram content is not retained for later reassessment.
+
+---
+
+## Acceptance Criteria
+
+1. **Supported Human Text Message Admission (AC 1)**
+   - **Given** an authorized intake item from Story 2.1 contains a human-authored text message (`message.text` is a non-empty string)
+   - **When** structural content qualification runs
+   - **Then** its original text is admitted as a supported candidate (`status = 'SUPPORTED'`, `contentType = 'TEXT'`) for subsequent semantic analysis
+   - **And** its original Telegram timestamp (`originalTimestamp`), message identifiers (`telegramMessageId`, `telegramChatId`, `updateId`), `districtId`, `mahallaName`, source group, and required message relationship metadata remain associated with the candidate
+   - **And** the text is preserved verbatim without translation, normalization, summarization, or rewriting, keeping its original language, script, and line structure.
+
+2. **Supported Media with Non-Empty Textual Caption Admission (AC 2)**
+   - **Given** an authorized Telegram message contains media (photo, video, document, animation, audio, voice) with a non-empty textual caption (`message.caption` is a non-empty string)
+   - **When** structural content qualification runs
+   - **Then** the textual caption is admitted as the candidate content (`status = 'SUPPORTED'`, `contentType = 'MEDIA_CAPTION'`)
+   - **And** the caption remains verbatim in its original language, script, and line structure
+   - **And** media binary bytes, OCR output, audio transcription, document file contents, and other attachment payloads are **not** downloaded or introduced into AI context.
+
+3. **Structural Exclusion of Commands, Bots, Empty Content & Captionless Media (AC 3)**
+   - **Given** an authorized Telegram message contains a command (`message.text` starts with `/` or has entity of type `bot_command` at offset 0), bot-authored message (`from.is_bot === true` or `via_bot` is present), empty content (empty string or whitespace-only), captionless media (photo, video, document, audio, voice without a caption), unsupported media (sticker, video_note), or service message (`new_chat_members`, `left_chat_member`, `pinned_message`, etc.)
+   - **When** structural content qualification runs
+   - **Then** it is excluded (`status = 'EXCLUDED'`) before any AI operation is created or invoked
+   - **And** it cannot become Accepted Evidence or seed/update a Topic
+   - **And** no downstream `telegram-semantic-relevance` job is enqueued
+   - **And** its raw resident content is discarded after the structural outcome is completed without retaining message text/captions for future production reassessment.
+
+4. **Strict Structural Exclusion of Telegram Forwarded Messages (AC 4)**
+   - **Given** Telegram marks a message as forwarded using either modern Bot API 7.0+ `forward_origin` (`MessageOriginUser`, `MessageOriginHiddenUser`, `MessageOriginChat`, `MessageOriginChannel`) or legacy forward fields (`forward_date`, `forward_from`, `forward_from_chat`, `forward_sender_name`, `forward_signature`)
+   - **When** structural content qualification evaluates it
+   - **Then** the message is excluded (`status = 'EXCLUDED'`, `reason = 'FORWARDED_MESSAGE'`) before AI regardless of the apparent meaning of its text or caption
+   - **And** configured vocabulary, keywords, or district leadership names cannot override the exclusion
+   - **And** the forwarded message content is not retained for future production reassessment.
+
+5. **Non-Forwarded Replies to Forwarded Parents (AC 5)**
+   - **Given** a non-forwarded message directly replies to a Telegram-marked forwarded message (`message.reply_to_message` contains forward metadata)
+   - **When** the reply itself contains structurally supported human text or a textual caption
+   - **Then** the reply is admitted as its own candidate for later semantic analysis with `replyMetadata` containing `replyToMessageId`, `replyToUserId`, and `replyToIsForwarded: true`
+   - **And** the forwarded parent remains excluded
+   - **And** the forwarded parent's content is **not** fetched, retained, or supplied as candidate context
+   - **And** downstream semantic analysis (Story 2.3) will independently determine whether the reply is sufficiently self-contained to qualify.
+
+6. **Idempotent Retries, Redeliveries & Discarded Content Non-Resurrection (AC 6)**
+   - **Given** a structurally excluded message has completed its structural decision
+   - **When** the same Telegram delivery is retried, redelivered, or processed concurrently
+   - **Then** it remains one completed structural outcome
+   - **And** duplicate handling does not invoke AI or recreate discarded resident content
+   - **And** downstream job deduplication singleton key `rel:${districtId}:${chatId}:${messageId}` guarantees at most one semantic relevance job per Telegram message.
+
+7. **Preserved District / Mahalla / Day Attribution & Lifecycle Recheck (AC 7)**
+   - **Given** a candidate was authorized and attributed to its District and Mahalla when durably received in Story 2.1
+   - **When** structural processing occurs in the background worker
+   - **Then** it uses that captured `districtId`, `mahallaName`, `calendarDay`, and `originalTimestamp` attribution rather than remapping historical intake from later configuration changes
+   - **And** current District lifecycle eligibility (`status === 'ACTIVE'` and `accessEligible !== false`) is rechecked in the database before proceeding
+   - **And** if the District is no longer active, the job is dropped cleanly without enqueuing downstream AI work.
+
+8. **Strict Boundary Isolation from Semantic Relevance & Vocabulary (AC 8)**
+   - **Given** structurally supported content passes this story's qualification
+   - **When** it is handed off to the next processing stage (`telegram-semantic-relevance` queue)
+   - **Then** no relevance, Lane, Topic membership, Topic creation, summary, or other AI-derived success has yet been asserted
+   - **And** configured multilingual recognition vocabulary has **not** been used as a deterministic structural admission/rejection rule.
+
+9. **Privacy-Safe Worker Telemetry & Secrets Exclusion (`AD-11`) (AC 9)**
+   - **Given** structural processing succeeds, excludes content, retries, or fails
+   - **When** operational telemetry is emitted
+   - **Then** privacy-safe structured logs distinguish supported candidates, structural exclusion categories (`FORWARDED_MESSAGE`, `BOT_MESSAGE`, `BOT_COMMAND`, `SERVICE_MESSAGE`, `EMPTY_CONTENT`, `CAPTIONLESS_MEDIA`, `UNSUPPORTED_MEDIA_TYPE`, `MALFORMED_METADATA`), retries, failures, and processing latency
+   - **And** raw Telegram text, discarded captions, attachment payloads, bot tokens, credentials, and secrets strictly remain absent from routine logs, metrics, traces, and Audit History.
+
+10. **Malformed Metadata & Defensive Fallback (AC 10)**
+    - **Given** structural processing encounters malformed or insufficient Telegram metadata such that the required content/origin/forwarding decision cannot be made safely
+    - **When** qualification cannot establish a valid supported candidate
+    - **Then** the system does not guess or send the message to AI
+    - **And** processing excludes it with `status = 'EXCLUDED'`, `reason = 'MALFORMED_METADATA'`
+    - **And** no partial candidate or Accepted Evidence state is committed.
+
+---
+
+## Tasks / Subtasks
+
+- [ ] **Task 1: Pure Domain Qualification Engine** (AC: 1, 2, 3, 4, 5, 8, 10)
+  - [ ] 1.1 Create `apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts`.
+  - [ ] 1.2 Implement type definitions:
+    - `TelegramMessage`, `TelegramUser`, `TelegramChat`, `TelegramMessageOrigin` (7.0+ union), `TelegramMessageEntity`, `TelegramReplyMetadata`.
+    - `StructuralExclusionReason`: `'FORWARDED_MESSAGE' | 'BOT_MESSAGE' | 'BOT_COMMAND' | 'SERVICE_MESSAGE' | 'EMPTY_CONTENT' | 'CAPTIONLESS_MEDIA' | 'UNSUPPORTED_MEDIA_TYPE' | 'MALFORMED_METADATA'`.
+    - `StructuralQualificationResult`: Discriminated union `{ status: 'SUPPORTED', candidate } | { status: 'EXCLUDED', reason, districtId, mahallaName, telegramChatId, telegramMessageId }`.
+  - [ ] 1.3 Implement pure type guards:
+    - `isTelegramForwarded(message: TelegramMessage): boolean` (checks `forward_origin` and legacy `forward_*` fields).
+    - `isTelegramBotMessage(message: TelegramMessage): boolean` (checks `from.is_bot` and `via_bot`).
+    - `isTelegramCommand(message: TelegramMessage): boolean` (checks `entities` bot_command at offset 0 and `/` prefix).
+    - `isTelegramServiceMessage(message: TelegramMessage): boolean` (checks `new_chat_members`, `left_chat_member`, `pinned_message`, `forum_topic_*`, etc.).
+    - `extractReplyMetadata(message: TelegramMessage): TelegramReplyMetadata | null`.
+  - [ ] 1.4 Implement `qualifyTelegramContent(intake)` pure qualification function:
+    - Extracts verbatim text from `message.text` or `message.caption`.
+    - Checks all structural exclusion guards in deterministic order.
+    - Preserves exact verbatim text and metadata without mutation.
+
+- [ ] **Task 2: Queue Infrastructure & Downstream Queue Registration (`AD-3`)** (AC: 6, 8)
+  - [ ] 2.1 Update `apps/backend/src/adapters/jobs/boss-client.ts`:
+    - Export `TELEGRAM_SEMANTIC_RELEVANCE_QUEUE = 'telegram-semantic-relevance'`.
+    - Update `initBossQueues(boss: PgBoss): Promise<void>` to create both `TELEGRAM_CONTENT_QUALIFICATION_QUEUE` and `TELEGRAM_SEMANTIC_RELEVANCE_QUEUE`.
+  - [ ] 2.2 Define `TelegramContentQualificationJobData` and `TelegramSemanticRelevanceJobData` payload interfaces.
+
+- [ ] **Task 3: Worker Handler Implementation & Lifecycle Verification (`AD-1`, `AD-9`)** (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+  - [ ] 3.1 Update `apps/backend/src/entrypoints/worker.ts`:
+    - Register handler on `TELEGRAM_CONTENT_QUALIFICATION_QUEUE`.
+    - Query `telegramIntakeRecords` by `intakeId` from database.
+    - Query `districts` table to verify `district.status === 'ACTIVE'` and `accessEligible !== false`. If inactive, log dropped event and complete job.
+    - Execute `qualifyTelegramContent(intakeRecord)`.
+    - If `SUPPORTED`:
+      - Enqueue job to `TELEGRAM_SEMANTIC_RELEVANCE_QUEUE` with payload `candidate`, `singletonKey: "rel:${districtId}:${chatId}:${messageId}"`, `retryLimit: 3`, `retryDelay: 5`, `retryBackoff: true`.
+      - Log privacy-safe success event with duration and metadata.
+    - If `EXCLUDED`:
+      - Emit structured privacy-safe exclusion event `{ event: 'TELEGRAM_CONTENT_EXCLUDED', districtId, mahallaName, chatId, messageId, reason, durationMs }`.
+      - Mark job completed without downstream enqueue.
+
+- [ ] **Task 4: Unit Test Suite for Qualification Domain Logic** (AC: 1, 2, 3, 4, 5, 8, 10)
+  - [ ] 4.1 Create `apps/backend/tests/telegram-content-qualification.test.ts`:
+    - Test plain text admission (preserves Cyrillic, Latin, emojis, newlines verbatim).
+    - Test media with caption admission (photo, video, document, animation, audio, voice).
+    - Test captionless media exclusion (photo, video, doc without caption &rarr; `CAPTIONLESS_MEDIA`).
+    - Test audio/voice without caption exclusion (`CAPTIONLESS_MEDIA`).
+    - Test sticker / video_note exclusion (`UNSUPPORTED_MEDIA_TYPE`).
+    - Test modern Telegram 7.0+ `forward_origin` exclusion (user, hidden_user, chat, channel).
+    - Test legacy forward fields exclusion (`forward_date`, `forward_from`, etc.).
+    - Test bot message exclusion (`from.is_bot`, `via_bot`).
+    - Test bot command exclusion (`/start`, command entity at offset 0).
+    - Test service message exclusion (`new_chat_members`, `pinned_message`, etc.).
+    - Test empty/whitespace-only content exclusion (`EMPTY_CONTENT`).
+    - Test reply to forwarded parent (reply admitted as supported candidate with `replyToIsForwarded: true`, parent content not retained).
+    - Test malformed payload handling (`MALFORMED_METADATA`).
+
+- [ ] **Task 5: End-to-End Worker & Queue Integration Test Suite** (AC: 6, 7, 8, 9)
+  - [ ] 5.1 Create `apps/backend/tests/worker-content-qualification.test.ts` testing against real PostgreSQL and pg-boss:
+    - Test end-to-end qualification job execution: intake record processed &rarr; candidate enqueued into `telegram-semantic-relevance`.
+    - Test exclusion job execution: excluded message &rarr; job completes, 0 jobs in `telegram-semantic-relevance`.
+    - Test inactive district during worker execution: drops job cleanly without downstream enqueue.
+    - Test worker duplicate/retry idempotency via singleton key.
+    - Test privacy guard: verify zero raw text/captions in structured telemetry output.
+
+---
+
+## Dev Notes
+
+### Architecture Compliance
+
+- **`AD-1` (Hexagonal Architecture & Separation of Concerns):**
+  - Qualification logic resides in pure domain module `apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts` with zero database or network dependencies.
+  - Asynchronous worker plumbing lives in `apps/backend/src/entrypoints/worker.ts` and adapters in `apps/backend/src/adapters/jobs/boss-client.ts`.
+- **`AD-3` (PostgreSQL System of Record & pg-boss Pipeline):**
+  - Downstream queue `telegram-semantic-relevance` is initialized via `initBossQueues`.
+  - Qualification jobs are idempotent with singleton key `rel:${districtId}:${chatId}:${messageId}`.
+- **`AD-9` (Multi-Tenant Isolation & Explicit District Scope):**
+  - Historical attribution (`districtId`, `mahallaName`, `calendarDay`, `originalTimestamp`) from Story 2.1 intake is preserved.
+  - Active District lifecycle eligibility is rechecked before enqueuing downstream work.
+- **`AD-11` (Privacy-Safe Telemetry & Observability):**
+  - Telemetry logs emit only structured metadata: `event`, `districtId`, `mahallaName`, `chatId`, `messageId`, `status`, `reason`, `durationMs`.
+  - Message text, captions, attachment payloads, and bot tokens **never** enter logs, metrics, traces, or audit payloads.
+
+---
+
+### Previous Story 2.1 Learnings & Patterns to Preserve
+
+1. **Deterministic Tashkent Time**:
+   - `calendarDay` (`YYYY-MM-DD`) and `originalTimestamp` are fixed at intake and must be passed verbatim to downstream candidate payloads.
+2. **PostgreSQL / pg-boss 10.x Queue Initialization**:
+   - Every queue used by `boss.send` or `boss.work` must be pre-created via `await boss.createQueue(queueName)` in `initBossQueues`.
+3. **pg-boss 10.x Worker Signature**:
+   - In `pg-boss` 10.x, `boss.work` passes an **array of jobs** (`jobs: PgBoss.Job<T>[]`). Handlers must iterate over `for (const job of jobs)` and handle exceptions cleanly.
+4. **Graceful Worker Shutdown**:
+   - Handled via `boss.stop({ graceful: true, timeout: 30000 })` in `apps/backend/src/entrypoints/worker.ts`.
+
+---
+
+### Core TypeScript Patterns & Code Snippets
+
+#### 1. Telegram Message & Origin Types (`telegram-content-qualification.ts`)
+```typescript
+export interface TelegramUser {
+  id: number | string;
+  is_bot: boolean;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  language_code?: string;
+}
+
+export interface TelegramChat {
+  id: number | string;
+  type: 'private' | 'group' | 'supergroup' | 'channel';
+  title?: string;
+  username?: string;
+}
+
+export type TelegramMessageOrigin =
+  | { type: 'user'; date: number; sender_user: TelegramUser }
+  | { type: 'hidden_user'; date: number; sender_user_name: string }
+  | { type: 'chat'; date: number; sender_chat: TelegramChat; author_signature?: string }
+  | { type: 'channel'; date: number; chat: TelegramChat; message_id: number; author_signature?: string };
+
+export interface TelegramMessageEntity {
+  type: string;
+  offset: number;
+  length: number;
+}
+
+export interface TelegramReplyMetadata {
+  replyToMessageId: string;
+  replyToUserId?: string;
+  replyToIsForwarded: boolean;
+  replyToIsBot: boolean;
+}
+
+export interface TelegramMessage {
+  message_id: number | string;
+  date: number;
+  chat: TelegramChat;
+  from?: TelegramUser;
+  sender_chat?: TelegramChat;
+  text?: string;
+  entities?: TelegramMessageEntity[];
+  caption?: string;
+  caption_entities?: TelegramMessageEntity[];
+  photo?: unknown[];
+  video?: unknown;
+  document?: unknown;
+  animation?: unknown;
+  audio?: unknown;
+  voice?: unknown;
+  video_note?: unknown;
+  sticker?: unknown;
+  forward_origin?: TelegramMessageOrigin;
+  forward_date?: number;
+  forward_from?: TelegramUser;
+  forward_from_chat?: TelegramChat;
+  forward_sender_name?: string;
+  forward_signature?: string;
+  via_bot?: TelegramUser;
+  reply_to_message?: TelegramMessage;
+  [key: string]: unknown;
+}
+```
+
+#### 2. Pure Qualification Function (`qualifyTelegramContent`)
+```typescript
+export type StructuralExclusionReason =
+  | 'FORWARDED_MESSAGE'
+  | 'BOT_MESSAGE'
+  | 'BOT_COMMAND'
+  | 'SERVICE_MESSAGE'
+  | 'EMPTY_CONTENT'
+  | 'CAPTIONLESS_MEDIA'
+  | 'UNSUPPORTED_MEDIA_TYPE'
+  | 'MALFORMED_METADATA';
+
+export type StructuralQualificationResult =
+  | {
+      status: 'SUPPORTED';
+      candidate: {
+        intakeId: string;
+        districtId: string;
+        mahallaName: string;
+        calendarDay: string;
+        telegramChatId: string;
+        telegramMessageId: string;
+        telegramUserId?: string;
+        originalTimestamp: Date;
+        contentType: 'TEXT' | 'MEDIA_CAPTION';
+        verbatimText: string;
+        replyMetadata: TelegramReplyMetadata | null;
+      };
+    }
+  | {
+      status: 'EXCLUDED';
+      reason: StructuralExclusionReason;
+      districtId: string;
+      mahallaName: string;
+      telegramChatId: string;
+      telegramMessageId: string;
+    };
+```
+
+---
+
+### Comprehensive 20-Row Verification Matrix
+
+| # | Test Scenario | Input Telegram Payload Condition | Expected Outcome | Downstream Effect |
+| :- | :--- | :--- | :--- | :--- |
+| 1 | **Plain Text Message** | `text: "Suv 3 kundan beri yo'q"`, `from.is_bot: false` | `SUPPORTED` (text preserved) | Enqueues `telegram-semantic-relevance` with `contentType: 'TEXT'` |
+| 2 | **Photo with Caption** | `photo: [...]`, `caption: "Elektr simlari uzildi"` | `SUPPORTED` (caption preserved) | Enqueues `telegram-semantic-relevance` with `contentType: 'MEDIA_CAPTION'` |
+| 3 | **Video with Caption** | `video: {...}`, `caption: "Gaz bosimi past"` | `SUPPORTED` | Enqueues `telegram-semantic-relevance` with `contentType: 'MEDIA_CAPTION'` |
+| 4 | **Document with Caption** | `document: {...}`, `caption: "Chiqindi to'planib qoldi"` | `SUPPORTED` | Enqueues `telegram-semantic-relevance` with `contentType: 'MEDIA_CAPTION'` |
+| 5 | **Animation / Audio / Voice with Caption** | `animation/audio/voice: {...}`, `caption: "..."` | `SUPPORTED` | Enqueues `telegram-semantic-relevance` with `contentType: 'MEDIA_CAPTION'` |
+| 6 | **Captionless Media** | `photo: [...]` with no `caption` | `EXCLUDED` (`CAPTIONLESS_MEDIA`) | **No job enqueued**, raw content discarded |
+| 7 | **Audio / Voice without Caption** | `voice: {...}` with no `caption` | `EXCLUDED` (`CAPTIONLESS_MEDIA`) | **No job enqueued**, no transcription attempted |
+| 8 | **Sticker / Video Note** | `sticker: {...}` or `video_note: {...}` | `EXCLUDED` (`UNSUPPORTED_MEDIA_TYPE`) | **No job enqueued** |
+| 9 | **Forwarded (7.0+ `forward_origin` User)** | `forward_origin: { type: 'user', ... }`, `text: "..."` | `EXCLUDED` (`FORWARDED_MESSAGE`) | **No job enqueued**, even if keyword matches |
+| 10 | **Forwarded (7.0+ `forward_origin` Channel)**| `forward_origin: { type: 'channel', ... }`, `text: "..."` | `EXCLUDED` (`FORWARDED_MESSAGE`) | **No job enqueued** |
+| 11 | **Forwarded (Legacy Fields)** | `forward_date: 1720000000`, `forward_from: {...}` | `EXCLUDED` (`FORWARDED_MESSAGE`) | **No job enqueued** |
+| 12 | **Bot Message (`is_bot: true`)** | `from: { id: 123, is_bot: true }`, `text: "..."` | `EXCLUDED` (`BOT_MESSAGE`) | **No job enqueued** |
+| 13 | **Inline Bot Message (`via_bot`)** | `via_bot: { id: 456, is_bot: true }`, `text: "..."` | `EXCLUDED` (`BOT_MESSAGE`) | **No job enqueued** |
+| 14 | **Bot Command Entity** | `entities: [{ type: 'bot_command', offset: 0, length: 6 }]`, `text: "/start info"` | `EXCLUDED` (`BOT_COMMAND`) | **No job enqueued** |
+| 15 | **Slash Prefix Command** | `text: "/help me please"` (no entities) | `EXCLUDED` (`BOT_COMMAND`) | **No job enqueued** |
+| 16 | **Service Message** | `new_chat_members: [...]` or `pinned_message: {...}` | `EXCLUDED` (`SERVICE_MESSAGE`) | **No job enqueued** |
+| 17 | **Empty / Whitespace-only Text** | `text: "   \n\t  "` | `EXCLUDED` (`EMPTY_CONTENT`) | **No job enqueued** |
+| 18 | **Reply to Forwarded Parent** | `text: "Bizda ham suv yo'q"`, `reply_to_message.forward_origin: {...}` | `SUPPORTED` (Reply has text; `replyToIsForwarded: true` captured in metadata) | Enqueues `telegram-semantic-relevance`; parent content NOT fetched/passed |
+| 19 | **Duplicate / Redelivered Job** | Same intake processed again | Single execution outcome via `singletonKey` deduplication | 0 duplicate downstream jobs |
+| 20 | **Privacy Telemetry** | Routine worker logs emitted | `SUPPORTED` / `EXCLUDED` status & metrics emitted | **Zero raw text/captions in logs** |
+
+---
+
+### Project Structure Notes
+
+#### Files to Create:
+- `apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts` — Pure domain qualification logic and Telegram Bot API types
+- `apps/backend/tests/telegram-content-qualification.test.ts` — Domain unit test suite
+- `apps/backend/tests/worker-content-qualification.test.ts` — Worker and pg-boss queue integration test suite
+
+#### Files to Modify:
+- `apps/backend/src/adapters/jobs/boss-client.ts` — Register `TELEGRAM_SEMANTIC_RELEVANCE_QUEUE` in `initBossQueues`
+- `apps/backend/src/entrypoints/worker.ts` — Implement worker listener for `TELEGRAM_CONTENT_QUALIFICATION_QUEUE`
+
+---
+
+### References
+- [Epic 2 Spec](file:///_bmad-output/planning-artifacts/epics/epic-2.md#Story-2.2)
+- [PRD FR-2 & FR-4](file:///_bmad-output/planning-artifacts/prds/prd-Mahalla-Ovozi-2026-07-30/prd.md#FR-2)
+- [Architecture Spine AD-1, AD-3, AD-9, AD-11](file:///_bmad-output/planning-artifacts/architecture/architecture-Mahalla-Ovozi-2026-08-12/ARCHITECTURE-SPINE.md)
+- [Story 2.1 Specification & Implementation](file:///_bmad-output/implementation-artifacts/2-1-durably-receive-authorized-district-telegram-messages.md)
+
+---
+
+## Dev Agent Record
+
+### Agent Model Used
+
+Gemini 3.7 Flash (High)
+
+### Debug Log References
+
+### Completion Notes List
+
+### File List
+
