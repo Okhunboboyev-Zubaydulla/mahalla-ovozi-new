@@ -3,7 +3,34 @@ import type pg from 'pg';
 import PgBoss from 'pg-boss';
 import * as schema from '../db/schema/index.js';
 
+import type { TelegramReplyMetadata } from '../../modules/telegram-intake/telegram-content-qualification.js';
+
 export const TELEGRAM_CONTENT_QUALIFICATION_QUEUE = 'telegram-content-qualification';
+export const TELEGRAM_SEMANTIC_RELEVANCE_QUEUE = 'telegram-semantic-relevance';
+
+export interface TelegramContentQualificationJobData {
+  intakeId: string;
+  districtId: string;
+  mahallaName: string;
+  calendarDay: string;
+  telegramChatId: string;
+  telegramMessageId: string;
+  originalTimestamp: string;
+}
+
+export interface TelegramSemanticRelevanceJobData {
+  intakeId: string;
+  districtId: string;
+  mahallaName: string;
+  calendarDay: string;
+  telegramChatId: string;
+  telegramMessageId: string;
+  telegramUserId?: string;
+  originalTimestamp: string; // ISO-8601 string
+  contentType: 'TEXT' | 'MEDIA_CAPTION';
+  verbatimText: string;
+  replyMetadata: TelegramReplyMetadata | null;
+}
 
 export function createBossClient(options?: { connectionString?: string; schema?: string }): PgBoss {
   const connectionString =
@@ -25,6 +52,7 @@ export function createBossClient(options?: { connectionString?: string; schema?:
  */
 export async function initBossQueues(boss: PgBoss): Promise<void> {
   await boss.createQueue(TELEGRAM_CONTENT_QUALIFICATION_QUEUE);
+  await boss.createQueue(TELEGRAM_SEMANTIC_RELEVANCE_QUEUE);
 }
 
 export interface TransactionScope {

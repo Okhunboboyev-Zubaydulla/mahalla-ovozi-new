@@ -1,6 +1,10 @@
+---
+baseline_commit: 338e75c8be8fd1b3f9d69511ed9e6e14bd6e3dd6
+---
+
 # Story 2.2: Admit Supported Telegram Content and Discard Structural Exclusions
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -88,19 +92,19 @@ So that AI analysis receives only valid candidate content and excluded Telegram 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Pure Domain Qualification Engine** (AC: 1, 2, 3, 4, 5, 8, 10)
-  - [ ] 1.1 Create `apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts`.
-  - [ ] 1.2 Implement type definitions:
+- [x] **Task 1: Pure Domain Qualification Engine** (AC: 1, 2, 3, 4, 5, 8, 10)
+  - [x] 1.1 Create `apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts`.
+  - [x] 1.2 Implement type definitions:
     - `TelegramMessage`, `TelegramUser`, `TelegramChat`, `TelegramMessageOrigin` (7.0+ discriminated union: `MessageOriginUser`, `MessageOriginHiddenUser`, `MessageOriginChat`, `MessageOriginChannel`), `TelegramMessageEntity`, `TelegramReplyMetadata`.
     - `StructuralExclusionReason`: `'FORWARDED_MESSAGE' | 'BOT_MESSAGE' | 'BOT_COMMAND' | 'SERVICE_MESSAGE' | 'EMPTY_CONTENT' | 'CAPTIONLESS_MEDIA' | 'UNSUPPORTED_MEDIA_TYPE' | 'MALFORMED_METADATA'`.
     - `StructuralQualificationResult`: Discriminated union `{ status: 'SUPPORTED', candidate } | { status: 'EXCLUDED', reason, districtId, mahallaName, telegramChatId, telegramMessageId }`.
-  - [ ] 1.3 Implement pure type guards:
+  - [x] 1.3 Implement pure type guards:
     - `isTelegramForwarded(message: TelegramMessage): boolean` (checks `forward_origin`, `is_automatic_forward`, and legacy `forward_*` fields).
     - `isTelegramBotMessage(message: TelegramMessage): boolean` (checks `from.is_bot` and `via_bot`).
     - `isTelegramCommand(message: TelegramMessage): boolean` (checks `entities` or `caption_entities` for `bot_command` at offset 0, and `/` text/caption prefix).
     - `isTelegramServiceMessage(message: TelegramMessage): boolean` (checks `new_chat_members`, `left_chat_member`, `new_chat_title`, `pinned_message`, `forum_topic_*`, `migrate_*`, `video_chat_*`, `giveaway*`, `boost_added`, `user_shared`, `chat_shared`, etc.).
     - `extractReplyMetadata(message: TelegramMessage): TelegramReplyMetadata | null`.
-  - [ ] 1.4 Implement `qualifyTelegramContent(intakeRecord)` pure qualification function:
+  - [x] 1.4 Implement `qualifyTelegramContent(intakeRecord)` pure qualification function:
     - Evaluates structural rules in strict deterministic order:
       1. Forward guard &rarr; `FORWARDED_MESSAGE`
       2. Bot guard &rarr; `BOT_MESSAGE`
@@ -112,14 +116,14 @@ So that AI analysis receives only valid candidate content and excluded Telegram 
       8. Fallback &rarr; `MALFORMED_METADATA`
     - Preserves exact verbatim text and metadata without mutation.
 
-- [ ] **Task 2: Queue Infrastructure & Downstream Queue Registration (`AD-3`)** (AC: 6, 8)
-  - [ ] 2.1 Update `apps/backend/src/adapters/jobs/boss-client.ts`:
+- [x] **Task 2: Queue Infrastructure & Downstream Queue Registration (`AD-3`)** (AC: 6, 8)
+  - [x] 2.1 Update `apps/backend/src/adapters/jobs/boss-client.ts`:
     - Export `TELEGRAM_SEMANTIC_RELEVANCE_QUEUE = 'telegram-semantic-relevance'`.
     - Update `initBossQueues(boss: PgBoss): Promise<void>` to create both `TELEGRAM_CONTENT_QUALIFICATION_QUEUE` and `TELEGRAM_SEMANTIC_RELEVANCE_QUEUE`.
-  - [ ] 2.2 Define and export `TelegramContentQualificationJobData` and `TelegramSemanticRelevanceJobData` payload interfaces in `boss-client.ts`.
+  - [x] 2.2 Define and export `TelegramContentQualificationJobData` and `TelegramSemanticRelevanceJobData` payload interfaces in `boss-client.ts`.
 
-- [ ] **Task 3: Worker Handler Implementation & Lifecycle Verification (`AD-1`, `AD-9`)** (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-  - [ ] 3.1 Update `apps/backend/src/entrypoints/worker.ts`:
+- [x] **Task 3: Worker Handler Implementation & Lifecycle Verification (`AD-1`, `AD-9`)** (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+  - [x] 3.1 Update `apps/backend/src/entrypoints/worker.ts`:
     - Register worker on `TELEGRAM_CONTENT_QUALIFICATION_QUEUE` with array batch handler `for (const job of jobs)`.
     - Query `telegramIntakeRecords` by `intakeId` from database.
     - Query `districts` table to verify `district.status === 'ACTIVE'` and `accessEligible !== false`. If inactive, emit privacy-safe dropped event and complete job cleanly.
@@ -131,8 +135,8 @@ So that AI analysis receives only valid candidate content and excluded Telegram 
       - Emit structured privacy-safe exclusion event `{ event: 'TELEGRAM_CONTENT_EXCLUDED', districtId, mahallaName, chatId, messageId, status: 'EXCLUDED', reason, durationMs }`.
       - Mark job completed without downstream enqueue.
 
-- [ ] **Task 4: Unit Test Suite for Qualification Domain Logic** (AC: 1, 2, 3, 4, 5, 8, 10)
-  - [ ] 4.1 Create `apps/backend/tests/telegram-content-qualification.test.ts`:
+- [x] **Task 4: Unit Test Suite for Qualification Domain Logic** (AC: 1, 2, 3, 4, 5, 8, 10)
+  - [x] 4.1 Create `apps/backend/tests/telegram-content-qualification.test.ts`:
     - Test plain text admission (preserves Cyrillic, Latin, emojis, newlines verbatim).
     - Test media with caption admission (photo, video, document, animation, audio, voice, paid_media).
     - Test captionless media exclusion (photo, video, doc without caption &rarr; `CAPTIONLESS_MEDIA`).
@@ -150,8 +154,8 @@ So that AI analysis receives only valid candidate content and excluded Telegram 
     - Test reply to forwarded parent (reply admitted as supported candidate with `replyToIsForwarded: true`, parent content not retained).
     - Test malformed payload handling (`MALFORMED_METADATA`).
 
-- [ ] **Task 5: End-to-End Worker & Queue Integration Test Suite** (AC: 6, 7, 8, 9)
-  - [ ] 5.1 Create `apps/backend/tests/worker-content-qualification.test.ts` testing against real PostgreSQL and pg-boss:
+- [x] **Task 5: End-to-End Worker & Queue Integration Test Suite** (AC: 6, 7, 8, 9)
+  - [x] 5.1 Create `apps/backend/tests/worker-content-qualification.test.ts` testing against real PostgreSQL and pg-boss:
     - Test end-to-end qualification job execution: intake record processed &rarr; candidate enqueued into `telegram-semantic-relevance`.
     - Test exclusion job execution: excluded message &rarr; job completes, 0 jobs in `telegram-semantic-relevance`.
     - Test inactive district during worker execution: drops job cleanly without downstream enqueue.
@@ -401,8 +405,27 @@ export type StructuralQualificationResult =
 Gemini 3.7 Flash (High)
 
 ### Debug Log References
+- Pure qualification unit tests: `apps/backend/tests/telegram-content-qualification.test.ts` (28 tests passing).
+- Background worker and pg-boss queue integration tests: `apps/backend/tests/worker-content-qualification.test.ts` (6 tests passing).
+- Monorepo regression test suite: 40 test files, 310 tests passing (100%).
+- Monorepo static typecheck: `pnpm typecheck` across all packages (0 errors).
 
 ### Completion Notes List
+- **Task 1 (Pure Domain Qualification Engine):** Implemented Telegram Bot API 7.0+ types, pure guards (`isTelegramForwarded`, `isTelegramBotMessage`, `isTelegramCommand`, `isTelegramServiceMessage`, `extractReplyMetadata`), and deterministic `qualifyTelegramContent` in `apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts`. Preserves verbatim text/captions and excludes unsupported media, commands, forwarded origins, bots, and service messages.
+- **Task 2 (Queue Infrastructure):** Registered downstream queue `TELEGRAM_SEMANTIC_RELEVANCE_QUEUE` and exported typed job contracts `TelegramContentQualificationJobData` and `TelegramSemanticRelevanceJobData` in `apps/backend/src/adapters/jobs/boss-client.ts`. Updated `initBossQueues` to pre-create both queues.
+- **Task 3 (Worker Handler Implementation & Lifecycle Verification):** Implemented `TELEGRAM_CONTENT_QUALIFICATION_QUEUE` batch listener in `apps/backend/src/entrypoints/worker.ts`. Performs District active lifecycle recheck (`status === 'ACTIVE'` and `accessEligible !== false`), runs pure qualification, enqueues supported candidates to `TELEGRAM_SEMANTIC_RELEVANCE_QUEUE` with singleton deduplication key `rel:${districtId}:${chatId}:${messageId}`, and emits privacy-safe structured telemetry logs (`AD-11`).
+- **Task 4 (Unit Test Suite):** Created `apps/backend/tests/telegram-content-qualification.test.ts` covering all 24 rows of the verification matrix.
+- **Task 5 (Worker Integration Test Suite):** Created `apps/backend/tests/worker-content-qualification.test.ts` verifying real PostgreSQL and pg-boss end-to-end processing, downstream candidate payloads, structural exclusion discard, inactive district drops, singleton key deduplication, and privacy telemetry assertions.
 
 ### File List
+- `apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts` (NEW)
+- `apps/backend/src/adapters/jobs/boss-client.ts` (MODIFIED)
+- `apps/backend/src/entrypoints/worker.ts` (MODIFIED)
+- `apps/backend/tests/telegram-content-qualification.test.ts` (NEW)
+- `apps/backend/tests/worker-content-qualification.test.ts` (NEW)
+- `_bmad-output/implementation-artifacts/2-2-admit-supported-telegram-content-and-discard-structural-exclusions.md` (MODIFIED)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (MODIFIED)
+
+### Change Log
+- 2026-08-21: Implemented Story 2.2 Telegram content qualification engine, pg-boss downstream queue registration, worker pipeline listener with lifecycle rechecks and privacy telemetry, plus comprehensive unit and integration test suites. Status transitioned to `review`.
 
