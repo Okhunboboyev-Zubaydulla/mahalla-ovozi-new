@@ -4,7 +4,7 @@ baseline_commit: 338e75c8be8fd1b3f9d69511ed9e6e14bd6e3dd6
 
 # Story 2.2: Admit Supported Telegram Content and Discard Structural Exclusions
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -161,6 +161,18 @@ So that AI analysis receives only valid candidate content and excluded Telegram 
     - Test inactive district during worker execution: drops job cleanly without downstream enqueue.
     - Test worker duplicate/retry idempotency via singleton key `rel:${districtId}:${chatId}:${messageId}`.
     - Test privacy guard: spy on logger output and verify zero raw text/captions or bot secrets appear in log arguments.
+
+### Review Findings
+
+- [x] [Review][Patch] Guard against uncaught RangeError on malformed or invalid date timestamp inputs in qualification engine [`apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts:409-413`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts#L409-L413)
+- [x] [Review][Patch] Prevent false-positive forward classification when legacy forward fields contain explicit null values [`apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts:186-196`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts#L186-L196)
+- [x] [Review][Patch] Ensure empty array media fields (e.g. `photo: []`) do not trigger false CAPTIONLESS_MEDIA exclusion [`apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts:319-326`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts#L319-L326)
+- [x] [Review][Patch] Defensive guard for null/undefined record parameter and ID coercion in baseExclusion and extractReplyMetadata [`apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts:344,357-368`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts#L344)
+- [x] [Review][Patch] Add optional chaining when inspecting message entities for bot commands [`apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts:217-221`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts#L217-L221)
+- [x] [Review][Patch] Support `channel_post` and `edited_message` in raw payload extraction [`apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts:371-373`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/telegram-intake/telegram-content-qualification.ts#L371-L373)
+- [x] [Review][Patch] Throw error on missing intake record in background worker to trigger pg-boss retry policy rather than silent drop [`apps/backend/src/entrypoints/worker.ts:65-76`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/entrypoints/worker.ts#L65-L76)
+- [x] [Review][Defer] Hardcoded dev fallback DB connection string in boss-client.ts [`apps/backend/src/adapters/jobs/boss-client.ts:39`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/adapters/jobs/boss-client.ts#L39) — deferred, pre-existing
+- [x] [Review][Defer] Worker module-level singleton state lifecycle management [`apps/backend/src/entrypoints/worker.ts:18-19`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/entrypoints/worker.ts#L18-L19) — deferred, pre-existing
 
 ---
 

@@ -552,4 +552,101 @@ describe('Story 2.2: Telegram Content Qualification Engine Unit Tests', () => {
       });
     });
   });
+
+  describe('Patched Defensive Edge Cases & Robustness', () => {
+    it('returns MALFORMED_METADATA instead of throwing RangeError on invalid originalTimestamp', () => {
+      const invalidDateRecord = createMockRecord(
+        { update_id: 101, message: createBaseMessage({ text: 'Yaroqsiz sana testi' }) },
+        { originalTimestamp: 'not-a-valid-date-string' },
+      );
+      const nanDateRecord = createMockRecord(
+        { update_id: 102, message: createBaseMessage({ text: 'NaN date testi' }) },
+        { originalTimestamp: new Date(NaN) },
+      );
+
+      expect(qualifyTelegramContent(invalidDateRecord)).toEqual(
+        expect.objectContaining({ status: 'EXCLUDED', reason: 'MALFORMED_METADATA' }),
+      );
+      expect(qualifyTelegramContent(nanDateRecord)).toEqual(
+        expect.objectContaining({ status: 'EXCLUDED', reason: 'MALFORMED_METADATA' }),
+      );
+    });
+
+    it('does not falsely classify message as forwarded when forward fields are explicitly null', () => {
+      const msg = createBaseMessage({
+        forward_date: undefined,
+        forward_from: undefined,
+        text: 'Oddiy xabar forward emas',
+        ...({ forward_from_chat: null, forward_signature: null } as any),
+      });
+      const record = createMockRecord({ update_id: 103, message: msg });
+
+      const result = qualifyTelegramContent(record);
+      expect(result.status).toBe('SUPPORTED');
+      if (result.status === 'SUPPORTED') {
+        expect(result.candidate.contentType).toBe('TEXT');
+      }
+    });
+
+    it('does not trigger CAPTIONLESS_MEDIA when photo is an empty array', () => {
+      const msg = createBaseMessage({
+        photo: [],
+        text: "Bo'sh photo massivli xabar",
+      });
+      const record = createMockRecord({ update_id: 104, message: msg });
+
+      const result = qualifyTelegramContent(record);
+      expect(result.status).toBe('SUPPORTED');
+      if (result.status === 'SUPPORTED') {
+        expect(result.candidate.contentType).toBe('TEXT');
+        expect(result.candidate.verbatimText).toBe("Bo'sh photo massivli xabar");
+      }
+    });
+
+    it('excludes message containing only zero-width formatting characters as EMPTY_CONTENT', () => {
+      const msg = createBaseMessage({
+        text: '\u200B\u200C\u200D\uFEFF\u2060   \n\t',
+      });
+      const record = createMockRecord({ update_id: 105, message: msg });
+
+      const result = qualifyTelegramContent(record);
+      expect(result).toEqual(
+        expect.objectContaining({ status: 'EXCLUDED', reason: 'EMPTY_CONTENT' }),
+      );
+    });
+
+    it('extracts and admits message from top-level channel_post or edited_message update objects', () => {
+      const msg = createBaseMessage({ text: 'Kanal posti xabari' });
+      const channelPostRecord = createMockRecord({ update_id: 106, channel_post: msg });
+      const editedMsgRecord = createMockRecord({ update_id: 107, edited_message: msg });
+
+      expect(qualifyTelegramContent(channelPostRecord)).toEqual(
+        expect.objectContaining({ status: 'SUPPORTED' }),
+      );
+      expect(qualifyTelegramContent(editedMsgRecord)).toEqual(
+        expect.objectContaining({ status: 'SUPPORTED' }),
+      );
+    });
+
+    it('correctly preserves numeric 0 as string "0" for user IDs and reply IDs', () => {
+      const parent = createBaseMessage({
+        message_id: 0,
+        from: { id: 0, is_bot: false, first_name: 'Zero' },
+      });
+      const reply = createBaseMessage({
+        from: { id: 0, is_bot: false, first_name: 'Zero' },
+        reply_to_message: parent,
+      });
+
+      const replyMeta = extractReplyMetadata(reply);
+      expect(replyMeta?.replyToMessageId).toBe('0');
+      expect(replyMeta?.replyToUserId).toBe('0');
+
+      const record = createMockRecord({ update_id: 108, message: reply }, { telegramUserId: undefined });
+      const result = qualifyTelegramContent(record);
+      if (result.status === 'SUPPORTED') {
+        expect(result.candidate.telegramUserId).toBe('0');
+      }
+    });
+  });
 });

@@ -173,23 +173,50 @@ export interface TelegramIntakeRecordInput {
 }
 
 /**
+ * Evaluates whether an arbitrary timestamp is valid and converts it to ISO-8601 string.
+ * Returns null if the timestamp is missing, unparseable, or an invalid Date.
+ */
+export function toSafeIsoTimestamp(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const date = value instanceof Date ? value : new Date(value as string | number);
+  const time = date.getTime();
+  if (Number.isNaN(time)) {
+    return null;
+  }
+  return date.toISOString();
+}
+
+/**
+ * Checks whether text contains meaningful characters after removing standard whitespace
+ * and zero-width formatting characters (\\u200B-\\u200D, \\uFEFF, \\u2060, \\u00AD, \\u200E, \\u200F).
+ */
+export function hasMeaningfulText(text: unknown): boolean {
+  if (typeof text !== 'string') {
+    return false;
+  }
+  return text.replace(/[\s\u200B-\u200D\uFEFF\u2060\u00AD\u200E\u200F]/g, '').length > 0;
+}
+
+/**
  * Evaluates whether a message is marked as forwarded via modern Bot API 7.0+
  * forward_origin, automatic forward flag, or legacy forward metadata.
  */
 export function isTelegramForwarded(message: TelegramMessage): boolean {
-  if (message.forward_origin) {
+  if (message.forward_origin != null) {
     return true;
   }
   if (message.is_automatic_forward === true) {
     return true;
   }
   if (
-    message.forward_date !== undefined ||
-    message.forward_from !== undefined ||
-    message.forward_from_chat !== undefined ||
-    message.forward_from_message_id !== undefined ||
-    message.forward_sender_name !== undefined ||
-    message.forward_signature !== undefined
+    message.forward_date != null ||
+    message.forward_from != null ||
+    message.forward_from_chat != null ||
+    message.forward_from_message_id != null ||
+    message.forward_sender_name != null ||
+    message.forward_signature != null
   ) {
     return true;
   }
@@ -214,10 +241,10 @@ export function isTelegramBotMessage(message: TelegramMessage): boolean {
  * Commands start with `/` or have a bot_command entity at offset 0.
  */
 export function isTelegramCommand(message: TelegramMessage): boolean {
-  if (message.entities?.some((e) => e.type === 'bot_command' && e.offset === 0)) {
+  if (Array.isArray(message.entities) && message.entities.some((e) => e?.type === 'bot_command' && e?.offset === 0)) {
     return true;
   }
-  if (message.caption_entities?.some((e) => e.type === 'bot_command' && e.offset === 0)) {
+  if (Array.isArray(message.caption_entities) && message.caption_entities.some((e) => e?.type === 'bot_command' && e?.offset === 0)) {
     return true;
   }
   if (typeof message.text === 'string' && message.text.trimStart().startsWith('/')) {
@@ -273,7 +300,11 @@ const SERVICE_MESSAGE_KEYS: readonly string[] = [
 export function isTelegramServiceMessage(message: TelegramMessage): boolean {
   for (const key of SERVICE_MESSAGE_KEYS) {
     if (message[key] !== undefined && message[key] !== null) {
-      return true;
+      if (Array.isArray(message[key])) {
+        if ((message[key] as unknown[]).length > 0) return true;
+      } else {
+        return true;
+      }
     }
   }
   return false;
@@ -291,12 +322,22 @@ const UNSUPPORTED_MEDIA_KEYS: readonly string[] = [
   'venue',
 ];
 
+function isMediaPresent(value: unknown): boolean {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  return typeof value === 'object';
+}
+
 /**
  * Evaluates whether a message contains media that never supports human topic discussion.
  */
 function hasUnsupportedMediaType(message: TelegramMessage): boolean {
   for (const key of UNSUPPORTED_MEDIA_KEYS) {
-    if (message[key] !== undefined && message[key] !== null) {
+    if (isMediaPresent(message[key])) {
       return true;
     }
   }
@@ -318,7 +359,7 @@ const CAPTIONABLE_MEDIA_KEYS: readonly string[] = [
  */
 function hasCaptionableMedia(message: TelegramMessage): boolean {
   for (const key of CAPTIONABLE_MEDIA_KEYS) {
-    if (message[key] !== undefined && message[key] !== null) {
+    if (isMediaPresent(message[key])) {
       return true;
     }
   }
@@ -334,14 +375,14 @@ export function extractReplyMetadata(message: TelegramMessage): TelegramReplyMet
     return null;
   }
 
-  const replyToMessageId = reply.message_id !== undefined ? String(reply.message_id) : '';
+  const replyToMessageId = reply.message_id != null ? String(reply.message_id) : '';
   if (!replyToMessageId) {
     return null;
   }
 
   return {
     replyToMessageId,
-    replyToUserId: reply.from?.id ? String(reply.from.id) : undefined,
+    replyToUserId: reply.from?.id != null ? String(reply.from.id) : undefined,
     replyToIsForwarded: isTelegramForwarded(reply),
     replyToIsBot: isTelegramBotMessage(reply),
   };
@@ -357,24 +398,33 @@ export function qualifyTelegramContent(
   const baseExclusion = (reason: StructuralExclusionReason): StructuralQualificationResult => ({
     status: 'EXCLUDED',
     reason,
-    districtId: record.districtId,
-    mahallaName: record.mahallaName,
-    telegramChatId: record.telegramChatId,
-    telegramMessageId: record.telegramMessageId,
+    districtId: record?.districtId ?? '',
+    mahallaName: record?.mahallaName ?? '',
+    telegramChatId: record?.telegramChatId ?? '',
+    telegramMessageId: record?.telegramMessageId ?? '',
   });
 
-  // Guard against malformed or missing payload
-  if (!record || !record.rawPayload || typeof record.rawPayload !== 'object') {
+  // Guard against malformed or missing record / payload
+  if (!record || typeof record !== 'object' || !record.rawPayload || typeof record.rawPayload !== 'object') {
     return baseExclusion('MALFORMED_METADATA');
   }
 
   const payload = record.rawPayload as Record<string, unknown>;
-  const rawMsg = (payload.message ?? payload) as TelegramMessage;
+  const rawMsg = (
+    payload.message ??
+    payload.channel_post ??
+    payload.edited_message ??
+    payload.edited_channel_post ??
+    payload.business_message ??
+    payload.edited_business_message ??
+    payload
+  ) as TelegramMessage;
 
   if (
     !rawMsg ||
     typeof rawMsg !== 'object' ||
     rawMsg.message_id === undefined ||
+    rawMsg.message_id === null ||
     !rawMsg.chat ||
     typeof rawMsg.chat !== 'object'
   ) {
@@ -406,17 +456,19 @@ export function qualifyTelegramContent(
     return baseExclusion('UNSUPPORTED_MEDIA_TYPE');
   }
 
-  const isoTimestamp =
-    record.originalTimestamp instanceof Date
-      ? record.originalTimestamp.toISOString()
-      : new Date(record.originalTimestamp).toISOString();
+  const isoTimestamp = toSafeIsoTimestamp(record.originalTimestamp);
+  if (!isoTimestamp) {
+    return baseExclusion('MALFORMED_METADATA');
+  }
 
   const telegramUserId =
-    record.telegramUserId || (rawMsg.from?.id ? String(rawMsg.from.id) : undefined);
+    record.telegramUserId != null && record.telegramUserId !== ''
+      ? record.telegramUserId
+      : (rawMsg.from?.id != null ? String(rawMsg.from.id) : undefined);
 
   // 6. Captionable media evaluation (AC 2 & AC 3)
   if (hasCaptionableMedia(rawMsg)) {
-    if (typeof rawMsg.caption === 'string' && rawMsg.caption.trim().length > 0) {
+    if (typeof rawMsg.caption === 'string' && hasMeaningfulText(rawMsg.caption)) {
       return {
         status: 'SUPPORTED',
         candidate: {
@@ -439,7 +491,7 @@ export function qualifyTelegramContent(
 
   // 7. Human text message evaluation (AC 1 & AC 3)
   if (typeof rawMsg.text === 'string') {
-    if (rawMsg.text.trim().length > 0) {
+    if (hasMeaningfulText(rawMsg.text)) {
       return {
         status: 'SUPPORTED',
         candidate: {

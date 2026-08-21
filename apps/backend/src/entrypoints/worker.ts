@@ -72,7 +72,9 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
                 telegramMessageId,
               }),
             );
-            continue;
+            throw new Error(
+              `Telegram intake record ${intakeId} not found in database (district: ${districtId}, chat: ${telegramChatId}, message: ${telegramMessageId})`,
+            );
           }
 
           // 2. Lifecycle Recheck: verify district is ACTIVE and accessEligible !== false (AC 7 & AD-9)

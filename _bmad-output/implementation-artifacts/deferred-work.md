@@ -9,3 +9,7 @@
 
 ## Deferred from: code review of 1-7-validate-and-activate-a-district.md (2026-08-20)
 - Incomplete audit logging for invalid status activation attempts (`apps/backend/src/modules/districts/districts-service.ts:283-304`) — audit events are logged for `DistrictNotReadyForActivationError`, but not when a user attempts to activate an already `ACTIVE` or `SUSPENDED` district. Pre-existing behavior per AC 6 spec ("existing district status and audit history remain unmodified").
+
+## Deferred from: code review of 2-2-admit-supported-telegram-content-and-discard-structural-exclusions.md (2026-08-21)
+- Hardcoded dev fallback DB connection string in boss-client.ts (`apps/backend/src/adapters/jobs/boss-client.ts:39`) — pre-existing pattern from Story 2.1 to be addressed during security hardening.
+- Worker module-level singleton state lifecycle management (`apps/backend/src/entrypoints/worker.ts:18-19`) — pre-existing standalone entrypoint pattern.

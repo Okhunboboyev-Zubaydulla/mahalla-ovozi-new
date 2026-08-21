@@ -470,4 +470,29 @@ describe('Story 2.2: Background Worker Content Qualification Integration Tests',
     expect(matchingJobs[0]?.data.districtId).toBe(activeDistrictId);
     expect(matchingJobs[0]?.data.telegramMessageId).toBe(messageId);
   }, 10000);
+
+  it('fails and triggers pg-boss retry when intake record is not found in database', async () => {
+    const nonExistentIntakeId = `intk_missing_${crypto.randomUUID()}`;
+    const messageId = String(Math.floor(Math.random() * 1000000));
+
+    await boss.send(TELEGRAM_CONTENT_QUALIFICATION_QUEUE, {
+      intakeId: nonExistentIntakeId,
+      districtId: activeDistrictId,
+      mahallaName: 'Guliston',
+      calendarDay: '2026-08-21',
+      telegramChatId: validChatId,
+      telegramMessageId: messageId,
+      originalTimestamp: '2026-08-21T12:30:00.000Z',
+    }, { retryLimit: 1, retryDelay: 1 });
+
+    // Wait for worker attempt
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    // Assert zero downstream jobs enqueued
+    const downstreamJobs = await boss.fetch<TelegramSemanticRelevanceJobData>(TELEGRAM_SEMANTIC_RELEVANCE_QUEUE, {
+      batchSize: 20,
+    });
+    const match = downstreamJobs ? downstreamJobs.find((j) => j.data.intakeId === nonExistentIntakeId) : undefined;
+    expect(match).toBeUndefined();
+  }, 10000);
 });
