@@ -10,14 +10,7 @@ import {
 import { generateTemporaryPassword } from '../../adapters/crypto/temporary-password.js';
 import { hashPassword } from '../../adapters/crypto/argon2.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
-
-export class DistrictNotFoundError extends Error {
-  statusCode = 404;
-  code = 'DISTRICT_NOT_FOUND';
-  constructor(districtId: string) {
-    super(`Туман топилмади (ID: ${districtId}).`);
-  }
-}
+import { DistrictNotFoundError } from '../districts/districts-service.js';
 
 export class DistrictHokimAlreadyExistsError extends Error {
   statusCode = 409;

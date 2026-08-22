@@ -49,3 +49,41 @@ export const mahallaTheme: ThemeConfig = {
     },
   },
 };
+
+/**
+ * Semantic color constants derived from mahallaTheme tokens.
+ * Import from here instead of hardcoding hex values in component styles.
+ * All values are in sync with the Ant Design theme configuration above.
+ */
+export const themeColors = {
+  // Brand / Primary
+  colorPrimary: '#0F5C5E',
+  colorPrimaryHover: '#0C4B4D',
+
+  // Text
+  colorText: '#172321',
+  colorTextSecondary: '#52615E',
+  colorTextMuted: '#64748b',       // Tailwind slate-500 — used for placeholder/inactive text
+
+  // Backgrounds
+  colorBgLayout: '#F5F7F6',
+  colorBgSubtle: '#f8fafc',        // Light card / section backgrounds
+  colorBgEmpty: '#f1f5f9',         // Empty state backgrounds
+
+  // Borders
+  colorBorder: '#C9D5D1',
+  colorBorderSecondary: '#E2EAE7',
+  colorBorderInput: '#cbd5e1',     // Input inner borders
+
+  // Semantic states
+  colorError: '#BA1A1A',
+  colorErrorBg: '#fef2f2',
+  colorWarning: '#6B4B00',
+
+  // Success (used for active/online status indicators)
+  colorSuccess: '#10b981',
+  colorSuccessBg: '#ecfdf5',
+
+  // Icon placeholder (inactive / hint icons inside inputs)
+  colorIconPlaceholder: '#bfbfbf',
+} as const;

@@ -3,8 +3,6 @@ import type pg from 'pg';
 import PgBoss from 'pg-boss';
 import * as schema from '../db/schema/index.js';
 
-import type { TelegramReplyMetadata } from '../../modules/telegram-intake/telegram-content-qualification.js';
-
 export const TELEGRAM_CONTENT_QUALIFICATION_QUEUE = 'telegram-content-qualification';
 export const TELEGRAM_SEMANTIC_RELEVANCE_QUEUE = 'telegram-semantic-relevance';
 
@@ -16,6 +14,14 @@ export interface TelegramContentQualificationJobData {
   telegramChatId: string;
   telegramMessageId: string;
   originalTimestamp: string;
+}
+
+/** Contextual data about the Telegram message this job was triggered by. */
+export interface TelegramReplyMetadata {
+  replyToMessageId: string;
+  replyToUserId?: string;
+  replyToIsForwarded: boolean;
+  replyToIsBot: boolean;
 }
 
 export interface TelegramSemanticRelevanceJobData {

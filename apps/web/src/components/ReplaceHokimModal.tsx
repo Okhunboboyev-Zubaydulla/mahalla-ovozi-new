@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, Form, Input, Button, Alert, Typography } from 'antd';
 import { SwapOutlined, WarningOutlined } from '@ant-design/icons';
+import { themeColors } from '../theme/antd-theme.js';
 
 const { Text } = Typography;
 
@@ -39,7 +40,7 @@ export const ReplaceHokimModal: React.FC<ReplaceHokimModalProps> = ({
       onCancel={handleCancel}
       title={
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <SwapOutlined style={{ color: '#1677ff' }} />
+          <SwapOutlined style={{ color: themeColors.colorPrimary }} />
           Ҳоким аккаунтини алмаштириш
         </span>
       }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, Button } from 'antd';
 import { useDistrict } from '../district/district-context.js';
+import { themeColors } from '../theme/antd-theme.js';
 
 export const UnsavedChangesModal: React.FC = () => {
   const { pendingTransition, confirmDiscard, cancelTransition } = useDistrict();
@@ -25,7 +26,7 @@ export const UnsavedChangesModal: React.FC = () => {
         </Button>,
       ]}
     >
-      <p style={{ margin: '16px 0 8px 0', fontSize: 14, color: '#172321' }}>
+      <p style={{ margin: '16px 0 8px 0', fontSize: 14, color: themeColors.colorText }}>
         Киритилган маълумотлар сақланмаган. Саҳифани тарк этсангиз, ўзгаришлар йўқолади.
       </p>
     </Modal>

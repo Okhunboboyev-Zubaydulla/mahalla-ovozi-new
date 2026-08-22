@@ -6,6 +6,7 @@ import { useDistrictActivation } from '../district/useDistrictActivation.js';
 import { useDistrict } from '../district/district-context.js';
 import { ApiError } from '../lib/api-client.js';
 import { PrerequisiteItem } from '@mahalla-ovozi/api-contracts';
+import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 
 const { Paragraph, Text } = Typography;
 
@@ -30,25 +31,7 @@ export const DistrictActivationModal: React.FC<DistrictActivationModalProps> = (
   const { clearDirty } = useDistrict();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [errorBlockers, setErrorBlockers] = useState<PrerequisiteItem[] | null>(null);
-  const [isOffline, setIsOffline] = useState(false);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-
-    if (typeof window !== 'undefined') {
-      setIsOffline(!window.navigator.onLine);
-      window.addEventListener('online', handleOnline);
-      window.addEventListener('offline', handleOffline);
-    }
-
-    return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-      }
-    };
-  }, []);
+  const isOffline = useOnlineStatus();
 
   useEffect(() => {
     if (open) {
@@ -68,13 +51,12 @@ export const DistrictActivationModal: React.FC<DistrictActivationModalProps> = (
   };
 
   const handleActivate = async () => {
-    if (isActivating || isOffline || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
-      if (isOffline || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
-        setErrorMessage('Сервер билан алоқа мавжуд эмас. Тармоқни текширинг.');
-        setErrorBlockers(null);
-      }
+    if (isOffline) {
+      setErrorMessage('Сервер билан алоқа мавжуд эмас. Тармоқни текширинг.');
+      setErrorBlockers(null);
       return;
     }
+    if (isActivating) return;
 
     setErrorMessage(null);
     setErrorBlockers(null);

@@ -58,15 +58,7 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
           // P3-G: Returns HTTP 201 Created on success
           return reply.status(201).send({ district });
         } catch (err: unknown) {
-          if (err instanceof DistrictNameExistsError) {
-            return reply.status(409).send({
-              error: {
-                code: err.code,
-                message: 'Бу номдаги туман аллақачон мавжуд.',
-              },
-            });
-          }
-          throw err;
+          return handleDistrictError(err, reply);
         }
       }
     );
@@ -78,10 +70,7 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
         const { districtId } = req.params;
         if (!districtId || typeof districtId !== 'string' || districtId.trim() === '') {
           return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: 'Туман идентификатори талаб қилинади.',
-            },
+            error: { code: 'VALIDATION_ERROR', message: 'Туман идентификатори талаб қилинади.' },
           });
         }
 
@@ -89,15 +78,7 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
           const district = await getDistrictById(db, districtId);
           return reply.status(200).send({ district });
         } catch (err: unknown) {
-          if (err instanceof DistrictNotFoundError) {
-            return reply.status(404).send({
-              error: {
-                code: err.code,
-                message: 'Туман топилмади.',
-              },
-            });
-          }
-          throw err;
+          return handleDistrictError(err, reply);
         }
       }
     );
@@ -109,10 +90,7 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
         const { districtId } = req.params;
         if (!districtId || typeof districtId !== 'string' || districtId.trim() === '') {
           return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: 'Туман идентификатори талаб қилинади.',
-            },
+            error: { code: 'VALIDATION_ERROR', message: 'Туман идентификатори талаб қилинади.' },
           });
         }
 
@@ -120,15 +98,7 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
           const readiness = await evaluateDistrictReadiness(db, districtId);
           return reply.status(200).send({ readiness });
         } catch (err: unknown) {
-          if (err instanceof DistrictNotFoundError) {
-            return reply.status(404).send({
-              error: {
-                code: err.code,
-                message: 'Туман топилмади.',
-              },
-            });
-          }
-          throw err;
+          return handleDistrictError(err, reply);
         }
       }
     );
@@ -140,19 +110,13 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
         const { districtId } = req.params;
         if (!districtId || typeof districtId !== 'string' || districtId.trim() === '') {
           return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: 'Туман идентификатори талаб қилинади.',
-            },
+            error: { code: 'VALIDATION_ERROR', message: 'Туман идентификатори талаб қилинади.' },
           });
         }
 
         if (!req.actor) {
           return reply.status(401).send({
-            error: {
-              code: 'UNAUTHENTICATED',
-              message: 'Авторизациядан ўтилмаган.',
-            },
+            error: { code: 'UNAUTHENTICATED', message: 'Авторизациядан ўтилмаган.' },
           });
         }
 
@@ -161,30 +125,11 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
             db,
             districtId,
             req.actor,
-            {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            }
+            { ipAddress: req.ip || null, userAgent: (req.headers['user-agent'] as string) || null }
           );
           return reply.status(200).send(result);
         } catch (err: unknown) {
-          if (err instanceof DistrictNotFoundError) {
-            return reply.status(404).send({
-              error: {
-                code: err.code,
-                message: 'Туман топилмади.',
-              },
-            });
-          }
-          if (err instanceof DistrictAlreadyActiveError) {
-            return reply.status(409).send({
-              error: {
-                code: err.code,
-                message: 'Туман аллақачон фаоллаштирилган.',
-              },
-            });
-          }
-          throw err;
+          return handleDistrictError(err, reply);
         }
       }
     );
@@ -196,19 +141,13 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
         const { districtId } = req.params;
         if (!districtId || typeof districtId !== 'string' || districtId.trim() === '') {
           return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: 'Туман идентификатори талаб қилинади.',
-            },
+            error: { code: 'VALIDATION_ERROR', message: 'Туман идентификатори талаб қилинади.' },
           });
         }
 
         if (!req.actor) {
           return reply.status(401).send({
-            error: {
-              code: 'UNAUTHENTICATED',
-              message: 'Авторизациядан ўтилмаган.',
-            },
+            error: { code: 'UNAUTHENTICATED', message: 'Авторизациядан ўтилмаган.' },
           });
         }
 
@@ -217,51 +156,46 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
             db,
             districtId,
             req.actor,
-            {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            }
+            { ipAddress: req.ip || null, userAgent: (req.headers['user-agent'] as string) || null }
           );
           return reply.status(200).send(result);
         } catch (err: unknown) {
-          if (err instanceof DistrictNotFoundError) {
-            return reply.status(404).send({
-              error: {
-                code: err.code,
-                message: 'Туман топилмади.',
-              },
-            });
-          }
-          if (err instanceof DistrictNotReadyForActivationError) {
-            return reply.status(409).send({
-              error: {
-                code: err.code,
-                message: err.message,
-                blockers: err.blockers,
-              },
-            });
-          }
-          if (err instanceof DistrictAlreadyActiveError) {
-            return reply.status(409).send({
-              error: {
-                code: err.code,
-                message: 'Туман аллақачон фаоллаштирилган.',
-              },
-            });
-          }
-          if (err instanceof DistrictInvalidStatusError) {
-            return reply.status(409).send({
-              error: {
-                code: err.code,
-                message: err.message,
-              },
-            });
-          }
-          throw err;
+          return handleDistrictError(err, reply);
         }
       }
     );
   });
+}
+
+function handleDistrictError(err: unknown, reply: FastifyReply) {
+  if (err instanceof DistrictNotFoundError) {
+    return reply.status(404).send({
+      error: { code: err.code, message: 'Туман топилмади.' },
+    });
+  }
+
+  if (err instanceof DistrictNameExistsError) {
+    return reply.status(409).send({
+      error: { code: err.code, message: 'Бу номдаги туман аллақачон мавжуд.' },
+    });
+  }
+
+  if (err instanceof DistrictNotReadyForActivationError) {
+    return reply.status(409).send({
+      error: { code: err.code, message: err.message, blockers: err.blockers },
+    });
+  }
+
+  if (
+    err instanceof DistrictAlreadyActiveError ||
+    err instanceof DistrictInvalidStatusError
+  ) {
+    return reply.status(err.statusCode).send({
+      error: { code: err.code, message: err.message },
+    });
+  }
+
+  throw err;
 }
 
 

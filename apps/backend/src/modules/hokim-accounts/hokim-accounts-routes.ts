@@ -12,12 +12,12 @@ import {
   resetDistrictHokimPassword,
   disableDistrictHokimAccount,
   replaceDistrictHokimAccount,
-  DistrictNotFoundError,
   DistrictHokimAlreadyExistsError,
   HokimAccountNotFoundError,
   UsernameAlreadyTakenError,
   HokimAccountDisabledError,
 } from './hokim-accounts-service.js';
+import { DistrictNotFoundError } from '../districts/districts-service.js';
 
 export function registerHokimAccountRoutes(fastify: FastifyInstance, db: DbClient): void {
   fastify.register(async (scope) => {
@@ -149,8 +149,16 @@ export function registerHokimAccountRoutes(fastify: FastifyInstance, db: DbClien
 }
 
 function handleHokimAccountError(err: unknown, reply: FastifyReply) {
+  if (err instanceof DistrictNotFoundError) {
+    return reply.status(404).send({
+      error: {
+        code: err.code,
+        message: err.message,
+      },
+    });
+  }
+
   if (
-    err instanceof DistrictNotFoundError ||
     err instanceof DistrictHokimAlreadyExistsError ||
     err instanceof HokimAccountNotFoundError ||
     err instanceof UsernameAlreadyTakenError ||

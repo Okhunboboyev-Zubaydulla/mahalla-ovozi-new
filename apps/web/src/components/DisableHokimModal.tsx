@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, Button, Alert, Typography } from 'antd';
 import { StopOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { themeColors } from '../theme/antd-theme.js';
 
 const { Text, Paragraph } = Typography;
 
@@ -27,7 +28,7 @@ export const DisableHokimModal: React.FC<DisableHokimModalProps> = ({
       onCancel={onClose}
       title={
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <StopOutlined style={{ color: '#ff4d4f' }} />
+          <StopOutlined style={{ color: themeColors.colorError }} />
           Ҳоким аккаунтини фаолсизлантириш
         </span>
       }

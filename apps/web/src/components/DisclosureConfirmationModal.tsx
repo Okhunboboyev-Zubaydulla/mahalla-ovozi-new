@@ -3,6 +3,7 @@ import { Modal, Button, Typography, Alert, Space } from 'antd';
 import { useDistrictReadiness } from '../district/useDistrictReadiness.js';
 import { useDistrict } from '../district/district-context.js';
 import { ApiError } from '../lib/api-client.js';
+import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 
 const { Paragraph, Text } = Typography;
 
@@ -24,18 +25,7 @@ export const DisclosureConfirmationModal: React.FC<DisclosureConfirmationModalPr
   const { confirmDisclosure, isConfirming } = useDistrictReadiness(districtId);
   const { clearDirty } = useDistrict();
   const [serverError, setServerError] = useState<string | null>(null);
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  const isOffline = useOnlineStatus();
 
   useEffect(() => {
     if (open) {
@@ -50,7 +40,7 @@ export const DisclosureConfirmationModal: React.FC<DisclosureConfirmationModalPr
   };
 
   const handleConfirm = async () => {
-    if (!navigator.onLine || isOffline) {
+    if (isOffline) {
       setServerError('Сервер билан алоқа мавжуд эмас. Тармоқни текширинг.');
       return;
     }

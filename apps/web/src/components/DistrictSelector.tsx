@@ -4,6 +4,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { districtClient } from '../district/district-client.js';
 import { useDistrict } from '../district/district-context.js';
+import { themeColors } from '../theme/antd-theme.js';
 
 interface DistrictSelectorProps {
   onOpenCreateDrawer?: () => void;
@@ -45,7 +46,7 @@ export const DistrictSelector: React.FC<DistrictSelectorProps> = ({ onOpenCreate
               icon={<PlusOutlined />}
               block
               onClick={onOpenCreateDrawer}
-              style={{ textAlign: 'left', fontWeight: 500, color: '#0F5C5E' }}
+              style={{ textAlign: 'left', fontWeight: 500, color: themeColors.colorPrimary }}
             >
               Туман қўшиш
             </Button>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, Form, Input, Button, Alert } from 'antd';
 import { UserAddOutlined } from '@ant-design/icons';
+import { themeColors } from '../theme/antd-theme.js';
 
 export interface CreateHokimModalProps {
   isOpen: boolean;
@@ -35,7 +36,7 @@ export const CreateHokimModal: React.FC<CreateHokimModalProps> = ({
       onCancel={handleCancel}
       title={
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <UserAddOutlined style={{ color: '#1677ff' }} />
+          <UserAddOutlined style={{ color: themeColors.colorPrimary }} />
           Ҳоким аккаунтини яратиш
         </span>
       }

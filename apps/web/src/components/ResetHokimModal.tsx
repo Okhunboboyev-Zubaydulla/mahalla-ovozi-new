@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, Button, Alert, Typography } from 'antd';
 import { KeyOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { themeColors } from '../theme/antd-theme.js';
 
 const { Text, Paragraph } = Typography;
 
@@ -27,7 +28,7 @@ export const ResetHokimModal: React.FC<ResetHokimModalProps> = ({
       onCancel={onClose}
       title={
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <KeyOutlined style={{ color: '#fa8c16' }} />
+          <KeyOutlined style={{ color: themeColors.colorWarning }} />
           Ҳоким аккаунти паролини янгилаш
         </span>
       }

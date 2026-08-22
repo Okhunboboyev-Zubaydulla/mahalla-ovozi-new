@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import {
   Layout,
   Menu,
@@ -36,20 +37,7 @@ export const ConsoleLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  const isOffline = useOnlineStatus();
 
   const menuItems = [
     {

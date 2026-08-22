@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, Typography, Alert, Button, Space } from 'antd';
 import { KeyOutlined, CheckOutlined, CopyOutlined, WarningOutlined } from '@ant-design/icons';
+import { themeColors } from '../theme/antd-theme.js';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -33,7 +34,7 @@ export const OneTimeCredentialModal: React.FC<OneTimeCredentialModalProps> = ({
       centered
       title={
         <Space align="center">
-          <KeyOutlined style={{ color: '#1677ff', fontSize: 20 }} />
+          <KeyOutlined style={{ color: themeColors.colorPrimary, fontSize: 20 }} />
           <Title level={4} style={{ margin: 0 }}>
             {title}
           </Title>
@@ -62,8 +63,8 @@ export const OneTimeCredentialModal: React.FC<OneTimeCredentialModalProps> = ({
 
         <div
           style={{
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
+            background: themeColors.colorBgSubtle,
+            border: `1px solid ${themeColors.colorBorderSecondary}`,
             borderRadius: 8,
             padding: 16,
             marginBottom: 16,
@@ -88,7 +89,7 @@ export const OneTimeCredentialModal: React.FC<OneTimeCredentialModalProps> = ({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 background: '#ffffff',
-                border: '1px solid #cbd5e1',
+                border: `1px solid ${themeColors.colorBorderInput}`,
                 borderRadius: 6,
                 padding: '8px 12px',
               }}
@@ -101,7 +102,7 @@ export const OneTimeCredentialModal: React.FC<OneTimeCredentialModalProps> = ({
                   fontSize: 16,
                   letterSpacing: 1,
                   fontWeight: 600,
-                  color: '#0f172a',
+                  color: themeColors.colorText,
                   userSelect: 'all',
                 }}
               >
@@ -114,11 +115,11 @@ export const OneTimeCredentialModal: React.FC<OneTimeCredentialModalProps> = ({
                   icon: [
                     <CopyOutlined
                       key="copy"
-                      style={{ fontSize: 18, color: '#1677ff', marginLeft: 8, cursor: 'pointer' }}
+                      style={{ fontSize: 18, color: themeColors.colorPrimary, marginLeft: 8, cursor: 'pointer' }}
                     />,
                     <CheckOutlined
                       key="copied"
-                      style={{ fontSize: 18, color: '#10b981', marginLeft: 8 }}
+                      style={{ fontSize: 18, color: themeColors.colorSuccess, marginLeft: 8 }}
                     />,
                   ],
                 }}

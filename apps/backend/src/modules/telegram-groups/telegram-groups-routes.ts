@@ -13,16 +13,18 @@ import {
   createDistrictTelegramGroup,
   updateDistrictTelegramGroup,
   deleteDistrictTelegramGroup,
-  startGroupTestSession,
-  getGroupTestStatus,
-  simulateGroupTestMessage,
-  handleIncomingWebhookMessage,
   TelegramGroupNotFoundError,
   MahallaNameAlreadyExistsError,
   GroupAlreadyMappedError,
   GroupAlreadyAssignedError,
   BotNotConnectedError,
 } from './telegram-groups-service.js';
+import {
+  startGroupTestSession,
+  getGroupTestStatus,
+  simulateGroupTestMessage,
+  handleIncomingWebhookMessage,
+} from './telegram-groups-testing.js';
 import { DistrictNotFoundError } from '../districts/districts-service.js';
 import {
   TelegramIntegrationError,
@@ -30,10 +32,6 @@ import {
   TelegramBotNotMemberError,
   TelegramBotIsAdminError,
   TelegramPrivacyModeEnabledError,
-  TelegramInvalidTokenError,
-  TelegramNetworkTimeoutError,
-  TelegramRateLimitError,
-  TelegramApiError,
 } from '../../adapters/telegram/telegram-client.js';
 
 export function registerTelegramGroupRoutes(fastify: FastifyInstance, db: DbClient): void {
@@ -336,30 +334,9 @@ function handleGroupRouteError(err: unknown, reply: FastifyReply) {
     });
   }
 
-  if (err instanceof TelegramInvalidTokenError) {
-    return reply.status(400).send({
-      error: { code: 'TELEGRAM_INVALID_TOKEN', message: err.message },
-    });
-  }
-
-  if (err instanceof TelegramNetworkTimeoutError) {
-    return reply.status(504).send({
-      error: { code: 'TELEGRAM_TIMEOUT', message: err.message },
-    });
-  }
-
-  if (err instanceof TelegramRateLimitError) {
-    return reply.status(429).send({
-      error: { code: 'TELEGRAM_RATE_LIMITED', message: err.message },
-    });
-  }
-
-  if (err instanceof TelegramApiError) {
-    return reply.status(502).send({
-      error: { code: 'TELEGRAM_API_ERROR', message: err.message },
-    });
-  }
-
+  // All TelegramIntegrationError subclasses (TelegramInvalidTokenError,
+  // TelegramNetworkTimeoutError, TelegramRateLimitError, TelegramApiError, etc.)
+  // carry httpStatus and code on the base class — no need to list each subclass.
   if (err instanceof TelegramIntegrationError) {
     return reply.status(err.httpStatus).send({
       error: { code: err.code, message: err.message },

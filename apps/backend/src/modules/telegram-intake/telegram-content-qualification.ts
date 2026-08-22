@@ -7,6 +7,9 @@
  * Preserves verbatim text/captions without mutation and discards structural exclusions.
  */
 
+import type { TelegramReplyMetadata } from '../../adapters/jobs/boss-client.js';
+export type { TelegramReplyMetadata };
+
 export interface TelegramUser {
   id: number | string;
   is_bot: boolean;
@@ -37,13 +40,6 @@ export interface TelegramMessageEntity {
   user?: TelegramUser;
   language?: string;
   custom_emoji_id?: string;
-}
-
-export interface TelegramReplyMetadata {
-  replyToMessageId: string;
-  replyToUserId?: string;
-  replyToIsForwarded: boolean;
-  replyToIsBot: boolean;
 }
 
 export interface TelegramMessage {

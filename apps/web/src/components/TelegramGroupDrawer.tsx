@@ -24,6 +24,7 @@ import {
 } from '@ant-design/icons';
 import { TelegramGroupMapping } from '@mahalla-ovozi/api-contracts';
 import { telegramGroupClient } from '../district/telegram-group-client.js';
+import { themeColors } from '../theme/antd-theme.js';
 
 const { Text, Paragraph } = Typography;
 const { Countdown } = Statistic;
@@ -61,6 +62,58 @@ export function TelegramGroupDrawer({
 
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  }, []);
+
+  const startLiveTest = useCallback(
+    async (group: TelegramGroupMapping) => {
+      stopPolling();
+      setTestStatus('PENDING');
+      setTestError(null);
+      setCountdownDeadline(Date.now() + 60 * 1000);
+
+      try {
+        await telegramGroupClient.startTest(districtId, group.id);
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : 'СинОВ сессиясини очиб бўлмади.';
+        setTestError(errorMsg);
+      }
+
+      // Poll every 2 seconds for test result
+      pollIntervalRef.current = setInterval(async () => {
+        try {
+          const res = await telegramGroupClient.getTestStatus(districtId, group.id);
+          if (res.status === 'SUCCESS') {
+            setTestStatus('SUCCESS');
+            stopPolling();
+            onGroupSaved?.();
+          } else if (res.status === 'TIMEOUT') {
+            setTestStatus('TIMEOUT');
+            setTestError(res.lastError || 'СинОВ вақти тугади. Ҳақиқий одам томонидан хабар юборилмади.');
+            stopPolling();
+            onGroupSaved?.();
+          } else if (res.status === 'FAILED') {
+            setTestStatus('FAILED');
+            setTestError(res.lastError || 'СинОВ хатолик билан якунланди.');
+            stopPolling();
+            onGroupSaved?.();
+          }
+          // PENDING: keep polling
+        } catch (err: unknown) {
+          // Transient network error — keep polling. Unrecoverable errors
+          // (e.g. session expired) will surface when the session check fails
+          // elsewhere; suppressing here avoids a single blip killing the test.
+          console.warn('[TelegramGroupDrawer] poll error (keeping alive):', err);
+        }
+      }, 2000);
+    },
+    [districtId, onGroupSaved, stopPolling],
+  );
+
   // Initialize or reset drawer state when opened/closed
   useEffect(() => {
     if (open) {
@@ -90,55 +143,7 @@ export function TelegramGroupDrawer({
       stopPolling();
     }
     return () => stopPolling();
-  }, [open, initialGroup]);
-
-  const stopPolling = () => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
-  };
-
-  const startLiveTest = useCallback(
-    async (group: TelegramGroupMapping) => {
-      stopPolling();
-      setTestStatus('PENDING');
-      setTestError(null);
-      setCountdownDeadline(Date.now() + 60 * 1000);
-
-      try {
-        await telegramGroupClient.startTest(districtId, group.id);
-      } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : 'СинОВ сессиясини очиб бўлмади.';
-        setTestError(errorMsg);
-      }
-
-      // Poll every 2 seconds
-      pollIntervalRef.current = setInterval(async () => {
-        try {
-          const res = await telegramGroupClient.getTestStatus(districtId, group.id);
-          if (res.status === 'SUCCESS') {
-            setTestStatus('SUCCESS');
-            stopPolling();
-            onGroupSaved?.();
-          } else if (res.status === 'TIMEOUT') {
-            setTestStatus('TIMEOUT');
-            setTestError(res.lastError || 'СинОВ вақти тугади. Ҳақиқий одам томонидан хабар юборилмади.');
-            stopPolling();
-            onGroupSaved?.();
-          } else if (res.status === 'FAILED') {
-            setTestStatus('FAILED');
-            setTestError(res.lastError || 'СинОВ хатолик билан якунланди.');
-            stopPolling();
-            onGroupSaved?.();
-          }
-        } catch {
-          // Keep polling on network blip
-        }
-      }, 2000);
-    },
-    [districtId, onGroupSaved],
-  );
+  }, [open, initialGroup, initialStep, startLiveTest, stopPolling]);
 
   const handleFormSubmit = async (values: { mahallaName: string; telegramChatId: string }) => {
     setIsSubmitting(true);
@@ -181,8 +186,10 @@ export function TelegramGroupDrawer({
         try {
           const res = await telegramGroupClient.getTestStatus(districtId, activeGroup.id);
           if (res.lastError) setTestError(res.lastError);
-        } catch {
-          // Keep local state on network error
+        } catch (err: unknown) {
+          // Best-effort: enrich the local timeout message with server detail.
+          // If this fetch also fails, the already-set local error message stands.
+          console.warn('[TelegramGroupDrawer] failed to fetch final test status on timeout:', err);
         }
         onGroupSaved?.();
       }
@@ -221,7 +228,7 @@ export function TelegramGroupDrawer({
     <Drawer
       title={
         <Space>
-          <PlusOutlined style={{ color: '#1677ff' }} />
+          <PlusOutlined style={{ color: themeColors.colorPrimary }} />
           <span>Маҳалла Telegram гуруҳини бириктириш</span>
         </Space>
       }
@@ -333,7 +340,7 @@ export function TelegramGroupDrawer({
                 style={{
                   textAlign: 'center',
                   padding: '24px',
-                  background: '#f5f5f5',
+                  background: themeColors.colorBgSubtle,
                   borderRadius: '8px',
                 }}
               >
@@ -344,7 +351,7 @@ export function TelegramGroupDrawer({
                   suffix="сония"
                   prefix={<ClockCircleOutlined />}
                   onFinish={handleTimeout}
-                  valueStyle={{ color: '#1677ff', fontSize: '28px', fontWeight: 600 }}
+                  valueStyle={{ color: themeColors.colorPrimary, fontSize: '28px', fontWeight: 600 }}
                 />
                 <Progress percent={70} status="active" showInfo={false} style={{ marginTop: '16px' }} />
                 <Paragraph type="secondary" style={{ marginTop: '8px' }}>

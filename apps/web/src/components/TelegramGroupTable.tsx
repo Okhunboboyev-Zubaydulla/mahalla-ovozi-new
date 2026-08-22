@@ -28,6 +28,7 @@ import {
 import { TelegramGroupMapping } from '@mahalla-ovozi/api-contracts';
 import { TelegramGroupDrawer } from './TelegramGroupDrawer.js';
 import { useTelegramGroups } from '../district/useTelegramGroups.js';
+import { themeColors } from '../theme/antd-theme.js';
 
 const { Text, Paragraph } = Typography;
 const { useBreakpoint } = Grid;
@@ -206,7 +207,7 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
     <Card
       title={
         <Space>
-          <TeamOutlined style={{ fontSize: '20px', color: '#1677ff' }} />
+          <TeamOutlined style={{ fontSize: '20px', color: themeColors.colorPrimary }} />
           <span>Маҳаллалар ва Telegram гуруҳлари харитаси</span>
         </Space>
       }
@@ -227,7 +228,7 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
         {/* Search filter input */}
         <Input
           placeholder="Маҳалла номи ёки Chat ID бўйича қидириш..."
-          prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+          prefix={<SearchOutlined style={{ color: themeColors.colorIconPlaceholder }} />}
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
           allowClear
@@ -237,7 +238,7 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
 
         {isLoading ? (
           <div style={{ textAlign: 'center', padding: '32px 0' }}>
-            <SyncOutlined spin style={{ fontSize: '24px', color: '#1677ff' }} />
+            <SyncOutlined spin style={{ fontSize: '24px', color: themeColors.colorPrimary }} />
             <Paragraph style={{ marginTop: '8px' }}>Гуруҳлар рўйхати юкланмоқда...</Paragraph>
           </div>
         ) : error ? (
