@@ -4,7 +4,7 @@ baseline_commit: ac9f554a12cef10eaf3c4d66f2711d2efc9684c8
 
 # Story 2.5: Recalculate the Canonical Multi-Lane Topic Projection
 
-Status: review
+Status: done
 
 <!-- Note: Validation is complete. Story specification has passed adversarial, edge-case, and compliance pre-dev review. -->
 
@@ -195,6 +195,16 @@ So that I can later see a consistent summary of the situation without duplicate 
   - [x] 4.2 Unit tests for `TopicProjectionEvaluator` covering prompt assembly, multi-lane derivation, anchor validation, and semantic error cases in `tests/topic-projection-evaluator.test.ts`.
   - [x] 4.3 Integration tests for `TELEGRAM_TOPIC_PROJECTION_QUEUE` worker consumer in `tests/worker-topic-projection.test.ts` covering all 28 scenarios in the Verification Matrix (28 tests passed).
   - [x] 4.4 Run full typecheck and test verification (`pnpm typecheck`, `pnpm --filter backend test`, `pnpm build`) verifying 100% pass rate (393/393 tests passing).
+
+### Review Findings
+
+- [x] [Review][Patch] Remove .onConflictDoNothing() on ai_operations insert to prevent phantom ID foreign key violation [apps/backend/src/entrypoints/worker.ts:1284]
+- [x] [Review][Patch] Sanitize INVALID_OUTPUT_SEMANTICS error message to omit raw unredacted citizen text [apps/backend/src/modules/topics/topic-projection-evaluator.ts:194]
+- [x] [Review][Patch] Add defensive isNaN check on LLM-provided timestamp before calling toISOString [apps/backend/src/modules/topics/topic-projection-evaluator.ts:171]
+- [x] [Review][Patch] Tighten isUzbekCyrillic to verify Cyrillic character ratio >= 70% of alphabetic letters [apps/backend/src/modules/ai/topic-projection-contracts.ts:15]
+- [x] [Review][Patch] Group context items lacking topicId with unique keys in buildUserPrompt [apps/backend/src/modules/topics/topic-projection-evaluator.ts:77]
+- [x] [Review][Patch] Deduplicate lane entries in TopicProjectionResultSchema [apps/backend/src/modules/ai/topic-projection-contracts.ts:28]
+- [x] [Review][Patch] Programmatically reject phone numbers in summary, anchor quote, and attribution [apps/backend/src/modules/topics/topic-projection-evaluator.ts:180]
 
 ---
 

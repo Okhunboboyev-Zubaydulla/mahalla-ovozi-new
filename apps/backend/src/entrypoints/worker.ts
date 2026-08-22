@@ -1261,27 +1261,24 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
               }
 
               // 7a. Record ai_operations with targetId = `${topicId}:${generation}` (AC 10)
-              await tx
-                .insert(aiOperations)
-                .values({
-                  id: projectionOpId,
-                  districtId,
-                  mahallaName,
-                  calendarDay,
-                  operationType: 'TOPIC_DERIVED_PROJECTION',
-                  targetId: opTargetId,
-                  pinnedProfileId: evaluation.aiResult.profileId,
-                  contextRevision: snapshot.contextRevision,
-                  snapshotFingerprint: snapshot.snapshotFingerprint,
-                  finalStatus: 'COMPLETED',
-                  resultPayload: {
-                    summary: evaluation.summary,
-                    lanes: evaluation.lanes,
-                    anchorEvidenceId: evaluation.anchorEvidenceId,
-                    isHokimRelated: evaluation.isHokimRelated,
-                  },
-                })
-                .onConflictDoNothing();
+              await tx.insert(aiOperations).values({
+                id: projectionOpId,
+                districtId,
+                mahallaName,
+                calendarDay,
+                operationType: 'TOPIC_DERIVED_PROJECTION',
+                targetId: opTargetId,
+                pinnedProfileId: evaluation.aiResult.profileId,
+                contextRevision: snapshot.contextRevision,
+                snapshotFingerprint: snapshot.snapshotFingerprint,
+                finalStatus: 'COMPLETED',
+                resultPayload: {
+                  summary: evaluation.summary,
+                  lanes: evaluation.lanes,
+                  anchorEvidenceId: evaluation.anchorEvidenceId,
+                  isHokimRelated: evaluation.isHokimRelated,
+                },
+              });
 
               // 7b. Record ai_provider_attempts
               const attemptsToInsert =

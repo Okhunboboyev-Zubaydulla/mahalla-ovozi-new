@@ -11,10 +11,16 @@ export { QualifyingLaneEnum, type QualifyingLane };
 /**
  * Validates if the given text contains authentic Uzbek Cyrillic characters.
  * Matches standard Cyrillic characters plus Uzbek specific Cyrillic letters: қ, ғ, ҳ, ў.
+ * Requires Cyrillic characters to constitute at least 70% of all alphabetic characters.
  */
 export function isUzbekCyrillic(text: string): boolean {
   if (!text || typeof text !== 'string') return false;
-  return /[а-яёқғҳў]/i.test(text);
+  const cyrillicMatches = text.match(/[а-яёқғҳў]/gi) || [];
+  const alphabeticMatches = text.match(/[a-zа-яёқғҳў]/gi) || [];
+  if (alphabeticMatches.length === 0) {
+    return cyrillicMatches.length > 0;
+  }
+  return cyrillicMatches.length / alphabeticMatches.length >= 0.7;
 }
 
 export const TopicProjectionResultSchema = z
@@ -28,6 +34,7 @@ export const TopicProjectionResultSchema = z
     lanes: z
       .array(QualifyingLaneEnum)
       .min(1)
+      .transform((l) => Array.from(new Set(l)))
       .describe(
         'Non-empty array of applicable municipal/governance lanes. Must include the immutable primaryLane of the target Topic.',
       ),

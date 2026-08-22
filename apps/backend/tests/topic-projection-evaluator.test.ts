@@ -26,6 +26,11 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
       expect(isUzbekCyrillic('')).toBe(false);
       expect(isUzbekCyrillic('1234567890 !@#$%^&*()')).toBe(false);
     });
+
+    it('returns false for predominantly Latin text with isolated rogue Cyrillic character', () => {
+      expect(isUzbekCyrillic('Water outage in district 4 (А)')).toBe(false);
+      expect(isUzbekCyrillic('Power failure occurred in mahalla а')).toBe(false);
+    });
   });
 
   describe('TopicProjectionResultSchema Validation', () => {
@@ -42,6 +47,14 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
     it('validates a correct single-lane projection result', () => {
       const parsed = TopicProjectionResultSchema.parse(validBase);
       expect(parsed.is_hokim_related).toBe(false);
+      expect(parsed.lanes).toEqual(['ELECTRICITY']);
+    });
+
+    it('deduplicates duplicate lanes array items', () => {
+      const parsed = TopicProjectionResultSchema.parse({
+        ...validBase,
+        lanes: ['ELECTRICITY', 'ELECTRICITY'],
+      });
       expect(parsed.lanes).toEqual(['ELECTRICITY']);
     });
 
@@ -315,6 +328,54 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
           snapshot: sampleSnapshot,
         }),
       ).rejects.toThrow('Cannot calculate topic projection: target topic top_non_existent has no accepted evidence in snapshot');
+    });
+
+    it('rejects when output contains forbidden phone number patterns', async () => {
+      const phoneSummaryResult: TopicProjectionResult = {
+        summary: 'Маҳаллада свет ўчди, мурожаат учун +998901234567 га қўнғироқ қилинг.',
+        lanes: ['ELECTRICITY'],
+        anchor_evidence_id: 'evi_target_1',
+        anchor_quote: 'Свет ўчди',
+        latest_meaningful_activity_timestamp: '2026-08-22T08:00:00.000Z',
+        attribution: 'Маҳалла аҳолиси',
+        is_hokim_related: false,
+      };
+
+      const evaluator = new TopicProjectionEvaluator(
+        createMockAiGateway(phoneSummaryResult),
+      );
+      await expect(
+        evaluator.evaluateTopicProjection({
+          topicId: 'top_elec_1',
+          primaryLane: 'ELECTRICITY',
+          generation: 1,
+          snapshot: sampleSnapshot,
+        }),
+      ).rejects.toThrow('Output contains forbidden phone number pattern violating privacy invariants');
+    });
+
+    it('rejects when timestamp string is invalid and cannot be parsed', async () => {
+      const invalidTimestampResult: TopicProjectionResult = {
+        summary: 'Маҳаллада свет ўчди.',
+        lanes: ['ELECTRICITY'],
+        anchor_evidence_id: 'evi_target_1',
+        anchor_quote: 'Свет ўчди',
+        latest_meaningful_activity_timestamp: 'invalid-date-string',
+        attribution: 'Маҳалла аҳолиси',
+        is_hokim_related: false,
+      };
+
+      const evaluator = new TopicProjectionEvaluator(
+        createMockAiGateway(invalidTimestampResult),
+      );
+      await expect(
+        evaluator.evaluateTopicProjection({
+          topicId: 'top_elec_1',
+          primaryLane: 'ELECTRICITY',
+          generation: 1,
+          snapshot: sampleSnapshot,
+        }),
+      ).rejects.toThrow('is not a valid ISO-8601 date string');
     });
   });
 });

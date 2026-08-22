@@ -70,7 +70,7 @@ export class TopicProjectionEvaluator {
       if (item.topicId === input.topicId) {
         targetEvidence.push(item);
       } else {
-        const otherId = item.topicId || 'OTHER_TOPIC';
+        const otherId = item.topicId || `OTHER_${item.id}`;
         const existing = otherTopicsMap.get(otherId);
         if (existing) {
           existing.items.push(item);
@@ -153,7 +153,7 @@ ${otherSections.join('\n\n')}`);
 
     const data = aiResult.data;
 
-    // Post-generation semantic guardrails (AC 6, 7, 8, 11)
+    // Post-generation semantic guardrails (AC 6, 7, 8, 9, 11)
 
     // Guardrail 1: anchor_evidence_id must belong strictly to target Topic evidence
     const validEvidenceIds = new Set(targetEvidence.map((e) => e.id));
@@ -166,11 +166,19 @@ ${otherSections.join('\n\n')}`);
 
     // Guardrail 2: latest_meaningful_activity_timestamp must match originalTimestamp of an evidence item in target Topic
     const validTimestamps = new Set(
-      targetEvidence.map((e) => new Date(e.originalTimestamp).toISOString()),
+      targetEvidence.map((e) => {
+        const d = new Date(e.originalTimestamp);
+        return isNaN(d.getTime()) ? '' : d.toISOString();
+      }),
     );
-    const resultTimestampIso = new Date(
-      data.latest_meaningful_activity_timestamp,
-    ).toISOString();
+    const parsedDate = new Date(data.latest_meaningful_activity_timestamp);
+    if (isNaN(parsedDate.getTime())) {
+      throw new AiGatewayError(
+        'INVALID_OUTPUT_SEMANTICS',
+        `latest_meaningful_activity_timestamp "${data.latest_meaningful_activity_timestamp}" is not a valid ISO-8601 date string`,
+      );
+    }
+    const resultTimestampIso = parsedDate.toISOString();
 
     if (!validTimestamps.has(resultTimestampIso)) {
       throw new AiGatewayError(
@@ -191,7 +199,20 @@ ${otherSections.join('\n\n')}`);
     if (!isUzbekCyrillic(data.summary)) {
       throw new AiGatewayError(
         'INVALID_OUTPUT_SEMANTICS',
-        `Summary must contain authentic Uzbek Cyrillic characters: "${data.summary}"`,
+        `Summary must contain authentic Uzbek Cyrillic characters (length: ${data.summary.length})`,
+      );
+    }
+
+    // Guardrail 5: programmatic phone number check (AD-11, AC 9)
+    const phoneRegex = /(?:\+?998|\b)[0-9]{9,}\b/;
+    if (
+      phoneRegex.test(data.summary) ||
+      phoneRegex.test(data.anchor_quote) ||
+      (data.attribution && phoneRegex.test(data.attribution))
+    ) {
+      throw new AiGatewayError(
+        'INVALID_OUTPUT_SEMANTICS',
+        'Output contains forbidden phone number pattern violating privacy invariants',
       );
     }
 
