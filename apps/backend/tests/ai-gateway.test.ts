@@ -56,16 +56,39 @@ describe('AI Gateway & Portable Schema Compiler Unit Tests', () => {
       expect(compiled.properties?.notes.nullable).toBe(true);
     });
 
-    it('compiles for OpenAI and Groq with strict json_schema wrapper', () => {
+    it('compiles for OpenAI and Groq with strict json_schema wrapper and anyOf nullables', () => {
       const openAiFormat: any = compileProviderSchema('OPENAI', TestSchema, 'test_payload');
       expect(openAiFormat.type).toBe('json_schema');
       expect(openAiFormat.json_schema.name).toBe('test_payload');
       expect(openAiFormat.json_schema.strict).toBe(true);
       expect(openAiFormat.json_schema.schema.additionalProperties).toBe(false);
+      // OpenAI strict mode uses anyOf for nullables without nullable: true
+      expect(openAiFormat.json_schema.schema.properties.notes.anyOf).toEqual([
+        { type: 'string', description: 'Optional notes' },
+        { type: 'null' },
+      ]);
+      expect(openAiFormat.json_schema.schema.properties.notes.nullable).toBeUndefined();
 
       const groqFormat: any = compileProviderSchema('GROQ', TestSchema, 'test_payload');
       expect(groqFormat.type).toBe('json_schema');
       expect(groqFormat.json_schema.name).toBe('test_payload');
+    });
+
+    it('compiles z.literal and z.nativeEnum correctly', () => {
+      enum StatusEnum {
+        ACTIVE = 'active',
+        INACTIVE = 'inactive',
+      }
+      const EnumSchema = z.object({
+        mode: z.literal('DIRECT'),
+        status: z.nativeEnum(StatusEnum),
+      });
+
+      const compiled = compilePortableJsonSchema(EnumSchema);
+      expect(compiled.properties?.mode.type).toBe('string');
+      expect(compiled.properties?.mode.enum).toEqual(['DIRECT']);
+      expect(compiled.properties?.status.type).toBe('string');
+      expect(compiled.properties?.status.enum).toEqual(['active', 'inactive']);
     });
 
     it('compiles for Gemini REST with responseSchema and uppercase types', () => {
@@ -109,7 +132,7 @@ describe('AI Gateway & Portable Schema Compiler Unit Tests', () => {
       gateway = new AiGateway({ customAdapters, defaultProfiles });
     });
 
-    it('executes successfully and returns structured validated result with metrics', async () => {
+    it('executes successfully and returns structured validated result with metrics and attempt tracking', async () => {
       const result = await gateway.generateStructured({
         operationType: 'SEMANTIC_RELEVANCE',
         profileId: 'prof_test_v1',
@@ -126,6 +149,23 @@ describe('AI Gateway & Portable Schema Compiler Unit Tests', () => {
       expect(result.tokens.inputTokens).toBeGreaterThan(0);
       expect(result.durationMs).toBeGreaterThanOrEqual(0);
       expect(result.estimatedCostUsd).toBeGreaterThanOrEqual(0);
+      expect(result.attempts).toHaveLength(1);
+      expect(result.attempts[0]?.status).toBe('SUCCESS');
+    });
+
+    it('strips markdown code block fences returned by models', async () => {
+      mockAdapter.setNextResponse('```json\n{\n  "title": "Water Leak",\n  "count": 1,\n  "is_urgent": false,\n  "category": "WATER",\n  "notes": null\n}\n```');
+
+      const result = await gateway.generateStructured({
+        operationType: 'SEMANTIC_RELEVANCE',
+        profileId: 'prof_test_v1',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: TestSchema,
+        schemaName: 'test_schema',
+      });
+
+      expect(result.data.title).toBe('Water Leak');
     });
 
     it('throws PROFILE_NOT_FOUND when requested profile does not exist', async () => {
@@ -143,7 +183,7 @@ describe('AI Gateway & Portable Schema Compiler Unit Tests', () => {
       });
     });
 
-    it('retries on transient rate limit (429) and succeeds on subsequent attempt', async () => {
+    it('retries on transient rate limit (429) and captures attempt history in attempts array', async () => {
       // 1st attempt fails with rate limit, 2nd attempt succeeds
       mockAdapter.enqueueBehavior({
         error: new AiGatewayError('RATE_LIMIT_EXCEEDED', 'Rate limited', {
@@ -163,6 +203,10 @@ describe('AI Gateway & Portable Schema Compiler Unit Tests', () => {
 
       expect(result.data.title).toBe('Water Pipe Burst');
       expect(mockAdapter.getCalls()).toHaveLength(2);
+      expect(result.attempts).toHaveLength(2);
+      expect(result.attempts[0]?.status).toBe('ERROR');
+      expect(result.attempts[0]?.errorCode).toBe('RATE_LIMIT_EXCEEDED');
+      expect(result.attempts[1]?.status).toBe('SUCCESS');
     });
 
     it('retries on syntax error (invalid JSON string) and succeeds on subsequent attempt', async () => {

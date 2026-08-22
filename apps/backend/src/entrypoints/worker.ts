@@ -414,21 +414,43 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
               resultPayload: aiResult.data,
             });
 
-            // 2. Insert ai_provider_attempts record
-            await tx.insert(aiProviderAttempts).values({
-              id: `att_${crypto.randomUUID()}`,
-              operationId: aiOperationId,
-              attemptNumber: 1,
-              provider: aiResult.provider,
-              modelId: aiResult.modelId,
-              providerRequestId: aiResult.providerRequestId,
-              durationMs: aiResult.durationMs,
-              inputTokens: aiResult.tokens.inputTokens,
-              outputTokens: aiResult.tokens.outputTokens,
-              cachedTokens: aiResult.tokens.cachedTokens,
-              estimatedCostUsd: aiResult.estimatedCostUsd.toString(),
-              status: 'SUCCESS',
-            });
+            // 2. Insert ai_provider_attempts records (persisting all attempts & retry lineage)
+            const attemptsToInsert =
+              aiResult.attempts && aiResult.attempts.length > 0
+                ? aiResult.attempts
+                : [
+                    {
+                      attemptNumber: 1,
+                      provider: aiResult.provider,
+                      modelId: aiResult.modelId,
+                      providerRequestId: aiResult.providerRequestId,
+                      durationMs: aiResult.durationMs,
+                      inputTokens: aiResult.tokens.inputTokens,
+                      outputTokens: aiResult.tokens.outputTokens,
+                      cachedTokens: aiResult.tokens.cachedTokens,
+                      estimatedCostUsd: aiResult.estimatedCostUsd.toString(),
+                      status: 'SUCCESS' as const,
+                    },
+                  ];
+
+            for (const att of attemptsToInsert) {
+              await tx.insert(aiProviderAttempts).values({
+                id: `att_${crypto.randomUUID()}`,
+                operationId: aiOperationId,
+                attemptNumber: att.attemptNumber,
+                provider: att.provider,
+                modelId: att.modelId,
+                providerRequestId: att.providerRequestId,
+                durationMs: att.durationMs,
+                inputTokens: att.inputTokens,
+                outputTokens: att.outputTokens,
+                cachedTokens: att.cachedTokens,
+                estimatedCostUsd: att.estimatedCostUsd ?? aiResult.estimatedCostUsd.toString(),
+                status: att.status,
+                errorCode: att.errorCode,
+                sanitizedErrorMessage: att.sanitizedErrorMessage,
+              });
+            }
 
             if (isRelevant) {
               // 3. Enqueue Story 2.4 Topic Assignment job (AC 3, 9)

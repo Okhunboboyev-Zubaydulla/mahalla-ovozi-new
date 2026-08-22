@@ -2,6 +2,7 @@ import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 import PgBoss from 'pg-boss';
 import * as schema from '../db/schema/index.js';
+import type { QualifyingLane } from '../../modules/ai/semantic-relevance-contracts.js';
 
 export const TELEGRAM_CONTENT_QUALIFICATION_QUEUE = 'telegram-content-qualification';
 export const TELEGRAM_SEMANTIC_RELEVANCE_QUEUE = 'telegram-semantic-relevance';
@@ -52,7 +53,7 @@ export interface TelegramTopicAssignmentJobData {
   verbatimText: string;
   replyMetadata: TelegramReplyMetadata | null;
   aiOperationId: string;
-  relevantLanes: string[];
+  relevantLanes: QualifyingLane[];
   reasoning: string;
 }
 

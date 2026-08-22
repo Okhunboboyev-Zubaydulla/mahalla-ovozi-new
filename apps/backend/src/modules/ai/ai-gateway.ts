@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import type { DbClient } from '../../adapters/db/client.js';
 import { aiProfiles, type AiProfile } from '../../adapters/db/schema/ai.js';
 import {
@@ -6,6 +6,7 @@ import {
   type AiGatewayResult,
   type AiProviderAdapterPort,
   type RawProviderPayload,
+  type ProviderAttemptRecord,
   AiGatewayError,
 } from './types.js';
 import { compileProviderSchema } from './schema-compiler.js';
@@ -72,10 +73,15 @@ export class AiGateway implements AiGatewayPort {
   }
 
   public async getActiveProfile(operationType: string): Promise<AiProfile | null> {
+    const matchingStatic: AiProfile[] = [];
     for (const profile of this.staticProfiles.values()) {
       if (profile.operationType === operationType && profile.isActive) {
-        return profile;
+        matchingStatic.push(profile);
       }
+    }
+    if (matchingStatic.length > 0) {
+      matchingStatic.sort((a, b) => b.version - a.version);
+      return matchingStatic[0] ?? null;
     }
 
     if (this.db) {
@@ -83,6 +89,7 @@ export class AiGateway implements AiGatewayPort {
         .select()
         .from(aiProfiles)
         .where(and(eq(aiProfiles.operationType, operationType), eq(aiProfiles.isActive, true)))
+        .orderBy(desc(aiProfiles.version))
         .limit(1);
       if (record) {
         return record;
@@ -114,9 +121,27 @@ export class AiGateway implements AiGatewayPort {
     });
   }
 
+  private calculateCostUsd(
+    provider: string,
+    _modelId: string,
+    inputTokens: number,
+    outputTokens: number,
+  ): number {
+    if (provider === 'OLLAMA' || provider === 'MOCK') {
+      return 0.0;
+    }
+    if (provider === 'GEMINI') {
+      // Gemini 2.0 / 1.5 Flash: $0.075 / 1M input, $0.30 / 1M output
+      return Number(((inputTokens * 0.000000075) + (outputTokens * 0.0000003)).toFixed(6));
+    }
+    // OpenAI / Groq default: $0.15 / 1M input, $0.60 / 1M output
+    return Number(((inputTokens * 0.00000015) + (outputTokens * 0.0000006)).toFixed(6));
+  }
+
   public async generateStructured<T>(
     options: GenerateStructuredOptions<T>,
   ): Promise<AiGatewayResult<T>> {
+    const callStartTime = performance.now();
     let profile: AiProfile | null = null;
     if (options.profileId) {
       profile = await this.getProfile(options.profileId);
@@ -164,8 +189,18 @@ export class AiGateway implements AiGatewayPort {
     let totalTokens = { inputTokens: 0, outputTokens: 0, cachedTokens: 0 };
     let finalDurationMs = 0;
     let finalProviderRequestId: string | undefined;
+    const recordedAttempts: ProviderAttemptRecord[] = [];
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (options.deadlineMs && performance.now() - callStartTime > options.deadlineMs) {
+        throw new AiGatewayError(
+          'PROVIDER_TIMEOUT',
+          `Operation exceeded allocated deadline of ${options.deadlineMs}ms`,
+          { status: 504, retryable: false, provider: profile.provider, modelId: profile.modelId },
+        );
+      }
+
+      const attemptStartTime = performance.now();
       try {
         const response = await adapter.executeRequest(payload);
         finalDurationMs = response.durationMs;
@@ -176,10 +211,15 @@ export class AiGateway implements AiGatewayPort {
           cachedTokens: response.tokens.cachedTokens ?? 0,
         };
 
-        // 1. JSON Syntax Validation
+        // 1. JSON Syntax Validation (strip markdown code block fences if present)
         let parsedJson: any;
+        const cleanContent = response.rawContent
+          .trim()
+          .replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/i, '$1')
+          .trim();
+
         try {
-          parsedJson = JSON.parse(response.rawContent);
+          parsedJson = JSON.parse(cleanContent);
         } catch (jsonErr: any) {
           throw new AiGatewayError(
             'INVALID_OUTPUT_SYNTAX',
@@ -210,12 +250,26 @@ export class AiGateway implements AiGatewayPort {
           );
         }
 
-        // Calculate estimated cost (e.g. gpt-4o-mini pricing: $0.15/1M in, $0.60/1M out)
-        const estimatedCostUsd = Number(
-          (
-            (totalTokens.inputTokens * 0.00000015 + totalTokens.outputTokens * 0.0000006)
-          ).toFixed(6),
+        const estimatedCostUsd = this.calculateCostUsd(
+          profile.provider,
+          profile.modelId,
+          totalTokens.inputTokens,
+          totalTokens.outputTokens,
         );
+
+        // Record successful attempt
+        recordedAttempts.push({
+          attemptNumber: attempt,
+          provider: profile.provider,
+          modelId: profile.modelId,
+          providerRequestId: finalProviderRequestId,
+          durationMs: finalDurationMs,
+          inputTokens: totalTokens.inputTokens,
+          outputTokens: totalTokens.outputTokens,
+          cachedTokens: totalTokens.cachedTokens,
+          estimatedCostUsd: estimatedCostUsd.toString(),
+          status: 'SUCCESS',
+        });
 
         return {
           data: parseResult.data,
@@ -223,12 +277,33 @@ export class AiGateway implements AiGatewayPort {
           provider: profile.provider,
           modelId: profile.modelId,
           providerRequestId: finalProviderRequestId,
-          durationMs: finalDurationMs,
+          durationMs: Math.round(performance.now() - callStartTime),
           tokens: totalTokens,
           estimatedCostUsd,
+          attempts: recordedAttempts,
         };
       } catch (err: any) {
         lastError = err;
+        const attemptDurationMs = Math.round(performance.now() - attemptStartTime);
+        const errorCode = err instanceof AiGatewayError ? err.code : 'PROVIDER_SERVER_ERROR';
+        const isRefusal = errorCode === 'PROVIDER_REFUSAL';
+        const isTimeout = errorCode === 'PROVIDER_TIMEOUT';
+        const status: 'ERROR' | 'TIMEOUT' | 'REFUSAL' = isTimeout
+          ? 'TIMEOUT'
+          : isRefusal
+            ? 'REFUSAL'
+            : 'ERROR';
+
+        recordedAttempts.push({
+          attemptNumber: attempt,
+          provider: profile.provider,
+          modelId: profile.modelId,
+          durationMs: attemptDurationMs,
+          status,
+          errorCode,
+          sanitizedErrorMessage: (err?.message || String(err)).slice(0, 200),
+        });
+
         const isRetryable =
           err instanceof AiGatewayError
             ? err.retryable

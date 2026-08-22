@@ -63,7 +63,7 @@ development_status:
   epic-2: in-progress
   2-1-durably-receive-authorized-district-telegram-messages: done
   2-2-admit-supported-telegram-content-and-discard-structural-exclusions: done
-  2-3-decide-semantic-relevance-by-meaning-and-discard-non-qualifying-content: review
+  2-3-decide-semantic-relevance-by-meaning-and-discard-non-qualifying-content: done
   2-4-assign-relevant-signals-to-same-day-topics-and-commit-accepted-evidence: backlog
   2-5-recalculate-the-canonical-multi-lane-topic-projection: backlog
   2-6-enforce-topic-level-retention-and-preserve-accepted-evidence-as-source-of-truth: backlog

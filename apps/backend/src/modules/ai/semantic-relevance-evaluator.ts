@@ -80,8 +80,7 @@ export class SemanticRelevanceEvaluator {
 - Isolation Rule: The parent message is excluded and not provided. The candidate message MUST contain a self-contained civic signal to qualify. If its meaning depends on the missing forwarded parent, exclude it as UNRESOLVED_AMBIGUOUS_FRAGMENT.`);
       } else {
         sections.push(`### REPLY CONTEXT
-- Reply To Message ID: ${input.replyMetadata.replyToMessageId}
-- Reply To User ID: ${input.replyMetadata.replyToUserId || 'unknown'}`);
+- Reply To Message ID: ${input.replyMetadata.replyToMessageId}`);
       }
     }
 

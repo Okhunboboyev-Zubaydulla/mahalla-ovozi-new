@@ -91,6 +91,33 @@ export function compilePortableJsonSchema(schema: ZodType<any>): PortableJsonSch
     return result;
   }
 
+  if (baseType instanceof z.ZodLiteral) {
+    const val = baseType.value;
+    const typeOfVal = typeof val;
+    const type =
+      typeOfVal === 'number' ? (Number.isInteger(val) ? 'integer' : 'number') : typeOfVal;
+    const result: PortableJsonSchema = {
+      type,
+      enum: [val],
+    };
+    if (description) result.description = description;
+    if (isNullable) result.nullable = true;
+    return result;
+  }
+
+  if (baseType instanceof z.ZodNativeEnum) {
+    const values = Object.values(baseType._def.values) as (string | number)[];
+    // Filter numeric enum reverse-mappings
+    const filtered = values.filter((v) => typeof v === 'string' || typeof v === 'number');
+    const result: PortableJsonSchema = {
+      type: typeof filtered[0] === 'number' ? 'number' : 'string',
+      enum: filtered,
+    };
+    if (description) result.description = description;
+    if (isNullable) result.nullable = true;
+    return result;
+  }
+
   if (baseType instanceof z.ZodEnum) {
     const result: PortableJsonSchema = {
       type: 'string',
@@ -140,7 +167,8 @@ export function compilePortableJsonSchema(schema: ZodType<any>): PortableJsonSch
 /**
  * Transforms a portable JSON schema into provider-specific payload structures:
  * - OPENAI / GROQ: response_format with { type: 'json_schema', json_schema: { name, strict: true, schema } }
- * - GEMINI: generationConfig with responseSchema (OpenAPI type uppercase format)
+ *   (Strict mode: converts nullable fields to anyOf: [schema, { type: 'null' }] and removes nullable: true)
+ * - GEMINI: generationConfig with responseSchema (OpenAPI type uppercase format, native nullable: true)
  * - OLLAMA: raw JSON Schema format object
  */
 export function compileProviderSchema(
@@ -153,12 +181,43 @@ export function compileProviderSchema(
   switch (provider) {
     case 'OPENAI':
     case 'GROQ': {
+      // Adapt schema for OpenAI / Groq strict structured outputs (JSON Schema Draft 7)
+      const adaptForOpenAiStrict = (node: any): any => {
+        if (!node || typeof node !== 'object') return node;
+
+        const isNullable = Boolean(node.nullable);
+        const { nullable: _ignored, ...cleanNode } = node;
+
+        if (cleanNode.properties) {
+          const newProps: Record<string, any> = {};
+          for (const [k, v] of Object.entries(cleanNode.properties)) {
+            newProps[k] = adaptForOpenAiStrict(v);
+          }
+          cleanNode.properties = newProps;
+          cleanNode.additionalProperties = false;
+          // In strict mode, every key defined in properties must be in required
+          cleanNode.required = Object.keys(newProps);
+        }
+
+        if (cleanNode.items) {
+          cleanNode.items = adaptForOpenAiStrict(cleanNode.items);
+        }
+
+        if (isNullable) {
+          return {
+            anyOf: [cleanNode, { type: 'null' }],
+          };
+        }
+
+        return cleanNode;
+      };
+
       return {
         type: 'json_schema',
         json_schema: {
           name: schemaName,
           strict: true,
-          schema: portable,
+          schema: adaptForOpenAiStrict(portable),
         },
       };
     }
@@ -183,11 +242,14 @@ export function compileProviderSchema(
           }
         }
         if (node.required && Array.isArray(node.required)) {
-          // Gemini: if a field is nullable, omit from required so model can exclude/null it cleanly
-          copy.required = node.required.filter((key: string) => {
+          // Gemini: if a field is nullable, omit from required
+          const filteredRequired = node.required.filter((key: string) => {
             const prop = node.properties?.[key];
             return !prop?.nullable;
           });
+          if (filteredRequired.length > 0) {
+            copy.required = filteredRequired;
+          }
         }
         if (node.items) {
           copy.items = adaptForGemini(node.items);

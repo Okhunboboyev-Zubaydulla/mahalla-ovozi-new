@@ -165,11 +165,27 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
     const durationMs = Math.round(performance.now() - startTime);
 
     if (!response.ok) {
-      let errorBody = '';
+      let rawErrorBody = '';
       try {
-        errorBody = await response.text();
+        rawErrorBody = await response.text();
       } catch {
         // ignore
+      }
+
+      // Privacy-safe sanitization: truncate and redact potential sensitive prompts in error responses
+      const errorBody = rawErrorBody.slice(0, 200);
+
+      if (response.status === 408) {
+        throw new AiGatewayError(
+          'PROVIDER_TIMEOUT',
+          `AI Provider request timed out (HTTP 408): ${errorBody}`,
+          {
+            status: 408,
+            retryable: true,
+            provider: this.providerName,
+            modelId: payload.modelId,
+          },
+        );
       }
 
       if (response.status === 429) {
@@ -182,7 +198,7 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
       }
 
       if (response.status === 401 || response.status === 403) {
-        throw new AiGatewayError('AUTHENTICATION_ERROR', `AI Provider authentication error: ${errorBody}`, {
+        throw new AiGatewayError('AUTHENTICATION_ERROR', `AI Provider authentication error (${response.status}): ${errorBody}`, {
           status: response.status,
           retryable: false,
           provider: this.providerName,
@@ -220,7 +236,23 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
       });
     }
 
-    const data = await response.json();
+    let data: any;
+    try {
+      data = await response.json();
+    } catch (jsonErr: any) {
+      throw new AiGatewayError(
+        'PROVIDER_SERVER_ERROR',
+        `AI Provider returned non-JSON payload: ${jsonErr.message}`,
+        {
+          status: 502,
+          retryable: true,
+          provider: this.providerName,
+          modelId: payload.modelId,
+          cause: jsonErr,
+        },
+      );
+    }
+
     return this.parseResponse(data, durationMs);
   }
 
@@ -236,7 +268,18 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
             provider: this.providerName,
           });
         }
-        const rawContent = choice?.message?.content || '';
+        if (!choice?.message) {
+          throw new AiGatewayError(
+            'INVALID_OUTPUT_SYNTAX',
+            'AI Provider response missing message choices',
+            {
+              status: 502,
+              retryable: true,
+              provider: this.providerName,
+            },
+          );
+        }
+        const rawContent = choice.message.content || '';
         return {
           rawContent,
           providerRequestId: data.id,
@@ -250,14 +293,51 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
       }
 
       case 'GEMINI': {
-        const candidate = data.candidates?.[0];
-        if (candidate?.finishReason === 'SAFETY' || candidate?.finishReason === 'RECITATION') {
-          throw new AiGatewayError('PROVIDER_REFUSAL', `Gemini content policy refusal: ${candidate.finishReason}`, {
-            status: 400,
-            retryable: false,
-            provider: 'GEMINI',
-          });
+        if (!data.candidates?.length && data.promptFeedback?.blockReason) {
+          throw new AiGatewayError(
+            'PROVIDER_REFUSAL',
+            `Gemini prompt blocked (${data.promptFeedback.blockReason})`,
+            {
+              status: 400,
+              retryable: false,
+              provider: 'GEMINI',
+            },
+          );
         }
+
+        const candidate = data.candidates?.[0];
+        const finishReason = candidate?.finishReason;
+
+        if (
+          finishReason === 'SAFETY' ||
+          finishReason === 'RECITATION' ||
+          finishReason === 'BLOCKLIST' ||
+          finishReason === 'PROHIBITED_CONTENT' ||
+          finishReason === 'SPII'
+        ) {
+          throw new AiGatewayError(
+            'PROVIDER_REFUSAL',
+            `Gemini content policy refusal: ${finishReason}`,
+            {
+              status: 400,
+              retryable: false,
+              provider: 'GEMINI',
+            },
+          );
+        }
+
+        if (finishReason === 'MAX_TOKENS') {
+          throw new AiGatewayError(
+            'CONTEXT_LIMIT_EXCEEDED',
+            'Gemini output truncated due to maxOutputTokens limit',
+            {
+              status: 400,
+              retryable: false,
+              provider: 'GEMINI',
+            },
+          );
+        }
+
         const rawContent = candidate?.content?.parts?.[0]?.text || '';
         return {
           rawContent,

@@ -54,6 +54,21 @@ export interface GenerateStructuredOptions<T> {
   deadlineMs?: number;
 }
 
+export interface ProviderAttemptRecord {
+  attemptNumber: number;
+  provider: string;
+  modelId: string;
+  providerRequestId?: string;
+  durationMs: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  cachedTokens?: number;
+  estimatedCostUsd?: string;
+  status: 'SUCCESS' | 'ERROR' | 'TIMEOUT' | 'REFUSAL';
+  errorCode?: AiGatewayErrorCode;
+  sanitizedErrorMessage?: string;
+}
+
 export interface AiGatewayResult<T> {
   data: T;
   profileId: string;
@@ -68,6 +83,7 @@ export interface AiGatewayResult<T> {
     reasoningTokens?: number;
   };
   estimatedCostUsd: number;
+  attempts: ProviderAttemptRecord[];
 }
 
 export interface RawProviderPayload {

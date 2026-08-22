@@ -93,7 +93,7 @@ export async function getMahallaDailySnapshot(
           telegramMessageId: row.telegramMessageId,
           originalTimestamp: row.originalTimestamp.toISOString(),
           verbatimText: text,
-          lane: (row.resultPayload as any)?.lanes?.[0],
+          lane: (row.resultPayload as any)?.relevant_lanes?.[0] || (row.resultPayload as any)?.lanes?.[0],
         });
       }
     }

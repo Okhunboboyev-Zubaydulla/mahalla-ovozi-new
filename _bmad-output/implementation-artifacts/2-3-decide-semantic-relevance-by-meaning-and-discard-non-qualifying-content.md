@@ -4,7 +4,7 @@ baseline_commit: c364589fa44733046c276a97699217671706d320
 
 # Story 2.3: Decide Semantic Relevance by Meaning and Discard Non-Qualifying Content
 
-Status: review
+Status: done
 
 <!-- Note: Validation is complete. Story specification has passed adversarial, edge-case, and compliance pre-dev review. -->
 
@@ -171,6 +171,18 @@ So that genuinely relevant District signals continue toward Topics while irrelev
   - [x] 5.2 Create unit tests for portable schema compilation and error mapping in `apps/backend/tests/ai-gateway.test.ts`.
   - [x] 5.3 Create test helper `createMockAiGateway` in `apps/backend/tests/helpers/mock-ai-gateway.ts`.
   - [x] 5.4 Create worker integration test suite in `apps/backend/tests/worker-semantic-relevance.test.ts` validating all 25 rows of the verification matrix.
+
+### Review Findings
+
+- [x] [Review][Patch] Fix context snapshot lane extraction bug (`relevant_lanes` instead of `lanes`) [apps/backend/src/modules/ai/context-snapshot.ts:96]
+- [x] [Review][Patch] Remove PII Telegram User ID from external AI user prompt [apps/backend/src/modules/ai/semantic-relevance-evaluator.ts:84]
+- [x] [Review][Patch] Ensure schema compiler OpenAI strict mode compatibility, omit empty required array for Gemini, and handle literal/nativeEnum [apps/backend/src/modules/ai/schema-compiler.ts:80]
+- [x] [Review][Patch] Strip markdown code fences before JSON parsing [apps/backend/src/modules/ai/ai-gateway.ts:180]
+- [x] [Review][Patch] Harden HTTP Provider Adapter JSON parsing, HTTP 408 timeout, Gemini prompt refusal checks, and error sanitization [apps/backend/src/adapters/ai-providers/http-provider-adapter.ts:223]
+- [x] [Review][Patch] Add deterministic orderBy(desc(aiProfiles.version)) in getActiveProfile [apps/backend/src/modules/ai/ai-gateway.ts:81]
+- [x] [Review][Patch] Strictly type TelegramTopicAssignmentJobData.relevantLanes with QualifyingLane[] [apps/backend/src/adapters/jobs/boss-client.ts:55]
+- [x] [Review][Patch] Capture and persist all provider retry attempts in ai_provider_attempts [apps/backend/src/modules/ai/ai-gateway.ts:168]
+- [x] [Review][Defer] Terminal retry exhaustion cleanup hook on permanent job failure [apps/backend/src/entrypoints/worker.ts:524] — deferred, part of queue operational lifecycle in future story
 
 ---
 
