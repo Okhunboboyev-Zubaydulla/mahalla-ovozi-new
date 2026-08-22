@@ -4,7 +4,7 @@ baseline_commit: 39d377faa5157c81a4dedf943b1987062be78701
 
 # Story 2.4: Assign Relevant Signals to Same-Day Topics and Commit Accepted Evidence
 
-Status: review
+Status: done
 
 <!-- Note: Validation is complete. Story specification has passed adversarial, edge-case, and compliance pre-dev review. -->
 
