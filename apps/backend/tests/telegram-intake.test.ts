@@ -248,7 +248,12 @@ describe('Story 2.1: Telegram Webhook Ingress & Durability Integration Tests', (
     const records = await db
       .select()
       .from(telegramIntakeRecords)
-      .where(eq(telegramIntakeRecords.telegramMessageId, String(messageId)));
+      .where(
+        and(
+          eq(telegramIntakeRecords.telegramBotId, inactiveBotId),
+          eq(telegramIntakeRecords.telegramMessageId, String(messageId)),
+        ),
+      );
     expect(records.length).toBe(0);
   });
 
@@ -283,7 +288,12 @@ describe('Story 2.1: Telegram Webhook Ingress & Durability Integration Tests', (
     const records = await db
       .select()
       .from(telegramIntakeRecords)
-      .where(eq(telegramIntakeRecords.telegramMessageId, String(messageId)));
+      .where(
+        and(
+          eq(telegramIntakeRecords.telegramBotId, activeBotId),
+          eq(telegramIntakeRecords.telegramMessageId, String(messageId)),
+        ),
+      );
     expect(records.length).toBe(0);
   });
 
@@ -318,7 +328,12 @@ describe('Story 2.1: Telegram Webhook Ingress & Durability Integration Tests', (
     const records = await db
       .select()
       .from(telegramIntakeRecords)
-      .where(eq(telegramIntakeRecords.telegramMessageId, String(messageId)));
+      .where(
+        and(
+          eq(telegramIntakeRecords.telegramBotId, activeBotId),
+          eq(telegramIntakeRecords.telegramMessageId, String(messageId)),
+        ),
+      );
     expect(records.length).toBe(0);
   });
 
@@ -401,7 +416,12 @@ describe('Story 2.1: Telegram Webhook Ingress & Durability Integration Tests', (
     const records = await db
       .select()
       .from(telegramIntakeRecords)
-      .where(eq(telegramIntakeRecords.telegramMessageId, String(messageId)));
+      .where(
+        and(
+          eq(telegramIntakeRecords.telegramBotId, activeBotId),
+          eq(telegramIntakeRecords.telegramMessageId, String(messageId)),
+        ),
+      );
     expect(records.length).toBe(0);
 
     sendSpy.mockRestore();

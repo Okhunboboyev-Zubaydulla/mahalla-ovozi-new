@@ -4,7 +4,7 @@ baseline_commit: ac9f554a12cef10eaf3c4d66f2711d2efc9684c8
 
 # Story 2.5: Recalculate the Canonical Multi-Lane Topic Projection
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is complete. Story specification has passed adversarial, edge-case, and compliance pre-dev review. -->
 
@@ -153,20 +153,20 @@ So that I can later see a consistent summary of the situation without duplicate 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Relational Schema & Database Migrations (AC: 1, 6, 12, 14)**
-  - [ ] 1.1 Create `apps/backend/src/adapters/db/schema/topic-projections.ts`:
+- [x] **Task 1: Relational Schema & Database Migrations (AC: 1, 6, 12, 14)**
+  - [x] 1.1 Create `apps/backend/src/adapters/db/schema/topic-projections.ts`:
     - Define `topicProjections` table: `id` (`prj_<uuid>`), `topicId` (FK `topics.id` with `onDelete: 'cascade'`), `districtId` (FK `districts.id` with `onDelete: 'cascade'`), `mahallaName`, `calendarDay`, `summary`, `lanes` (`jsonb('lanes').$type<QualifyingLane[]>().notNull()`), `primaryLane`, `anchorEvidenceId` (FK `acceptedEvidence.id` with `onDelete: 'restrict'`), `anchorQuote`, `latestMeaningfulActivityTimestamp`, `attribution`, `isHokimRelated` (`boolean`), `generation` (`integer`), `aiProfileId` (FK `aiProfiles.id`), `aiOperationId` (FK `aiOperations.id` with `onDelete: 'set null'`), `createdAt`, `updatedAt`.
     - Indices: `uniqueIndex('topic_projections_topic_id_idx').on(table.topicId)`, `index('topic_projections_district_day_idx').on(table.districtId, table.calendarDay)`, `index('topic_projections_district_mahalla_day_idx').on(table.districtId, table.mahallaName, table.calendarDay)`.
-  - [ ] 1.2 Update `apps/backend/src/adapters/db/schema/ai.ts` to define `defaultTopicProjectionProfile` (`prof_proj_2026_08_v1`) and include in `ensureDefaultAiProfiles`.
-  - [ ] 1.3 Re-export `topicProjections` in `apps/backend/src/adapters/db/schema/index.ts`.
-  - [ ] 1.4 Generate and apply SQL migration via Drizzle Kit (`pnpm --filter backend db:generate` & `pnpm --filter backend db:migrate`).
+  - [x] 1.2 Update `apps/backend/src/adapters/db/schema/ai.ts` to define `defaultTopicProjectionProfile` (`prof_proj_2026_08_v1`) and include in `ensureDefaultAiProfiles`.
+  - [x] 1.3 Re-export `topicProjections` in `apps/backend/src/adapters/db/schema/index.ts`.
+  - [x] 1.4 Generate and apply SQL migration via Drizzle Kit (`pnpm --filter backend db:generate` & `pnpm --filter backend db:migrate`).
 
-- [ ] **Task 2: AI Contracts & Topic Projection Evaluator (AC: 2, 5, 6, 7, 8, 9, 10, 11)**
-  - [ ] 2.1 Create `apps/backend/src/modules/ai/topic-projection-contracts.ts`:
+- [x] **Task 2: AI Contracts & Topic Projection Evaluator (AC: 2, 5, 6, 7, 8, 9, 10, 11)**
+  - [x] 2.1 Create `apps/backend/src/modules/ai/topic-projection-contracts.ts`:
     - Export `TopicProjectionResultSchema` with Zod validation for `summary`, `lanes` (`QualifyingLaneEnum[]`), `anchor_evidence_id`, `anchor_quote`, `latest_meaningful_activity_timestamp`, `attribution`, `is_hokim_related`.
     - Add `.refine()` rule: `is_hokim_related` must match `lanes.includes('HOKIM_RELATED')`.
     - Export `TopicProjectionInput`, `TopicProjectionOutput`, and helper `isUzbekCyrillic(text: string): boolean`.
-  - [ ] 2.2 Create `apps/backend/src/modules/topics/topic-projection-evaluator.ts` implementing `TopicProjectionEvaluator`:
+  - [x] 2.2 Create `apps/backend/src/modules/topics/topic-projection-evaluator.ts` implementing `TopicProjectionEvaluator`:
     - Build contextual prompt formatting all same-day Mahalla evidence with explicit target Topic demarcation.
     - Implement `evaluateTopicProjection` integrating with `AiGatewayPort` (`operationType: 'TOPIC_DERIVED_PROJECTION'`).
     - Implement post-generation semantic guardrails:
@@ -175,8 +175,8 @@ So that I can later see a consistent summary of the situation without duplicate 
       - Verify `lanes` includes target Topic's immutable `primaryLane`.
       - Verify `summary` contains Uzbek Cyrillic text.
 
-- [ ] **Task 3: Queue Consumer & Worker Integration (AC: 1, 3, 4, 10, 12, 13, 14, 15, 16, 18)**
-  - [ ] 3.1 Implement `TELEGRAM_TOPIC_PROJECTION_QUEUE` worker consumer in `apps/backend/src/entrypoints/worker.ts`:
+- [x] **Task 3: Queue Consumer & Worker Integration (AC: 1, 3, 4, 10, 12, 13, 14, 15, 16, 18)**
+  - [x] 3.1 Implement `TELEGRAM_TOPIC_PROJECTION_QUEUE` worker consumer in `apps/backend/src/entrypoints/worker.ts`:
     - Gate 1 Pre-AI District Lifecycle Verification (drop cleanly if inactive).
     - Target Topic lookup & out-of-order drop check (`generation <= topic.appliedDerivedGeneration` -> drop).
     - Deterministic snapshot retrieval via `getMahallaDailySnapshot`.
@@ -190,11 +190,11 @@ So that I can later see a consistent summary of the situation without duplicate 
       - Insert `ai_operations` (with `targetId = `${topicId}:${generation}``) and `ai_provider_attempts` records.
     - Privacy-safe structured logging (`event: 'TELEGRAM_TOPIC_PROJECTION_COMMITTED'`).
 
-- [ ] **Task 4: Comprehensive Test Suite & Edge-Case Hardening (AC: 1-19)**
-  - [ ] 4.1 Unit tests for `TopicProjectionResultSchema` and `isUzbekCyrillic` validator in `tests/topic-projection-evaluator.test.ts`.
-  - [ ] 4.2 Unit tests for `TopicProjectionEvaluator` covering prompt assembly, multi-lane derivation, anchor validation, and semantic error cases in `tests/topic-projection-evaluator.test.ts`.
-  - [ ] 4.3 Integration tests for `TELEGRAM_TOPIC_PROJECTION_QUEUE` worker consumer in `tests/worker-topic-projection.test.ts` covering all 28 scenarios in the Verification Matrix.
-  - [ ] 4.4 Run full typecheck and test verification (`pnpm typecheck`, `pnpm --filter backend test`, `pnpm build`) verifying 100% pass rate.
+- [x] **Task 4: Comprehensive Test Suite & Edge-Case Hardening (AC: 1-19)**
+  - [x] 4.1 Unit tests for `TopicProjectionResultSchema` and `isUzbekCyrillic` validator in `tests/topic-projection-evaluator.test.ts` (16 tests passed).
+  - [x] 4.2 Unit tests for `TopicProjectionEvaluator` covering prompt assembly, multi-lane derivation, anchor validation, and semantic error cases in `tests/topic-projection-evaluator.test.ts`.
+  - [x] 4.3 Integration tests for `TELEGRAM_TOPIC_PROJECTION_QUEUE` worker consumer in `tests/worker-topic-projection.test.ts` covering all 28 scenarios in the Verification Matrix (28 tests passed).
+  - [x] 4.4 Run full typecheck and test verification (`pnpm typecheck`, `pnpm --filter backend test`, `pnpm build`) verifying 100% pass rate (393/393 tests passing).
 
 ---
 
@@ -275,12 +275,28 @@ So that I can later see a consistent summary of the situation without duplicate 
 Gemini 3.7 Flash (High)
 
 ### Debug Log References
-- Pre-dev validation completed against `checklist.md` across 5 quality layers.
-- Verified schema types, pg-boss 10.x queue handling, and Zod output contract compilation.
+- Generated Drizzle migration `0010_old_prodigy.sql` defining `topic_projections` relational schema and applied to PostgreSQL.
+- Authored and verified `topic-projection-contracts.ts` and `topic-projection-evaluator.ts` with 4 strict domain guardrails.
+- Added `TELEGRAM_TOPIC_PROJECTION_QUEUE` consumer to `worker.ts` with Gate 1, out-of-order drop, generation coalescing, Gate 2, CAS row-lock, atomic upsert, and `ai_operations` logging.
+- Built complete 28-scenario integration test suite in `tests/worker-topic-projection.test.ts`.
+- Full monorepo verification: `pnpm typecheck` (0 errors), `pnpm --filter backend test` (393/393 passed across 28 test files), `pnpm build` (clean build across all packages).
 
 ### Completion Notes List
-- Authored comprehensive Story 2.5 specification including 19 Acceptance Criteria, 4 Tasks/Subtasks, Architecture Guardrails, and 28-scenario Verification Matrix.
-- Status transitioned to `ready-for-dev`.
+- All 19 Acceptance Criteria and 4 Tasks implemented and verified.
+- Status transitioned to `review`.
 
 ### File List
+- `apps/backend/src/adapters/db/schema/topic-projections.ts`
+- `apps/backend/src/adapters/db/schema/ai.ts`
+- `apps/backend/src/adapters/db/schema/index.ts`
+- `apps/backend/drizzle/0010_old_prodigy.sql`
+- `apps/backend/src/modules/ai/topic-projection-contracts.ts`
+- `apps/backend/src/modules/topics/topic-projection-evaluator.ts`
+- `apps/backend/src/entrypoints/worker.ts`
+- `apps/backend/src/adapters/ai-providers/mock-provider-adapter.ts`
+- `apps/backend/tests/helpers/mock-ai-gateway.ts`
+- `apps/backend/tests/topic-projection-evaluator.test.ts`
+- `apps/backend/tests/worker-topic-projection.test.ts`
+- `apps/backend/tests/telegram-intake.test.ts`
 - `_bmad-output/implementation-artifacts/2-5-recalculate-the-canonical-multi-lane-topic-projection.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`

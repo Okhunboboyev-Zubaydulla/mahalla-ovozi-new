@@ -49,6 +49,10 @@ export class MockProviderAdapter implements AiProviderAdapterPort {
     return [...this.callHistory];
   }
 
+  public setDefaultResponse(response: Record<string, unknown>): void {
+    this.defaultResponse = response;
+  }
+
   public clearHistory(): void {
     this.callHistory = [];
     this.queuedBehaviors = [];
