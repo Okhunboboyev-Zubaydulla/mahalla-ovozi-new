@@ -21,9 +21,8 @@ import {
   TelegramIntegrationError,
 } from '../../adapters/telegram/telegram-client.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
-import { DistrictNotFoundError } from '../districts/districts-service.js';
-import { globalTestSessionManager, TelegramTestSessionManager } from './telegram-test-session-manager.js';
-
+import { DistrictNotFoundError } from '../districts/district-onboarding-engine.js';
+import { globalTestSessionManager, TelegramTestSessionManager } from './telegram-test-session-store.js';
 
 export class TelegramGroupNotFoundError extends Error {
   readonly code = 'TELEGRAM_GROUP_NOT_FOUND' as const;
@@ -65,6 +64,21 @@ export class BotNotConnectedError extends Error {
   }
 }
 
+export interface Actor {
+  id: string;
+  role: string;
+  username?: string;
+}
+
+export interface ClientInfo {
+  ipAddress: string | null;
+  userAgent: string | null;
+}
+
+export interface GroupServiceOptions {
+  sessionManager?: TelegramTestSessionManager;
+}
+
 export function formatTelegramGroup(row: DistrictTelegramGroup): TelegramGroupMapping {
   return {
     id: row.id,
@@ -84,24 +98,6 @@ export function formatTelegramGroup(row: DistrictTelegramGroup): TelegramGroupMa
   };
 }
 
-export interface Actor {
-  id: string;
-  role: string;
-  username?: string;
-}
-
-export interface ClientInfo {
-  ipAddress: string | null;
-  userAgent: string | null;
-}
-
-export interface GroupServiceOptions {
-  sessionManager?: TelegramTestSessionManager;
-}
-
-/**
- * Lists all Telegram group mappings for a district.
- */
 export async function listDistrictTelegramGroups(
   db: DbClient,
   districtId: string,
@@ -125,9 +121,6 @@ export async function listDistrictTelegramGroups(
   return rows.map(formatTelegramGroup);
 }
 
-/**
- * Gets a single Telegram group mapping.
- */
 export async function getDistrictTelegramGroup(
   db: DbClient,
   districtId: string,
@@ -161,13 +154,6 @@ export async function getDistrictTelegramGroup(
   return formatTelegramGroup(row);
 }
 
-/**
- * Maps a new Telegram group to a Mahalla.
- * 1. Checks District and active Telegram bot existence.
- * 2. Decrypts bot token and verifies Telegram group membership via Telegram API (outside DB tx).
- * 3. Enforces passive non-admin constraint & checks group privacy mode.
- * 4. Persists record in DB and logs privacy-safe audit event.
- */
 export async function createDistrictTelegramGroup(
   db: DbClient,
   districtId: string,
@@ -195,7 +181,6 @@ export async function createDistrictTelegramGroup(
     throw new BotNotConnectedError(districtId);
   }
 
-  // Decrypt bot token
   const token = decryptToken({
     encryptedToken: botRow.encryptedToken,
     tokenIv: botRow.tokenIv,
@@ -205,7 +190,6 @@ export async function createDistrictTelegramGroup(
   const trimmedChatId = input.telegramChatId.trim();
   const trimmedMahalla = input.mahallaName.trim();
 
-  // Authoritative Telegram API validation OUTSIDE DB transaction (AD-1)
   const chatInfo = await getTelegramChat(token, trimmedChatId);
   if (chatInfo.chatType !== 'group' && chatInfo.chatType !== 'supergroup') {
     throw new TelegramIntegrationError(
@@ -224,7 +208,6 @@ export async function createDistrictTelegramGroup(
 
   try {
     await db.transaction(async (tx) => {
-      // Check case-insensitive mahalla name uniqueness within district
       const [existingMahalla] = await tx
         .select({ id: districtTelegramGroups.id })
         .from(districtTelegramGroups)
@@ -240,7 +223,6 @@ export async function createDistrictTelegramGroup(
         throw new MahallaNameAlreadyExistsError(trimmedMahalla);
       }
 
-      // Check telegramChatId uniqueness within and across districts
       const [existingChat] = await tx
         .select({ id: districtTelegramGroups.id, districtId: districtTelegramGroups.districtId })
         .from(districtTelegramGroups)
@@ -330,9 +312,6 @@ export async function createDistrictTelegramGroup(
   return formatTelegramGroup(savedRow);
 }
 
-/**
- * Updates a Mahalla or Telegram Chat ID mapping.
- */
 export async function updateDistrictTelegramGroup(
   db: DbClient,
   districtId: string,
@@ -372,7 +351,6 @@ export async function updateDistrictTelegramGroup(
   const isChatChanged = newChatId !== group.telegramChatId;
   const isMahallaChanged = newMahallaName.toLowerCase() !== group.mahallaName.toLowerCase();
 
-  // No-op check (Patch 10): return existing mapping without DB write or audit log
   if (!isChatChanged && !isMahallaChanged && input.mahallaName === undefined && input.telegramChatId === undefined) {
     return formatTelegramGroup(group);
   }
@@ -405,7 +383,6 @@ export async function updateDistrictTelegramGroup(
       chatUsername: info.chatUsername,
     };
 
-    // Invalidate any open test session on chat change
     (options.sessionManager ?? globalTestSessionManager).resolveSessionFailure(
       districtId,
       groupId,
@@ -417,7 +394,6 @@ export async function updateDistrictTelegramGroup(
   let updatedRow: DistrictTelegramGroup | undefined;
 
   await db.transaction(async (tx) => {
-    // Check mahalla name collision if changed
     if (newMahallaName.toLowerCase() !== group.mahallaName.toLowerCase()) {
       const [existingMahalla] = await tx
         .select({ id: districtTelegramGroups.id })
@@ -435,7 +411,6 @@ export async function updateDistrictTelegramGroup(
       }
     }
 
-    // Check chat id collision if changed
     if (isChatChanged) {
       const [existingChat] = await tx
         .select({ id: districtTelegramGroups.id, districtId: districtTelegramGroups.districtId })
@@ -495,9 +470,6 @@ export async function updateDistrictTelegramGroup(
   return formatTelegramGroup(updatedRow);
 }
 
-/**
- * Removes a Telegram group mapping.
- */
 export async function deleteDistrictTelegramGroup(
   db: DbClient,
   districtId: string,
@@ -521,7 +493,6 @@ export async function deleteDistrictTelegramGroup(
     throw new TelegramGroupNotFoundError(groupId);
   }
 
-  // Clean up any in-memory test session for deleted group
   (options.sessionManager ?? globalTestSessionManager).resolveSessionFailure(
     districtId,
     groupId,

@@ -7,17 +7,17 @@ import {
   listDistricts,
   getDistrictById,
   createDistrict,
-  activateDistrict,
   DistrictNameExistsError,
+} from './districts-service.js';
+import {
+  getOnboardingReadiness,
+  confirmStandingDisclosure,
+  activateDistrict,
   DistrictNotFoundError,
   DistrictAlreadyActiveError,
   DistrictNotReadyForActivationError,
   DistrictInvalidStatusError,
-} from './districts-service.js';
-import {
-  evaluateDistrictReadiness,
-  confirmDistrictDisclosure,
-} from './districts-readiness.js';
+} from './district-onboarding-engine.js';
 
 export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): void {
   // P3-D & P3-E: Encapsulate district routes in a plugin scope so requireProductOwner only applies here
@@ -95,7 +95,7 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
         }
 
         try {
-          const readiness = await evaluateDistrictReadiness(db, districtId);
+          const readiness = await getOnboardingReadiness(db, districtId);
           return reply.status(200).send({ readiness });
         } catch (err: unknown) {
           return handleDistrictError(err, reply);
@@ -121,7 +121,7 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
         }
 
         try {
-          const result = await confirmDistrictDisclosure(
+          const result = await confirmStandingDisclosure(
             db,
             districtId,
             req.actor,

@@ -24,8 +24,8 @@ import {
   getGroupTestStatus,
   simulateGroupTestMessage,
   handleIncomingWebhookMessage,
-} from './telegram-groups-testing.js';
-import { DistrictNotFoundError } from '../districts/districts-service.js';
+} from './telegram-group-engine.js';
+import { DistrictNotFoundError } from '../districts/district-onboarding-engine.js';
 import {
   TelegramIntegrationError,
   TelegramChatNotFoundError,
