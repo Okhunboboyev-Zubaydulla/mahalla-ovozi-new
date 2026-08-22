@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Select, Divider, Button } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -20,10 +20,14 @@ export const DistrictSelector: React.FC<DistrictSelectorProps> = ({ onOpenCreate
 
   const districts = data?.districts || [];
 
-  const options = districts.map((d) => ({
-    value: d.id,
-    label: d.region ? `${d.name} (${d.region})` : d.name,
-  }));
+  const options = useMemo(
+    () =>
+      districts.map((d) => ({
+        value: d.id,
+        label: d.region ? `${d.name} (${d.region})` : d.name,
+      })),
+    [districts]
+  );
 
   const handleChange = (value: string | undefined) => {
     if (value) {

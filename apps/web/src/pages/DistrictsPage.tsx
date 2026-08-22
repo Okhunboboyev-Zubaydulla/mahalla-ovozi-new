@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   Typography,
@@ -45,85 +45,88 @@ export const DistrictsPage: React.FC = () => {
 
   const districts = data?.districts || [];
 
-  const columns = [
-    {
-      title: 'Туман номи',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string) => <strong>{name}</strong>,
-    },
-    {
-      title: 'Вилоят / Ҳудуд',
-      dataIndex: 'region',
-      key: 'region',
-      render: (region?: string) => region || '—',
-    },
-    {
-      title: 'Ҳолати',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => {
-        if (status === 'ACTIVE') {
-          return (
-            <Tag color="success" icon={<CheckCircleOutlined />}>
-              Фаол
-            </Tag>
-          );
-        }
-        if (status === 'SETUP_INCOMPLETE') {
-          // P5-I: Use warning preset mapped to design system tokens
-          return <Tag color="warning">Созлаш тугалланмаган</Tag>;
-        }
-        return <Tag color="default">{status}</Tag>;
+  const columns = useMemo(
+    () => [
+      {
+        title: 'Туман номи',
+        dataIndex: 'name',
+        key: 'name',
+        render: (name: string) => <strong>{name}</strong>,
       },
-    },
-    {
-      title: 'Яратилган вақти',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (createdAt: string) => formatTashkentDate(createdAt),
-    },
-    {
-      title: 'Амаллар',
-      key: 'actions',
-      render: (_: unknown, record: District) => {
-        const isSelected = activeDistrictId === record.id;
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {isSelected ? (
+      {
+        title: 'Вилоят / Ҳудуд',
+        dataIndex: 'region',
+        key: 'region',
+        render: (region?: string) => region || '—',
+      },
+      {
+        title: 'Ҳолати',
+        dataIndex: 'status',
+        key: 'status',
+        render: (status: string) => {
+          if (status === 'ACTIVE') {
+            return (
               <Tag color="success" icon={<CheckCircleOutlined />}>
-                Танланган
+                Фаол
               </Tag>
-            ) : (
+            );
+          }
+          if (status === 'SETUP_INCOMPLETE') {
+            // P5-I: Use warning preset mapped to design system tokens
+            return <Tag color="warning">Созлаш тугалланмаган</Tag>;
+          }
+          return <Tag color="default">{status}</Tag>;
+        },
+      },
+      {
+        title: 'Яратилган вақти',
+        dataIndex: 'createdAt',
+        key: 'createdAt',
+        render: (createdAt: string) => formatTashkentDate(createdAt),
+      },
+      {
+        title: 'Амаллар',
+        key: 'actions',
+        render: (_: unknown, record: District) => {
+          const isSelected = activeDistrictId === record.id;
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {isSelected ? (
+                <Tag color="success" icon={<CheckCircleOutlined />}>
+                  Танланган
+                </Tag>
+              ) : (
+                <Button
+                  type="link"
+                  aria-label={`Танлаш: ${record.name}`}
+                  onClick={() => void switchDistrict(record.id)}
+                  style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
+                >
+                  Танлаш
+                </Button>
+              )}
               <Button
                 type="link"
-                aria-label={`Танлаш: ${record.name}`}
-                onClick={() => void switchDistrict(record.id)}
+                aria-label={record.status === 'SETUP_INCOMPLETE' ? `Созлаш: ${record.name}` : `Кўриш: ${record.name}`}
+                onClick={() => {
+                  attemptTransition(async () => {
+                    if (!isSelected) {
+                      await switchDistrict(record.id);
+                    }
+                    navigate('/');
+                  });
+                }}
                 style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
               >
-                Танлаш
+                {record.status === 'SETUP_INCOMPLETE' ? 'Созлаш' : 'Кўриш'}
               </Button>
-            )}
-            <Button
-              type="link"
-              aria-label={record.status === 'SETUP_INCOMPLETE' ? `Созлаш: ${record.name}` : `Кўриш: ${record.name}`}
-              onClick={() => {
-                attemptTransition(async () => {
-                  if (!isSelected) {
-                    await switchDistrict(record.id);
-                  }
-                  navigate('/');
-                });
-              }}
-              style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
-            >
-              {record.status === 'SETUP_INCOMPLETE' ? 'Созлаш' : 'Кўриш'}
-            </Button>
-          </div>
-        );
+            </div>
+          );
+        },
       },
-    },
-  ];
+    ],
+    [activeDistrictId, switchDistrict, attemptTransition, navigate]
+  );
 
   return (
     <div>
@@ -196,7 +199,17 @@ export const DistrictsPage: React.FC = () => {
               columns={columns}
               rowKey="id"
               loading={isLoading}
-              pagination={false}
+              pagination={
+                districts.length > 10
+                  ? {
+                      defaultPageSize: 10,
+                      showSizeChanger: true,
+                      pageSizeOptions: ['10', '20', '50'],
+                      showTotal: (total, range) =>
+                        `${total} та тумандан ${range[0]}–${range[1]} кўрсатилмоқда`,
+                    }
+                  : false
+              }
               scroll={{ x: 'max-content' }}
             />
           </div>

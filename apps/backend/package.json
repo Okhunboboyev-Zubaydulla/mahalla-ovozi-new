@@ -12,7 +12,8 @@
     "db:migrate": "node --import tsx/esm src/adapters/db/migrate.ts",
     "dev": "node --import tsx/esm src/entrypoints/http.ts",
     "worker": "node --import tsx/esm src/entrypoints/worker.ts",
-    "cli:manage-po": "node --import tsx/esm src/cli/manage-product-owner.ts"
+    "cli:manage-po": "node --import tsx/esm src/cli/manage-product-owner.ts",
+    "cli:clean-test-data": "node --import tsx/esm src/cli/clean-test-data.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
