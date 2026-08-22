@@ -12,10 +12,12 @@ import {
   TELEGRAM_SEMANTIC_RELEVANCE_QUEUE,
   TELEGRAM_TOPIC_ASSIGNMENT_QUEUE,
   TELEGRAM_TOPIC_PROJECTION_QUEUE,
+  TELEGRAM_TOPIC_RETENTION_QUEUE,
   type TelegramContentQualificationJobData,
   type TelegramSemanticRelevanceJobData,
   type TelegramTopicAssignmentJobData,
   type TelegramTopicProjectionJobData,
+  type TelegramTopicRetentionJobData,
 } from '../adapters/jobs/boss-client.js';
 import { createDbPool, createDbClient, type DbClient } from '../adapters/db/client.js';
 import {
@@ -42,6 +44,7 @@ import {
   getMahallaDailySnapshot,
   type AcceptedEvidenceItem,
 } from '../modules/ai/context-snapshot.js';
+import { TopicRetentionService } from '../modules/retention/index.js';
 
 let activeBossInstance: PgBoss | null = null;
 let internalPool: pg.Pool | null = null;
@@ -1141,17 +1144,19 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
               .limit(1);
 
             if (!targetTopic) {
-              console.warn(
+              const durationMs = Math.round(performance.now() - startTime);
+              console.log(
                 JSON.stringify({
-                  event: 'TELEGRAM_TOPIC_PROJECTION_TOPIC_NOT_FOUND',
+                  event: 'TELEGRAM_TOPIC_PROJECTION_DROPPED_EXPIRED',
                   topicId,
                   districtId,
                   mahallaName,
                   calendarDay,
                   generation,
+                  durationMs,
                 }),
               );
-              throw new Error(`Topic ${topicId} not found in database for projection recalculation`);
+              continue;
             }
 
             // 3. Out-of-order drop check (AC 3, Matrix #14 / AD-7)
@@ -1243,7 +1248,15 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
                 .limit(1);
 
               if (!lockedTopic) {
-                throw new Error(`Topic ${topicId} disappeared during transactional commit`);
+                console.log(
+                  JSON.stringify({
+                    event: 'TELEGRAM_TOPIC_PROJECTION_DROPPED_EXPIRED',
+                    topicId,
+                    districtId,
+                    targetGeneration,
+                  }),
+                );
+                return;
               }
 
               // CAS stale check (AC 13, Matrix #16)
@@ -1406,6 +1419,113 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
               }),
             );
             throw err; // Trigger pg-boss retry policy with backoff (AC 15)
+          }
+        }
+      },
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 5. Worker for telegram-topic-retention (Story 2.6)
+  // ──────────────────────────────────────────────────────────────────────────
+  if (shouldWork(TELEGRAM_TOPIC_RETENTION_QUEUE)) {
+    const retentionService = new TopicRetentionService(pool, boss, db);
+
+    if (!options?.queues) {
+      await boss.schedule(
+        TELEGRAM_TOPIC_RETENTION_QUEUE,
+        '0 * * * *',
+        {},
+        { tz: 'Asia/Tashkent' },
+      );
+    }
+
+    await boss.work<TelegramTopicRetentionJobData>(
+      TELEGRAM_TOPIC_RETENTION_QUEUE,
+      { newJobCheckInterval: 50 } as any,
+      async (jobs) => {
+        for (const job of jobs) {
+          const startTime = performance.now();
+          const { districtId } = job.data;
+
+          try {
+            if (districtId) {
+              // 1. Gate 1: Check district lifecycle (AC 12)
+              const [district] = await db
+                .select()
+                .from(districts)
+                .where(eq(districts.id, districtId))
+                .limit(1);
+
+              if (!district || district.status !== 'ACTIVE' || !district.accessEligible) {
+                const durationMs = Math.round(performance.now() - startTime);
+                console.log(
+                  JSON.stringify({
+                    event: 'TELEGRAM_TOPIC_RETENTION_DROPPED_INACTIVE_DISTRICT',
+                    districtId,
+                    districtStatus: district?.status ?? 'NOT_FOUND',
+                    accessEligible: district?.accessEligible ?? false,
+                    durationMs,
+                  }),
+                );
+                continue;
+              }
+
+              const result = await retentionService.purgeDistrictExpiredTopicsBatch(districtId);
+              const durationMs = Math.round(performance.now() - startTime);
+              console.log(
+                JSON.stringify({
+                  event: 'TELEGRAM_TOPIC_RETENTION_SCAN_COMPLETED',
+                  districtId,
+                  topicsEvaluated: result.topicsEvaluated,
+                  topicsPurged: result.topicsPurged,
+                  evidencePurged: result.evidencePurged,
+                  projectionsPurged: result.projectionsPurged,
+                  durationMs,
+                }),
+              );
+            } else {
+              // Scheduled scan across all active districts (AC 13)
+              const activeDistricts = await db
+                .select({ id: districts.id })
+                .from(districts)
+                .where(and(eq(districts.status, 'ACTIVE'), eq(districts.accessEligible, true)));
+
+              let totalEvaluated = 0;
+              let totalPurged = 0;
+              let totalEvidence = 0;
+              let totalProjections = 0;
+
+              for (const d of activeDistricts) {
+                const result = await retentionService.purgeDistrictExpiredTopicsBatch(d.id);
+                totalEvaluated += result.topicsEvaluated;
+                totalPurged += result.topicsPurged;
+                totalEvidence += result.evidencePurged;
+                totalProjections += result.projectionsPurged;
+              }
+
+              const durationMs = Math.round(performance.now() - startTime);
+              console.log(
+                JSON.stringify({
+                  event: 'TELEGRAM_TOPIC_RETENTION_SCAN_COMPLETED',
+                  districtsScanned: activeDistricts.length,
+                  topicsEvaluated: totalEvaluated,
+                  topicsPurged: totalPurged,
+                  evidencePurged: totalEvidence,
+                  projectionsPurged: totalProjections,
+                  durationMs,
+                }),
+              );
+            }
+          } catch (err) {
+            console.error(
+              JSON.stringify({
+                event: 'TELEGRAM_TOPIC_RETENTION_ERROR',
+                districtId: districtId ?? 'ALL',
+                error: err instanceof Error ? err.message : String(err),
+              }),
+            );
+            throw err;
           }
         }
       },

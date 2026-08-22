@@ -8,6 +8,7 @@ export const TELEGRAM_CONTENT_QUALIFICATION_QUEUE = 'telegram-content-qualificat
 export const TELEGRAM_SEMANTIC_RELEVANCE_QUEUE = 'telegram-semantic-relevance';
 export const TELEGRAM_TOPIC_ASSIGNMENT_QUEUE = 'telegram-topic-assignment';
 export const TELEGRAM_TOPIC_PROJECTION_QUEUE = 'telegram-topic-projection';
+export const TELEGRAM_TOPIC_RETENTION_QUEUE = 'telegram-topic-retention';
 
 export interface TelegramContentQualificationJobData {
   intakeId: string;
@@ -66,6 +67,10 @@ export interface TelegramTopicProjectionJobData {
   generation: number;
 }
 
+export interface TelegramTopicRetentionJobData {
+  districtId?: string;
+}
+
 export function createBossClient(options?: { connectionString?: string; schema?: string }): PgBoss {
   const connectionString =
     options?.connectionString ||
@@ -89,6 +94,7 @@ export async function initBossQueues(boss: PgBoss): Promise<void> {
   await boss.createQueue(TELEGRAM_SEMANTIC_RELEVANCE_QUEUE);
   await boss.createQueue(TELEGRAM_TOPIC_ASSIGNMENT_QUEUE);
   await boss.createQueue(TELEGRAM_TOPIC_PROJECTION_QUEUE);
+  await boss.createQueue(TELEGRAM_TOPIC_RETENTION_QUEUE);
 }
 
 export interface TransactionScope {

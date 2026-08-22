@@ -66,7 +66,7 @@ development_status:
   2-3-decide-semantic-relevance-by-meaning-and-discard-non-qualifying-content: done
   2-4-assign-relevant-signals-to-same-day-topics-and-commit-accepted-evidence: done
   2-5-recalculate-the-canonical-multi-lane-topic-projection: done
-  2-6-enforce-topic-level-retention-and-preserve-accepted-evidence-as-source-of-truth: backlog
+  2-6-enforce-topic-level-retention-and-preserve-accepted-evidence-as-source-of-truth: review
   2-7-query-ai-operation-traceability-and-explicit-failure-state: backlog
   epic-2-retrospective: optional
 
