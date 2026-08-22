@@ -121,10 +121,38 @@ export const defaultSemanticRelevanceProfile: NewAiProfile = {
   isActive: true,
 };
 
+export const defaultTopicMatchingProfile: NewAiProfile = {
+  id: 'prof_match_2026_08_v1',
+  version: 1,
+  operationType: 'TOPIC_MATCHING',
+  provider: 'OPENAI',
+  modelId: 'gpt-4o-mini-2024-07-18',
+  promptVersion: 'prom_match_v1',
+  schemaVersion: 'sch_match_v1',
+  temperature: 0.0,
+  maxOutputTokens: 500,
+  timeoutMs: 10000,
+  retryPolicy: {
+    maxAttempts: 3,
+    backoffFactor: 2,
+    initialDelayMs: 1000,
+  },
+  capabilities: {
+    structuredOutputs: true,
+    jsonSchemaMode: 'strict',
+  },
+  isActive: true,
+};
+
 export async function ensureDefaultAiProfiles(db: any): Promise<void> {
   await db
     .insert(aiProfiles)
     .values(defaultSemanticRelevanceProfile)
     .onConflictDoNothing({ target: aiProfiles.id });
+  await db
+    .insert(aiProfiles)
+    .values(defaultTopicMatchingProfile)
+    .onConflictDoNothing({ target: aiProfiles.id });
 }
+
 

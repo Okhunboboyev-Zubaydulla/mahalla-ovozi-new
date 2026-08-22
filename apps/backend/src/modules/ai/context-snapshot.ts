@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 import { eq, and } from 'drizzle-orm';
 import type { DbClient } from '../../adapters/db/client.js';
-import { aiOperations } from '../../adapters/db/schema/ai.js';
-import { telegramIntakeRecords } from '../../adapters/db/schema/telegram-intakes.js';
+import { acceptedEvidence } from '../../adapters/db/schema/accepted-evidence.js';
+import { topics } from '../../adapters/db/schema/topics.js';
 
 export interface AcceptedEvidenceItem {
   id: string;
@@ -52,54 +52,42 @@ export async function getMahallaDailySnapshot(
   let evidence: AcceptedEvidenceItem[] = [];
 
   if (injectedEvidence) {
-    // If explicit evidence was passed (e.g. In tests or topic store)
+    // If explicit evidence was passed (e.g. in tests or mock resolver)
     evidence = [...injectedEvidence];
   } else {
-    // Retrieve historical accepted relevant operations for this mahalla/day
-    const relevantOps = await db
+    // Retrieve accepted evidence for this mahalla/day directly from accepted_evidence inner-joined with topics
+    const rows = await db
       .select({
-        operationId: aiOperations.id,
-        targetId: aiOperations.targetId,
-        contextRevision: aiOperations.contextRevision,
-        resultPayload: aiOperations.resultPayload,
-        intakeId: telegramIntakeRecords.id,
-        telegramMessageId: telegramIntakeRecords.telegramMessageId,
-        originalTimestamp: telegramIntakeRecords.originalTimestamp,
-        rawPayload: telegramIntakeRecords.rawPayload,
+        id: acceptedEvidence.id,
+        topicId: acceptedEvidence.topicId,
+        telegramMessageId: acceptedEvidence.telegramMessageId,
+        originalTimestamp: acceptedEvidence.originalTimestamp,
+        verbatimText: acceptedEvidence.verbatimText,
+        lane: topics.primaryLane,
       })
-      .from(aiOperations)
-      .innerJoin(telegramIntakeRecords, eq(aiOperations.targetId, telegramIntakeRecords.id))
+      .from(acceptedEvidence)
+      .innerJoin(topics, eq(acceptedEvidence.topicId, topics.id))
       .where(
         and(
-          eq(aiOperations.districtId, districtId),
-          eq(aiOperations.mahallaName, mahallaName),
-          eq(aiOperations.calendarDay, calendarDay),
-          eq(aiOperations.finalStatus, 'COMPLETED_RELEVANT'),
+          eq(acceptedEvidence.districtId, districtId),
+          eq(acceptedEvidence.mahallaName, mahallaName),
+          eq(acceptedEvidence.calendarDay, calendarDay),
         ),
       );
 
-    for (const row of relevantOps) {
-      const payload = row.rawPayload as Record<string, any>;
-      const text =
-        payload?.text ||
-        payload?.caption ||
-        payload?.message?.text ||
-        payload?.message?.caption ||
-        '';
-
-      if (text) {
-        evidence.push({
-          id: row.operationId,
-          telegramMessageId: row.telegramMessageId,
-          originalTimestamp: row.originalTimestamp.toISOString(),
-          verbatimText: text,
-          lane: (row.resultPayload as any)?.relevant_lanes?.[0] || (row.resultPayload as any)?.lanes?.[0],
-        });
-      }
+    for (const row of rows) {
+      evidence.push({
+        id: row.id,
+        topicId: row.topicId,
+        telegramMessageId: row.telegramMessageId,
+        originalTimestamp: row.originalTimestamp.toISOString(),
+        verbatimText: row.verbatimText,
+        lane: row.lane,
+      });
     }
   }
 
-  // Deterministic sorting
+  // Deterministic sorting: originalTimestamp ASC -> telegramMessageId ASC -> id ASC
   evidence.sort((a, b) => {
     const timeA = new Date(a.originalTimestamp).getTime();
     const timeB = new Date(b.originalTimestamp).getTime();

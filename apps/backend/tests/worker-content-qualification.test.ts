@@ -33,12 +33,12 @@ describe('Story 2.2: Background Worker Content Qualification Integration Tests',
   beforeAll(async () => {
     pool = createDbPool();
     db = createDbClient(pool);
-    boss = createBossClient();
+    boss = createBossClient({ schema: 'pgboss_qualification' });
     await boss.start();
     await initBossQueues(boss);
 
     // Clean up any stale jobs from previous tests
-    await pool.query('DELETE FROM pgboss.job WHERE name IN ($1, $2)', [
+    await pool.query('DELETE FROM pgboss_qualification.job WHERE name IN ($1, $2)', [
       TELEGRAM_CONTENT_QUALIFICATION_QUEUE,
       TELEGRAM_SEMANTIC_RELEVANCE_QUEUE,
     ]);
@@ -56,7 +56,7 @@ describe('Story 2.2: Background Worker Content Qualification Integration Tests',
     vi.restoreAllMocks();
 
     // Clean up jobs table before each test
-    await pool.query('DELETE FROM pgboss.job WHERE name IN ($1, $2)', [
+    await pool.query('DELETE FROM pgboss_qualification.job WHERE name IN ($1, $2)', [
       TELEGRAM_CONTENT_QUALIFICATION_QUEUE,
       TELEGRAM_SEMANTIC_RELEVANCE_QUEUE,
     ]);

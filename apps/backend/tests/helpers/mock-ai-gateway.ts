@@ -1,6 +1,9 @@
 import { AiGateway, type AiGatewayPort } from '../../src/modules/ai/ai-gateway.js';
 import { MockProviderAdapter } from '../../src/adapters/ai-providers/mock-provider-adapter.js';
-import { defaultSemanticRelevanceProfile } from '../../src/adapters/db/schema/ai.js';
+import {
+  defaultSemanticRelevanceProfile,
+  defaultTopicMatchingProfile,
+} from '../../src/adapters/db/schema/ai.js';
 import type { AiProfile } from '../../src/adapters/db/schema/ai.js';
 
 export interface MockAiGatewayController {
@@ -22,6 +25,10 @@ export function createMockAiGateway(defaultResponse?: Record<string, unknown>): 
   defaultProfiles.set(
     'prof_rel_2026_08_v1',
     defaultSemanticRelevanceProfile as AiProfile,
+  );
+  defaultProfiles.set(
+    'prof_match_2026_08_v1',
+    defaultTopicMatchingProfile as AiProfile,
   );
 
   const gateway = new AiGateway({

@@ -11,6 +11,9 @@ import {
   aiProfiles,
   aiOperations,
   aiProviderAttempts,
+  topics,
+  acceptedEvidence,
+  telegramIntakeRecords,
   ensureDefaultAiProfiles,
 } from '../src/adapters/db/schema/index.js';
 import { eq } from 'drizzle-orm';
@@ -749,6 +752,181 @@ describe('Database Schema & Migration Verification', () => {
       ).rejects.toThrow();
 
       // Clean up
+      await db.delete(districts).where(eq(districts.id, districtId));
+    });
+
+    it('can query topics and accepted_evidence tables and seeds default topic matching profile', async () => {
+      await ensureDefaultAiProfiles(db);
+
+      const topicRows = await db.select().from(topics).limit(1);
+      expect(Array.isArray(topicRows)).toBe(true);
+
+      const evidenceRows = await db.select().from(acceptedEvidence).limit(1);
+      expect(Array.isArray(evidenceRows)).toBe(true);
+
+      const [matchProfile] = await db
+        .select()
+        .from(aiProfiles)
+        .where(eq(aiProfiles.id, 'prof_match_2026_08_v1'))
+        .limit(1);
+
+      expect(matchProfile).toBeDefined();
+      expect(matchProfile?.operationType).toBe('TOPIC_MATCHING');
+      expect(matchProfile?.modelId).toBe('gpt-4o-mini-2024-07-18');
+    });
+
+    it('enforces foreign key restrict on accepted_evidence.topic_id (preventing topic deletion)', async () => {
+      const districtId = `dist_top_${crypto.randomUUID()}`;
+      const topicId = `top_${crypto.randomUUID()}`;
+      const intakeId = `intk_top_${crypto.randomUUID()}`;
+      const evidenceId = `evi_${crypto.randomUUID()}`;
+      const now = new Date();
+      const retentionExpiresAt = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+
+      await db.insert(districts).values({
+        id: districtId,
+        name: `TopicDist_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
+      });
+
+      await db.insert(topics).values({
+        id: topicId,
+        districtId,
+        mahallaName: 'Guliston',
+        calendarDay: '2026-08-22',
+        primaryLane: 'WATER',
+        status: 'ACTIVE',
+        latestRelevantEvidenceTimestamp: now,
+        retentionExpiresAt,
+        requiredDerivedGeneration: 1,
+        appliedDerivedGeneration: 0,
+      });
+
+      await db.insert(telegramIntakeRecords).values({
+        id: intakeId,
+        districtId,
+        mahallaName: 'Guliston',
+        telegramBotId: 'bot_123',
+        telegramChatId: '-100123456789',
+        telegramMessageId: '9901',
+        originalTimestamp: now,
+        calendarDay: '2026-08-22',
+        rawPayload: { text: 'Suv toshib ketdi' },
+      });
+
+      await db.insert(acceptedEvidence).values({
+        id: evidenceId,
+        topicId,
+        districtId,
+        mahallaName: 'Guliston',
+        calendarDay: '2026-08-22',
+        intakeRecordId: intakeId,
+        telegramChatId: '-100123456789',
+        telegramMessageId: '9901',
+        originalTimestamp: now,
+        verbatimText: 'Suv toshib ketdi',
+        contentType: 'TEXT',
+        userMetadata: { username: 'citizen1' },
+      });
+
+      // Deleting the topic while accepted_evidence references it MUST fail due to onDelete: 'restrict'
+      await expect(
+        db.delete(topics).where(eq(topics.id, topicId)),
+      ).rejects.toThrow();
+
+      // Clean up: delete evidence first, then topic, then intake, then district
+      await db.delete(acceptedEvidence).where(eq(acceptedEvidence.id, evidenceId));
+      await db.delete(topics).where(eq(topics.id, topicId));
+      await db.delete(telegramIntakeRecords).where(eq(telegramIntakeRecords.id, intakeId));
+      await db.delete(districts).where(eq(districts.id, districtId));
+    });
+
+    it('enforces composite unique constraint on accepted_evidence (districtId, telegramChatId, telegramMessageId)', async () => {
+      const districtId = `dist_evi_uniq_${crypto.randomUUID()}`;
+      const topicId = `top_${crypto.randomUUID()}`;
+      const intakeId1 = `intk_uniq1_${crypto.randomUUID()}`;
+      const intakeId2 = `intk_uniq2_${crypto.randomUUID()}`;
+      const now = new Date();
+
+      await db.insert(districts).values({
+        id: districtId,
+        name: `EviUniqDist_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
+      });
+
+      await db.insert(topics).values({
+        id: topicId,
+        districtId,
+        mahallaName: 'Guliston',
+        calendarDay: '2026-08-22',
+        primaryLane: 'ELECTRICITY',
+        status: 'ACTIVE',
+        latestRelevantEvidenceTimestamp: now,
+        retentionExpiresAt: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
+        requiredDerivedGeneration: 1,
+        appliedDerivedGeneration: 0,
+      });
+
+      await db.insert(telegramIntakeRecords).values([
+        {
+          id: intakeId1,
+          districtId,
+          mahallaName: 'Guliston',
+          telegramBotId: 'bot_123',
+          telegramChatId: '-100987654321',
+          telegramMessageId: '8801',
+          originalTimestamp: now,
+          calendarDay: '2026-08-22',
+          rawPayload: { text: 'Svet o‘chdi' },
+        },
+        {
+          id: intakeId2,
+          districtId,
+          mahallaName: 'Guliston',
+          telegramBotId: 'bot_123',
+          telegramChatId: '-100987654321',
+          telegramMessageId: '8802',
+          originalTimestamp: now,
+          calendarDay: '2026-08-22',
+          rawPayload: { text: 'Svet o‘chdi' },
+        },
+      ]);
+
+      await db.insert(acceptedEvidence).values({
+        id: `evi1_${crypto.randomUUID()}`,
+        topicId,
+        districtId,
+        mahallaName: 'Guliston',
+        calendarDay: '2026-08-22',
+        intakeRecordId: intakeId1,
+        telegramChatId: '-100987654321',
+        telegramMessageId: '8801',
+        originalTimestamp: now,
+        verbatimText: 'Svet o‘chdi',
+        contentType: 'TEXT',
+      });
+
+      // Duplicate (districtId, telegramChatId, telegramMessageId) must fail
+      await expect(
+        db.insert(acceptedEvidence).values({
+          id: `evi2_${crypto.randomUUID()}`,
+          topicId,
+          districtId,
+          mahallaName: 'Guliston',
+          calendarDay: '2026-08-22',
+          intakeRecordId: intakeId2,
+          telegramChatId: '-100987654321',
+          telegramMessageId: '8801',
+          originalTimestamp: now,
+          verbatimText: 'Svet o‘chdi',
+          contentType: 'TEXT',
+        }),
+      ).rejects.toThrow();
+
+      // Clean up
+      await db.delete(acceptedEvidence).where(eq(acceptedEvidence.districtId, districtId));
+      await db.delete(topics).where(eq(topics.id, topicId));
+      await db.delete(telegramIntakeRecords).where(eq(telegramIntakeRecords.districtId, districtId));
       await db.delete(districts).where(eq(districts.id, districtId));
     });
   });

@@ -4,7 +4,7 @@ baseline_commit: 39d377faa5157c81a4dedf943b1987062be78701
 
 # Story 2.4: Assign Relevant Signals to Same-Day Topics and Commit Accepted Evidence
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is complete. Story specification has passed adversarial, edge-case, and compliance pre-dev review. -->
 
@@ -137,35 +137,35 @@ So that District Topics remain traceable, day-bounded, and free from guessed evi
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Relational Schema & Database Migrations (AC: 1, 8, 10, 16)**
-  - [ ] 1.1 Create `apps/backend/src/adapters/db/schema/topics.ts` with `topics` table:
+- [x] **Task 1: Relational Schema & Database Migrations (AC: 1, 8, 10, 16)**
+  - [x] 1.1 Create `apps/backend/src/adapters/db/schema/topics.ts` with `topics` table:
     - Columns: `id` (`top_<uuid>`), `districtId` (FK `districts.id` with `onDelete: 'cascade'`), `mahallaName`, `calendarDay`, `primaryLane`, `status` (`'ACTIVE' | 'ARCHIVED'`), `latestRelevantEvidenceTimestamp`, `retentionExpiresAt`, `requiredDerivedGeneration`, `appliedDerivedGeneration`, `createdAt`, `updatedAt`.
     - Indices: `topics_district_mahalla_day_idx` on `(districtId, mahallaName, calendarDay)` and `topics_district_status_idx` on `(districtId, status)`.
-  - [ ] 1.2 Create `apps/backend/src/adapters/db/schema/accepted-evidence.ts` with `acceptedEvidence` table:
+  - [x] 1.2 Create `apps/backend/src/adapters/db/schema/accepted-evidence.ts` with `acceptedEvidence` table:
     - Columns: `id` (`evi_<uuid>`), `topicId` (FK `topics.id` with `onDelete: 'restrict'`), `districtId` (FK `districts.id` with `onDelete: 'cascade'`), `mahallaName`, `calendarDay`, `intakeRecordId` (FK `telegramIntakeRecords.id`), `telegramChatId`, `telegramMessageId`, `telegramUserId`, `originalTimestamp`, `verbatimText`, `contentType`, `userMetadata` (jsonb), `replyMetadata` (jsonb), `aiOperationId` (FK `aiOperations.id` with `onDelete: 'set null'`), `createdAt`.
     - Indices:
       - `uniqueIndex('accepted_evidence_district_chat_msg_idx').on(table.districtId, table.telegramChatId, table.telegramMessageId)`
       - `index('accepted_evidence_district_mahalla_day_idx').on(table.districtId, table.mahallaName, table.calendarDay)`
       - `index('accepted_evidence_topic_id_idx').on(table.topicId)`
       - `index('accepted_evidence_ordering_idx').on(table.districtId, table.mahallaName, table.calendarDay, table.originalTimestamp, table.telegramMessageId, table.id)`
-  - [ ] 1.3 Update `apps/backend/src/adapters/db/schema/ai.ts` to register `defaultTopicMatchingProfile` (`prof_match_2026_08_v1`) and include in `ensureDefaultAiProfiles`.
-  - [ ] 1.4 Re-export new tables in `apps/backend/src/adapters/db/schema/index.ts`.
-  - [ ] 1.5 Generate and apply SQL migrations via Drizzle Kit (`pnpm --filter backend db:generate` & `pnpm --filter backend db:migrate`).
+  - [x] 1.3 Update `apps/backend/src/adapters/db/schema/ai.ts` to register `defaultTopicMatchingProfile` (`prof_match_2026_08_v1`) and include in `ensureDefaultAiProfiles`.
+  - [x] 1.4 Re-export new tables in `apps/backend/src/adapters/db/schema/index.ts`.
+  - [x] 1.5 Generate and apply SQL migrations via Drizzle Kit (`pnpm --filter backend db:generate` & `pnpm --filter backend db:migrate`).
 
-- [ ] **Task 2: AI Contracts & Topic Matching Evaluator (AC: 2, 3, 4, 5, 6, 7, 11, 14)**
-  - [ ] 2.1 Create `apps/backend/src/modules/ai/topic-matching-contracts.ts`:
+- [x] **Task 2: AI Contracts & Topic Matching Evaluator (AC: 2, 3, 4, 5, 6, 7, 11, 14)**
+  - [x] 2.1 Create `apps/backend/src/modules/ai/topic-matching-contracts.ts`:
     - `TopicMatchingDecisionEnum = z.enum(['MATCH_EXISTING_TOPIC', 'NEW_TOPIC', 'UNASSIGNABLE_VAGUE'])`.
     - `TopicMatchingResultSchema` with strict `.nullable()` fields and runtime `.refine()` consistency validation.
     - Export `TopicMatchingInput`, `TopicMatchingOutput`, and `defaultTopicMatchingProfile`.
-  - [ ] 2.2 Create `apps/backend/src/modules/topics/topic-matching-evaluator.ts` implementing `TopicMatchingEvaluator`:
+  - [x] 2.2 Create `apps/backend/src/modules/topics/topic-matching-evaluator.ts` implementing `TopicMatchingEvaluator`:
     - Fast DB Direct Reply matcher `findDirectReplyTopic(db, districtId, mahallaName, calendarDay, chatId, replyToMessageId)` querying `accepted_evidence`.
     - Contextual prompt builder grouping evidence by topic and highlighting nearest earlier message in source order.
     - `evaluateTopicAssignment` method integrating with `AiGatewayPort`.
-  - [ ] 2.3 Update `apps/backend/src/modules/ai/context-snapshot.ts` (`getMahallaDailySnapshot`) to select directly from `accepted_evidence` inner-joined with `topics` (selecting `topics.primaryLane as lane`) with deterministic sorting (`originalTimestamp ASC -> telegramMessageId ASC -> id ASC`).
+  - [x] 2.3 Update `apps/backend/src/modules/ai/context-snapshot.ts` (`getMahallaDailySnapshot`) to select directly from `accepted_evidence` inner-joined with `topics` (selecting `topics.primaryLane as lane`) with deterministic sorting (`originalTimestamp ASC -> telegramMessageId ASC -> id ASC`).
 
-- [ ] **Task 3: Queue & Worker Integration (AC: 1, 2, 7, 8, 10, 11, 12, 13, 15, 16, 17)**
-  - [ ] 3.1 Define `TELEGRAM_TOPIC_PROJECTION_QUEUE` and `TelegramTopicProjectionJobData` in `apps/backend/src/adapters/jobs/boss-client.ts` and register in `initBossQueues`.
-  - [ ] 3.2 Implement `TELEGRAM_TOPIC_ASSIGNMENT_QUEUE` worker consumer in `apps/backend/src/entrypoints/worker.ts`:
+- [x] **Task 3: Queue & Worker Integration (AC: 1, 2, 7, 8, 10, 11, 12, 13, 15, 16, 17)**
+  - [x] 3.1 Define `TELEGRAM_TOPIC_PROJECTION_QUEUE` and `TelegramTopicProjectionJobData` in `apps/backend/src/adapters/jobs/boss-client.ts` and register in `initBossQueues`.
+  - [x] 3.2 Implement `TELEGRAM_TOPIC_ASSIGNMENT_QUEUE` worker consumer in `apps/backend/src/entrypoints/worker.ts`:
     - Gate 1 Pre-AI District Lifecycle Verification (drop cleanly if inactive).
     - Direct Reply evaluation via DB (assign immediately if valid).
     - Fallback contextual AI snapshot assembly and `evaluateTopicAssignment` execution outside DB transactions.
@@ -179,11 +179,11 @@ So that District Topics remain traceable, day-bounded, and free from guessed evi
       - Enqueue `TELEGRAM_TOPIC_PROJECTION_QUEUE` with `{ topicId, districtId, mahallaName, calendarDay, generation }`.
     - Catch Postgres `23505` duplicate unique violations gracefully without failing the worker.
 
-- [ ] **Task 4: Comprehensive Test Suite & Edge Case Hardening (AC: 1-17)**
-  - [ ] 4.1 Unit tests for `TopicMatchingResultSchema` in `tests/unit/topic-matching-contracts.test.ts`.
-  - [ ] 4.2 Unit tests for `TopicMatchingEvaluator` in `tests/unit/topic-matching-evaluator.test.ts`.
-  - [ ] 4.3 Integration tests for `TELEGRAM_TOPIC_ASSIGNMENT_QUEUE` in `tests/integration/telegram-topic-assignment-worker.test.ts` covering all 28 scenarios in the Verification Matrix.
-  - [ ] 4.4 Run full typecheck and test suites (`pnpm typecheck`, `pnpm --filter backend test`) ensuring 100% pass rate.
+- [x] **Task 4: Comprehensive Test Suite & Edge Case Hardening (AC: 1-17)**
+  - [x] 4.1 Unit tests for `TopicMatchingResultSchema` in `tests/topic-matching-evaluator.test.ts`.
+  - [x] 4.2 Unit tests for `TopicMatchingEvaluator` and DB fast direct reply matcher in `tests/topic-matching-evaluator.test.ts`.
+  - [x] 4.3 Integration tests for `TELEGRAM_TOPIC_ASSIGNMENT_QUEUE` in `tests/worker-topic-assignment.test.ts` covering all 28 scenarios in the Verification Matrix.
+  - [x] 4.4 Run full typecheck and test suites (`pnpm typecheck`, `pnpm --filter backend test`, `pnpm build`) ensuring 100% pass rate.
 
 ---
 
