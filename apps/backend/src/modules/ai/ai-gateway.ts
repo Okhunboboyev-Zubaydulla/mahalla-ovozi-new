@@ -1,0 +1,263 @@
+import { eq, and } from 'drizzle-orm';
+import type { DbClient } from '../../adapters/db/client.js';
+import { aiProfiles, type AiProfile } from '../../adapters/db/schema/ai.js';
+import {
+  type GenerateStructuredOptions,
+  type AiGatewayResult,
+  type AiProviderAdapterPort,
+  type RawProviderPayload,
+  AiGatewayError,
+} from './types.js';
+import { compileProviderSchema } from './schema-compiler.js';
+import { HttpProviderAdapter } from '../../adapters/ai-providers/http-provider-adapter.js';
+
+export interface AiGatewayPort {
+  generateStructured<T>(options: GenerateStructuredOptions<T>): Promise<AiGatewayResult<T>>;
+  getProfile(profileId: string): Promise<AiProfile | null>;
+  getActiveProfile(operationType: string): Promise<AiProfile | null>;
+}
+
+export interface AiGatewayOptions {
+  db?: DbClient;
+  customAdapters?: Map<string, AiProviderAdapterPort>;
+  defaultProfiles?: Map<string, AiProfile>;
+}
+
+export class AiGateway implements AiGatewayPort {
+  private db?: DbClient;
+  private adapters: Map<string, AiProviderAdapterPort> = new Map();
+  private staticProfiles: Map<string, AiProfile> = new Map();
+
+  constructor(options?: AiGatewayOptions) {
+    this.db = options?.db;
+
+    if (options?.customAdapters) {
+      for (const [key, adapter] of options.customAdapters.entries()) {
+        this.adapters.set(key, adapter);
+      }
+    }
+
+    if (options?.defaultProfiles) {
+      for (const [id, profile] of options.defaultProfiles.entries()) {
+        this.staticProfiles.set(id, profile);
+      }
+    }
+  }
+
+  public registerAdapter(key: string, adapter: AiProviderAdapterPort): void {
+    this.adapters.set(key, adapter);
+  }
+
+  public setStaticProfile(profile: AiProfile): void {
+    this.staticProfiles.set(profile.id, profile);
+  }
+
+  public async getProfile(profileId: string): Promise<AiProfile | null> {
+    if (this.staticProfiles.has(profileId)) {
+      return this.staticProfiles.get(profileId)!;
+    }
+
+    if (this.db) {
+      const [record] = await this.db
+        .select()
+        .from(aiProfiles)
+        .where(eq(aiProfiles.id, profileId))
+        .limit(1);
+      if (record) {
+        return record;
+      }
+    }
+
+    return null;
+  }
+
+  public async getActiveProfile(operationType: string): Promise<AiProfile | null> {
+    for (const profile of this.staticProfiles.values()) {
+      if (profile.operationType === operationType && profile.isActive) {
+        return profile;
+      }
+    }
+
+    if (this.db) {
+      const [record] = await this.db
+        .select()
+        .from(aiProfiles)
+        .where(and(eq(aiProfiles.operationType, operationType), eq(aiProfiles.isActive, true)))
+        .limit(1);
+      if (record) {
+        return record;
+      }
+    }
+
+    return null;
+  }
+
+  private getAdapter(provider: string): AiProviderAdapterPort {
+    if (this.adapters.has(provider)) {
+      return this.adapters.get(provider)!;
+    }
+
+    if (
+      provider === 'OPENAI' ||
+      provider === 'GEMINI' ||
+      provider === 'GROQ' ||
+      provider === 'OLLAMA'
+    ) {
+      const adapter = new HttpProviderAdapter(provider);
+      this.adapters.set(provider, adapter);
+      return adapter;
+    }
+
+    throw new AiGatewayError('PROVIDER_SERVER_ERROR', `Unsupported AI provider adapter: ${provider}`, {
+      retryable: false,
+      provider,
+    });
+  }
+
+  public async generateStructured<T>(
+    options: GenerateStructuredOptions<T>,
+  ): Promise<AiGatewayResult<T>> {
+    let profile: AiProfile | null = null;
+    if (options.profileId) {
+      profile = await this.getProfile(options.profileId);
+    } else {
+      profile = await this.getActiveProfile(options.operationType);
+    }
+
+    if (!profile) {
+      throw new AiGatewayError(
+        'PROFILE_NOT_FOUND',
+        `No AI profile found for operation ${options.operationType}${options.profileId ? ` (${options.profileId})` : ''}`,
+        { retryable: false },
+      );
+    }
+
+    const adapter = this.getAdapter(profile.provider);
+    const retryPolicy = (profile.retryPolicy as {
+      maxAttempts?: number;
+      backoffFactor?: number;
+      initialDelayMs?: number;
+    }) || { maxAttempts: 3, backoffFactor: 2, initialDelayMs: 500 };
+
+    const maxAttempts = retryPolicy.maxAttempts ?? 3;
+    const backoffFactor = retryPolicy.backoffFactor ?? 2;
+    const initialDelayMs = retryPolicy.initialDelayMs ?? 500;
+
+    const compiledSchema = compileProviderSchema(
+      profile.provider as any,
+      options.schema,
+      options.schemaName,
+    );
+
+    const payload: RawProviderPayload = {
+      systemPrompt: options.systemPrompt,
+      userPrompt: options.userPrompt,
+      compiledSchema,
+      schemaName: options.schemaName,
+      modelId: profile.modelId,
+      temperature: profile.temperature,
+      maxOutputTokens: profile.maxOutputTokens,
+      timeoutMs: profile.timeoutMs,
+    };
+
+    let lastError: unknown = null;
+    let totalTokens = { inputTokens: 0, outputTokens: 0, cachedTokens: 0 };
+    let finalDurationMs = 0;
+    let finalProviderRequestId: string | undefined;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const response = await adapter.executeRequest(payload);
+        finalDurationMs = response.durationMs;
+        finalProviderRequestId = response.providerRequestId;
+        totalTokens = {
+          inputTokens: response.tokens.inputTokens,
+          outputTokens: response.tokens.outputTokens,
+          cachedTokens: response.tokens.cachedTokens ?? 0,
+        };
+
+        // 1. JSON Syntax Validation
+        let parsedJson: any;
+        try {
+          parsedJson = JSON.parse(response.rawContent);
+        } catch (jsonErr: any) {
+          throw new AiGatewayError(
+            'INVALID_OUTPUT_SYNTAX',
+            `Model output failed JSON syntax validation: ${jsonErr.message}`,
+            {
+              status: 502,
+              retryable: attempt < maxAttempts,
+              provider: profile.provider,
+              modelId: profile.modelId,
+              cause: jsonErr,
+            },
+          );
+        }
+
+        // 2. Semantic Schema Validation via Zod
+        const parseResult = options.schema.safeParse(parsedJson);
+        if (!parseResult.success) {
+          throw new AiGatewayError(
+            'INVALID_OUTPUT_SEMANTICS',
+            `Model output failed semantic schema validation: ${parseResult.error.message}`,
+            {
+              status: 502,
+              retryable: attempt < maxAttempts,
+              provider: profile.provider,
+              modelId: profile.modelId,
+              cause: parseResult.error,
+            },
+          );
+        }
+
+        // Calculate estimated cost (e.g. gpt-4o-mini pricing: $0.15/1M in, $0.60/1M out)
+        const estimatedCostUsd = Number(
+          (
+            (totalTokens.inputTokens * 0.00000015 + totalTokens.outputTokens * 0.0000006)
+          ).toFixed(6),
+        );
+
+        return {
+          data: parseResult.data,
+          profileId: profile.id,
+          provider: profile.provider,
+          modelId: profile.modelId,
+          providerRequestId: finalProviderRequestId,
+          durationMs: finalDurationMs,
+          tokens: totalTokens,
+          estimatedCostUsd,
+        };
+      } catch (err: any) {
+        lastError = err;
+        const isRetryable =
+          err instanceof AiGatewayError
+            ? err.retryable
+            : true;
+
+        if (attempt < maxAttempts && isRetryable) {
+          const delay = initialDelayMs * Math.pow(backoffFactor, attempt - 1);
+          await new Promise((res) => setTimeout(res, delay));
+          continue;
+        }
+
+        break;
+      }
+    }
+
+    if (lastError instanceof AiGatewayError) {
+      throw lastError;
+    }
+
+    throw new AiGatewayError(
+      'PROVIDER_SERVER_ERROR',
+      `AI Gateway failed after ${maxAttempts} attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
+      {
+        status: 500,
+        retryable: false,
+        provider: profile.provider,
+        modelId: profile.modelId,
+        cause: lastError,
+      },
+    );
+  }
+}

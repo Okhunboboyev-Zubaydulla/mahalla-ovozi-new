@@ -5,6 +5,7 @@ import * as schema from '../db/schema/index.js';
 
 export const TELEGRAM_CONTENT_QUALIFICATION_QUEUE = 'telegram-content-qualification';
 export const TELEGRAM_SEMANTIC_RELEVANCE_QUEUE = 'telegram-semantic-relevance';
+export const TELEGRAM_TOPIC_ASSIGNMENT_QUEUE = 'telegram-topic-assignment';
 
 export interface TelegramContentQualificationJobData {
   intakeId: string;
@@ -38,6 +39,23 @@ export interface TelegramSemanticRelevanceJobData {
   replyMetadata: TelegramReplyMetadata | null;
 }
 
+export interface TelegramTopicAssignmentJobData {
+  intakeId: string;
+  districtId: string;
+  mahallaName: string;
+  calendarDay: string;
+  telegramChatId: string;
+  telegramMessageId: string;
+  telegramUserId?: string;
+  originalTimestamp: string; // ISO-8601 string
+  contentType: 'TEXT' | 'MEDIA_CAPTION';
+  verbatimText: string;
+  replyMetadata: TelegramReplyMetadata | null;
+  aiOperationId: string;
+  relevantLanes: string[];
+  reasoning: string;
+}
+
 export function createBossClient(options?: { connectionString?: string; schema?: string }): PgBoss {
   const connectionString =
     options?.connectionString ||
@@ -59,6 +77,7 @@ export function createBossClient(options?: { connectionString?: string; schema?:
 export async function initBossQueues(boss: PgBoss): Promise<void> {
   await boss.createQueue(TELEGRAM_CONTENT_QUALIFICATION_QUEUE);
   await boss.createQueue(TELEGRAM_SEMANTIC_RELEVANCE_QUEUE);
+  await boss.createQueue(TELEGRAM_TOPIC_ASSIGNMENT_QUEUE);
 }
 
 export interface TransactionScope {

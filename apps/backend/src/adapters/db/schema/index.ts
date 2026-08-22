@@ -6,3 +6,4 @@ export * from './districts.js';
 export * from './district-telegram-bots.js';
 export * from './district-telegram-groups.js';
 export * from './telegram-intakes.js';
+export * from './ai.js';

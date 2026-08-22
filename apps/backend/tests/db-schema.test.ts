@@ -1,6 +1,18 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/client.js';
-import { accounts, sessions, auditEvents, signInRateLimits, districts, districtTelegramBots, districtTelegramGroups } from '../src/adapters/db/schema/index.js';
+import {
+  accounts,
+  sessions,
+  auditEvents,
+  signInRateLimits,
+  districts,
+  districtTelegramBots,
+  districtTelegramGroups,
+  aiProfiles,
+  aiOperations,
+  aiProviderAttempts,
+  ensureDefaultAiProfiles,
+} from '../src/adapters/db/schema/index.js';
 import { eq } from 'drizzle-orm';
 import pg from 'pg';
 import crypto from 'node:crypto';
@@ -569,6 +581,178 @@ describe('Database Schema & Migration Verification', () => {
       await db.delete(districts).where(eq(districts.id, districtId));
     });
   });
+
+  describe('Story 2.3: AI Profiles, AI Operations & Provider Attempts Traceability Schemas', () => {
+    it('can seed and query default immutable AI profile (prof_rel_2026_08_v1)', async () => {
+      await ensureDefaultAiProfiles(db);
+
+      const [profile] = await db
+        .select()
+        .from(aiProfiles)
+        .where(eq(aiProfiles.id, 'prof_rel_2026_08_v1'));
+
+      expect(profile).toBeDefined();
+      expect(profile!.version).toBe(1);
+      expect(profile!.operationType).toBe('SEMANTIC_RELEVANCE');
+      expect(profile!.provider).toBe('OPENAI');
+      expect(profile!.modelId).toBe('gpt-4o-mini-2024-07-18');
+      expect(profile!.isActive).toBe(true);
+    });
+
+    it('cascades deletion from district to ai_operations and ai_provider_attempts', async () => {
+      await ensureDefaultAiProfiles(db);
+
+      const districtId = `dist_ai_${crypto.randomUUID()}`;
+      const opId = `aiop_${crypto.randomUUID()}`;
+      const attemptId = `att_${crypto.randomUUID()}`;
+
+      await db.insert(districts).values({
+        id: districtId,
+        name: `AiTestDistrict_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
+      });
+
+      await db.insert(aiOperations).values({
+        id: opId,
+        districtId,
+        mahallaName: 'Guliston',
+        calendarDay: '2026-08-22',
+        operationType: 'SEMANTIC_RELEVANCE',
+        targetId: `intk_${crypto.randomUUID()}`,
+        pinnedProfileId: 'prof_rel_2026_08_v1',
+        contextRevision: 0,
+        snapshotFingerprint: 'sha256_empty_v1',
+        finalStatus: 'COMPLETED_RELEVANT',
+        resultPayload: { lanes: ['WATER'], exclusionReason: null, reasoning: 'Water outage' },
+      });
+
+      await db.insert(aiProviderAttempts).values({
+        id: attemptId,
+        operationId: opId,
+        attemptNumber: 1,
+        provider: 'OPENAI',
+        modelId: 'gpt-4o-mini-2024-07-18',
+        durationMs: 420,
+        inputTokens: 150,
+        outputTokens: 45,
+        status: 'SUCCESS',
+      });
+
+      // Verify records exist
+      const [opBefore] = await db.select().from(aiOperations).where(eq(aiOperations.id, opId));
+      const [attBefore] = await db.select().from(aiProviderAttempts).where(eq(aiProviderAttempts.id, attemptId));
+      expect(opBefore).toBeDefined();
+      expect(attBefore).toBeDefined();
+
+      // Delete parent district -> should cascade delete ai_operations and ai_provider_attempts
+      await db.delete(districts).where(eq(districts.id, districtId));
+
+      const [opAfter] = await db.select().from(aiOperations).where(eq(aiOperations.id, opId));
+      const [attAfter] = await db.select().from(aiProviderAttempts).where(eq(aiProviderAttempts.id, attemptId));
+      expect(opAfter).toBeUndefined();
+      expect(attAfter).toBeUndefined();
+    });
+
+    it('enforces composite unique constraint on ai_operations (districtId, operationType, targetId)', async () => {
+      await ensureDefaultAiProfiles(db);
+
+      const districtId = `dist_ai_uniq_${crypto.randomUUID()}`;
+      const targetId = `intk_uniq_${crypto.randomUUID()}`;
+
+      await db.insert(districts).values({
+        id: districtId,
+        name: `AiUniqDistrict_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
+      });
+
+      // Insert first operation
+      await db.insert(aiOperations).values({
+        id: `aiop_${crypto.randomUUID()}`,
+        districtId,
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-08-22',
+        operationType: 'SEMANTIC_RELEVANCE',
+        targetId,
+        pinnedProfileId: 'prof_rel_2026_08_v1',
+        contextRevision: 0,
+        snapshotFingerprint: 'sha256_empty_v1',
+        finalStatus: 'COMPLETED_RELEVANT',
+      });
+
+      // Inserting second operation with same district + operationType + targetId must fail
+      await expect(
+        db.insert(aiOperations).values({
+          id: `aiop_${crypto.randomUUID()}`,
+          districtId,
+          mahallaName: 'Navbahor',
+          calendarDay: '2026-08-22',
+          operationType: 'SEMANTIC_RELEVANCE',
+          targetId,
+          pinnedProfileId: 'prof_rel_2026_08_v1',
+          contextRevision: 1,
+          snapshotFingerprint: 'sha256_different',
+          finalStatus: 'COMPLETED_RELEVANT',
+        }),
+      ).rejects.toThrow();
+
+      // Clean up
+      await db.delete(districts).where(eq(districts.id, districtId));
+    });
+
+    it('enforces composite unique constraint on ai_provider_attempts (operationId, attemptNumber)', async () => {
+      await ensureDefaultAiProfiles(db);
+
+      const districtId = `dist_att_uniq_${crypto.randomUUID()}`;
+      const opId = `aiop_att_${crypto.randomUUID()}`;
+
+      await db.insert(districts).values({
+        id: districtId,
+        name: `AiAttDistrict_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
+      });
+
+      await db.insert(aiOperations).values({
+        id: opId,
+        districtId,
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-08-22',
+        operationType: 'SEMANTIC_RELEVANCE',
+        targetId: `intk_att_${crypto.randomUUID()}`,
+        pinnedProfileId: 'prof_rel_2026_08_v1',
+        contextRevision: 0,
+        snapshotFingerprint: 'sha256_empty_v1',
+        finalStatus: 'COMPLETED_RELEVANT',
+      });
+
+      // Insert attempt 1
+      await db.insert(aiProviderAttempts).values({
+        id: `att1_${crypto.randomUUID()}`,
+        operationId: opId,
+        attemptNumber: 1,
+        provider: 'OPENAI',
+        modelId: 'gpt-4o-mini-2024-07-18',
+        durationMs: 300,
+        status: 'SUCCESS',
+      });
+
+      // Duplicate attempt 1 for same operationId must fail
+      await expect(
+        db.insert(aiProviderAttempts).values({
+          id: `att2_${crypto.randomUUID()}`,
+          operationId: opId,
+          attemptNumber: 1,
+          provider: 'OPENAI',
+          modelId: 'gpt-4o-mini-2024-07-18',
+          durationMs: 400,
+          status: 'SUCCESS',
+        }),
+      ).rejects.toThrow();
+
+      // Clean up
+      await db.delete(districts).where(eq(districts.id, districtId));
+    });
+  });
 });
+
 
 

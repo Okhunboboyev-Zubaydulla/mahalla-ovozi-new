@@ -43,8 +43,8 @@ describe('Story 2.2: Background Worker Content Qualification Integration Tests',
       TELEGRAM_SEMANTIC_RELEVANCE_QUEUE,
     ]);
 
-    // Start background worker with shared boss and db
-    await startWorker({ boss, db, pool });
+    // Start background worker with shared boss and db for content qualification only
+    await startWorker({ boss, db, pool, queues: [TELEGRAM_CONTENT_QUALIFICATION_QUEUE] });
   });
 
   afterAll(async () => {
