@@ -1,10 +1,10 @@
 ---
 name: Mahalla Ovozi
-description: Calm, evidence-first visual identity for the Mahalla Ovozi district signal experience.
+description: Calm, evidence-first visual identity for the Mahalla Ovozi district signal experience, harmonized with the approved prototype design.
 status: final
 sources:
   - ../../prds/prd-Mahalla-Ovozi-2026-07-30/prd.md
-updated: 2026-08-11
+updated: 2026-08-23
 colors:
   surface-page: '#F4F6F8'
   surface-raised: '#FFFFFF'
@@ -34,40 +34,44 @@ typography:
   wordmark:
     fontFamily: 'system-ui, sans-serif'
     fontSize: 20px
-    fontWeight: '600'
+    fontWeight: '700'
     lineHeight: 28px
   statistic-value:
     fontFamily: 'system-ui, sans-serif'
-    fontSize: 28px
-    fontWeight: '600'
-    lineHeight: 34px
+    fontSize: 24px
+    fontWeight: '700'
+    lineHeight: 30px
   lane-heading:
     fontFamily: 'system-ui, sans-serif'
-    fontSize: 16px
+    fontSize: 15px
     fontWeight: '600'
-    lineHeight: 24px
+    lineHeight: 22px
   topic-summary:
     fontFamily: 'system-ui, sans-serif'
-    fontSize: 16px
+    fontSize: 13.5px
     fontWeight: '600'
-    lineHeight: 24px
+    lineHeight: 20px
   evidence-message:
     fontFamily: 'system-ui, sans-serif'
-    fontSize: 16px
+    fontSize: 13.5px
     fontWeight: '400'
-    lineHeight: 24px
+    lineHeight: 21px
   control:
     fontFamily: 'system-ui, sans-serif'
-    fontSize: 15px
+    fontSize: 13px
     fontWeight: '500'
-    lineHeight: 22px
+    lineHeight: 20px
   metadata:
     fontFamily: 'system-ui, sans-serif'
-    fontSize: 14px
+    fontSize: 12px
     fontWeight: '400'
-    lineHeight: 20px
+    lineHeight: 18px
 rounded:
-  DEFAULT: 8px
+  sm: 6px
+  md: 10px
+  lg: 14px
+  pill: 9999px
+  DEFAULT: 10px
 spacing:
   '1': 4px
   '2': 8px
@@ -87,13 +91,13 @@ components:
     background: '{colors.surface-raised}'
     foreground: '{colors.text-primary}'
     border: '{colors.boundary-essential}'
-    radius: '{rounded.DEFAULT}'
+    radius: '{rounded.md}'
     gap: '{spacing.2}'
   metric-card:
     background: '{colors.surface-raised}'
     foreground: '{colors.text-primary}'
     border: '{colors.border}'
-    radius: '{rounded.DEFAULT}'
+    radius: '{rounded.lg}'
     padding: '{spacing.4}'
   lane-board:
     background: '{colors.surface-page}'
@@ -102,9 +106,9 @@ components:
   topic-card:
     background: '{colors.surface-raised}'
     foreground: '{colors.text-primary}'
-    border: '{colors.boundary-essential}'
+    border: '{colors.border}'
     selected-border: '{colors.primary}'
-    radius: '{rounded.DEFAULT}'
+    radius: '{rounded.lg}'
     padding: '{spacing.4}'
     gap: '{spacing.3}'
   detail-panel:
@@ -144,14 +148,14 @@ components:
     secondary-foreground: '{colors.text-primary}'
     border: '{colors.boundary-essential}'
     focus: '{colors.focus}'
-    radius: '{rounded.DEFAULT}'
+    radius: '{rounded.md}'
     touch-min: '{targets.touch-min}'
     compact-gap: '{targets.compact-gap}'
   confirmation-dialog:
     background: '{colors.surface-raised}'
     foreground: '{colors.text-primary}'
     border: '{colors.border}'
-    radius: '{rounded.DEFAULT}'
+    radius: '{rounded.lg}'
     gap: '{spacing.4}'
   progressive-loader:
     background: '{colors.surface-subtle}'
@@ -164,85 +168,82 @@ components:
 
 ## Brand & Style
 
-Mahalla Ovozi uses a calm civic-intelligence posture: trustworthy, restrained, evidence-first, and information-dense without crowding. It is modern without fashion cues and serious without bureaucratic ceremony. It must never resemble a commercial analytics spectacle, a gamified monitoring tool, or an automated decision system.
+Mahalla Ovozi uses a calm civic-intelligence posture: trustworthy, restrained, evidence-first, and information-dense without crowding. It is modern without fashion cues and serious without bureaucratic ceremony.
 
-The in-product wordmark is the Cyrillic text **Маҳалла Овози**. It uses deliberate sans-serif typography with no permanent symbol; the canonical English and technical project name remains Mahalla Ovozi.
+The in-product wordmark is the Cyrillic text **Маҳалла Овози**, paired with the district badge **Шароф Рашидов тумани** and the Azure Blue primary brand mark.
 
-The imported [dashboard prototype](imports/prototype-dashboard-overview-2026-08-05.png) is a fallible composition input. `DESIGN.md` and `EXPERIENCE.md` win on every conflict with that image.
+The visual style is fully harmonized with the approved prototype: clean white raised cards, subtle card elevation (`0 1px 3px rgba(0,0,0,0.03)`), smooth hover interaction (`translateY(-2px)` with soft shadow), semantic lane outlines, and structured topic cards featuring AI summaries, subcategory pill badges, and direct citizen quote snippets.
 
 ## Colors
 
-The product is light-only for MVP. The Azure Slate palette uses `{colors.surface-page}` as the main canvas, `{colors.surface-raised}` for readable content surfaces, and `{colors.surface-subtle}` for quiet grouping. Text uses `{colors.text-primary}` and `{colors.text-secondary}`. `{colors.border}` is limited to decorative separators; `{colors.boundary-essential}` identifies inputs, buttons, selectable cards, and any other control or region whose boundary is required for recognition. Essential boundaries maintain at least 3:1 contrast against every adjacent surface. Focus and selection remain separate semantic states and must stay distinguishable from the resting boundary.
+The product is light-only for MVP. The Azure Slate palette uses `{colors.surface-page}` as the main canvas, `{colors.surface-raised}` for readable content surfaces, and `{colors.surface-subtle}` for quiet grouping. Text uses `{colors.text-primary}` and `{colors.text-secondary}`. `{colors.border}` provides structural separation, while `{colors.boundary-essential}` identifies inputs, buttons, and selectable cards.
 
-`{colors.primary}` marks primary actions and selection, while `{colors.focus}` is reserved only for visible keyboard focus. When an item is both selected and keyboard-focused, show its selected boundary together with a separate focus ring so both states remain distinguishable. The accepted load-bearing pairs meet WCAG AA for normal text. State meaning always includes text or an accessible label and never depends on color.
+`{colors.primary}` (`#0284C7`) marks primary actions, active filters, and selection states. Visible keyboard focus uses a distinct 2px outline ring with 2px offset.
 
-Lane accents are restrained semantic outlines or header details, paired with their quiet surfaces:
+Lane accents are restrained semantic outlines and header badges:
 
 | Lane | Accent | Surface |
 |---|---|---|
-| Ҳокимга оид | `{colors.lane-hokim}` | `{colors.lane-hokim-surface}` |
-| Сув | `{colors.lane-water}` | `{colors.lane-water-surface}` |
-| Электр | `{colors.lane-electricity}` | `{colors.lane-electricity-surface}` |
-| Газ | `{colors.lane-gas}` | `{colors.lane-gas-surface}` |
-| Чиқинди | `{colors.lane-waste}` | `{colors.lane-waste-surface}` |
+| Ҳокимга оид | `{colors.lane-hokim}` (`#EF4444`) | `{colors.lane-hokim-surface}` (`#FEE2E2`) |
+| Сув | `{colors.lane-water}` (`#2563EB`) | `{colors.lane-water-surface}` (`#DBEAFE`) |
+| Электр | `{colors.lane-electricity}` (`#7C3AED`) | `{colors.lane-electricity-surface}` (`#F3E8FF`) |
+| Газ | `{colors.lane-gas}` (`#EA580C`) | `{colors.lane-gas-surface}` (`#FFEDD5`) |
+| Чиқинди | `{colors.lane-waste}` (`#059669`) | `{colors.lane-waste-surface}` (`#D1FAE5`) |
 
-Warnings use `{colors.warning}` on `{colors.warning-surface}`. Search matches use `{colors.search-match-text}` on `{colors.search-match}` without altering the preserved evidence text. Do not infer urgency, quality, sentiment, or service performance from lane or statistic colors.
+Warnings use `{colors.warning}` on `{colors.warning-surface}`. Search matches use `{colors.search-match-text}` on `{colors.search-match}` without altering the original evidence text.
 
 ## Typography
 
-Use one highly legible system sans-serif stack with stable browser rendering. Acceptance-test the implementation stack for the complete Uzbek Cyrillic alphabet—including `Ў ў Қ қ Ғ ғ Ҳ ҳ`—across every supported browser and OS family, and provide glyph-capable fallbacks for mixed-script evidence. The approved ramp is fixed:
+Use one highly legible system sans-serif stack (`-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`). All interface microcopy and summaries use the Uzbek Cyrillic alphabet including `Ў ў Қ қ Ғ ғ Ҳ ҳ`:
 
 | Role | Token | Usage |
 |---|---|---|
-| Wordmark | `{typography.wordmark}` | Product name in application chrome. |
-| Statistic value | `{typography.statistic-value}` | Primary number in a read-only metric card. |
-| Lane heading | `{typography.lane-heading}` | Fixed Lane title. |
-| Topic summary | `{typography.topic-summary}` | Complete cautious summary on a Topic card. |
-| Evidence message | `{typography.evidence-message}` | Original Accepted Evidence text. |
-| Toolbar and form control | `{typography.control}` | Control labels and entered or selected values. |
-| Metadata and state label | `{typography.metadata}` | Timestamps, counts, attribution, and explicit states. |
-
-No user-facing text is smaller than 14 px. Topic summaries are never line-clamped or ellipsized; concise source generation controls their length. Labels, buttons, chips, and other controls grow or wrap without fixed-height glyph clipping or displaced actions. Long District and Mahalla names and status labels wrap safely without losing meaning. Prose and evidence wrap normally while original evidence line breaks remain preserved. Safely break long unbroken technical identifiers while keeping their complete value visually and programmatically available. Preserve the ramp on smaller effective CSS viewports, including browser zoom, and reflow into the applicable tablet or phone composition instead. At 200% zoom and a 320 CSS-pixel equivalent viewport, text and controls remain usable without clipping, overlap, or hidden actions.
+| Wordmark | `{typography.wordmark}` | **Маҳалла Овози** wordmark in application header. |
+| Statistic value | `{typography.statistic-value}` | Number in top 5 metric cards. |
+| Lane heading | `{typography.lane-heading}` | Fixed Lane title (`Ҳокимга оид`, `Сув`, `Электр`, `Газ`, `Чиқинди`). |
+| Topic summary | `{typography.topic-summary}` | Cautious AI summary on Topic cards. |
+| Evidence message | `{typography.evidence-message}` | Verbatim citizen message text in Drawer. |
+| Toolbar and form control | `{typography.control}` | Control labels, date buttons, mahalla selector, and search input. |
+| Metadata and state label | `{typography.metadata}` | Timestamps, evidence counts, `Янги`, `Янгиланди`, and multi-lane badges. |
 
 ## Layout & Spacing
 
-Use the spacing scale defined by `{spacing.1}`, `{spacing.2}`, `{spacing.3}`, `{spacing.4}`, `{spacing.6}`, and `{spacing.8}`. Topic-card padding is `{spacing.4}` and the vertical gap between cards is `{spacing.3}`. Apply the same rhythm to toolbar groups, statistics, lane headers, drawers, forms, tables, and responsive reflow.
+Spacing scale: `{spacing.1}` (4px), `{spacing.2}` (8px), `{spacing.3}` (12px), `{spacing.4}` (16px), `{spacing.6}` (24px), `{spacing.8}` (32px).
 
-When the effective CSS viewport supports the primary desktop composition, the Hokim surface keeps a compact sticky single-row toolbar, a visible five-card statistics strip, and the fixed lane order Ҳокимга оид, Сув, Электр, Газ, Чиқинди. Narrower effective viewports activate the existing tablet or phone toolbar, navigation, statistics, board, form, and detail patterns. Console surfaces prioritize stable District context, dense readable records, and focused editing. Spacing may contract through composition but never by shrinking the approved type ramp. Prevent page-level horizontal overflow; only intentional labelled Lane-board, matrix, or diff regions may scroll horizontally.
+The desktop layout features a compact sticky single-row toolbar, a 5-card statistics strip, and a 5-column signal board with independent vertical scrolling per lane. On narrower screens, responsive lane navigation controls (`Олдинги устун` / `Кейинги устун`) enable smooth horizontal inspection.
 
 ## Elevation & Depth
 
-Use borders and tonal layering for persistent hierarchy. Cards, lists, tables, toolbar regions, and lane containers have no persistent shadow. Reserve one subtle elevation level for temporary or overlaid surfaces: detail panels, menus, filter sheets, and confirmations. Focus and selection use explicit outlines, not card lifting.
+- Cards & containers: subtle persistent elevation (`box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03)`).
+- Hover state: `transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06)`.
+- Popovers & Menus: floating shadow (`box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1)`).
+- Evidence Drawer: slide-out overlay shadow (`box-shadow: -6px 0 28px rgba(0, 0, 0, 0.12)`).
 
 ## Shapes
 
-`{rounded.DEFAULT}` is the standard radius for cards, controls, panels, and dialogs. Keep the silhouette restrained and functional; avoid exaggerated pills, bubbles, or decorative geometry. Icons use a consistent fine outline with semantic color, never filled cartoon shapes or illustrations.
+- Small tags & controls: `{rounded.sm}` (6px).
+- Buttons, dropdowns & inputs: `{rounded.md}` (10px).
+- Topic cards, metric cards & modal dialogs: `{rounded.lg}` (14px).
+- Status badges & pill tags: `{rounded.pill}` (9999px).
 
 ## Components
 
-| Component | Visual contract |
+| Component | Visual & Behavioral Contract |
 |---|---|
-| `application-shell` | Light page canvas, stable separators, Cyrillic text wordmark; dashboard toolbar or Console sidebar/header establishes context without decorative chrome. |
-| `filter-bar` | Compact raised grouping, thin border, visible labels, readable selected values, and a `{colors.focus}` focus ring. |
-| `metric-card` | Read-only raised surface; statistic value dominates, label and neutral comparison remain secondary; never looks clickable. |
-| `lane-board` | Fixed semantic lane accents, stable headers, readable fixed-width columns, and no activity-ranked visual hierarchy. Whenever all five Lanes do not fit, show visible Previous Lane and Next Lane controls beside the labelled horizontal board region. |
-| `topic-card` | Bordered compact surface with complete summary, metadata, text state labels, and a clear selected outline; no quote preview, AI subcategory tag, shadow lift, or truncation. |
-| `detail-panel` | Raised detail surface with a subtle overlay shadow; normal-flow compact header precedes content; full-screen variant preserves the same visual hierarchy. |
-| `data-collection` | Dense semantic table, matrix, list, timeline, or stacked-record presentation using separators and aligned metadata. Stacked records repeat every visible field label. Comparison-essential matrices and diffs keep the identifying column visually sticky inside a clearly labelled horizontal scroll region; identifying context remains prominent. |
-| `setup-checklist` | Raised checklist grouping with explicit incomplete, passed, and failed text states; blockers sit beside the inactive activation action. |
-| `form-panel` | Single-purpose field grouping with persistent labels, associated inline error/help text, unsaved-state text, and a clear save boundary. After failed Save, place one focusable error summary at the form start with the error count and links to invalid fields; preserve every valid value. |
-| `status-message` | Inline or local status surface; icon plus factual text, with warning treatment only when warranted; never color-only or toast-only. |
-| `action-control` | Text-labelled primary, secondary, link, icon-with-label, or compact icon action with visible focus; icons never carry ambiguous meaning alone. On phone and tablet, every interactive control uses at least a `{targets.touch-min}` activation area; every icon-only control meets the same minimum at every width. Adjacent compact targets keep `{targets.compact-gap}` separation, and padded activation areas never overlap. Visible text or icons may remain compact inside the compliant area. |
-| `confirmation-dialog` | Calm consequence summary, explicit scope and safe cancel emphasis; destructive confirmation is visually serious without dramatic red spectacle. |
-| `progressive-loader` | Structure-matching skeleton or lane/list continuation control using quiet surfaces; no invented values and no motion under reduced-motion preference. |
+| `application-shell` | Light canvas (`#F4F6F8`), clean header toolbar, Cyrillic **Маҳалла Овози** wordmark and **Шароф Рашидов тумани** district badge. |
+| `filter-bar` | Compact date buttons (`Бугун`, `Кеча`, `Сана бўйича` with date range popover), Mahalla select dropdown, and `Йўналишлар: N/5` multi-select column filter. |
+| `metric-card` | Read-only raised card with rounded colored icon square (`#FEE2E2`, `#FCE7F3`, `#DBEAFE`, `#F3E8FF`, `#D1FAE5`), bold number, and filter-aware neutral subtitle. |
+| `lane-board` | 5 fixed semantic columns (`Ҳокимга оид`, `Сув`, `Электр`, `Газ`, `Чиқинди`) with column count badges, independent vertical scroll, and responsive navigation controls. |
+| `topic-card` | Rich, scan-friendly card: `AI ХУЛОСАСИ` label, `Янги`/`Янгиланди` badge, cautious summary, subcategory pill tag, multi-lane indicator (`Ҳам: ...`), metadata row (Mahalla, time, evidence count), and citizen quote snippet box with paper-plane icon. |
+| `detail-panel` (Drawer) | Slide-out right-side panel with category tag, Mahalla title, AI summary card, metadata, multi-lane links, chronological evidence thread, and `Telegramда очиш` action. |
+| `help-modal` | Accessible modal explaining system principles, lane purposes, signal vs fact limits, and Hokim decision ownership. |
+| `action-control` | Minimum 44px touch targets on mobile/tablet, clear focus rings, and prompt status feedback. |
 
 ## Do's and Don'ts
 
 | Do | Don't |
 |---|---|
-| Use **Маҳалла Овози** and Uzbek Cyrillic for all interface copy. | Use Latin interface labels, transliteration, or the rejected red prototype logo. |
-| Use restrained semantic outline icons consistently by concept and action. | Reuse the prototype icon styling, arbitrary multicolor icons, or decorative illustration. |
-| Preserve evidence hierarchy, readable summaries, and stable context. | Add evidence quote previews, AI subcategory tags, sentiment, scores, urgency, or ranking. |
-| When motion is allowed, use 120–180 ms functional transitions for panels, filters, focus, selection, and revealed content. | Add lift, bounce, pulse, parallax, or decorative motion. |
-| Under `prefers-reduced-motion: reduce`, make drawer, sheet, filter, reveal, and every programmatic-scroll transition immediate; snap Lane alignment directly, disable skeleton animation, and preserve focus, selection, progress, and other essential feedback as static states. | Depend on animation to communicate state, retain smooth scrolling, or animate across the Lane board. |
-| Keep visual implementation neutral and map these tokens into the chosen technical UI foundation later. | Lock the product to a UI framework or icon package in this spine. |
+| Use **Маҳалла Овози** and Uzbek Cyrillic for all interface copy and mock data. | Use Latin interface labels or untranslated UI text. |
+| Retain the approved prototype visual design: quote snippets, subcategory pills, colored icon squares, and soft card elevation. | Revert to a stark wireframe or strip approved visual affordances. |
+| Keep statistics filter-aware, neutral, and factual across all filter combinations. | Introduce opinionated satisfaction rankings or subjective service scores. |
+| Support `Йўналишлар: N/5` multi-select without ever permitting 0 visible lanes. | Force all 5 lanes to be fixed without user customization. |

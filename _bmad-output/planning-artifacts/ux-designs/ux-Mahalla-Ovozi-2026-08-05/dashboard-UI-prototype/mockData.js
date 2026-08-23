@@ -1,25 +1,25 @@
 /**
  * Mahalla Ovozi - Reference Prototype Mock Data
- * Faithfully matches the reference UI screenshot layout, topics, categories, and quote snippets.
+ * Uzbek Cyrillic domain dataset with full multi-lane, freshness, and evidence attributes.
  */
 
-export const DISTRICT_NAME = "Sharof Rashidov tumani";
+export const DISTRICT_NAME = "Шароф Рашидов тумани";
 
 export const MAHALLAS = [
-  "Barcha mahallalar",
-  "Uch-Tepa mahallasi",
-  "Ziyokor mahallasi",
-  "Ravalliq mahallasi",
-  "Toqchiliq mahallasi",
-  "Nonisangil mahallasi",
-  "Qahramon mahallasi",
-  "Qulpisar mahallasi"
+  "Барча маҳаллалар",
+  "Учтепа маҳалласи",
+  "Зиёкор маҳалласи",
+  "Раваллиқ маҳалласи",
+  "Тоқчилик маҳалласи",
+  "Нонисангил маҳалласи",
+  "Қаҳрамон маҳалласи",
+  "Қулписар маҳалласи"
 ];
 
 export const LANES_CONFIG = {
   hokim: {
     id: "hokim",
-    title: "Hokimga oid",
+    title: "Ҳокимга оид",
     color: "#EF4444",
     surface: "#FEE2E2",
     badgeBg: "#FEE2E2",
@@ -28,7 +28,7 @@ export const LANES_CONFIG = {
   },
   water: {
     id: "water",
-    title: "Suv",
+    title: "Сув",
     color: "#2563EB",
     surface: "#EFF6FF",
     badgeBg: "#DBEAFE",
@@ -37,7 +37,7 @@ export const LANES_CONFIG = {
   },
   electricity: {
     id: "electricity",
-    title: "Elektr",
+    title: "Электр",
     color: "#7C3AED",
     surface: "#FAF5FF",
     badgeBg: "#F3E8FF",
@@ -46,7 +46,7 @@ export const LANES_CONFIG = {
   },
   gas: {
     id: "gas",
-    title: "Gaz",
+    title: "Газ",
     color: "#EA580C",
     surface: "#FFF7ED",
     badgeBg: "#FFEDD5",
@@ -55,7 +55,7 @@ export const LANES_CONFIG = {
   },
   waste: {
     id: "waste",
-    title: "Chiqindi",
+    title: "Чиқинди",
     color: "#059669",
     surface: "#ECFDF5",
     badgeBg: "#D1FAE5",
@@ -65,41 +65,42 @@ export const LANES_CONFIG = {
 };
 
 export const INITIAL_TOPICS = [
-  // --- 1. HOKIMGA OID ---
+  // --- 1. ҲОКИМГА ОИД ---
   {
     id: "top-h01",
     lane: "hokim",
-    tag: "Sayyor qabul va'dasi",
+    tag: "Сайёр қабул ваъдаси",
     tagType: "red",
-    summary: "Fuqarolar tuman hokimi o'tgan oydagi sayyor qabulda Uch-Tepa mahallasiga bergan asfalt yotqizish va'dasi kechikayotganini bildirishmoqda.",
-    mahalla: "Uch-Tepa mahallasi",
+    isUpdated: true,
+    summary: "Фуқаролар туман ҳокими ўтган ойдаги сайёр қабулда Учтепа маҳалласига берган асфальт ётқизиш ваъдаси кечикаётганини билдиришмоқда.",
+    mahalla: "Учтепа маҳалласи",
     date: "today",
     time: "08:27",
     evidenceCount: 6,
-    quote: "O'tgan oy tuman hokimi sayyor qabulda kelib, shu haftada asfalt yotqiziladi degandi.",
+    quote: "Ўтган ой туман ҳокими сайёр қабулда келиб, шу ҳафтада асфальт ётқизилади деганди.",
     evidence: [
       {
         id: "ev-h01-1",
-        senderName: "Javlonbek Yuldashev",
+        senderName: "Жавлонбек Йўлдошев",
         username: "@javlon_uchtepa",
         timestamp: "05.08.2026, 08:12",
-        text: "O'tgan oy tuman hokimi sayyor qabulda kelib, shu haftada asfalt yotqiziladi degandi. Texnikalar qachon keladi?",
+        text: "Ўтган ой туман ҳокими сайёр қабулда келиб, шу ҳафтада асфальт ётқизилади деганди. Техникалар қачон келади?",
         telegramLink: "https://t.me/uchtepa_murojaat/4521"
       },
       {
         id: "ev-h01-2",
-        senderName: "Mavluda opa Qodirova",
+        senderName: "Мавлуда опа Қодирова",
         username: "@mavluda_q",
         timestamp: "05.08.2026, 08:19",
-        text: "Sayyor qabul bayoniga kiritilgan edi, maktab yo'li chang-to'zon bo'lib yotibdi.",
+        text: "Сайёр қабул баёнига киритилган эди, мактаб йўли чанг-тўзон бўлиб ётибди.",
         telegramLink: "https://t.me/uchtepa_murojaat/4524"
       },
       {
         id: "ev-h01-3",
-        senderName: "Rustam Tohirov",
+        senderName: "Рустам Тоҳиров",
         username: "@rustam_t_88",
         timestamp: "05.08.2026, 08:27",
-        text: "Hokim va'da qilgan muddat o'tib ketdi. Iltimos mas'ullar amaliy javob berishsin.",
+        text: "Ҳоким ваъда қилган муддат ўтиб кетди. Илтимос масъуллар амалий жавоб беришсин.",
         telegramLink: "https://t.me/uchtepa_murojaat/4530"
       }
     ]
@@ -107,29 +108,29 @@ export const INITIAL_TOPICS = [
   {
     id: "top-h02",
     lane: "hokim",
-    tag: "1-Sektor va Obodonlashtirish",
+    tag: "1-Сектор ва Ободонлаштириш",
     tagType: "red",
-    summary: "Ziyokor mahallasida 1-sektor rahbari va tuman hokimligi obodonlashtirish dasturi bo'yicha bolalar maydonchasi qurilishi to'xtab qolgan.",
-    mahalla: "Ziyokor mahallasi",
+    summary: "Зиёкор маҳалласида 1-сектор раҳбари ва туман ҳокимлиги ободонлаштириш дастури бўйича болалар майдончаси қурилиши тўхтаб қолган.",
+    mahalla: "Зиёкор маҳалласи",
     date: "today",
     time: "07:58",
     evidenceCount: 4,
-    quote: "Tuman hokimligi obodonlashtirish dasturiga tushgan bolalar maydonchasi yarim yo'lda to'xtadi.",
+    quote: "Туман ҳокимлиги ободонлаштириш дастурига тушган болалар майдончаси ярим йўлда тўхтади.",
     evidence: [
       {
         id: "ev-h02-1",
-        senderName: "Dilshod Nurmatov",
+        senderName: "Дилшод Нурматов",
         username: "@dilshod_nur",
         timestamp: "05.08.2026, 07:40",
-        text: "Tuman hokimligi obodonlashtirish dasturiga tushgan bolalar maydonchasi yarim yo'lda to'xtadi. Qurilish chiqindilari yotibdi.",
+        text: "Туман ҳокимлиги ободонлаштириш дастурига тушган болалар майдончаси ярим йўлда тўхтади. Қурилиш чиқиндилари ётибди.",
         telegramLink: "https://t.me/ziyokor_ovozi/3110"
       },
       {
         id: "ev-h02-2",
-        senderName: "Shahnoza Rahimova",
+        senderName: "Шаҳноза Раҳимова",
         username: "@shahnoza_r",
         timestamp: "05.08.2026, 07:58",
-        text: "1-sektor rahbari o'tgan hafta ko'rib ketgandi, ammo hamon ishlar davom etmadi.",
+        text: "1-сектор раҳбари ўтган ҳафта кўриб кетганди, аммо ҳамон ишлар давом этмади.",
         telegramLink: "https://t.me/ziyokor_ovozi/3115"
       }
     ]
@@ -137,53 +138,55 @@ export const INITIAL_TOPICS = [
   {
     id: "top-h03",
     lane: "hokim",
-    tag: "Kredit va Subsidiya",
+    tag: "Кредит ва Субсидия",
     tagType: "red",
-    summary: "Toqchiliq mahallasida fuqarolar hokim yordamchisi tomonidan imtiyozli kredit va subsidiya hujjatlari kechiktirilayotganidan shikoyat qilmoqda.",
-    mahalla: "Toqchiliq mahallasi",
+    summary: "Тоқчилик маҳалласида фуқаролар ҳоким ёрдамчиси томонидан имтиёзли кредит ва субсидия ҳужжатлари кечиктирилаётганидан шикоят қилмоқда.",
+    mahalla: "Тоқчилик маҳалласи",
     date: "today",
     time: "06:50",
     evidenceCount: 3,
-    quote: "Hokim yordamchisiga subsidiya arizasi topshirilganiga 20 kun bo'ldi, hali ham javob yo'q.",
+    quote: "Ҳоким ёрдамчисига субсидия аризаси топширилганига 20 кун бўлди, ҳали ҳам жавоб йўқ.",
     evidence: [
       {
         id: "ev-h03-1",
-        senderName: "Sobir Aliyev",
+        senderName: "Собир Алиев",
         username: "@sobir_a",
         timestamp: "05.08.2026, 06:50",
-        text: "Hokim yordamchisiga subsidiya arizasi topshirilganiga 20 kun bo'ldi, hali ham javob yo'q.",
+        text: "Ҳоким ёрдамчисига субсидия аризаси топширилганига 20 кун бўлди, ҳали ҳам жавоб йўқ.",
         telegramLink: "https://t.me/toqchiliq_murojaat/1205"
       }
     ]
   },
 
-  // --- 2. SUV ---
+  // --- 2. СУВ ---
   {
     id: "top-w01",
     lane: "water",
-    tag: "Avariya va Suv ta'minoti",
+    tag: "Авария ва Сув таъминоти",
     tagType: "blue",
-    summary: "Ravalliq mahallasida markaziy suv quvurida yorilish sodir bo'lib, ko'p qavatli uylar suvsiz qolgan.",
-    mahalla: "Ravalliq mahallasi",
+    isNew: true,
+    secondaryLanes: ["hokim"],
+    summary: "Раваллиқ маҳалласида марказий сув қувурида ёрилиш содир бўлиб, кўп қаватли уйлар сувсиз қолган.",
+    mahalla: "Раваллиқ маҳалласи",
     date: "today",
     time: "08:35",
     evidenceCount: 5,
-    quote: "Markaziy quvur yorilgan, suv ko'chaga oqib ketyapti!",
+    quote: "Марказий қувур ёрилган, сув кўчага оқиб кетяпти!",
     evidence: [
       {
         id: "ev-w01-1",
-        senderName: "Farhod Murodov",
+        senderName: "Фарҳод Муродов",
         username: "@farhod_m",
         timestamp: "05.08.2026, 07:15",
-        text: "Markaziy quvur yorilgan, suv ko'chaga oqib ketyapti! 12, 14, 16-uylarda suv yo'q.",
+        text: "Марказий қувур ёрилган, сув кўчага оқиб кетяпти! 12, 14, 16-уйларда сув йўқ.",
         telegramLink: "https://t.me/ravalliq_ovozi/2104"
       },
       {
         id: "ev-w01-2",
-        senderName: "Anvarjon Saidov",
+        senderName: "Анваржон Саидов",
         username: "@anvar_s",
         timestamp: "05.08.2026, 08:35",
-        text: "Avariya xizmati keldi, nasos kutishyapti.",
+        text: "Авария хизмати келди, насос кутишяпти.",
         telegramLink: "https://t.me/ravalliq_ovozi/2115"
       }
     ]
@@ -191,29 +194,29 @@ export const INITIAL_TOPICS = [
   {
     id: "top-w02",
     lane: "water",
-    tag: "Suv sifati",
+    tag: "Сув сифати",
     tagType: "blue",
-    summary: "Nonisangil mahallasida ichimlik suvi rangi oqarib va loyqalanib kelayotgani haqida shikoyat bor.",
-    mahalla: "Nonisangil mahallasi",
+    summary: "Нонисангил маҳалласида ичимлик суви ранги оқариб ва лойқаланиб келаётгани ҳақида шикоят бор.",
+    mahalla: "Нонисангил маҳалласи",
     date: "today",
     time: "07:42",
     evidenceCount: 3,
-    quote: "Suv oqarib kelmoqda, filtrlarni tozalab bo'lmay qoldi.",
+    quote: "Сув оқариб келмоқда, фильтрларни тозалаб бўлмай қолди.",
     evidence: [
       {
         id: "ev-w02-1",
-        senderName: "Nigora Samadova",
+        senderName: "Нигора Самадова",
         username: "@nigora_s",
         timestamp: "05.08.2026, 07:10",
-        text: "Suv oqarib kelmoqda, filtrlarni tozalab bo'lmay qoldi. Ichishga yaroqsiz.",
+        text: "Сув оқариб келмоқда, фильтрларни тозалаб бўлмай қолди. Ичишга яроқсиз.",
         telegramLink: "https://t.me/nonisangil_murojaat/1890"
       },
       {
         id: "ev-w02-2",
-        senderName: "Ismoil Boboyev",
+        senderName: "Исмоил Бобоев",
         username: "@ismoil_b",
         timestamp: "05.08.2026, 07:42",
-        text: "Suv ta'minoti tekshirib bersin.",
+        text: "Сув таъминоти текшириб берсин.",
         telegramLink: "https://t.me/nonisangil_murojaat/1895"
       }
     ]
@@ -221,53 +224,54 @@ export const INITIAL_TOPICS = [
   {
     id: "top-w03",
     lane: "water",
-    tag: "Hisob va To'lov",
+    tag: "Ҳисоб ва Тўлов",
     tagType: "blue",
-    summary: "Qahramon mahallasida suv hisoblagichi kvitansiyasida asossiz qarzdorlik ko'rsatilganidan e'tiroz bildirilmoqda.",
-    mahalla: "Qahramon mahallasi",
+    summary: "Қаҳрамон маҳалласида сув ҳисоблагичи квитанциясида асоссиз қарздорлик кўрсатилганидан эътироз билдирилмоқда.",
+    mahalla: "Қаҳрамон маҳалласи",
     date: "today",
     time: "09:05",
     evidenceCount: 2,
-    quote: "Suv ta'minoti kvitansiyasida asossiz qarzdorlik yozilgan.",
+    quote: "Сув таъминоти квитанциясида асоссиз қарздорлик ёзилган.",
     evidence: [
       {
         id: "ev-w03-1",
-        senderName: "Kamol Mahmudov",
+        senderName: "Камол Маҳмудов",
         username: "@kamol_m",
         timestamp: "05.08.2026, 09:05",
-        text: "To'lovlar to'langan, tizimda asossiz qarz ko'rsatyapti.",
+        text: "Тўловлар тўланган, тизимда асоссиз қарз кўрсатяпти.",
         telegramLink: "https://t.me/qahramon_murojaat/884"
       }
     ]
   },
 
-  // --- 3. ELEKTR ---
+  // --- 3. ЭЛЕКТР ---
   {
     id: "top-e01",
     lane: "electricity",
-    tag: "Elektr simlari va Xavfsizlik",
+    tag: "Электр симлари ва Хавфсизлик",
     tagType: "purple",
-    summary: "Ziyokor mahallasida havo liniyasidagi simlar osilib qolgan va xavf tug'dirmoqda.",
-    mahalla: "Ziyokor mahallasi",
+    isNew: true,
+    summary: "Зиёкор маҳалласида ҳаво линиясидаги симлар осилиб қолган ва хавф туғдирмоқда.",
+    mahalla: "Зиёкор маҳалласи",
     date: "today",
     time: "10:05",
     evidenceCount: 3,
-    quote: "Yaqinda shamolda sim yog'ochdan uzilib osilib qoldi.",
+    quote: "Яқинда шамолда сим ёғочдан узилиб осилиб қолди.",
     evidence: [
       {
         id: "ev-e01-1",
-        senderName: "Hamidullo Qosimov",
+        senderName: "Ҳамидулло Қосимов",
         username: "@hamidullo_q",
         timestamp: "05.08.2026, 09:30",
-        text: "Yaqinda shamolda sim yog'ochdan uzilib osilib qoldi. Ko'chadan bolalar o'tadi, xavfli!",
+        text: "Яқинда шамолда сим ёғочдан узилиб осилиб қолди. Кўчадан болалар ўтади, хавфли!",
         telegramLink: "https://t.me/ziyokor_ovozi/3128"
       },
       {
         id: "ev-e01-2",
-        senderName: "Lolaxon Zokirova",
+        senderName: "Лолахон Зокирова",
         username: null,
         timestamp: "05.08.2026, 10:05",
-        text: "HETK ga xabar berdik, brigada kutilyapti.",
+        text: "ҲЭТК га хабар бердик, бригада кутиляпти.",
         telegramLink: "https://t.me/ziyokor_ovozi/3133"
       }
     ]
@@ -275,21 +279,21 @@ export const INITIAL_TOPICS = [
   {
     id: "top-e02",
     lane: "electricity",
-    tag: "Ko'cha yoritish",
+    tag: "Кўча ёритиш",
     tagType: "purple",
-    summary: "Toqchiliq mahallasida tunda ko'cha chiroqlari yoqilmayotgani sababli xavfsizlik muammosi.",
-    mahalla: "Toqchiliq mahallasi",
+    summary: "Тоқчилик маҳалласида тунда кўча чироқлари ёқилмаётгани сабабли хавфсизлик муаммоси.",
+    mahalla: "Тоқчилик маҳалласи",
     date: "today",
     time: "10:40",
     evidenceCount: 2,
-    quote: "Kechasi ko'chalar tumtoq qorong'i, yoritish chiroqlari o'chirilgan.",
+    quote: "Кечаси кўчалар тумтоқ қоронғи, ёритиш чироқлари ўчирилган.",
     evidence: [
       {
         id: "ev-e02-1",
-        senderName: "Bahodir Shokirov",
+        senderName: "Баҳодир Шокиров",
         username: "@bahodir_sh",
         timestamp: "05.08.2026, 10:40",
-        text: "Kechasi ko'chalar tumtoq qorong'i, yoritish chiroqlari o'chirilgan.",
+        text: "Кечаси кўчалар тумтоқ қоронғи, ёритиш чироқлари ўчирилган.",
         telegramLink: "https://t.me/toqchiliq_murojaat/1220"
       }
     ]
@@ -297,61 +301,62 @@ export const INITIAL_TOPICS = [
   {
     id: "top-e03",
     lane: "electricity",
-    tag: "Kuchlanish pastligi",
+    tag: "Кучланиш пастлиги",
     tagType: "purple",
-    summary: "Nonisangil mahallasida kuchlanish 140V ga tushib ketib, maishiy texnikalar o'chib qolmoqda.",
-    mahalla: "Nonisangil mahallasi",
+    summary: "Нонисангил маҳалласида кучланиш 140V га тушиб кетиб, маиший техникалар ўчиб қолмоқда.",
+    mahalla: "Нонисангил маҳалласи",
     date: "today",
     time: "11:10",
     evidenceCount: 3,
-    quote: "Kuchlanish juda past, muzlatgich va konditsioner ishlamayapti.",
+    quote: "Кучланиш жуда паст, музлатгич ва кондиционер ишламаяпти.",
     evidence: [
       {
         id: "ev-e03-1",
-        senderName: "Sardor Mirzayev",
+        senderName: "Сардор Мирзаев",
         username: "@sardor_m_90",
         timestamp: "05.08.2026, 10:45",
-        text: "Kuchlanish juda past, muzlatgich va konditsioner ishlamayapti. 140V ko'rsatyapti.",
+        text: "Кучланиш жуда паст, музлатгич ва кондиционер ишламаяпти. 140V кўрсатяпти.",
         telegramLink: "https://t.me/nonisangil_murojaat/1910"
       },
       {
         id: "ev-e03-2",
-        senderName: "Akmal Rasulov",
+        senderName: "Акмал Расулов",
         username: "@akmal_rasulov",
         timestamp: "05.08.2026, 11:10",
-        text: "Transformator quvvati yetmayapti.",
+        text: "Трансформатор қуввати етмаяпти.",
         telegramLink: "https://t.me/nonisangil_murojaat/1915"
       }
     ]
   },
 
-  // --- 4. GAZ ---
+  // --- 4. ГАЗ ---
   {
     id: "top-g01",
     lane: "gas",
-    tag: "Gaz bosimi",
+    tag: "Газ босими",
     tagType: "orange",
-    summary: "Ziyokor mahallasida gaz bosimi minimal darajaga tushib ketib, isitish pechlari yonmayapti.",
-    mahalla: "Ziyokor mahallasi",
+    isUpdated: true,
+    summary: "Зиёкор маҳалласида газ босими минимал даражага тушиб кетиб, иситиш печлари ёнмаяпти.",
+    mahalla: "Зиёкор маҳалласи",
     date: "today",
     time: "08:18",
     evidenceCount: 4,
-    quote: "Gaz bosimi juda past, ovqat pishirish va uy isitish qiyin.",
+    quote: "Газ босими жуда паст, овқат пишириш ва уй иситиш қийин.",
     evidence: [
       {
         id: "ev-g01-1",
-        senderName: "Mukarram opa",
+        senderName: "Мукаррам опа",
         username: null,
         timestamp: "05.08.2026, 07:30",
-        text: "Gaz bosimi juda past, ovqat pishirish va uy isitish qiyin.",
+        text: "Газ босими жуда паст, овқат пишириш ва уй иситиш қийин.",
         telegramLink: "https://t.me/ziyokor_ovozi/3108"
       },
       {
         id: "ev-g01-2",
-        senderName: "Jasur To'rayev",
+        senderName: "Жасур Тўраев",
         username: "@jasur_t",
         timestamp: "05.08.2026, 08:18",
-        text: "Raygazga murojaat qildik, sozlab berishsin.",
+        text: "Райгазга мурожаат қилдик, созлаб беришсин.",
         telegramLink: "https://t.me/ziyokor_ovozi/3116"
       }
     ]
@@ -359,29 +364,29 @@ export const INITIAL_TOPICS = [
   {
     id: "top-g02",
     lane: "gas",
-    tag: "Gaz sizib chiqishi",
+    tag: "Газ сизиб чиқиши",
     tagType: "orange",
-    summary: "Toqchiliq mahallasida gaz ta'minoti quvurida sizib chiqish hidi anqiyotgani haqida xabar.",
-    mahalla: "Toqchiliq mahallasi",
+    summary: "Тоқчилик маҳалласида газ таъминоти қувурида сизиб чиқиш ҳиди анқиётгани ҳақида хабар.",
+    mahalla: "Тоқчилик маҳалласи",
     date: "today",
     time: "07:05",
     evidenceCount: 3,
-    quote: "Ko'chada gaz hidi kelyapti, avariya xizmati zudlik bilan kelsin.",
+    quote: "Кўчада газ ҳиди келяпти, авария хизмати зудлик билан келсин.",
     evidence: [
       {
         id: "ev-g02-1",
-        senderName: "Elyor Hakimov",
+        senderName: "Элёр Ҳакимов",
         username: "@elyor_h",
         timestamp: "05.08.2026, 06:50",
-        text: "Ko'chada gaz hidi kelyapti, avariya xizmati zudlik bilan kelsin.",
+        text: "Кўчада газ ҳиди келяпти, авария хизмати зудлик билан келсин.",
         telegramLink: "https://t.me/toqchiliq_murojaat/1188"
       },
       {
         id: "ev-g02-2",
-        senderName: "Sobirjon Karimov",
+        senderName: "Собиржон Каримов",
         username: "@sobir_k",
         timestamp: "05.08.2026, 07:05",
-        text: "104 ga qo'ng'iroq qilindi.",
+        text: "104 га қўнғироқ қилинди.",
         telegramLink: "https://t.me/toqchiliq_murojaat/1192"
       }
     ]
@@ -389,53 +394,53 @@ export const INITIAL_TOPICS = [
   {
     id: "top-g03",
     lane: "gas",
-    tag: "Gaz Hisoblagich",
+    tag: "Газ Ҳисоблагич",
     tagType: "orange",
-    summary: "Ravalliq mahallasida gaz hisoblagichlarini davlat ko'rigidan o'tkazish bo'yicha murojaat.",
-    mahalla: "Ravalliq mahallasi",
+    summary: "Раваллиқ маҳалласида газ ҳисоблагичларини давлат кўригидан ўтказиш бўйича мурожаат.",
+    mahalla: "Раваллиқ маҳалласи",
     date: "today",
     time: "09:50",
     evidenceCount: 2,
-    quote: "Smart gaz meter almashtirilgandan keyin ulash kechikmoqda.",
+    quote: "Smart gaz meter алмаштирилгандан keyin ulanishi kechikmoqda.",
     evidence: [
       {
         id: "ev-g03-1",
-        senderName: "Ulug'bek Zoirov",
+        senderName: "Улуғбек Зоиров",
         username: "@ulugbek_z",
         timestamp: "05.08.2026, 09:50",
-        text: "Smart gaz meter almashtirilgandan keyin plombalashga kelishmadi.",
+        text: "Smart gaz meter алмаштирилгандан кейин пломбалашга келишмади.",
         telegramLink: "https://t.me/ravalliq_ovozi/2140"
       }
     ]
   },
 
-  // --- 5. CHIQINDI ---
+  // --- 5. ЧИҚИНДИ ---
   {
     id: "top-c01",
     lane: "waste",
-    tag: "Chiqindi xizmati",
+    tag: "Чиқинди хизмати",
     tagType: "green",
-    summary: "Ravalliq mahallasida maishiy chiqindilar 4 kundan beri olib ketilmay, konteynerlar to'lib toshgan.",
-    mahalla: "Ravalliq mahallasi",
+    summary: "Раваллиқ маҳалласида маиший чиқиндилар 4 кундан бери олиб кетилмай, контейнерлар тўлиб тошган.",
+    mahalla: "Раваллиқ маҳалласи",
     date: "today",
     time: "08:05",
     evidenceCount: 4,
-    quote: "Chiqindi mashinasi kelmadi, ko'chada noxush hid tarqalyapti.",
+    quote: "Чиқинди машинаси келмади, кўчада нохуш ҳид тарқаляпти.",
     evidence: [
       {
         id: "ev-c01-1",
-        senderName: "Munojat Aliyeva",
+        senderName: "Муножат Алиева",
         username: "@munojat_a",
         timestamp: "05.08.2026, 07:20",
-        text: "Chiqindi mashinasi kelmadi, ko'chada noxush hid tarqalyapti.",
+        text: "Чиқинди машинаси келмади, кўчада нохуш ҳид тарқаляпти.",
         telegramLink: "https://t.me/ravalliq_ovozi/2110"
       },
       {
         id: "ev-c01-2",
-        senderName: "Baxtiyor To'laganov",
+        senderName: "Бахтиёр Тўлаганов",
         username: "@baxtiyor_t",
         timestamp: "05.08.2026, 08:05",
-        text: "Grafik bo'yicha har 2 kunda kelishi kerak edi.",
+        text: "График бўйича ҳар 2 кунда келиши керак эди.",
         telegramLink: "https://t.me/ravalliq_ovozi/2114"
       }
     ]
@@ -443,21 +448,21 @@ export const INITIAL_TOPICS = [
   {
     id: "top-c02",
     lane: "waste",
-    tag: "Noqonuniy chiqindixona",
+    tag: "Ноқонуний чиқиндихона",
     tagType: "green",
-    summary: "Qahramon mahallasida noqonuniy chiqindi to'plana boshlangani va tozalanishi so'ralmoqda.",
-    mahalla: "Qahramon mahallasi",
+    summary: "Қаҳрамон маҳалласида ноқонуний чиқинди тўплана бошлангани ва тозаланиши сўралмоқда.",
+    mahalla: "Қаҳрамон маҳалласи",
     date: "today",
     time: "07:22",
     evidenceCount: 3,
-    quote: "Ko'cha burchagiga qurilish chiqindilari va axlat tashlab ketishmoqda.",
+    quote: "Кўча бурчагига қурилиш чиқиндилари ва ахлат ташлаб кетишмоқда.",
     evidence: [
       {
         id: "ev-c02-1",
-        senderName: "Yorqin Haydarov",
+        senderName: "Ёрқин Ҳайдаров",
         username: "@yorqin_h",
         timestamp: "05.08.2026, 07:22",
-        text: "Ko'cha burchagiga qurilish chiqindilari va axlat tashlab ketishmoqda.",
+        text: "Кўча бурчагига қурилиш чиқиндилари ва ахлат ташлаб кетишмоқда.",
         telegramLink: "https://t.me/qahramon_murojaat/860"
       }
     ]
@@ -465,22 +470,68 @@ export const INITIAL_TOPICS = [
   {
     id: "top-c03",
     lane: "waste",
-    tag: "Konteyner o'rnatishtirish",
+    tag: "Контейнер ўрнатиш",
     tagType: "green",
-    summary: "Qulpisar mahallasida yangi maishiy chiqindi konteynerlari o'rnatish bo'yicha murojaat.",
-    mahalla: "Qulpisar mahallasi",
+    summary: "Қулписар маҳалласида янги маиший чиқинди контейнерлари ўрнатиш бўйича мурожаат.",
+    mahalla: "Қулписар маҳалласи",
     date: "today",
     time: "09:30",
     evidenceCount: 2,
-    quote: "Mahallamizda yangi konteynerlar o'rnatilishi zarur.",
+    quote: "Маҳалламизда янги контейнерлар ўрнатилиши зарур.",
     evidence: [
       {
         id: "ev-c03-1",
-        senderName: "Zulfiya Sattorova",
+        senderName: "Зулфия Сатторова",
         username: "@zulfiya_s",
         timestamp: "05.08.2026, 09:30",
-        text: "Mahallamizda aholi soni ko'paygan, konteynerlar yetishmaydi.",
+        text: "Маҳалламизда аҳоли сони кўпайган, контейнерлар етишмайди.",
         telegramLink: "https://t.me/qulpisar_murojaat/540"
+      }
+    ]
+  },
+
+  // --- 6. КЕЧАГИ САЛОҲИЯТЛИ МИСОЛЛАР (YESTERDAY) ---
+  {
+    id: "top-y01",
+    lane: "water",
+    tag: "Сув таъминоти",
+    tagType: "blue",
+    summary: "Учтепа маҳалласида насос станциясидаги таъмирлаш ишлари якунланди.",
+    mahalla: "Учтепа маҳалласи",
+    date: "yesterday",
+    time: "17:40",
+    evidenceCount: 4,
+    quote: "Сув таъминоти қайта тикланди, босим меъёрида.",
+    evidence: [
+      {
+        id: "ev-y01-1",
+        senderName: "Улуғбек Раҳимов",
+        username: "@ulugbek_r",
+        timestamp: "04.08.2026, 17:40",
+        text: "Сув таъминоти қайта тикланди, босим меъёрида.",
+        telegramLink: "https://t.me/uchtepa_murojaat/4490"
+      }
+    ]
+  },
+  {
+    id: "top-y02",
+    lane: "electricity",
+    tag: "Трансформатор созлаш",
+    tagType: "purple",
+    summary: "Раваллиқ маҳалласида янги трансформатор пункти синовдан ўтказилди.",
+    mahalla: "Раваллиқ маҳалласи",
+    date: "yesterday",
+    time: "15:20",
+    evidenceCount: 3,
+    quote: "ҲЭТК ходимлари янги подстанцияни улашди.",
+    evidence: [
+      {
+        id: "ev-y02-1",
+        senderName: "Дилмурод Каримов",
+        username: "@dilmurod_k",
+        timestamp: "04.08.2026, 15:20",
+        text: "ҲЭТК ходимлари янги подстанцияни улашди.",
+        telegramLink: "https://t.me/ravalliq_ovozi/2080"
       }
     ]
   }
@@ -490,21 +541,22 @@ export const SIMULATION_EVENTS = {
   newTopicWater: {
     id: "top-sim-w01",
     lane: "water",
-    tag: "Avariya va Suv ta'minoti",
+    tag: "Авария ва Сув таъминоти",
     tagType: "blue",
-    summary: "Uch-Tepa mahallasi Yangihayot ko'chasida yangi yorilish sodir bo'ldi: suv ta'minoti to'xtatildi.",
-    mahalla: "Uch-Tepa mahallasi",
+    isNew: true,
+    summary: "Учтепа маҳалласи Янгиҳаёт кўчасида янги ёрилиш содир бўлди: сув таъминоти тўхтатилди.",
+    mahalla: "Учтепа маҳалласи",
     date: "today",
     time: "12:58",
     evidenceCount: 1,
-    quote: "Hozirgina Yangihayot ko'chasida quvur yorilib suv toshib chiqdi!",
+    quote: "Ҳозиргина Янгиҳаёт кўчасида қувур ёрилиб сув тошиб чиқди!",
     evidence: [
       {
         id: "ev-sim-w01-1",
-        senderName: "Ma'murjon Sobirov",
+        senderName: "Маъмуржон Собиров",
         username: "@mamur_sobir",
         timestamp: "05.08.2026, 12:58",
-        text: "Hozirgina Yangihayot ko'chasida quvur yorilib suv toshib chiqdi, tezda avariya xizmati kelsin!",
+        text: "Ҳозиргина Янгиҳаёт кўчасида қувур ёрилиб сув тошиб чиқди, тезда авария хизмати келсин!",
         telegramLink: "https://t.me/uchtepa_murojaat/4590"
       }
     ]

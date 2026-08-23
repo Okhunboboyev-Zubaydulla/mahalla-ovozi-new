@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mahalla Ovozi — Sharof Rashidov tumani</title>
+  <title>Маҳалла Овози — Шароф Рашидов тумани</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <!-- Accessibility Skip Link -->
-  <a href="#main-content" class="skip-link">Asosiy mazmunga o'tish</a>
+  <a href="#main-content" class="skip-link">Асосий мазмунга ўтиш</a>
 
   <!-- ARIA live announcer for screen readers -->
   <div id="aria-announcer" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;" aria-live="polite" aria-atomic="true"></div>
@@ -19,7 +19,7 @@
 
       <!-- Brand & District -->
       <div class="brand-group">
-        <a href="#" class="brand-logo-wrap" aria-label="Mahalla Ovozi Bosh sahifa">
+        <a href="#" class="brand-logo-wrap" aria-label="Маҳалла Овози Бош саҳифа">
           <div class="brand-icon-box">
             <!-- Speaking head with sound waves (Mahalla Ovozi) -->
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -28,7 +28,7 @@
               <path d="M20.5 5a6.5 6.5 0 0 1 0 9.5"></path>
             </svg>
           </div>
-          <span class="brand-name">Mahalla Ovozi</span>
+          <span class="brand-name">Маҳалла Овози</span>
         </a>
 
         <div class="district-badge">
@@ -36,43 +36,110 @@
             <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"></path>
             <circle cx="12" cy="10" r="3"></circle>
           </svg>
-          <span>Sharof Rashidov tumani</span>
+          <span>Шароф Рашидов тумани</span>
         </div>
       </div>
 
       <!-- Center Toolbar Controls -->
-      <div class="toolbar-middle" role="search" aria-label="Filtrlar va qidiruv">
+      <div class="toolbar-middle" role="search" aria-label="Фильтрлар ва қидирув">
 
-        <!-- Date Segmented Switch -->
-        <div class="date-segmented" role="group" aria-label="Sanani tanlash">
-          <button type="button" class="date-btn active" id="btn-date-today" data-date="today">Bugun</button>
-          <button type="button" class="date-btn" id="btn-date-yesterday" data-date="yesterday">Kecha</button>
-          <button type="button" class="date-btn" id="btn-date-custom" data-date="all">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-            <span>Sana</span>
-          </button>
+        <!-- Date Segmented Switch with Date Picker Popover -->
+        <div class="date-controls-group">
+          <div class="date-segmented" role="group" aria-label="Санани танлаш">
+            <button type="button" class="date-btn active" id="btn-date-today" data-date="today">Бугун</button>
+            <button type="button" class="date-btn" id="btn-date-yesterday" data-date="yesterday">Кеча</button>
+            <button type="button" class="date-btn" id="btn-date-custom" data-date="custom" aria-haspopup="dialog" aria-expanded="false" title="Сана бўйича танлаш">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <span id="date-custom-label">Сана бўйича</span>
+            </button>
+          </div>
+
+          <!-- Date Picker Popover -->
+          <div id="date-picker-popover" class="date-popover" role="dialog" aria-label="Сана оралиғини танлаш">
+            <div class="date-popover-header">Сана оралиғи</div>
+            <div class="date-inputs-row">
+              <div class="date-input-field">
+                <label for="date-range-start">Бошланиш санаси</label>
+                <input type="date" id="date-range-start" value="2026-08-05">
+              </div>
+              <div class="date-input-field">
+                <label for="date-range-end">Тугаш санаси</label>
+                <input type="date" id="date-range-end" value="2026-08-05">
+              </div>
+            </div>
+            <div class="date-popover-actions">
+              <button type="button" id="btn-date-popover-cancel" class="btn-secondary-sm">Бекор қилиш</button>
+              <button type="button" id="btn-date-popover-apply" class="btn-primary-sm">Қўллаш</button>
+            </div>
+          </div>
         </div>
 
         <!-- Mahalla Select -->
         <div class="custom-select-wrap">
-          <select id="mahalla-select" class="header-select" aria-label="Mahallani tanlang">
-            <option value="all">Barcha mahallalar</option>
-            <option value="Uch-Tepa mahallasi">Uch-Tepa mahallasi</option>
-            <option value="Ziyokor mahallasi">Ziyokor mahallasi</option>
-            <option value="Ravalliq mahallasi">Ravalliq mahallasi</option>
-            <option value="Toqchiliq mahallasi">Toqchiliq mahallasi</option>
-            <option value="Nonisangil mahallasi">Nonisangil mahallasi</option>
-            <option value="Qahramon mahallasi">Qahramon mahallasi</option>
-            <option value="Qulpisar mahallasi">Qulpisar mahallasi</option>
+          <select id="mahalla-select" class="header-select" aria-label="Маҳаллани танланг">
+            <option value="all">Барча маҳаллалар</option>
+            <option value="Учтепа маҳалласи">Учтепа маҳалласи</option>
+            <option value="Зиёкор маҳалласи">Зиёкор маҳалласи</option>
+            <option value="Раваллиқ маҳалласи">Раваллиқ маҳалласи</option>
+            <option value="Тоқчилик маҳалласи">Тоқчилик маҳалласи</option>
+            <option value="Нонисангил маҳалласи">Нонисангил маҳалласи</option>
+            <option value="Қаҳрамон маҳалласи">Қаҳрамон маҳалласи</option>
+            <option value="Қулписар маҳалласи">Қулписар маҳалласи</option>
           </select>
           <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
+        </div>
+
+        <!-- Lane Multi-Select Filter (Йўналишлар: 5/5) -->
+        <div class="lanes-filter-wrap">
+          <button type="button" id="btn-lanes-filter" class="lanes-filter-btn" aria-haspopup="true" aria-expanded="false" aria-label="Йўналишларни танлаш">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+            <span id="lanes-filter-label">Йўналишлар: 5/5</span>
+            <svg class="dropdown-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          <!-- Lanes Dropdown Menu -->
+          <div id="lanes-dropdown-menu" class="lanes-dropdown-menu" role="menu" aria-label="Йўналишлар рўйхати">
+            <div class="lanes-dropdown-header">
+              <span>Кўринадиган устунлар</span>
+              <button type="button" id="btn-lanes-select-all" class="btn-link-xs">Барчасини кўрсатиш</button>
+            </div>
+            <label class="lane-checkbox-item">
+              <input type="checkbox" class="lane-check" data-lane="hokim" checked>
+              <span class="lane-check-color-dot" style="background-color: #EF4444;"></span>
+              <span class="lane-check-title">Ҳокимга оид</span>
+            </label>
+            <label class="lane-checkbox-item">
+              <input type="checkbox" class="lane-check" data-lane="water" checked>
+              <span class="lane-check-color-dot" style="background-color: #2563EB;"></span>
+              <span class="lane-check-title">Сув</span>
+            </label>
+            <label class="lane-checkbox-item">
+              <input type="checkbox" class="lane-check" data-lane="electricity" checked>
+              <span class="lane-check-color-dot" style="background-color: #7C3AED;"></span>
+              <span class="lane-check-title">Электр</span>
+            </label>
+            <label class="lane-checkbox-item">
+              <input type="checkbox" class="lane-check" data-lane="gas" checked>
+              <span class="lane-check-color-dot" style="background-color: #EA580C;"></span>
+              <span class="lane-check-title">Газ</span>
+            </label>
+            <label class="lane-checkbox-item">
+              <input type="checkbox" class="lane-check" data-lane="waste" checked>
+              <span class="lane-check-color-dot" style="background-color: #059669;"></span>
+              <span class="lane-check-title">Чиқинди</span>
+            </label>
+          </div>
         </div>
 
         <!-- Search Input -->
@@ -81,8 +148,8 @@
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <input type="text" id="search-input" class="search-input" placeholder="Mavzu yoki xabarni qidiring..." aria-label="Mavzu yoki xabarni qidiring">
-          <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="Qidiruvni tozalash">
+          <input type="text" id="search-input" class="search-input" placeholder="Мавзу ёки хабарни қидиринг..." aria-label="Мавзу ёки хабарни қидиринг">
+          <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="Қидирувни тозалаш">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -94,21 +161,21 @@
 
       <!-- Right Header Actions -->
       <div class="header-right">
-        <div class="freshness-status" title="Oxirgi muvaffaqiyatli yangilanish vaqti">
+        <div class="freshness-status" title="Охирги муваффақиятли янгиланиш вақти">
           <span class="status-dot-green"></span>
-          <span id="freshness-text">5-avgust 12:59:59 • Yangilandi: Hozirgina</span>
+          <span id="freshness-text">5 август 12:59 • Янгиланди: Ҳозиргина</span>
         </div>
 
         <!-- Help Button (?) -->
-        <button type="button" class="help-circle-btn" id="help-btn" aria-label="Yordam va tushuntirishlar" title="Yordam">?</button>
+        <button type="button" class="help-circle-btn" id="help-btn" aria-label="Ёрдам ва тушунтиришлар" title="Ёрдам">?</button>
 
         <!-- Profile Button -->
-        <button type="button" class="profile-pill-btn" aria-label="Hokim profili">
+        <button type="button" class="profile-pill-btn" aria-label="Ҳоким профили">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
             <circle cx="12" cy="7" r="4"></circle>
           </svg>
-          <span>Hokim</span>
+          <span>Ҳоким</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
@@ -122,9 +189,9 @@
   <main id="main-content" class="app-main">
 
     <!-- 5 Top Metric Cards -->
-    <section class="metrics-row" aria-label="Asosiy ko'rsatkichlar">
+    <section class="metrics-row" aria-label="Асосий кўрсаткичлар">
 
-      <!-- Card 1: Mavzular -->
+      <!-- Card 1: Мавзулар -->
       <div class="metric-box topics" id="metric-box-topics">
         <div class="metric-icon-square">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -135,13 +202,13 @@
           </svg>
         </div>
         <div class="metric-content">
-          <span class="metric-title">Mavzular</span>
+          <span class="metric-title">Мавзулар</span>
           <span class="metric-number" id="val-topics">26</span>
-          <span class="metric-sub" id="sub-topics">+18% oldingi davrga nisbatan</span>
+          <span class="metric-sub" id="sub-topics">+18% олдинги даврга нисбатан</span>
         </div>
       </div>
 
-      <!-- Card 2: Hokimga oid -->
+      <!-- Card 2: Ҳокимга оид -->
       <div class="metric-box hokim" id="metric-box-hokim">
         <div class="metric-icon-square">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -150,13 +217,13 @@
           </svg>
         </div>
         <div class="metric-content">
-          <span class="metric-title">Hokimga oid</span>
+          <span class="metric-title">Ҳокимга оид</span>
           <span class="metric-number" id="val-hokim">7</span>
-          <span class="metric-sub" id="sub-hokim">22 dalil</span>
+          <span class="metric-sub" id="sub-hokim">22 далил</span>
         </div>
       </div>
 
-      <!-- Card 3: Faol mahallalar -->
+      <!-- Card 3: Фаол маҳаллалар -->
       <div class="metric-box mahallas" id="metric-box-mahallas">
         <div class="metric-icon-square">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -167,13 +234,13 @@
           </svg>
         </div>
         <div class="metric-content">
-          <span class="metric-title">Faol mahallalar</span>
+          <span class="metric-title">Фаол маҳаллалар</span>
           <span class="metric-number" id="val-mahallas">8</span>
-          <span class="metric-sub" id="sub-mahallas">68 dalil</span>
+          <span class="metric-sub" id="sub-mahallas">68 далил</span>
         </div>
       </div>
 
-      <!-- Card 4: Eng faol xizmat -->
+      <!-- Card 4: Энг фаол хизмат -->
       <div class="metric-box service" id="metric-box-service">
         <div class="metric-icon-square">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -181,13 +248,13 @@
           </svg>
         </div>
         <div class="metric-content">
-          <span class="metric-title">Eng faol xizmat</span>
-          <span class="metric-number" id="val-service">Elektr</span>
-          <span class="metric-sub" id="sub-service">6 mavzu</span>
+          <span class="metric-title">Энг фаол хизмат</span>
+          <span class="metric-number" id="val-service">Электр</span>
+          <span class="metric-sub" id="sub-service">6 мавзу</span>
         </div>
       </div>
 
-      <!-- Card 5: Eng faol mahalla -->
+      <!-- Card 5: Энг фаол маҳалла -->
       <div class="metric-box top-mahalla" id="metric-box-top-mahalla">
         <div class="metric-icon-square">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -196,84 +263,98 @@
           </svg>
         </div>
         <div class="metric-content">
-          <span class="metric-title">Eng faol mahalla</span>
-          <span class="metric-number" id="val-top-mahalla">Uch-Tepa</span>
-          <span class="metric-sub" id="sub-top-mahalla">5 mavzu • 16 dalil</span>
+          <span class="metric-title">Энг фаол маҳалла</span>
+          <span class="metric-number" id="val-top-mahalla">Учтепа</span>
+          <span class="metric-sub" id="sub-top-mahalla">5 мавзу • 16 далил</span>
         </div>
       </div>
 
     </section>
 
     <!-- 5 Column Signal Board -->
-    <section class="board-wrapper" aria-label="Xizmatlar ustunlari">
+    <section class="board-wrapper" aria-label="Хизматлар устунлари">
+      
+      <!-- Responsive Lane Navigation (visible on narrow screens when board overflows) -->
+      <div class="responsive-lane-nav-bar" id="responsive-lane-nav">
+        <button type="button" class="btn-lane-nav" id="btn-prev-lane" aria-label="Олдинги устунга ўтиш">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <span>Олдинги устун</span>
+        </button>
+        <span class="lane-nav-current-label" id="lane-nav-indicator">Устунлар бўйлаб силжиш</span>
+        <button type="button" class="btn-lane-nav" id="btn-next-lane" aria-label="Кейинги устунга ўтиш">
+          <span>Кейинги устун</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+
       <div class="columns-grid" id="columns-grid">
 
-        <!-- Column 1: Hokimga oid -->
-        <div class="lane-col" data-lane="hokim">
+        <!-- Column 1: Ҳокимга оид -->
+        <div class="lane-col" data-lane="hokim" id="lane-col-hokim">
           <div class="lane-top-header">
             <div class="lane-title-with-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
-              <span>Hokimga oid</span>
+              <span>Ҳокимга оид</span>
             </div>
             <span class="lane-count-circle" id="badge-count-hokim">7</span>
           </div>
           <div class="lane-cards-stack" id="stack-hokim"></div>
         </div>
 
-        <!-- Column 2: Suv -->
-        <div class="lane-col" data-lane="water">
+        <!-- Column 2: Сув -->
+        <div class="lane-col" data-lane="water" id="lane-col-water">
           <div class="lane-top-header">
             <div class="lane-title-with-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
               </svg>
-              <span>Suv</span>
+              <span>Сув</span>
             </div>
             <span class="lane-count-circle" id="badge-count-water">5</span>
           </div>
           <div class="lane-cards-stack" id="stack-water"></div>
         </div>
 
-        <!-- Column 3: Elektr -->
-        <div class="lane-col" data-lane="electricity">
+        <!-- Column 3: Электр -->
+        <div class="lane-col" data-lane="electricity" id="lane-col-electricity">
           <div class="lane-top-header">
             <div class="lane-title-with-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
               </svg>
-              <span>Elektr</span>
+              <span>Электр</span>
             </div>
             <span class="lane-count-circle" id="badge-count-electricity">6</span>
           </div>
           <div class="lane-cards-stack" id="stack-electricity"></div>
         </div>
 
-        <!-- Column 4: Gaz -->
-        <div class="lane-col" data-lane="gas">
+        <!-- Column 4: Газ -->
+        <div class="lane-col" data-lane="gas" id="lane-col-gas">
           <div class="lane-top-header">
             <div class="lane-title-with-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
               </svg>
-              <span>Gaz</span>
+              <span>Газ</span>
             </div>
             <span class="lane-count-circle" id="badge-count-gas">4</span>
           </div>
           <div class="lane-cards-stack" id="stack-gas"></div>
         </div>
 
-        <!-- Column 5: Chiqindi -->
-        <div class="lane-col" data-lane="waste">
+        <!-- Column 5: Чиқинди -->
+        <div class="lane-col" data-lane="waste" id="lane-col-waste">
           <div class="lane-top-header">
             <div class="lane-title-with-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
               </svg>
-              <span>Chiqindi</span>
+              <span>Чиқинди</span>
             </div>
             <span class="lane-count-circle" id="badge-count-waste">4</span>
           </div>
@@ -287,13 +368,13 @@
 
   <!-- Slide-out Evidence Detail Drawer -->
   <div id="drawer-overlay" class="drawer-overlay"></div>
-  <aside id="evidence-drawer" class="evidence-drawer" aria-hidden="true" role="region" aria-label="Mavzu tafsiloti">
+  <aside id="evidence-drawer" class="evidence-drawer" aria-hidden="true" role="region" aria-label="Мавзу тафсилоти">
     <div class="drawer-top">
       <div class="drawer-title-stack">
-        <span class="drawer-category-tag" id="drawer-category-lbl">Hokimga oid</span>
-        <h2 class="drawer-main-title" id="drawer-mahalla-title">Uch-Tepa mahallasi</h2>
+        <span class="drawer-category-tag" id="drawer-category-lbl">Ҳокимга оид</span>
+        <h2 class="drawer-main-title" id="drawer-mahalla-title">Учтепа маҳалласи</h2>
       </div>
-      <button type="button" id="btn-close-drawer" class="btn-close-drawer" aria-label="Yopish (Escape)">
+      <button type="button" id="btn-close-drawer" class="btn-close-drawer" aria-label="Ёпиш (Escape)">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -304,18 +385,18 @@
     <div class="drawer-body-scroll">
       <!-- AI Summary card -->
       <div class="drawer-summary-card">
-        <div class="drawer-summary-lbl">AI Xulosasi</div>
+        <div class="drawer-summary-lbl">AI ХУЛОСАСИ</div>
         <p class="drawer-summary-content" id="drawer-summary-text"></p>
       </div>
 
-      <!-- Meta Badges -->
+      <!-- Meta Badges & Multi-Lane Indicators -->
       <div class="drawer-meta-badges">
         <div class="meta-item">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"></path>
             <circle cx="12" cy="10" r="3"></circle>
           </svg>
-          <span id="drawer-mahalla-lbl">Uch-Tepa mahallasi</span>
+          <span id="drawer-mahalla-lbl">Учтепа маҳалласи</span>
         </div>
         <div class="meta-item">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -325,14 +406,16 @@
           <span id="drawer-time-lbl">08:27</span>
         </div>
         <div class="meta-item">
-          <span id="drawer-count-lbl" style="font-weight: 600; color: var(--text-main);">6 ta dalil xabari</span>
+          <span id="drawer-count-lbl" style="font-weight: 600; color: var(--text-main);">6 та далил хабари</span>
         </div>
       </div>
+
+      <div id="drawer-multi-lane-wrap" class="drawer-multi-lane-wrap"></div>
 
       <!-- Chronological Evidence Thread -->
       <div>
         <div class="evidence-thread-title">
-          <span>Qabul qilingan dalillar (xronologik tartibda)</span>
+          <span>Қабул қилинган далиллар (эскидан янгига)</span>
         </div>
         <div class="evidence-items-list" id="drawer-evidence-list">
           <!-- Evidence items populated via JS -->
@@ -345,8 +428,8 @@
   <div id="help-modal-wrap" class="modal-backdrop-wrap" role="dialog" aria-modal="true" aria-labelledby="modal-head">
     <div class="modal-box">
       <div class="modal-top-bar">
-        <h2 id="modal-head" class="modal-heading">Tizim bo'yicha yo'riqnoma va tushuntirishlar</h2>
-        <button type="button" id="modal-close-btn" class="btn-close-drawer" aria-label="Yopish">
+        <h2 id="modal-head" class="modal-heading">Тизим бўйича йўриқнома ва тушунтиришлар</h2>
+        <button type="button" id="modal-close-btn" class="btn-close-drawer" aria-label="Ёпиш">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -354,11 +437,12 @@
         </button>
       </div>
       <div class="modal-content-area">
-        <p><strong>Mahalla Ovozi</strong> — tumandagi ochiq va yopiq Telegram guruhlaridan aholi murojaatlari va kommunal signallarni to'playdi, umumlashtiradi va tuman hokimligiga real vaqtda taqdim etadi.</p>
-        <p><strong>5 ta ustun:</strong> Hokimga oid, Suv, Elektr, Gaz va Chiqindi. Har bir karta bosilganda o'ng tomondan xabarlarning asl matnlari va Telegram havolalari ochiladi.</p>
+        <p><strong>Маҳалла Овози</strong> — тумандаги очиқ ва ёпиқ Telegram гуруҳларидан аҳоли мурожаатлари ва коммунал сигналларни тўплайди, умумлаштиради ва туман ҳокимлигига тақдим этади.</p>
+        <p><strong>5 та устун:</strong> Ҳокимга оид, Сув, Электр, Газ ва Чиқинди. Ҳар бир карта босилганда ўнг томондан хабарларнинг асл матнлари ва Telegram ҳаволалари очилади.</p>
+        <p><strong>Нейтрал кўрсаткичлар:</strong> Юқоридаги 5 та панель фаол фильтрларга қараб аниқ статистикани кўрсатади ҳамда хизмат сифатини сунъий баҳоламайди.</p>
       </div>
       <div class="modal-bottom-bar">
-        <button type="button" id="modal-ok-btn" class="btn-primary-teal">Tushunarli</button>
+        <button type="button" id="modal-ok-btn" class="btn-primary-teal">Тушунарли</button>
       </div>
     </div>
   </div>
@@ -366,12 +450,12 @@
   <!-- Interactive Simulation Tool (Demo Panel) -->
   <div class="sim-floating-pill">
     <div class="sim-popup-menu" id="sim-menu">
-      <strong style="font-size: 12px; color: #64748B; text-transform: uppercase;">Simulyatsiya menyusi</strong>
-      <button type="button" class="sim-menu-item" id="sim-add-water">➕ Yangi suv avariyasi qo'shish</button>
-      <button type="button" class="sim-menu-item" id="sim-reset">🔄 Boshlang'ich holatga qaytarish</button>
+      <strong style="font-size: 12px; color: #64748B; text-transform: uppercase;">Симуляция менюси</strong>
+      <button type="button" class="sim-menu-item" id="sim-add-water">➕ Янги сув аварияси қўшиш</button>
+      <button type="button" class="sim-menu-item" id="sim-reset">🔄 Бошланғич ҳолатга қайтариш</button>
     </div>
-    <button type="button" class="sim-trigger-button" id="sim-toggle-btn">
-      <span>⚙️ Simulyatsiya</span>
+    <button type="button" class="sim-trigger-button" id="sim-toggle-btn" aria-label="Симуляция панелини очиш">
+      <span>⚙️ Симуляция</span>
     </button>
   </div>
 
