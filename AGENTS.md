@@ -48,6 +48,7 @@ Logging: structured fields, not interpolated dynamic values in message strings.
 Scope note: "no fallbacks" applies to code-level silent error masking, not to evidence-gathering strategy (see base ACCESS & EVIDENCE).
 ## MODULE: TESTING
 Respect repo test strategy. Add only minimum useful tests for the change.
+Database & Environment Isolation: All automated tests (Vitest, integration tests, E2E fixtures) interacting with PostgreSQL or pg-boss queues MUST execute strictly against an isolated test database (e.g., `mahalla_ovozi_test`). Never execute test suites or insert mock test fixtures into the active development database (`mahalla_ovozi`) used for `localhost:5173`.
 Prefer smoke, integration, e2e over narrow unit/regression. Do not test static text/prompts/config unless behavior depends on them.
 Prefer red-green-refactor when possible.
 No fake/mock tests by default. Use real integrations when practical, even if slightly costly.

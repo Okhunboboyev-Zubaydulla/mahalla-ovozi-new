@@ -66,8 +66,10 @@ Package manifests (`package.json`) and `pnpm-lock.yaml` are the single authorita
 - Add the smallest set of tests that materially proves the changed behavior.
 - Prefer integration, smoke, and end-to-end tests where meaningful boundaries
   are involved.
-- Test PostgreSQL-dependent semantics against real PostgreSQL when transactions,
-  constraints, persistence, locking, or rollback are part of the behavior.
+- Test PostgreSQL-dependent semantics against real PostgreSQL on a dedicated,
+  isolated test database (`mahalla_ovozi_test`). Never execute tests, insert mock
+  fixtures, or run migrations against the active development database (`mahalla_ovozi`)
+  used by `localhost:5173`.
 - Preserve the backend integration suite's intentional serial execution unless
   database isolation is deliberately redesigned.
 - Mock only at an appropriate external boundary; browser API-client tests may
