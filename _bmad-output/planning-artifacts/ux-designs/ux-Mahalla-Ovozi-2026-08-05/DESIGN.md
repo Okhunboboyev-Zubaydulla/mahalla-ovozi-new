@@ -115,7 +115,7 @@ components:
     background: '{colors.surface-raised}'
     foreground: '{colors.text-primary}'
     border: '{colors.border}'
-    radius: '{rounded.DEFAULT}'
+    radius: '{rounded.lg}'
   data-collection:
     background: '{colors.surface-raised}'
     foreground: '{colors.text-primary}'
@@ -235,7 +235,7 @@ The desktop layout features a compact sticky single-row toolbar, a 5-card statis
 | `metric-card` | Read-only raised card with rounded colored icon square (`#FEE2E2`, `#FCE7F3`, `#DBEAFE`, `#F3E8FF`, `#D1FAE5`), bold number, and filter-aware neutral subtitle. |
 | `lane-board` | 5 fixed semantic columns (`Ҳокимга оид`, `Сув`, `Электр`, `Газ`, `Чиқинди`) with column count badges, independent vertical scroll, and responsive navigation controls. |
 | `topic-card` | Rich, scan-friendly card: `AI ХУЛОСАСИ` label, `Янги`/`Янгиланди` badge, cautious summary, subcategory pill tag, multi-lane indicator (`Ҳам: ...`), metadata row (Mahalla, time, evidence count), and citizen quote snippet box with paper-plane icon. |
-| `detail-panel` (Drawer) | Slide-out right-side panel with category tag, Mahalla title, AI summary card, metadata, multi-lane links, chronological evidence thread, and `Telegramда очиш` action. |
+| `detail-panel` (Drawer) | Raised floating card detail surface (top/bottom/right 14px/16px insets, rounded corners) with a subtle overlay shadow; category tag, Mahalla title, AI summary card, metadata, multi-lane links, chronological evidence thread, and `Telegramда очиш` action. |
 | `help-modal` | Accessible modal explaining system principles, lane purposes, signal vs fact limits, and Hokim decision ownership. |
 | `action-control` | Minimum 44px touch targets on mobile/tablet, clear focus rings, and prompt status feedback. |
 

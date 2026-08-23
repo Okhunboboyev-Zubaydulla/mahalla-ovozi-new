@@ -1062,15 +1062,19 @@ button {
 
 .evidence-drawer {
   position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
   width: 440px;
-  max-width: 100vw;
+  max-width: calc(100vw - 16px);
+  height: calc(100vh - 16px);
   background: #FFFFFF;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-drawer);
   z-index: 210;
-  transform: translateX(100%);
+  overflow: hidden;
+  transform: translateX(calc(100% + 24px));
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
@@ -1450,6 +1454,12 @@ button {
     height: 550px;
   }
   .evidence-drawer {
-    width: 100vw;
+    top: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+    height: calc(100vh - 16px);
+    border-radius: var(--radius-md);
   }
 }
