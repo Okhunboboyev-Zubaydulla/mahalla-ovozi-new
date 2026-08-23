@@ -1,0 +1,301 @@
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import {
+  ListAiOperationsQuerySchema,
+  ListGlobalAiOperationsQuerySchema,
+  GetAiHealthMetricsQuerySchema,
+} from '@mahalla-ovozi/api-contracts';
+import { DbClient } from '../../adapters/db/client.js';
+import { COOKIE_NAME, validateAndTouchSession } from '../auth/session-manager.js';
+import { createRequireProductOwner } from '../auth/require-product-owner.js';
+import {
+  aiOperationQueryService,
+  InvalidDistrictScopeError,
+  OperationNotFoundError,
+} from './ai-operation-query-service.js';
+
+export function createRequireDistrictAccess(db: DbClient) {
+  return async function requireDistrictAccess(
+    req: FastifyRequest<{ Params: { districtId?: string } }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const rawToken = req.cookies[COOKIE_NAME];
+    if (!rawToken) {
+      reply.status(401).send({
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'Сессия топилмади ёки муддати тугаган.',
+        },
+      });
+      return;
+    }
+
+    const validation = await validateAndTouchSession(db, rawToken);
+    if (!validation.isValid || !validation.account || !validation.session) {
+      reply.clearCookie(COOKIE_NAME, {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: true,
+      });
+      reply.status(401).send({
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'Сессия топилмади ёки муддати тугаган.',
+        },
+      });
+      return;
+    }
+
+    const requestedDistrictId = req.params?.districtId;
+    if (validation.account.role === 'PRODUCT_OWNER') {
+      req.actor = validation.account;
+      return;
+    }
+
+    if (
+      validation.account.role === 'DISTRICT_HOKIM' &&
+      requestedDistrictId &&
+      validation.account.districtId === requestedDistrictId
+    ) {
+      req.actor = validation.account;
+      return;
+    }
+
+    reply.status(403).send({
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Ушбу амални бажариш учун ҳуқуқ етарли эмас.',
+      },
+    });
+  };
+}
+
+function handleAiOperationError(err: unknown, reply: FastifyReply) {
+  if (err instanceof InvalidDistrictScopeError) {
+    return reply.status(400).send({
+      error: {
+        code: err.code,
+        message: err.message,
+      },
+    });
+  }
+  if (err instanceof OperationNotFoundError) {
+    return reply.status(404).send({
+      error: {
+        code: err.code,
+        message: err.message,
+      },
+    });
+  }
+  return reply.status(500).send({
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: err instanceof Error ? err.message : 'Кутилмаган хатолик юз берди.',
+    },
+  });
+}
+
+export function registerAiOperationsRoutes(fastify: FastifyInstance, db: DbClient): void {
+  // 1. District-scoped routes
+  fastify.register(async (scope) => {
+    scope.addHook('preHandler', createRequireDistrictAccess(db));
+
+    // GET /api/v1/districts/:districtId/ai-operations
+    scope.get(
+      '/api/v1/districts/:districtId/ai-operations',
+      async (
+        req: FastifyRequest<{
+          Params: { districtId: string };
+          Querystring: Record<string, unknown>;
+        }>,
+        reply: FastifyReply,
+      ) => {
+        const { districtId } = req.params;
+        if (!districtId || typeof districtId !== 'string' || districtId.trim() === '') {
+          return reply.status(400).send({
+            error: {
+              code: 'INVALID_DISTRICT_SCOPE',
+              message: 'Туман идентификатори талаб қилинади ва бўш бўлмаслиги керак.',
+            },
+          });
+        }
+
+        const parseResult = ListAiOperationsQuerySchema.safeParse(req.query);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: parseResult.error.errors[0]?.message || 'Қидирув параметрлари нотўғри.',
+            },
+          });
+        }
+
+        const query = parseResult.data;
+        try {
+          const result = await aiOperationQueryService.listDistrictOperations(db, districtId, {
+            mahallaName: query.mahallaName,
+            calendarDay: query.calendarDay,
+            operationType: query.operationType,
+            finalStatus: query.finalStatus,
+            targetId: query.targetId,
+            startDate: query.startDate ? new Date(query.startDate) : undefined,
+            endDate: query.endDate ? new Date(query.endDate) : undefined,
+            page: query.page,
+            pageSize: query.pageSize,
+          });
+
+          return reply.status(200).send(result);
+        } catch (err: unknown) {
+          return handleAiOperationError(err, reply);
+        }
+      },
+    );
+
+    // GET /api/v1/districts/:districtId/ai-operations/:operationId
+    scope.get(
+      '/api/v1/districts/:districtId/ai-operations/:operationId',
+      async (
+        req: FastifyRequest<{
+          Params: { districtId: string; operationId: string };
+        }>,
+        reply: FastifyReply,
+      ) => {
+        const { districtId, operationId } = req.params;
+        if (!districtId || typeof districtId !== 'string' || districtId.trim() === '') {
+          return reply.status(400).send({
+            error: {
+              code: 'INVALID_DISTRICT_SCOPE',
+              message: 'Туман идентификатори талаб қилинади ва бўш бўлмаслиги керак.',
+            },
+          });
+        }
+        if (!operationId || typeof operationId !== 'string' || operationId.trim() === '') {
+          return reply.status(404).send({
+            error: {
+              code: 'OPERATION_NOT_FOUND',
+              message: 'AI амалиёти топилмади.',
+            },
+          });
+        }
+
+        try {
+          const details = await aiOperationQueryService.getDistrictOperationDetails(
+            db,
+            districtId,
+            operationId,
+          );
+          return reply.status(200).send({ operation: details });
+        } catch (err: unknown) {
+          return handleAiOperationError(err, reply);
+        }
+      },
+    );
+  });
+
+  // 2. Global admin routes (Product Owner only)
+  fastify.register(async (scope) => {
+    scope.addHook('preHandler', createRequireProductOwner(db));
+
+    // GET /api/v1/admin/ai-operations
+    scope.get(
+      '/api/v1/admin/ai-operations',
+      async (
+        req: FastifyRequest<{ Querystring: Record<string, unknown> }>,
+        reply: FastifyReply,
+      ) => {
+        const parseResult = ListGlobalAiOperationsQuerySchema.safeParse(req.query);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: parseResult.error.errors[0]?.message || 'Қидирув параметрлари нотўғри.',
+            },
+          });
+        }
+
+        const query = parseResult.data;
+        try {
+          const result = await aiOperationQueryService.listGlobalOperations(db, {
+            districtId: query.districtId,
+            mahallaName: query.mahallaName,
+            calendarDay: query.calendarDay,
+            operationType: query.operationType,
+            finalStatus: query.finalStatus,
+            targetId: query.targetId,
+            startDate: query.startDate ? new Date(query.startDate) : undefined,
+            endDate: query.endDate ? new Date(query.endDate) : undefined,
+            page: query.page,
+            pageSize: query.pageSize,
+          });
+
+          return reply.status(200).send(result);
+        } catch (err: unknown) {
+          return handleAiOperationError(err, reply);
+        }
+      },
+    );
+
+    // GET /api/v1/admin/ai-operations/health-metrics
+    scope.get(
+      '/api/v1/admin/ai-operations/health-metrics',
+      async (
+        req: FastifyRequest<{ Querystring: Record<string, unknown> }>,
+        reply: FastifyReply,
+      ) => {
+        const parseResult = GetAiHealthMetricsQuerySchema.safeParse(req.query);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: parseResult.error.errors[0]?.message || 'Қидирув параметрлари нотўғри.',
+            },
+          });
+        }
+
+        const query = parseResult.data;
+        try {
+          const metrics = await aiOperationQueryService.getSystemHealthAiMetrics(db, {
+            districtId: query.districtId,
+            timeframe:
+              query.from && query.to
+                ? { from: new Date(query.from), to: new Date(query.to) }
+                : undefined,
+          });
+
+          return reply.status(200).send({ metrics });
+        } catch (err: unknown) {
+          return handleAiOperationError(err, reply);
+        }
+      },
+    );
+
+    // GET /api/v1/admin/ai-operations/:operationId
+    scope.get(
+      '/api/v1/admin/ai-operations/:operationId',
+      async (
+        req: FastifyRequest<{ Params: { operationId: string } }>,
+        reply: FastifyReply,
+      ) => {
+        const { operationId } = req.params;
+        if (!operationId || typeof operationId !== 'string' || operationId.trim() === '') {
+          return reply.status(404).send({
+            error: {
+              code: 'OPERATION_NOT_FOUND',
+              message: 'AI амалиёти топилмади.',
+            },
+          });
+        }
+
+        try {
+          const details = await aiOperationQueryService.getGlobalOperationDetails(
+            db,
+            operationId,
+          );
+          return reply.status(200).send({ operation: details });
+        } catch (err: unknown) {
+          return handleAiOperationError(err, reply);
+        }
+      },
+    );
+  });
+}

@@ -11,7 +11,8 @@ export type AiGatewayErrorCode =
   | 'PROVIDER_REFUSAL'
   | 'AUTHENTICATION_ERROR'
   | 'STALE_SNAPSHOT'
-  | 'PROFILE_NOT_FOUND';
+  | 'PROFILE_NOT_FOUND'
+  | 'CIRCUIT_OPEN';
 
 export class AiGatewayError extends Error {
   public readonly code: AiGatewayErrorCode;
