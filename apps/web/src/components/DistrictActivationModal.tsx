@@ -86,7 +86,7 @@ export const DistrictActivationModal: React.FC<DistrictActivationModalProps> = (
       title="Туманни фаоллаштиришни тасдиқлаш"
       open={open}
       onCancel={handleClose}
-      destroyOnClose
+      destroyOnHidden
       centered
       closable={!isActivating}
       maskClosable={!isActivating}

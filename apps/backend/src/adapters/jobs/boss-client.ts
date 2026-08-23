@@ -2,7 +2,11 @@ import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 import PgBoss from 'pg-boss';
 import * as schema from '../db/schema/index.js';
-import type { QualifyingLane } from '../../modules/ai/semantic-relevance-contracts.js';
+import type {
+  QualifyingLane,
+  TelegramReplyMetadata,
+} from '@mahalla-ovozi/api-contracts';
+export type { TelegramReplyMetadata };
 
 export const TELEGRAM_CONTENT_QUALIFICATION_QUEUE = 'telegram-content-qualification';
 export const TELEGRAM_SEMANTIC_RELEVANCE_QUEUE = 'telegram-semantic-relevance';
@@ -20,15 +24,9 @@ export interface TelegramContentQualificationJobData {
   originalTimestamp: string;
 }
 
-/** Contextual data about the Telegram message this job was triggered by. */
-export interface TelegramReplyMetadata {
-  replyToMessageId: string;
-  replyToUserId?: string;
-  replyToIsForwarded: boolean;
-  replyToIsBot: boolean;
-}
-
 export interface TelegramSemanticRelevanceJobData {
+
+
   intakeId: string;
   districtId: string;
   mahallaName: string;

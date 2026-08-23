@@ -72,7 +72,7 @@ export async function request<T>(
         errorParsed.data.error.code,
         response.status,
         false,
-        errorParsed.data.error.blockers
+        errorParsed.data.error.blockers as PrerequisiteItem[] | undefined
       );
     }
     throw new ApiError(

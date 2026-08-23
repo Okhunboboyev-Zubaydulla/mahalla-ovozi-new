@@ -54,3 +54,15 @@ export const ConfirmDisclosureResponseSchema = z.object({
   disclosureConfirmedById: z.string().min(1),
 });
 export type ConfirmDisclosureResponse = z.infer<typeof ConfirmDisclosureResponseSchema>;
+
+export const DistrictActivationBlockedErrorEnvelopeSchema = z.object({
+  error: z.object({
+    code: z.literal('DISTRICT_NOT_READY'),
+    message: z.string().min(1),
+    blockers: z.array(PrerequisiteItemSchema),
+  }),
+});
+export type DistrictActivationBlockedErrorEnvelope = z.infer<
+  typeof DistrictActivationBlockedErrorEnvelopeSchema
+>;
+

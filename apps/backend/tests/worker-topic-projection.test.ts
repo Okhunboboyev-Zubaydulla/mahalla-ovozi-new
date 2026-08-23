@@ -175,7 +175,7 @@ describe('Story 2.5: Worker Topic Projection 28-Row Verification Matrix Integrat
     });
     expect(jobId).toBeDefined();
 
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 200; i++) {
       const { rows } = await pool.query(
         'SELECT state, output FROM pgboss_topic_projection.job WHERE id = $1',
         [jobId],

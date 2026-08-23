@@ -1,13 +1,12 @@
 import { z } from 'zod';
+import {
+  QualifyingLaneSchema,
+  type QualifyingLane,
+} from '@mahalla-ovozi/api-contracts';
 
-export const QualifyingLaneEnum = z.enum([
-  'WATER',
-  'ELECTRICITY',
-  'GAS',
-  'WASTE',
-  'HOKIM_RELATED',
-]);
-export type QualifyingLane = z.infer<typeof QualifyingLaneEnum>;
+export const QualifyingLaneEnum = QualifyingLaneSchema;
+export type { QualifyingLane };
+
 
 export const ExclusionReasonEnum = z.enum([
   'PLANNED_ANNOUNCEMENT',

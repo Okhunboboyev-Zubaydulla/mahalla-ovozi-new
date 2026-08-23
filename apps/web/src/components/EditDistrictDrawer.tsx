@@ -154,7 +154,7 @@ export const EditDistrictDrawer: React.FC<EditDistrictDrawerProps> = ({
       width={480}
       open={open}
       onClose={handleClose}
-      destroyOnClose
+      destroyOnHidden
       footer={
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
           <Button onClick={handleClose} disabled={mutation.isPending}>

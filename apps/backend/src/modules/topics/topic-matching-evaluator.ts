@@ -8,8 +8,9 @@ import {
   type QualifyingLane,
 } from '../ai/topic-matching-contracts.js';
 import type { MahallaDailySnapshot, AcceptedEvidenceItem } from '../ai/context-snapshot.js';
-import type { TelegramReplyMetadata } from '../../adapters/jobs/boss-client.js';
+import type { TelegramReplyMetadata } from '@mahalla-ovozi/api-contracts';
 import type { AiGatewayResult } from '../ai/types.js';
+
 
 export interface EvaluateTopicAssignmentInput {
   candidateText: string;

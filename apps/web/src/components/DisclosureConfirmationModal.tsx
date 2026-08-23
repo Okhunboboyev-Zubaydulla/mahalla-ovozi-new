@@ -67,7 +67,7 @@ export const DisclosureConfirmationModal: React.FC<DisclosureConfirmationModalPr
       title="Операцион кириш очиқлигини тасдиқлаш"
       open={open}
       onCancel={handleClose}
-      destroyOnClose
+      destroyOnHidden
       centered
       footer={
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>

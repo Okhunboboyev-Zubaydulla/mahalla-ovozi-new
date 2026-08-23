@@ -3,7 +3,7 @@ import { districts } from './districts.js';
 import { topics } from './topics.js';
 import { acceptedEvidence } from './accepted-evidence.js';
 import { aiProfiles, aiOperations } from './ai.js';
-import type { QualifyingLane } from '../../../modules/ai/semantic-relevance-contracts.js';
+import type { QualifyingLane } from '@mahalla-ovozi/api-contracts';
 
 export const topicProjections = pgTable(
   'topic_projections',
