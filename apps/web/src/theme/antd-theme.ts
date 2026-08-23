@@ -2,18 +2,19 @@ import { ThemeConfig } from 'antd';
 
 export const mahallaTheme: ThemeConfig = {
   token: {
-    colorBgLayout: '#F5F7F6',
+    colorBgLayout: '#F4F6F8',
     colorBgContainer: '#FFFFFF',
-    colorPrimary: '#0F5C5E',
-    colorPrimaryHover: '#0C4B4D',
-    colorPrimaryActive: '#093B3C',
-    colorText: '#172321',
-    colorTextSecondary: '#52615E',
-    colorBorder: '#C9D5D1',
-    colorError: '#BA1A1A',
-    // P5-I: Warning color tokens for status tags
-    colorWarning: '#6B4B00',
-    colorWarningBg: '#FFF4D6',
+    colorPrimary: '#0284C7',
+    colorPrimaryHover: '#0369A1',
+    colorPrimaryActive: '#075985',
+    colorText: '#0F172A',
+    colorTextSecondary: '#64748B',
+    colorBorder: '#E2E8F0',
+    colorError: '#EF4444',
+    colorWarning: '#D97706',
+    colorWarningBg: '#FEF3C7',
+    colorSuccess: '#059669',
+    colorSuccessBg: '#D1FAE5',
     borderRadius: 8,
     controlHeight: 44,
     fontSize: 15,
@@ -24,66 +25,86 @@ export const mahallaTheme: ThemeConfig = {
       controlHeight: 44,
       borderRadius: 8,
       fontWeight: 600,
-      colorPrimary: '#0F5C5E',
-      colorPrimaryHover: '#0C4B4D',
-      colorPrimaryActive: '#093B3C',
+      colorPrimary: '#0284C7',
+      colorPrimaryHover: '#0369A1',
+      colorPrimaryActive: '#075985',
     },
     Input: {
       controlHeight: 44,
       borderRadius: 8,
-      colorBorder: '#C9D5D1',
-      hoverBorderColor: '#007A7C',
-      activeBorderColor: '#007A7C',
+      colorBorder: '#CBD5E1',
+      hoverBorderColor: '#0284C7',
+      activeBorderColor: '#0284C7',
     },
     Card: {
       borderRadiusLG: 12,
-      colorBorderSecondary: '#E2EAE7',
+      colorBorderSecondary: '#E2E8F0',
     },
-    // P5-B: Menu component tokens
     Menu: {
-      itemSelectedColor: '#0F5C5E',
-      itemSelectedBg: '#EDF3F1',
-      itemHoverBg: '#EDF3F1',
-      itemColor: '#172321',
-      itemActiveBg: '#EDF3F1',
+      itemSelectedColor: '#0284C7',
+      itemSelectedBg: '#E0F2FE',
+      itemHoverBg: '#F0F9FF',
+      itemColor: '#0F172A',
+      itemActiveBg: '#E0F2FE',
     },
   },
 };
 
 /**
- * Semantic color constants derived from mahallaTheme tokens.
+ * Semantic color constants aligned with the prototype palette.
  * Import from here instead of hardcoding hex values in component styles.
- * All values are in sync with the Ant Design theme configuration above.
  */
 export const themeColors = {
-  // Brand / Primary
-  colorPrimary: '#0F5C5E',
-  colorPrimaryHover: '#0C4B4D',
+  // Brand / Primary (Azure Blue)
+  colorPrimary: '#0284C7',
+  colorPrimaryHover: '#0369A1',
+  colorPrimaryActive: '#075985',
+  colorPrimaryLight: '#E0F2FE',
 
   // Text
-  colorText: '#172321',
-  colorTextSecondary: '#52615E',
-  colorTextMuted: '#64748b',       // Tailwind slate-500 — used for placeholder/inactive text
+  colorText: '#0F172A',
+  colorTextSecondary: '#64748B',
+  colorTextMuted: '#94A3B8',
 
   // Backgrounds
-  colorBgLayout: '#F5F7F6',
-  colorBgSubtle: '#f8fafc',        // Light card / section backgrounds
-  colorBgEmpty: '#f1f5f9',         // Empty state backgrounds
+  colorBgLayout: '#F4F6F8',
+  colorBgSubtle: '#F8FAFC',
+  colorBgEmpty: '#F1F5F9',
 
   // Borders
-  colorBorder: '#C9D5D1',
-  colorBorderSecondary: '#E2EAE7',
-  colorBorderInput: '#cbd5e1',     // Input inner borders
+  colorBorder: '#E2E8F0',
+  colorBorderSecondary: '#E5E7EB',
+  colorBorderInput: '#CBD5E1',
 
-  // Semantic states
-  colorError: '#BA1A1A',
-  colorErrorBg: '#fef2f2',
-  colorWarning: '#6B4B00',
+  // Semantic States
+  colorError: '#EF4444',
+  colorErrorBg: '#FEE2E2',
+  colorWarning: '#D97706',
+  colorWarningBg: '#FEF3C7',
+  colorSuccess: '#059669',
+  colorSuccessBg: '#D1FAE5',
 
-  // Success (used for active/online status indicators)
-  colorSuccess: '#10b981',
-  colorSuccessBg: '#ecfdf5',
+  // Semantic 5-Lane Category Colors
+  laneHokim: '#EF4444',
+  laneHokimBg: '#FEE2E2',
+  laneHokimText: '#DC2626',
 
-  // Icon placeholder (inactive / hint icons inside inputs)
-  colorIconPlaceholder: '#bfbfbf',
+  laneWater: '#2563EB',
+  laneWaterBg: '#DBEAFE',
+  laneWaterText: '#1D4ED8',
+
+  laneElectricity: '#7C3AED',
+  laneElectricityBg: '#F3E8FF',
+  laneElectricityText: '#6D28D9',
+
+  laneGas: '#EA580C',
+  laneGasBg: '#FFEDD5',
+  laneGasText: '#C2410C',
+
+  laneWaste: '#059669',
+  laneWasteBg: '#D1FAE5',
+  laneWasteText: '#047857',
+
+  // Inactive icon placeholder
+  colorIconPlaceholder: '#94A3B8',
 } as const;

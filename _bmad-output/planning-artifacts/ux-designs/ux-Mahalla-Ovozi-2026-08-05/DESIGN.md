@@ -6,30 +6,30 @@ sources:
   - ../../prds/prd-Mahalla-Ovozi-2026-07-30/prd.md
 updated: 2026-08-11
 colors:
-  surface-page: '#F5F7F6'
+  surface-page: '#F4F6F8'
   surface-raised: '#FFFFFF'
-  surface-subtle: '#EDF3F1'
-  text-primary: '#172321'
-  text-secondary: '#52615E'
-  border: '#C9D5D1'
-  boundary-essential: '#6B7C77'
-  primary: '#0F5C5E'
+  surface-subtle: '#F8FAFC'
+  text-primary: '#0F172A'
+  text-secondary: '#64748B'
+  border: '#E2E8F0'
+  boundary-essential: '#94A3B8'
+  primary: '#0284C7'
   on-primary: '#FFFFFF'
-  focus: '#007A7C'
-  lane-hokim: '#3F4B7A'
-  lane-hokim-surface: '#F0F1F8'
-  lane-water: '#1F6688'
-  lane-water-surface: '#EAF4F8'
-  lane-electricity: '#765300'
-  lane-electricity-surface: '#FBF3DF'
-  lane-gas: '#81462F'
-  lane-gas-surface: '#F7EEE9'
-  lane-waste: '#356848'
-  lane-waste-surface: '#EAF3EC'
-  warning: '#6B4B00'
-  warning-surface: '#FFF4D6'
+  focus: '#0284C7'
+  lane-hokim: '#EF4444'
+  lane-hokim-surface: '#FEE2E2'
+  lane-water: '#2563EB'
+  lane-water-surface: '#DBEAFE'
+  lane-electricity: '#7C3AED'
+  lane-electricity-surface: '#F3E8FF'
+  lane-gas: '#EA580C'
+  lane-gas-surface: '#FFEDD5'
+  lane-waste: '#059669'
+  lane-waste-surface: '#D1FAE5'
+  warning: '#D97706'
+  warning-surface: '#FEF3C7'
   search-match: '#F5DD77'
-  search-match-text: '#172321'
+  search-match-text: '#0F172A'
 typography:
   wordmark:
     fontFamily: 'system-ui, sans-serif'
@@ -172,7 +172,7 @@ The imported [dashboard prototype](imports/prototype-dashboard-overview-2026-08-
 
 ## Colors
 
-The product is light-only for MVP. The Civic Teal palette uses `{colors.surface-page}` as the main canvas, `{colors.surface-raised}` for readable content surfaces, and `{colors.surface-subtle}` for quiet grouping. Text uses `{colors.text-primary}` and `{colors.text-secondary}`. `{colors.border}` is limited to decorative separators; `{colors.boundary-essential}` identifies inputs, buttons, selectable cards, and any other control or region whose boundary is required for recognition. Essential boundaries maintain at least 3:1 contrast against every adjacent surface. Focus and selection remain separate semantic states and must stay distinguishable from the resting boundary.
+The product is light-only for MVP. The Azure Slate palette uses `{colors.surface-page}` as the main canvas, `{colors.surface-raised}` for readable content surfaces, and `{colors.surface-subtle}` for quiet grouping. Text uses `{colors.text-primary}` and `{colors.text-secondary}`. `{colors.border}` is limited to decorative separators; `{colors.boundary-essential}` identifies inputs, buttons, selectable cards, and any other control or region whose boundary is required for recognition. Essential boundaries maintain at least 3:1 contrast against every adjacent surface. Focus and selection remain separate semantic states and must stay distinguishable from the resting boundary.
 
 `{colors.primary}` marks primary actions and selection, while `{colors.focus}` is reserved only for visible keyboard focus. When an item is both selected and keyboard-focused, show its selected boundary together with a separate focus ring so both states remain distinguishable. The accepted load-bearing pairs meet WCAG AA for normal text. State meaning always includes text or an accessible label and never depends on color.
 
