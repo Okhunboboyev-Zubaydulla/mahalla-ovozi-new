@@ -76,7 +76,7 @@ describe('Story 2.6: Worker Topic Retention & Accepted Evidence Source of Truth 
 
     await db.insert(districts).values({
       id: testDistrictId,
-      name: 'Guliston Tumani',
+      name: `RetentionDistrict_${crypto.randomUUID().slice(0, 8)}`,
       region: 'Sirdaryo',
       status: 'ACTIVE',
       accessEligible: true,
