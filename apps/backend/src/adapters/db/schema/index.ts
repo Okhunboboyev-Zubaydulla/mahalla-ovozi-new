@@ -10,4 +10,5 @@ export * from './ai.js';
 export * from './topics.js';
 export * from './accepted-evidence.js';
 export * from './topic-projections.js';
+export * from './user-visits.js';
 

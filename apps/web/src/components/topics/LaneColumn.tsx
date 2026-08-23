@@ -1,0 +1,192 @@
+import React from 'react';
+import { Button, Typography, Empty, Alert } from 'antd';
+import { ReloadOutlined, DownOutlined } from '@ant-design/icons';
+import { QualifyingLane, TopicCardItem } from '@mahalla-ovozi/api-contracts';
+import { TopicCard, LANE_LABELS, LANE_STYLES } from './TopicCard.js';
+
+const { Text } = Typography;
+
+export interface LaneColumnProps {
+  lane: QualifyingLane;
+  topics: TopicCardItem[];
+  totalCount: number;
+  hasNextPage: boolean;
+  isLoadingMore: boolean;
+  loadMoreError: string | null;
+  onLoadMore: () => void;
+  onSelectTopic?: (topic: TopicCardItem) => void;
+}
+
+export const LaneColumn: React.FC<LaneColumnProps> = ({
+  lane,
+  topics,
+  totalCount,
+  hasNextPage,
+  isLoadingMore,
+  loadMoreError,
+  onLoadMore,
+  onSelectTopic,
+}) => {
+  const laneLabel = LANE_LABELS[lane];
+  const laneStyle = LANE_STYLES[lane];
+
+  return (
+    <section
+      aria-labelledby={`lane-header-${lane}`}
+      style={{
+        flex: '1 0 280px',
+        minWidth: 280,
+        maxWidth: 360,
+        backgroundColor: '#F8FAFC',
+        border: '1px solid #E2E8F0',
+        borderRadius: 10,
+        display: 'flex',
+        flexDirection: 'column',
+        height: 'calc(100vh - 80px)',
+        overflow: 'hidden',
+        boxShadow: 'none',
+      }}
+    >
+      {/* Fixed Lane Header */}
+      <header
+        id={`lane-header-${lane}`}
+        tabIndex={-1}
+        style={{
+          padding: '12px 16px',
+          backgroundColor: '#FFFFFF',
+          borderBottom: '1px solid #E2E8F0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          outline: 'none',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span
+            style={{
+              display: 'inline-block',
+              padding: '4px 10px',
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 700,
+              backgroundColor: laneStyle.bg,
+              color: laneStyle.text,
+              border: `1px solid ${laneStyle.border}`,
+            }}
+          >
+            {laneLabel}
+          </span>
+        </div>
+
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: '#64748B',
+            backgroundColor: '#F1F5F9',
+            padding: '2px 8px',
+            borderRadius: 12,
+          }}
+        >
+          {totalCount}
+        </span>
+      </header>
+
+      {/* Scrollable Topic Cards List */}
+      <div
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '12px',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {topics.length === 0 ? (
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px 8px',
+            }}
+          >
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={
+                <Text style={{ color: '#64748B', fontSize: 14 }}>
+                  Мос мавзу топилмади
+                </Text>
+              }
+              style={{ margin: 0 }}
+            />
+          </div>
+        ) : (
+          topics.map((topic) => (
+            <TopicCard
+              key={topic.id}
+              topic={topic}
+              currentLane={lane}
+              onClick={onSelectTopic ? () => onSelectTopic(topic) : undefined}
+            />
+          ))
+        )}
+
+        {/* Local Failure Retry Banner (Preserving existing cards) */}
+        {loadMoreError && (
+          <div style={{ marginTop: 8, marginBottom: 8 }}>
+            <Alert
+              message={loadMoreError}
+              type="error"
+              showIcon
+              style={{
+                fontSize: 13,
+                borderRadius: 6,
+                border: '1px solid #FECACA',
+                backgroundColor: '#FEE2E2',
+                boxShadow: 'none',
+              }}
+              action={
+                <Button
+                  size="small"
+                  type="text"
+                  danger
+                  icon={<ReloadOutlined />}
+                  onClick={onLoadMore}
+                  style={{ fontWeight: 600, fontSize: 12, boxShadow: 'none' }}
+                >
+                  Қайта уриниш
+                </Button>
+              }
+            />
+          </div>
+        )}
+
+        {/* Keyset Pagination Load More Button */}
+        {hasNextPage && !loadMoreError && (
+          <div style={{ marginTop: 4, marginBottom: 8, textAlign: 'center' }}>
+            <Button
+              block
+              onClick={onLoadMore}
+              loading={isLoadingMore}
+              icon={!isLoadingMore ? <DownOutlined style={{ fontSize: 12 }} /> : undefined}
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderColor: '#CBD5E1',
+                color: '#0F172A',
+                fontWeight: 600,
+                fontSize: 13,
+                height: 38,
+                borderRadius: 6,
+                boxShadow: 'none',
+              }}
+            >
+              {isLoadingMore ? 'Юкланмоқда...' : 'Яна кўрсатиш'}
+            </Button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};

@@ -16,7 +16,9 @@ import { SubscriptionsPage } from './pages/placeholders/SubscriptionsPage.js';
 import { HokimAccountsPage } from './pages/HokimAccountsPage.js';
 import { AiOperationsPage } from './pages/placeholders/AiOperationsPage.js';
 import { AuditHistoryPage } from './pages/placeholders/AuditHistoryPage.js';
+import { HokimDashboardPage } from './pages/HokimDashboardPage.js';
 import { AppErrorBoundary } from './components/AppErrorBoundary.js';
+import { useAuth } from './auth/auth-context.js';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,6 +28,14 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function AuthenticatedRoot() {
+  const { actor } = useAuth();
+  if (actor?.role === 'DISTRICT_HOKIM') {
+    return <HokimDashboardPage />;
+  }
+  return <ConsoleLayout />;
+}
 
 export function App() {
   return (
@@ -47,12 +57,12 @@ export function App() {
                     }
                   />
                   
-                  {/* P4-F: React Router 7 nested layout route with Outlet */}
+                  {/* Role-discriminating root route: DISTRICT_HOKIM gets HokimDashboardPage directly; PRODUCT_OWNER gets ConsoleLayout */}
                   <Route
                     path="/"
                     element={
                       <ProtectedRoute>
-                        <ConsoleLayout />
+                        <AuthenticatedRoot />
                       </ProtectedRoute>
                     }
                   >
@@ -78,3 +88,4 @@ export function App() {
 }
 
 export default App;
+

@@ -11,6 +11,7 @@ import { registerTelegramGroupRoutes } from '../modules/telegram-groups/telegram
 import { registerHokimAccountRoutes } from '../modules/hokim-accounts/hokim-accounts-routes.js';
 import { registerTelegramIntakeRoutes } from '../modules/telegram-intake/telegram-intake-routes.js';
 import { registerAiOperationsRoutes } from '../modules/ai/ai-operations-routes.js';
+import { registerHokimTopicsRoutes } from '../modules/topics/hokim-topics-routes.js';
 import { createBossClient, initBossQueues } from '../adapters/jobs/boss-client.js';
 import type PgBoss from 'pg-boss';
 import pg from 'pg';
@@ -131,6 +132,7 @@ export async function buildHttpServer(options?: {
   registerHokimAccountRoutes(server, db);
   registerTelegramIntakeRoutes(server, { pool, boss });
   registerAiOperationsRoutes(server, db);
+  registerHokimTopicsRoutes(server, db);
 
   return server;
 }

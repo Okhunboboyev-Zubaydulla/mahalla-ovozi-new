@@ -19,6 +19,9 @@ export const mahallaTheme: ThemeConfig = {
     controlHeight: 44,
     fontSize: 15,
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    boxShadow: 'none',
+    boxShadowSecondary: 'none',
+    boxShadowTertiary: 'none',
   },
   components: {
     Button: {
@@ -28,6 +31,8 @@ export const mahallaTheme: ThemeConfig = {
       colorPrimary: '#0284C7',
       colorPrimaryHover: '#0369A1',
       colorPrimaryActive: '#075985',
+      primaryShadow: 'none',
+      boxShadow: 'none',
     },
     Input: {
       controlHeight: 44,
@@ -35,10 +40,14 @@ export const mahallaTheme: ThemeConfig = {
       colorBorder: '#CBD5E1',
       hoverBorderColor: '#0284C7',
       activeBorderColor: '#0284C7',
+      boxShadow: 'none',
     },
     Card: {
       borderRadiusLG: 12,
       colorBorderSecondary: '#E2E8F0',
+      boxShadow: 'none',
+      boxShadowSecondary: 'none',
+      boxShadowTertiary: 'none',
     },
     Menu: {
       itemSelectedColor: '#0284C7',
