@@ -68,7 +68,7 @@ development_status:
   2-5-recalculate-the-canonical-multi-lane-topic-projection: done
   2-6-enforce-topic-level-retention-and-preserve-accepted-evidence-as-source-of-truth: done
   2-7-query-ai-operation-traceability-and-explicit-failure-state: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
 
   # ── Epic 3: Hokim Situational Awareness & Retained History ──
   epic-3: backlog
@@ -117,17 +117,33 @@ action_items:
   - epic: 1
     action: "DB Constraint Catching: Ensure all backend repository/service methods catch PostgreSQL 23505 and map to typed 409 domain errors"
     owner: "Amelia"
-    status: open
+    status: done
   - epic: 1
     action: "Explicit Timestamp Maintenance: Standardize updatedAt: new Date() inclusion across all Drizzle update operations"
     owner: "Winston"
-    status: open
+    status: done
   - epic: 1
     action: "pg-boss 10.x Queue Setup: Configure pg-boss worker runtime in apps/backend/src/entrypoints/worker.ts with transactional job dispatch"
     owner: "Amelia / Winston"
-    status: open
+    status: done
   - epic: 1
     action: "Ant Design Token & Dialog Standard: Maintain theme.useToken() and destroyOnClose across all upcoming dialogs and drawers"
     owner: "Sally"
+    status: done
+  - epic: 2
+    action: "Frontend Foundation & 5-Lane Board Shell: Scaffold Ant Design 5 Hokim dashboard shell in apps/web with 5 fixed columns and light tokens"
+    owner: "Sally / Amelia"
+    status: open
+  - epic: 2
+    action: "Deterministic Keyset / Cursor Pagination: Standardize opaque keyset cursor contracts (before/after base64) in @mahalla-ovozi/api-contracts"
+    owner: "Winston"
+    status: open
+  - epic: 2
+    action: "Visit Baseline & Session State Management: Implement server-side Hokim visit boundary tracker for immutable 'Янги' / 'Янгиланди' badges"
+    owner: "Amelia"
+    status: open
+  - epic: 2
+    action: "Evidence Inspection Modal & Privacy Boundary: Build Topic Evidence Inspection Drawer in apps/web with verbatim quotes and zero unapproved metadata leaks"
+    owner: "Sally / Paige"
     status: open
 
