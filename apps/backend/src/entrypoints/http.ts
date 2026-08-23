@@ -102,7 +102,7 @@ export async function buildHttpServer(options?: {
     });
   });
 
-  server.setNotFoundHandler((request, reply) => {
+  server.setNotFoundHandler((_request, reply) => {
     reply.status(404).send({
       error: {
         code: 'NOT_FOUND',

@@ -11,6 +11,7 @@ import {
   Empty,
   Grid,
   Divider,
+  Tooltip,
 } from 'antd';
 import {
   SearchOutlined,
@@ -124,32 +125,53 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
       title: 'Маҳалла номи',
       dataIndex: 'mahallaName',
       key: 'mahallaName',
+      width: '20%',
       render: (name: string) => <Text strong>{name}</Text>,
     },
     {
       title: 'Telegram гуруҳ номи',
       dataIndex: 'telegramChatTitle',
       key: 'telegramChatTitle',
+      width: '28%',
       render: (title: string, record: TelegramGroupMapping) => (
-        <Space direction="vertical" size={2}>
-          <Text>{title}</Text>
-          <Text code type="secondary">
-            ID: {record.telegramChatId}
-          </Text>
-        </Space>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+          <Tooltip title={title} placement="topLeft">
+            <Text
+              style={{
+                fontSize: '14px',
+                fontWeight: 500,
+                wordBreak: 'break-word',
+                lineHeight: 1.4,
+              }}
+            >
+              {title}
+            </Text>
+          </Tooltip>
+          <div>
+            <Text
+              code
+              copyable={{ text: record.telegramChatId, tooltips: ['Нусхалаш', 'Нусхаланди!'] }}
+              type="secondary"
+              style={{ fontSize: '12px' }}
+            >
+              ID: {record.telegramChatId}
+            </Text>
+          </div>
+        </div>
       ),
     },
     {
       title: 'Махфийлик режими',
       dataIndex: 'privacyModeDisabled',
       key: 'privacyModeDisabled',
+      width: '20%',
       render: (disabled: boolean) =>
         disabled ? (
-          <Tag color="green" icon={<SafetyOutlined />}>
+          <Tag color="success" icon={<SafetyOutlined />} style={{ padding: '2px 8px', fontSize: '12px' }}>
             Ўчирилган (Тўлиқ қабул)
           </Tag>
         ) : (
-          <Tag color="volcano" icon={<SafetyOutlined />}>
+          <Tag color="volcano" icon={<SafetyOutlined />} style={{ padding: '2px 8px', fontSize: '12px' }}>
             Фаол (Чекланган)
           </Tag>
         ),
@@ -158,23 +180,16 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
       title: 'Ҳолати',
       dataIndex: 'status',
       key: 'status',
+      width: '14%',
       render: (status: TelegramGroupMapping['status']) => renderStatusTag(status),
     },
     {
       title: 'Амаллар',
       key: 'actions',
+      width: '18%',
+      align: 'right' as const,
       render: (_: unknown, record: TelegramGroupMapping) => (
-        <Space size="small">
-          <Button
-            type="default"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleOpenEditDrawer(record)}
-            disabled={isOffline}
-            style={{ minHeight: '36px' }}
-          >
-            Таҳрирлаш
-          </Button>
+        <Space size={4} wrap={false} style={{ justifyContent: 'flex-end' }}>
           {record.status !== 'VALID' && (
             <Button
               type="primary"
@@ -182,11 +197,21 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
               icon={<PlayCircleOutlined />}
               onClick={() => handleOpenTestDrawer(record)}
               disabled={isOffline}
-              style={{ minHeight: '36px' }}
+              style={{ display: 'inline-flex', alignItems: 'center' }}
             >
-              Синовдан ўтказиш
+              Синов
             </Button>
           )}
+          <Button
+            type="default"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleOpenEditDrawer(record)}
+            disabled={isOffline}
+            style={{ display: 'inline-flex', alignItems: 'center' }}
+          >
+            Таҳрирлаш
+          </Button>
           <Button
             danger
             type="text"
@@ -194,7 +219,7 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
             icon={<DeleteOutlined />}
             onClick={() => setGroupToDelete(record)}
             disabled={isOffline}
-            style={{ minHeight: '36px' }}
+            style={{ display: 'inline-flex', alignItems: 'center' }}
           >
             Ўчириш
           </Button>
@@ -217,7 +242,8 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
           icon={<PlusOutlined />}
           onClick={handleOpenAddDrawer}
           disabled={isOffline}
-          style={{ minHeight: '40px' }}
+          size="middle"
+          style={{ minHeight: '38px' }}
         >
           Янги гуруҳ қўшиш
         </Button>
@@ -225,16 +251,31 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
       style={{ marginTop: '24px' }}
     >
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-        {/* Search filter input */}
-        <Input
-          placeholder="Маҳалла номи ёки Chat ID бўйича қидириш..."
-          prefix={<SearchOutlined style={{ color: themeColors.colorIconPlaceholder }} />}
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          allowClear
-          size="large"
-          style={{ minHeight: '44px' }}
-        />
+        {/* Search filter toolbar */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '12px',
+          }}
+        >
+          <Input
+            placeholder="Маҳалла номи ёки Chat ID бўйича қидириш..."
+            prefix={<SearchOutlined style={{ color: themeColors.colorIconPlaceholder }} />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            allowClear
+            size="middle"
+            style={{ maxWidth: '360px', width: '100%' }}
+          />
+          {filteredGroups.length > 0 && (
+            <Text type="secondary" style={{ fontSize: '13px' }}>
+              Жами: <Text strong>{filteredGroups.length}</Text> та гуруҳ
+            </Text>
+          )}
+        </div>
 
         {isLoading ? (
           <div style={{ textAlign: 'center', padding: '32px 0' }}>
@@ -264,7 +305,14 @@ export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGr
             dataSource={filteredGroups}
             columns={desktopColumns}
             rowKey="id"
-            pagination={{ pageSize: 10, showSizeChanger: false }}
+            size="middle"
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: filteredGroups.length > 10,
+              pageSizeOptions: ['10', '20', '50'],
+              showTotal: (total, range) => `${total} та гуруҳдан ${range[0]}–${range[1]} кўрсатилмоқда`,
+            }}
+            scroll={{ x: 800 }}
           />
         ) : (
           /* Mobile Card List View (<768px) with WCAG >=44px touch targets */

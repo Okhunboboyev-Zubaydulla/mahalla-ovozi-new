@@ -108,7 +108,7 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
 
   if (!activeDistrict) {
     return (
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
         <Title level={2}>Telegram бот созламалари</Title>
         <Card>
           <Empty
@@ -127,7 +127,7 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
   }
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         <div>
           <Title level={2} style={{ marginBottom: '4px' }}>
