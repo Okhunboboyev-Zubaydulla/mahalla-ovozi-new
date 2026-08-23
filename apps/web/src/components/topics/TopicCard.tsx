@@ -28,12 +28,14 @@ export const LANE_STYLES: Record<
 export interface TopicCardProps {
   topic: TopicCardItem;
   currentLane?: QualifyingLane;
+  isSelected?: boolean;
   onClick?: () => void;
 }
 
 export const TopicCard: React.FC<TopicCardProps> = ({
   topic,
   currentLane: _currentLane,
+  isSelected = false,
   onClick,
 }) => {
   const formattedTime = formatTashkentActivityTime(
@@ -43,6 +45,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
 
   return (
     <article
+      id={`topic-card-${topic.id}`}
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
       onKeyDown={(e) => {
@@ -52,8 +55,8 @@ export const TopicCard: React.FC<TopicCardProps> = ({
         }
       }}
       style={{
-        backgroundColor: '#FFFFFF',
-        border: '1px solid #E2E8F0',
+        backgroundColor: isSelected ? '#F8FAFC' : '#FFFFFF',
+        border: isSelected ? '1px solid #0284C7' : '1px solid #E2E8F0',
         borderRadius: 8,
         padding: '16px',
         marginBottom: '12px',
@@ -62,7 +65,8 @@ export const TopicCard: React.FC<TopicCardProps> = ({
         gap: '10px',
         cursor: onClick ? 'pointer' : 'default',
         boxShadow: 'none',
-        outline: 'none',
+        outline: isSelected ? '2px solid #0284C7' : 'none',
+        outlineOffset: isSelected ? '2px' : undefined,
         transition: 'border-color 0.15s ease',
       }}
       onFocus={(e) => {
@@ -71,9 +75,12 @@ export const TopicCard: React.FC<TopicCardProps> = ({
         e.currentTarget.style.outlineOffset = '2px';
       }}
       onBlur={(e) => {
-        e.currentTarget.style.borderColor = '#E2E8F0';
-        e.currentTarget.style.outline = 'none';
+        if (!isSelected) {
+          e.currentTarget.style.borderColor = '#E2E8F0';
+          e.currentTarget.style.outline = 'none';
+        }
       }}
+      aria-current={isSelected ? 'true' : undefined}
       aria-label={`Мавзу: ${topic.mahallaName}, ${topic.summary}`}
     >
       {/* Header: Mahalla name + Badges (New / Updated) */}

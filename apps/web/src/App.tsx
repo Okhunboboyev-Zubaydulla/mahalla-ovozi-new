@@ -17,6 +17,7 @@ import { HokimAccountsPage } from './pages/HokimAccountsPage.js';
 import { AiOperationsPage } from './pages/placeholders/AiOperationsPage.js';
 import { AuditHistoryPage } from './pages/placeholders/AuditHistoryPage.js';
 import { HokimDashboardPage } from './pages/HokimDashboardPage.js';
+import { TopicEvidencePage } from './pages/TopicEvidencePage.js';
 import { AppErrorBoundary } from './components/AppErrorBoundary.js';
 import { useAuth } from './auth/auth-context.js';
 
@@ -53,6 +54,16 @@ export function App() {
                     element={
                       <ProtectedRoute>
                         <FirstSignInPasswordChangePage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Narrow-screen routed Topic Evidence Page for Hokim (AC 8) */}
+                  <Route
+                    path="/topics/:topicId/evidence"
+                    element={
+                      <ProtectedRoute>
+                        <TopicEvidencePage />
                       </ProtectedRoute>
                     }
                   />

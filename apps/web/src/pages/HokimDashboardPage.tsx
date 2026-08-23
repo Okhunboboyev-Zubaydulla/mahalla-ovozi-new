@@ -1,16 +1,48 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button, Alert, Typography } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
+import { TopicCardItem } from '@mahalla-ovozi/api-contracts';
 import { BoardToolbar } from '../components/topics/BoardToolbar.js';
 import { FiveLaneBoard } from '../components/topics/FiveLaneBoard.js';
+import { TopicEvidenceDrawer } from '../components/topics/TopicEvidenceDrawer.js';
 import { useHokimTopicBoard } from '../topics/useHokimTopicBoard.js';
+import { useFocusFallback } from '../hooks/useFocusFallback.js';
 import { FullPageLoader } from '../components/FullPageLoader.js';
 
 const { Title, Paragraph } = Typography;
 
 export const HokimDashboardPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { returnFocus } = useFocusFallback();
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  const [originatingLane, setOriginatingLane] = useState<string | undefined>(undefined);
+
   const { board, isLoading, isError, error, refetch, lanes, loadMore } =
     useHokimTopicBoard();
+
+  const handleSelectTopic = (topic: TopicCardItem) => {
+    setOriginatingLane(topic.primaryLane);
+    if (window.innerWidth < 1024) {
+      navigate(`/topics/${topic.id}/evidence`);
+    } else {
+      setSelectedTopicId(topic.id);
+    }
+  };
+
+  const handleCloseDrawer = () => {
+    const prevTopicId = selectedTopicId;
+    const prevLane = originatingLane;
+    setSelectedTopicId(null);
+    setTimeout(() => {
+      const card = prevTopicId ? document.getElementById(`topic-card-${prevTopicId}`) : null;
+      if (card) {
+        card.focus();
+      } else {
+        returnFocus(prevLane);
+      }
+    }, 50);
+  };
 
   if (isLoading) {
     return <FullPageLoader />;
@@ -98,7 +130,17 @@ export const HokimDashboardPage: React.FC = () => {
         districtName={board?.districtName}
         calendarDay={board?.calendarDay}
       />
-      <FiveLaneBoard lanes={lanes} onLoadMore={loadMore} />
+      <FiveLaneBoard
+        lanes={lanes}
+        selectedTopicId={selectedTopicId}
+        onLoadMore={loadMore}
+        onSelectTopic={handleSelectTopic}
+      />
+      <TopicEvidenceDrawer
+        topicId={selectedTopicId}
+        onClose={handleCloseDrawer}
+      />
     </div>
   );
 };
+

@@ -73,7 +73,7 @@ development_status:
   # ── Epic 3: Hokim Situational Awareness & Retained History ──
   epic-3: in-progress
   3-1-scan-todays-unified-five-lane-topic-board: done
-  3-2-inspect-complete-topic-evidence: ready-for-dev
+  3-2-inspect-complete-topic-evidence: ready-for-review
   3-3-refresh-dashboard-without-disrupting-review: backlog
   3-4-filter-current-and-retained-topics: backlog
   3-5-understand-the-active-result-set-through-neutral-statistics: backlog

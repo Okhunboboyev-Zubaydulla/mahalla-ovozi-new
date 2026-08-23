@@ -4,6 +4,9 @@ import {
   HokimLaneQuery,
   HokimLaneResponse,
   HokimLaneResponseSchema,
+  TopicEvidenceQuery,
+  TopicEvidenceResponse,
+  TopicEvidenceResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
 
@@ -46,6 +49,30 @@ export const hokimTopicsClient = {
         method: 'GET',
       },
       HokimLaneResponseSchema,
+    );
+  },
+
+  getTopicEvidence(
+    topicId: string,
+    query?: TopicEvidenceQuery,
+    signal?: AbortSignal,
+  ): Promise<TopicEvidenceResponse> {
+    const searchParams = new URLSearchParams();
+    if (query?.cursor) {
+      searchParams.set('cursor', query.cursor);
+    }
+    if (query?.limit) {
+      searchParams.set('limit', String(query.limit));
+    }
+    const queryString = searchParams.toString() ? `?${searchParams.toString()}` : '';
+
+    return request<TopicEvidenceResponse>(
+      `/api/v1/hokim/topics/${topicId}/evidence${queryString}`,
+      {
+        method: 'GET',
+        signal,
+      },
+      TopicEvidenceResponseSchema,
     );
   },
 };

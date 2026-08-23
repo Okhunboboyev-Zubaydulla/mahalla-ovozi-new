@@ -17,12 +17,14 @@ const CANONICAL_LANE_ORDER: QualifyingLane[] = [
 
 export interface FiveLaneBoardProps {
   lanes: Record<QualifyingLane, LaneLocalState>;
+  selectedTopicId?: string | null;
   onLoadMore: (lane: QualifyingLane) => void;
   onSelectTopic?: (topic: TopicCardItem) => void;
 }
 
 export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
   lanes,
+  selectedTopicId,
   onLoadMore,
   onSelectTopic,
 }) => {
@@ -210,6 +212,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
               hasNextPage={laneData.hasNextPage}
               isLoadingMore={laneData.isLoadingMore}
               loadMoreError={laneData.loadMoreError}
+              selectedTopicId={selectedTopicId}
               onLoadMore={() => onLoadMore(laneKey)}
               onSelectTopic={onSelectTopic}
             />

@@ -81,3 +81,36 @@ export const HokimLaneResponseSchema = z.object({
 });
 export type HokimLaneResponse = z.infer<typeof HokimLaneResponseSchema>;
 
+export const TopicEvidenceItemSchema = z.object({
+  id: z.string(),
+  topicId: z.string(),
+  verbatimText: z.string(),
+  contentType: z.string(),
+  originalTimestamp: z.string().datetime(),
+  formattedTime: z.string(),
+  authorName: z.string().nullable(),
+  authorUsername: z.string().nullable(),
+  isAnchor: z.boolean(),
+  telegramDeepLink: z.string().nullable(),
+});
+export type TopicEvidenceItem = z.infer<typeof TopicEvidenceItemSchema>;
+
+export const TopicEvidenceQuerySchema = z.object({
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+export type TopicEvidenceQuery = z.input<typeof TopicEvidenceQuerySchema>;
+export type TopicEvidenceQueryOutput = z.output<typeof TopicEvidenceQuerySchema>;
+
+export const TopicEvidenceResponseSchema = z.object({
+  topic: TopicCardItemSchema,
+  anchorQuote: z.string(),
+  anchorEvidenceId: z.string(),
+  evidence: z.array(TopicEvidenceItemSchema),
+  totalCount: z.number().int().min(0),
+  nextCursor: z.string().nullable(),
+  hasNextPage: z.boolean(),
+});
+export type TopicEvidenceResponse = z.infer<typeof TopicEvidenceResponseSchema>;
+
+

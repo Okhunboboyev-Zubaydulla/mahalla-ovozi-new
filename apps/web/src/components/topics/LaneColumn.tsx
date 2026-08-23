@@ -13,6 +13,7 @@ export interface LaneColumnProps {
   hasNextPage: boolean;
   isLoadingMore: boolean;
   loadMoreError: string | null;
+  selectedTopicId?: string | null;
   onLoadMore: () => void;
   onSelectTopic?: (topic: TopicCardItem) => void;
 }
@@ -24,6 +25,7 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
   hasNextPage,
   isLoadingMore,
   loadMoreError,
+  selectedTopicId,
   onLoadMore,
   onSelectTopic,
 }) => {
@@ -128,6 +130,7 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
               key={topic.id}
               topic={topic}
               currentLane={lane}
+              isSelected={topic.id === selectedTopicId}
               onClick={onSelectTopic ? () => onSelectTopic(topic) : undefined}
             />
           ))
