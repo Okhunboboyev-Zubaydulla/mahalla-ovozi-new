@@ -70,11 +70,13 @@ export const TopicCard: React.FC<TopicCardProps> = ({
         transition: 'border-color 0.15s ease',
       }}
       onFocus={(e) => {
+        if (e.target !== e.currentTarget) return;
         e.currentTarget.style.borderColor = '#0284C7';
         e.currentTarget.style.outline = '2px solid #0284C7';
         e.currentTarget.style.outlineOffset = '2px';
       }}
       onBlur={(e) => {
+        if (e.target !== e.currentTarget) return;
         if (!isSelected) {
           e.currentTarget.style.borderColor = '#E2E8F0';
           e.currentTarget.style.outline = 'none';
@@ -163,7 +165,8 @@ export const TopicCard: React.FC<TopicCardProps> = ({
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
           <Text style={{ fontSize: 12, color: '#64748B' }}>Қўшимча:</Text>
           {topic.additionalLanes.map((lane) => {
-            const style = LANE_STYLES[lane];
+            const style = LANE_STYLES[lane] || LANE_STYLES.HOKIM_RELATED;
+            const label = LANE_LABELS[lane] || lane;
             return (
               <Tag
                 key={lane}
@@ -177,7 +180,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
                   borderRadius: 4,
                 }}
               >
-                {LANE_LABELS[lane]}
+                {label}
               </Tag>
             );
           })}

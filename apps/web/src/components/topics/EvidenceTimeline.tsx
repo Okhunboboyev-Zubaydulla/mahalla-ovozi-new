@@ -98,7 +98,7 @@ export const EvidenceTimeline: React.FC<EvidenceTimelineProps> = ({
           >
             {isFetchingNextPage
               ? 'Юкланмоқда...'
-              : `Яна кўрсатиш (${evidenceList.length} / ${totalCount})`}
+              : `Яна кўрсатиш (${evidenceList.length} / ${Math.max(totalCount, evidenceList.length)})`}
           </Button>
         </div>
       )}

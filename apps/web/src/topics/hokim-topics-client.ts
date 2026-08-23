@@ -67,7 +67,7 @@ export const hokimTopicsClient = {
     const queryString = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
     return request<TopicEvidenceResponse>(
-      `/api/v1/hokim/topics/${topicId}/evidence${queryString}`,
+      `/api/v1/hokim/topics/${encodeURIComponent(topicId)}/evidence${queryString}`,
       {
         method: 'GET',
         signal,

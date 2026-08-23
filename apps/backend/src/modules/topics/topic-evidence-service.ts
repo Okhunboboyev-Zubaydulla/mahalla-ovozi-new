@@ -45,10 +45,26 @@ export function decodeEvidenceKeysetCursor(cursor: string): EvidenceKeysetCursor
 }
 
 /**
+ * Custom error thrown when a topic is not found or is inaccessible (AC 1).
+ */
+export class TopicNotFoundError extends Error {
+  readonly statusCode = 404;
+  readonly code = 'NOT_FOUND';
+
+  constructor(message = 'Мавзу топилмади ёки ушбу туманга тегишли эмас.') {
+    super(message);
+    this.name = 'TopicNotFoundError';
+  }
+}
+
+/**
  * Formats a timestamp into Asia/Tashkent time as DD.MM.YYYY HH:mm.
  * Uses deterministic UTC+5 arithmetic to avoid environment or timezone differences.
  */
 export function formatTashkentDateTime(date: Date): string {
+  if (!date || Number.isNaN(date.getTime())) {
+    return '';
+  }
   const adjusted = new Date(date.getTime() + 5 * 3600 * 1000);
   const day = String(adjusted.getUTCDate()).padStart(2, '0');
   const month = String(adjusted.getUTCMonth() + 1).padStart(2, '0');
@@ -71,9 +87,11 @@ export function resolveTelegramDeepLink(
 ): string | null {
   if (groupUsername && groupUsername.trim().length > 0) {
     const cleanUsername = groupUsername.trim().replace(/^@/, '');
-    return `https://t.me/${cleanUsername}/${messageId}`;
+    if (cleanUsername.length > 0) {
+      return `https://t.me/${cleanUsername}/${messageId}`;
+    }
   }
-  if (chatId && chatId.startsWith('-100')) {
+  if (chatId && chatId.startsWith('-100') && chatId.length > 4) {
     const cleanChatId = chatId.slice(4);
     return `https://t.me/c/${cleanChatId}/${messageId}`;
   }
@@ -96,7 +114,8 @@ export function sanitizeSenderAttribution(userMetadata: unknown): {
     typeof meta.username === 'string' && meta.username.trim().length > 0
       ? meta.username.trim()
       : null;
-  const authorUsername = rawUsername ? `@${rawUsername.replace(/^@/, '')}` : null;
+  const cleanUsername = rawUsername ? rawUsername.replace(/^@/, '').trim() : '';
+  const authorUsername = cleanUsername.length > 0 ? `@${cleanUsername}` : null;
 
   const firstName = typeof meta.firstName === 'string' ? meta.firstName.trim() : '';
   const lastName = typeof meta.lastName === 'string' ? meta.lastName.trim() : '';
@@ -144,7 +163,7 @@ export class TopicEvidenceService {
     });
 
     if (!topicRow) {
-      throw new Error('Мавзу топилмади ёки ушбу туманга тегишли эмас.');
+      throw new TopicNotFoundError('Мавзу топилмади ёки ушбу туманга тегишли эмас.');
     }
 
     // 2. Query topic projection

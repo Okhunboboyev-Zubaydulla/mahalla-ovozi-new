@@ -35,6 +35,7 @@ export const EvidenceItem: React.FC<EvidenceItemProps> = ({ evidence }) => {
         transition: 'border-color 0.15s ease',
       }}
       onFocus={(e) => {
+        if (e.target !== e.currentTarget) return;
         if (!evidence.isAnchor) {
           e.currentTarget.style.borderColor = '#0284C7';
         }
@@ -42,6 +43,7 @@ export const EvidenceItem: React.FC<EvidenceItemProps> = ({ evidence }) => {
         e.currentTarget.style.outlineOffset = '2px';
       }}
       onBlur={(e) => {
+        if (e.target !== e.currentTarget) return;
         if (!evidence.isAnchor) {
           e.currentTarget.style.borderColor = '#E2E8F0';
         }

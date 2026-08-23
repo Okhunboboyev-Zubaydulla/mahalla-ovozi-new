@@ -10,6 +10,7 @@ import { createRequireHokim } from '../auth/require-hokim.js';
 import { HokimTopicService, decodeKeysetCursor } from './hokim-topic-service.js';
 import {
   TopicEvidenceService,
+  TopicNotFoundError,
   decodeEvidenceKeysetCursor,
 } from './topic-evidence-service.js';
 
@@ -177,9 +178,12 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
 
           return reply.status(200).send(evidenceResponse);
         } catch (err: unknown) {
-          const message =
-            err instanceof Error ? err.message : 'Далилларни юклашда хатолик юз берди.';
-          if (message.includes('топилмади')) {
+          if (
+            err instanceof TopicNotFoundError ||
+            (typeof err === 'object' && err !== null && 'statusCode' in err && (err as { statusCode: number }).statusCode === 404)
+          ) {
+            const message =
+              err instanceof Error ? err.message : 'Мавзу топилмади ёки ушбу туманга тегишли эмас.';
             return reply.status(404).send({
               error: {
                 code: 'NOT_FOUND',
@@ -187,6 +191,8 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
               },
             });
           }
+          const message =
+            err instanceof Error ? err.message : 'Далилларни юклашда хатолик юз берди.';
           return reply.status(400).send({
             error: {
               code: 'EVIDENCE_QUERY_ERROR',

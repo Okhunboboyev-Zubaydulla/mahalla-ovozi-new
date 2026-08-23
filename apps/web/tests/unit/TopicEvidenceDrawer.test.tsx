@@ -129,6 +129,9 @@ describe('TopicEvidenceDrawer Component Tests', () => {
       expect(screen.getByText('Бобур маҳалласи')).toBeTruthy();
     });
 
+    // Verify non-modal complementary landmark role (AC 7)
+    expect(screen.getByRole('region', { name: 'Мавзу далиллари' })).toBeTruthy();
+
     // Verify summary and anchor quote callout
     expect(screen.getByText('Сув қувури ёрилиши сабабли кўчани сув босмоқда.')).toBeTruthy();
     expect(screen.getByText('«Қувур ёрилиб кўчани сув босди!»')).toBeTruthy();

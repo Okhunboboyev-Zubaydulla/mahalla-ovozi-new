@@ -162,6 +162,42 @@ export const TopicEvidencePage: React.FC = () => {
           </div>
         )}
 
+        {/* Empty / Not Found State */}
+        {!isLoading && !isError && !topic && (
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              borderRadius: 10,
+              padding: '32px 24px',
+              textAlign: 'center',
+              boxShadow: 'none',
+            }}
+          >
+            <Alert
+              type="info"
+              showIcon
+              message="Мавзу топилмади"
+              description="Ушбу мавзу топилмади ёки сизнинг туманингизга тегишли эмас."
+              style={{
+                textAlign: 'left',
+                backgroundColor: '#F0F9FF',
+                borderColor: '#BAE6FD',
+                marginBottom: 16,
+                borderRadius: 8,
+                boxShadow: 'none',
+              }}
+            />
+            <Button
+              type="default"
+              onClick={() => navigate('/')}
+              style={{ fontWeight: 600, borderRadius: 6, boxShadow: 'none' }}
+            >
+              Тахтага қайтиш
+            </Button>
+          </div>
+        )}
+
         {/* Loaded Topic & Evidence Content */}
         {!isLoading && topic && (
           <>
@@ -196,7 +232,8 @@ export const TopicEvidencePage: React.FC = () => {
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {topic.lanes.map((lane) => {
-                    const style = LANE_STYLES[lane];
+                    const style = LANE_STYLES[lane] || LANE_STYLES.HOKIM_RELATED;
+                    const label = LANE_LABELS[lane] || lane;
                     return (
                       <Tag
                         key={lane}
@@ -210,7 +247,7 @@ export const TopicEvidencePage: React.FC = () => {
                           borderRadius: 4,
                         }}
                       >
-                        {LANE_LABELS[lane]}
+                        {label}
                       </Tag>
                     );
                   })}

@@ -23,7 +23,7 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
   topicId,
   onClose,
 }) => {
-  const headingRef = useRef<HTMLHeadingElement>(null);
+  const headingRef = useRef<HTMLDivElement>(null);
 
   const {
     topic,
@@ -81,6 +81,7 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
       width={520}
       aria-label="Мавзу далиллари"
       aria-modal={false}
+      keyboard={false}
       closeIcon={<CloseOutlined aria-label="Ёпиш" style={{ fontSize: 16, color: '#64748B' }} />}
       styles={{
         wrapper: {
@@ -126,16 +127,21 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
         </div>
       }
     >
-      {/* 1. Loading Skeleton during Initial Fetch / In-place Switching (AC 7) */}
-      {isLoading && (
-        <div style={{ padding: '12px 0' }}>
-          <Skeleton active paragraph={{ rows: 8 }} />
-        </div>
-      )}
+      <section
+        role="region"
+        aria-label="Мавзу далиллари"
+        style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+      >
+        {/* 1. Loading Skeleton during Initial Fetch / In-place Switching (AC 7) */}
+        {isLoading && (
+          <div style={{ padding: '12px 0' }}>
+            <Skeleton active paragraph={{ rows: 8 }} />
+          </div>
+        )}
 
-      {/* 2. Error State for Initial Load (AC 7) */}
-      {!isLoading && isError && !topic && (
-        <div style={{ padding: '24px 0', textAlign: 'center' }}>
+        {/* 2. Error State for Initial Load (AC 7) */}
+        {!isLoading && isError && !topic && (
+          <div style={{ padding: '24px 0', textAlign: 'center' }}>
           <Alert
             type="error"
             showIcon
@@ -196,7 +202,8 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {topic.lanes.map((lane) => {
-                  const style = LANE_STYLES[lane];
+                  const style = LANE_STYLES[lane] || LANE_STYLES.HOKIM_RELATED;
+                  const label = LANE_LABELS[lane] || lane;
                   return (
                     <Tag
                       key={lane}
@@ -210,7 +217,7 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
                         borderRadius: 4,
                       }}
                     >
-                      {LANE_LABELS[lane]}
+                      {label}
                     </Tag>
                   );
                 })}
@@ -326,6 +333,7 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
           </div>
         </div>
       )}
+      </section>
     </Drawer>
   );
 };

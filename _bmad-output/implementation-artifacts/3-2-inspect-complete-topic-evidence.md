@@ -4,7 +4,7 @@ baseline_commit: a6f7da7
 
 # Story 3.2: Inspect Complete Topic Evidence
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -172,6 +172,20 @@ so that I can understand exactly what residents reported without treating the To
     - API contracts build: `pnpm --filter @mahalla-ovozi/api-contracts build`
     - Backend build & tests: `pnpm --filter backend build`, `pnpm --filter backend test`
     - Web typecheck & tests: `pnpm --filter web typecheck`, `pnpm --filter web test`
+
+### Review Findings
+
+- [x] [Review][Decision] Background Cards TabIndex Suppression on Non-Modal Drawer — Resolved: Adopted Option 2 (Drawer focus management on heading + Escape/Close focus return with natural board tab order and high-contrast focus rings).
+- [x] [Review][Patch] Missing `role="region"` Accessibility Landmark on Desktop Drawer [`apps/web/src/components/topics/TopicEvidenceDrawer.tsx:76-85`]
+- [x] [Review][Patch] Ref Type Mismatch on Heading Ref [`apps/web/src/components/topics/TopicEvidenceDrawer.tsx:26, 110`]
+- [x] [Review][Patch] Brittle Uzbek Substring Error Handling in Route [`apps/backend/src/modules/topics/hokim-topics-routes.ts:182-190`]
+- [x] [Review][Patch] Telegram Group Username & ChatId Deep Link Sanitization [`apps/backend/src/modules/topics/topic-evidence-service.ts:67-81`]
+- [x] [Review][Patch] User Metadata Username Sanitization [`apps/backend/src/modules/topics/topic-evidence-service.ts:95-99`]
+- [x] [Review][Patch] Safe URI Encoding for topicId in Client [`apps/web/src/topics/hokim-topics-client.ts:70`]
+- [x] [Review][Patch] Safe Fallback for Unknown Lane Identifiers [`apps/web/src/components/topics/TopicEvidenceDrawer.tsx:198`, `TopicEvidencePage.tsx:198`, `TopicCard.tsx:165`]
+- [x] [Review][Patch] Synthetic Focus Bubbling Guard on TopicCard and EvidenceItem [`apps/web/src/components/topics/EvidenceItem.tsx:37`, `apps/web/src/components/topics/TopicCard.tsx:72`]
+- [x] [Review][Patch] Progressive Pagination Counter Display Guard [`apps/web/src/components/topics/EvidenceTimeline.tsx:101`]
+- [x] [Review][Patch] Drawer Dual Escape Key Listener Guard [`apps/web/src/components/topics/TopicEvidenceDrawer.tsx:76`]
 
 ---
 
