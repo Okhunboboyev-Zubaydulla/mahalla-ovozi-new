@@ -17,10 +17,14 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
+import { districtClient } from '../district/district-client.js';
 import { useDistrictReadiness } from '../district/useDistrictReadiness.js';
 import { DisclosureConfirmationModal } from './DisclosureConfirmationModal.js';
 import { DistrictActivationModal } from './DistrictActivationModal.js';
+import { EditDistrictDrawer } from './EditDistrictDrawer.js';
 import { PrerequisiteItem } from '@mahalla-ovozi/api-contracts';
 import { formatTashkentDate } from '../lib/formatters.js';
 
@@ -38,6 +42,20 @@ export const DistrictOnboardingChecklist: React.FC<DistrictOnboardingChecklistPr
   const { readiness, isLoading, isError, refetch } = useDistrictReadiness(districtId);
   const [disclosureModalOpen, setDisclosureModalOpen] = useState(false);
   const [activationModalOpen, setActivationModalOpen] = useState(false);
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+
+  const { data: districtData } = useQuery({
+    queryKey: ['district', districtId],
+    queryFn: () => districtClient.getDistrict(districtId),
+    enabled: !!districtId,
+  });
+  const district = districtData?.district || (readiness ? {
+    id: districtId,
+    name: readiness.districtName,
+    region: undefined,
+    status: readiness.status,
+    createdAt: readiness.evaluatedAt,
+  } : null);
 
   if (isLoading) {
     return (
@@ -148,17 +166,35 @@ export const DistrictOnboardingChecklist: React.FC<DistrictOnboardingChecklistPr
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <Card variant="borderless" style={{ borderRadius: 12 }}>
         <div style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Title level={3} style={{ margin: 0 }}>
-              Туманни фаоллаштиришга тайёрлаш
-            </Title>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <Space direction="horizontal" size="middle" align="center">
+                <Title level={3} style={{ margin: 0 }}>
+                  Туманни фаоллаштиришга тайёрлаш
+                </Title>
+                <Button
+                  id="edit-district-checklist-header-button"
+                  type="default"
+                  icon={<EditOutlined />}
+                  onClick={() => setEditDrawerOpen(true)}
+                  style={{ minHeight: 32 }}
+                >
+                  Таҳрирлаш
+                </Button>
+              </Space>
+              {district?.region && (
+                <Text type="secondary" style={{ display: 'block', marginTop: 2, fontSize: 13 }}>
+                  {district.name} ({district.region})
+                </Text>
+              )}
+            </div>
             {isAlreadyActive && (
               <Tag color="success" icon={<CheckCircleOutlined />} style={{ fontSize: 14, padding: '4px 12px' }}>
                 Фаол туман
               </Tag>
             )}
           </div>
-          <Paragraph type="secondary" style={{ marginTop: 4, marginBottom: 0 }}>
+          <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
             {isAlreadyActive
               ? 'Ушбу туман муваффақиятли фаоллаштирилган ва тизимда тўлиқ ишламоқда.'
               : `Туманни тизимга тўлиқ улаш учун қуйидаги барча ${readiness.totalCount} та талаб бажарилиши шарт.`}
@@ -310,6 +346,13 @@ export const DistrictOnboardingChecklist: React.FC<DistrictOnboardingChecklistPr
         onClose={() => setActivationModalOpen(false)}
         districtId={districtId}
         districtName={readiness.districtName}
+      />
+
+      {/* Edit District Drawer */}
+      <EditDistrictDrawer
+        open={editDrawerOpen}
+        district={district || null}
+        onClose={() => setEditDrawerOpen(false)}
       />
     </div>
   );

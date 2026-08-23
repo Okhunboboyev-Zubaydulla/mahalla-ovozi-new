@@ -294,4 +294,171 @@ describe('Districts Domain Module & Lifecycle Integration Tests', () => {
       expect(response.json().error.message).toBe('Туман топилмади.');
     });
   });
+
+  describe('District Updates (PATCH /api/v1/districts/:districtId)', () => {
+    it('rejects unauthenticated PATCH requests with 401', async () => {
+      const response = await server.inject({
+        method: 'PATCH',
+        url: '/api/v1/districts/dist_some_id',
+        headers: SAME_ORIGIN_HEADERS,
+        payload: { name: 'Чилонзор' },
+      });
+      expect(response.statusCode).toBe(401);
+      expect(response.json().error.code).toBe('UNAUTHENTICATED');
+    });
+
+    it('rejects cross-origin PATCH requests with 403', async () => {
+      const response = await server.inject({
+        method: 'PATCH',
+        url: '/api/v1/districts/dist_some_id',
+        headers: {
+          'sec-fetch-site': 'cross-site',
+          cookie: authCookie,
+        },
+        payload: { name: 'Чилонзор' },
+      });
+      expect(response.statusCode).toBe(403);
+      expect(response.json().error.code).toBe('FORBIDDEN_ORIGIN');
+    });
+
+    it('rejects invalid payload with 400', async () => {
+      const response = await server.inject({
+        method: 'PATCH',
+        url: '/api/v1/districts/dist_some_id',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: authCookie,
+        },
+        payload: { name: ' x ' },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.json().error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('returns 404 when updating non-existent district', async () => {
+      const response = await server.inject({
+        method: 'PATCH',
+        url: '/api/v1/districts/dist_non_existent_99999',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: authCookie,
+        },
+        payload: { name: 'Янги ном' },
+      });
+      expect(response.statusCode).toBe(404);
+      expect(response.json().error.code).toBe('DISTRICT_NOT_FOUND');
+    });
+
+    it('updates district name and region, updates timestamp, and records DISTRICT_UPDATED audit event', async () => {
+      const initialName = `EditTest_${crypto.randomUUID().slice(0, 6)}`;
+      const createRes = await server.inject({
+        method: 'POST',
+        url: '/api/v1/districts',
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: authCookie },
+        payload: { name: initialName, region: 'Эски вилоят' },
+      });
+      expect(createRes.statusCode).toBe(201);
+      const districtId = createRes.json().district.id;
+      const initialCreatedAt = createRes.json().district.createdAt;
+
+      const updatedName = `${initialName}_Updated`;
+      const patchRes = await server.inject({
+        method: 'PATCH',
+        url: `/api/v1/districts/${districtId}`,
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: authCookie },
+        payload: {
+          name: updatedName,
+          region: 'Янги вилоят',
+        },
+      });
+
+      expect(patchRes.statusCode).toBe(200);
+      const body = patchRes.json();
+      expect(body.district.id).toBe(districtId);
+      expect(body.district.name).toBe(updatedName);
+      expect(body.district.region).toBe('Янги вилоят');
+      expect(body.district.createdAt).toBe(initialCreatedAt);
+
+      // Verify audit event
+      const [audit] = await db
+        .select()
+        .from(auditEvents)
+        .where(
+          and(
+            eq(auditEvents.action, 'DISTRICT_UPDATED'),
+            eq(auditEvents.actorId, poAccountId),
+          ),
+        )
+        .orderBy(desc(auditEvents.createdAt))
+        .limit(1);
+
+      expect(audit).toBeDefined();
+      expect(audit!.actorRole).toBe('PRODUCT_OWNER');
+      expect(audit!.metadata).toEqual({
+        districtId,
+        oldName: initialName,
+        newName: updatedName,
+        oldRegion: 'Эски вилоят',
+        newRegion: 'Янги вилоят',
+      });
+    });
+
+    it('updates region only with unchanged name without triggering 409 conflict', async () => {
+      const name = `RegionOnly_${crypto.randomUUID().slice(0, 6)}`;
+      const createRes = await server.inject({
+        method: 'POST',
+        url: '/api/v1/districts',
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: authCookie },
+        payload: { name, region: 'Вилоят 1' },
+      });
+      expect(createRes.statusCode).toBe(201);
+      const districtId = createRes.json().district.id;
+
+      const patchRes = await server.inject({
+        method: 'PATCH',
+        url: `/api/v1/districts/${districtId}`,
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: authCookie },
+        payload: {
+          name: name.toLowerCase(), // same name different casing
+          region: 'Вилоят 2',
+        },
+      });
+
+      expect(patchRes.statusCode).toBe(200);
+      expect(patchRes.json().district.region).toBe('Вилоят 2');
+    });
+
+    it('rejects update with 409 if new name conflicts with another district', async () => {
+      const nameA = `ConflictA_${crypto.randomUUID().slice(0, 6)}`;
+      const nameB = `ConflictB_${crypto.randomUUID().slice(0, 6)}`;
+
+      await server.inject({
+        method: 'POST',
+        url: '/api/v1/districts',
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: authCookie },
+        payload: { name: nameA },
+      });
+
+      const createB = await server.inject({
+        method: 'POST',
+        url: '/api/v1/districts',
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: authCookie },
+        payload: { name: nameB },
+      });
+      const districtBId = createB.json().district.id;
+
+      // Attempt to rename district B to district A's name
+      const patchRes = await server.inject({
+        method: 'PATCH',
+        url: `/api/v1/districts/${districtBId}`,
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: authCookie },
+        payload: { name: nameA.toLowerCase() },
+      });
+
+      expect(patchRes.statusCode).toBe(409);
+      expect(patchRes.json().error.code).toBe('DISTRICT_NAME_EXISTS');
+      expect(patchRes.json().error.message).toBe('Бу номдаги туман аллақачон мавжуд.');
+    });
+  });
 });
+

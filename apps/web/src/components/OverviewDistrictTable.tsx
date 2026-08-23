@@ -15,6 +15,7 @@ import {
   CheckCircleOutlined,
   SettingOutlined,
   EyeOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import { District } from '@mahalla-ovozi/api-contracts';
 import { useDistrict } from '../district/district-context.js';
@@ -27,6 +28,7 @@ interface OverviewDistrictTableProps {
   loading?: boolean;
   onOpenCreateDrawer: () => void;
   onSelectDistrictForFocus?: (districtId: string) => void;
+  onEditDistrict?: (district: District) => void;
 }
 
 type FilterStatus = 'ALL' | 'ACTIVE' | 'SETUP_INCOMPLETE';
@@ -36,6 +38,7 @@ export const OverviewDistrictTable: React.FC<OverviewDistrictTableProps> = ({
   loading = false,
   onOpenCreateDrawer,
   onSelectDistrictForFocus,
+  onEditDistrict,
 }) => {
   const { token } = theme.useToken();
   const { activeDistrictId, switchDistrict, attemptTransition } = useDistrict();
@@ -143,6 +146,18 @@ export const OverviewDistrictTable: React.FC<OverviewDistrictTableProps> = ({
                 </Button>
               )}
 
+              {onEditDistrict && (
+                <Button
+                  type="link"
+                  icon={<EditOutlined />}
+                  aria-label={`Таҳрирлаш: ${record.name}`}
+                  onClick={() => onEditDistrict(record)}
+                  style={{ minHeight: 44, padding: '0 8px', display: 'inline-flex', alignItems: 'center' }}
+                >
+                  Таҳрирлаш
+                </Button>
+              )}
+
               <Button
                 type="link"
                 icon={record.status === 'SETUP_INCOMPLETE' ? <SettingOutlined /> : <EyeOutlined />}
@@ -157,7 +172,7 @@ export const OverviewDistrictTable: React.FC<OverviewDistrictTableProps> = ({
         },
       },
     ],
-    [activeDistrictId, handleSwitchAndFocus]
+    [activeDistrictId, handleSwitchAndFocus, onEditDistrict]
   );
 
   return (

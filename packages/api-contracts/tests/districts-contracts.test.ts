@@ -6,6 +6,8 @@ import {
   CreateDistrictResponseSchema,
   ListDistrictsResponseSchema,
   GetDistrictResponseSchema,
+  UpdateDistrictRequestSchema,
+  UpdateDistrictResponseSchema,
 } from '../src/index.js';
 
 describe('District API Contracts', () => {
@@ -178,4 +180,68 @@ describe('District API Contracts', () => {
       expect(GetDistrictResponseSchema.safeParse(getResponse).success).toBe(true);
     });
   });
+
+  describe('UpdateDistrictRequestSchema', () => {
+    it('accepts both updated name and region', () => {
+      const payload = {
+        name: 'Чилонзор (Янгиланган)',
+        region: 'Тошкент вилояти',
+      };
+      const result = UpdateDistrictRequestSchema.safeParse(payload);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.name).toBe('Чилонзор (Янгиланган)');
+        expect(result.data.region).toBe('Тошкент вилояти');
+      }
+    });
+
+    it('accepts updating name only', () => {
+      const payload = {
+        name: 'Мирзо Улуғбек',
+      };
+      const result = UpdateDistrictRequestSchema.safeParse(payload);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.name).toBe('Мирзо Улуғбек');
+        expect(result.data.region).toBeUndefined();
+      }
+    });
+
+    it('accepts updating region only', () => {
+      const payload = {
+        region: 'Самарқанд вилояти',
+      };
+      const result = UpdateDistrictRequestSchema.safeParse(payload);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.name).toBeUndefined();
+        expect(result.data.region).toBe('Самарқанд вилояти');
+      }
+    });
+
+    it('transforms empty region to null', () => {
+      const payload = {
+        region: '   ',
+      };
+      const result = UpdateDistrictRequestSchema.safeParse(payload);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.region).toBeNull();
+      }
+    });
+
+    it('rejects empty object with at least one field required error', () => {
+      const result = UpdateDistrictRequestSchema.safeParse({});
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.errors[0]?.message).toBe('Камида битта майдон киритилиши керак.');
+      }
+    });
+
+    it('rejects invalid short name', () => {
+      const result = UpdateDistrictRequestSchema.safeParse({ name: ' a ' });
+      expect(result.success).toBe(false);
+    });
+  });
 });
+

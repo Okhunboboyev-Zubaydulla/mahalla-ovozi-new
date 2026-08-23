@@ -1,5 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { CreateDistrictRequestSchema } from '@mahalla-ovozi/api-contracts';
+import {
+  CreateDistrictRequestSchema,
+  UpdateDistrictRequestSchema,
+} from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import { verifyStateChangingOrigin } from '../auth/origin-guard.js';
 import { createRequireProductOwner } from '../auth/require-product-owner.js';
@@ -7,6 +10,7 @@ import {
   listDistricts,
   getDistrictById,
   createDistrict,
+  updateDistrict,
   DistrictNameExistsError,
 } from './districts-service.js';
 import {
@@ -57,6 +61,48 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
           );
           // P3-G: Returns HTTP 201 Created on success
           return reply.status(201).send({ district });
+        } catch (err: unknown) {
+          return handleDistrictError(err, reply);
+        }
+      }
+    );
+
+    // Update district
+    scope.patch(
+      '/api/v1/districts/:districtId',
+      async (
+        req: FastifyRequest<{ Params: { districtId: string }; Body: unknown }>,
+        reply: FastifyReply
+      ) => {
+        const { districtId } = req.params;
+        if (!districtId || typeof districtId !== 'string' || districtId.trim() === '') {
+          return reply.status(400).send({
+            error: { code: 'VALIDATION_ERROR', message: 'Туман идентификатори талаб қилинади.' },
+          });
+        }
+
+        const parseResult = UpdateDistrictRequestSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: parseResult.error.errors[0]?.message || 'Туман маълумотлари нотўғри.',
+            },
+          });
+        }
+
+        try {
+          const district = await updateDistrict(
+            db,
+            districtId,
+            parseResult.data,
+            req.actor,
+            {
+              ipAddress: req.ip || null,
+              userAgent: (req.headers['user-agent'] as string) || null,
+            }
+          );
+          return reply.status(200).send({ district });
         } catch (err: unknown) {
           return handleDistrictError(err, reply);
         }

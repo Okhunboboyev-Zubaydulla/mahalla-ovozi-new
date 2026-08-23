@@ -6,12 +6,15 @@ import {
   GetDistrictReadinessResponse,
   ConfirmDisclosureResponse,
   ActivateDistrictResponse,
+  UpdateDistrictRequest,
+  UpdateDistrictResponse,
   CreateDistrictResponseSchema,
   ListDistrictsResponseSchema,
   GetDistrictResponseSchema,
   GetDistrictReadinessResponseSchema,
   ConfirmDisclosureResponseSchema,
   ActivateDistrictResponseSchema,
+  UpdateDistrictResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
 
@@ -76,6 +79,21 @@ export const districtClient = {
       ActivateDistrictResponseSchema
     );
   },
+
+  updateDistrict(
+    districtId: string,
+    payload: UpdateDistrictRequest
+  ): Promise<UpdateDistrictResponse> {
+    return request<UpdateDistrictResponse>(
+      `/api/v1/districts/${encodeURIComponent(districtId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      },
+      UpdateDistrictResponseSchema
+    );
+  },
 };
+
 
 

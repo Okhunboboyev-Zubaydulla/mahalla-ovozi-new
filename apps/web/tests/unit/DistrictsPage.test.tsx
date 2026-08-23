@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -128,5 +128,58 @@ describe('DistrictsPage & CreateDistrictDrawer Component Tests', () => {
     expect(screen.getByText('Фаол')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Кўриш: Миробод/i })).toBeTruthy();
   });
+
+  it('opens EditDistrictDrawer when clicking Таҳрирлаш and pre-fills form values', async () => {
+    vi.spyOn(districtClient, 'listDistricts').mockResolvedValueOnce({
+      districts: [
+        {
+          id: 'dist_edit_123',
+          name: 'Чилонзор',
+          region: 'Тошкент шаҳри',
+          status: 'SETUP_INCOMPLETE',
+          createdAt: '2026-08-17T10:00:00.000Z',
+        },
+      ],
+    });
+
+    const updateSpy = vi
+      .spyOn(districtClient, 'updateDistrict')
+      .mockResolvedValueOnce({
+        district: {
+          id: 'dist_edit_123',
+          name: 'Чилонзор (Янгиланган)',
+          region: 'Тошкент вилояти',
+          status: 'SETUP_INCOMPLETE',
+          createdAt: '2026-08-17T10:00:00.000Z',
+        },
+      });
+
+    renderDistrictsPage();
+
+    const editBtn = await screen.findByRole('button', { name: /Таҳрирлаш: Чилонзор/i });
+    fireEvent.click(editBtn);
+
+    // Edit drawer should appear with title and pre-filled inputs
+    expect(await screen.findByText('Туман маълумотларини таҳрирлаш')).toBeTruthy();
+    const nameInput = document.getElementById('edit-district-name-input') as HTMLInputElement;
+    const regionInput = document.getElementById('edit-district-region-input') as HTMLInputElement;
+    expect(nameInput.value).toBe('Чилонзор');
+    expect(regionInput.value).toBe('Тошкент шаҳри');
+
+    // Change input and submit
+    fireEvent.change(nameInput, { target: { value: 'Чилонзор (Янгиланган)' } });
+    fireEvent.change(regionInput, { target: { value: 'Тошкент вилояти' } });
+
+    const submitBtn = document.getElementById('edit-district-submit') as HTMLButtonElement;
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith('dist_edit_123', {
+        name: 'Чилонзор (Янгиланган)',
+        region: 'Тошкент вилояти',
+      });
+    });
+  });
 });
+
 

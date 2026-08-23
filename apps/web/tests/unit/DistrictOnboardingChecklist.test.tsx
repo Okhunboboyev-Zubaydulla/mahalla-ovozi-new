@@ -313,6 +313,30 @@ describe('DistrictOnboardingChecklist Component Tests', () => {
     expect(screen.getByText('✓ Туман аллақачон фаоллаштирилган')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Туманни фаоллаштириш' })).toBeNull();
   });
+
+  it('opens EditDistrictDrawer when clicking Таҳрирлаш in checklist header', async () => {
+    vi.spyOn(districtClient, 'getDistrictReadiness').mockResolvedValueOnce({
+      readiness: mockReadiness,
+    });
+    vi.spyOn(districtClient, 'getDistrict').mockResolvedValueOnce({
+      district: {
+        id: 'dist_test_1',
+        name: 'Чилонзор',
+        region: 'Тошкент шаҳри',
+        status: 'SETUP_INCOMPLETE',
+        createdAt: '2026-08-20T10:00:00.000Z',
+      },
+    });
+
+    renderChecklist();
+
+    const editBtn = await screen.findByRole('button', { name: /Таҳрирлаш/i });
+    fireEvent.click(editBtn);
+
+    expect(await screen.findByText('Туман маълумотларини таҳрирлаш')).toBeTruthy();
+    const nameInput = document.getElementById('edit-district-name-input') as HTMLInputElement;
+    expect(nameInput.value).toBe('Чилонзор');
+  });
 });
 
 

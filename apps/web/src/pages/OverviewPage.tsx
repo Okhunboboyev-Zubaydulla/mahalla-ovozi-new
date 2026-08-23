@@ -16,14 +16,17 @@ import {
   CheckSquareOutlined,
   CloseOutlined,
   ReloadOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
+import { District } from '@mahalla-ovozi/api-contracts';
 import { districtClient } from '../district/district-client.js';
 import { useDistrict } from '../district/district-context.js';
 import { DistrictOnboardingChecklist } from '../components/DistrictOnboardingChecklist.js';
 import { OverviewMetricCards } from '../components/OverviewMetricCards.js';
 import { OverviewDistrictTable } from '../components/OverviewDistrictTable.js';
 import { CreateDistrictDrawer } from '../components/CreateDistrictDrawer.js';
+import { EditDistrictDrawer } from '../components/EditDistrictDrawer.js';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -31,6 +34,7 @@ export const OverviewPage: React.FC = () => {
   const { token } = theme.useToken();
   const { activeDistrictId, switchDistrict, attemptTransition } = useDistrict();
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+  const [editingDistrict, setEditingDistrict] = useState<District | null>(null);
   const [activeViewMode, setActiveViewMode] = useState<'checklist' | 'portfolio'>('checklist');
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -167,6 +171,16 @@ export const OverviewPage: React.FC = () => {
               />
 
               <Button
+                id="active-district-edit-button"
+                type="default"
+                icon={<EditOutlined />}
+                onClick={() => setEditingDistrict(activeDistrict)}
+                style={{ minHeight: 38 }}
+              >
+                Таҳрирлаш
+              </Button>
+
+              <Button
                 type="text"
                 icon={<CloseOutlined />}
                 onClick={handleClearActiveDistrict}
@@ -188,6 +202,7 @@ export const OverviewPage: React.FC = () => {
           loading={isLoading}
           onOpenCreateDrawer={() => setCreateDrawerOpen(true)}
           onSelectDistrictForFocus={() => setActiveViewMode('checklist')}
+          onEditDistrict={(district) => setEditingDistrict(district)}
         />
       )}
 
@@ -195,6 +210,13 @@ export const OverviewPage: React.FC = () => {
       <CreateDistrictDrawer
         open={createDrawerOpen}
         onClose={() => setCreateDrawerOpen(false)}
+      />
+
+      {/* 5. Global Edit District Drawer */}
+      <EditDistrictDrawer
+        open={!!editingDistrict}
+        district={editingDistrict}
+        onClose={() => setEditingDistrict(null)}
       />
     </div>
   );

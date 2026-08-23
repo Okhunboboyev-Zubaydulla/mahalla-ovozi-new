@@ -68,3 +68,40 @@ export const ActivateDistrictResponseSchema = z.object({
 });
 export type ActivateDistrictResponse = z.infer<typeof ActivateDistrictResponseSchema>;
 
+export const UpdateDistrictRequestSchema = z
+  .object({
+    name: z
+      .string({
+        invalid_type_error: 'Туман номи матн кўринишида бўлиши керак.',
+      })
+      .trim()
+      .refine((val) => [...val].length >= 2, {
+        message: 'Туман номи камида 2 та белгидан иборат бўлиши керак.',
+      })
+      .refine((val) => [...val].length <= 100, {
+        message: 'Туман номи 100 та белгидан ошмаслиги керак.',
+      })
+      .optional(),
+    region: z
+      .string({
+        invalid_type_error: 'Вилоят/ҳудуд номи матн кўринишида бўлиши керак.',
+      })
+      .trim()
+      .refine((val) => [...val].length <= 100, {
+        message: 'Вилоят/ҳудуд номи 100 та белгидан ошмаслиги керак.',
+      })
+      .nullish()
+      .transform((val) => (val && val.length > 0 ? val : null))
+      .optional(),
+  })
+  .refine((data) => data.name !== undefined || data.region !== undefined, {
+    message: 'Камида битта майдон киритилиши керак.',
+  });
+export type UpdateDistrictRequest = z.infer<typeof UpdateDistrictRequestSchema>;
+
+export const UpdateDistrictResponseSchema = z.object({
+  district: DistrictSchema,
+});
+export type UpdateDistrictResponse = z.infer<typeof UpdateDistrictResponseSchema>;
+
+

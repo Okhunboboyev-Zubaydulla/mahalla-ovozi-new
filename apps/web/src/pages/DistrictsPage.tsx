@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { districtClient } from '../district/district-client.js';
 import { useDistrict } from '../district/district-context.js';
 import { CreateDistrictDrawer } from '../components/CreateDistrictDrawer.js';
+import { EditDistrictDrawer } from '../components/EditDistrictDrawer.js';
 import { District } from '@mahalla-ovozi/api-contracts';
 import { formatTashkentDate } from '../lib/formatters.js';
 
@@ -23,6 +24,7 @@ export const DistrictsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(searchParams.get('action') === 'create');
+  const [editingDistrict, setEditingDistrict] = useState<District | null>(null);
   const { activeDistrictId, switchDistrict, attemptTransition } = useDistrict();
 
   useEffect(() => {
@@ -119,6 +121,14 @@ export const DistrictsPage: React.FC = () => {
                 style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
               >
                 {record.status === 'SETUP_INCOMPLETE' ? 'Созлаш' : 'Кўриш'}
+              </Button>
+              <Button
+                type="link"
+                aria-label={`Таҳрирлаш: ${record.name}`}
+                onClick={() => setEditingDistrict(record)}
+                style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
+              >
+                Таҳрирлаш
               </Button>
             </div>
           );
@@ -220,6 +230,13 @@ export const DistrictsPage: React.FC = () => {
       <CreateDistrictDrawer
         open={drawerOpen}
         onClose={handleCloseDrawer}
+      />
+
+      {/* Edit District Drawer */}
+      <EditDistrictDrawer
+        open={!!editingDistrict}
+        district={editingDistrict}
+        onClose={() => setEditingDistrict(null)}
       />
     </div>
   );

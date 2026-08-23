@@ -102,6 +102,15 @@ export async function buildHttpServer(options?: {
     });
   });
 
+  server.setNotFoundHandler((request, reply) => {
+    reply.status(404).send({
+      error: {
+        code: 'NOT_FOUND',
+        message: 'Сўралган манзил топилмади.',
+      },
+    });
+  });
+
   const pool = options?.pool || createDbPool();
   const db = options?.db || createDbClient(pool);
   const boss = options?.boss || createBossClient();

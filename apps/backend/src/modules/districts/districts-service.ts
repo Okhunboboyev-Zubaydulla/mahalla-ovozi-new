@@ -4,6 +4,7 @@ import { DbClient } from '../../adapters/db/client.js';
 import { districts } from '../../adapters/db/schema/index.js';
 import {
   CreateDistrictRequest,
+  UpdateDistrictRequest,
   District,
   DistrictStatusSchema,
 } from '@mahalla-ovozi/api-contracts';
@@ -168,4 +169,93 @@ export async function createDistrict(
 
   return formatDistrict(createdRow);
 }
+
+export async function updateDistrict(
+  db: DbClient,
+  districtId: string,
+  input: UpdateDistrictRequest,
+  actor?: { id: string; role: string },
+  context?: { ipAddress?: string | null; userAgent?: string | null }
+): Promise<District> {
+  const [current] = await db
+    .select()
+    .from(districts)
+    .where(eq(districts.id, districtId))
+    .limit(1);
+
+  if (!current) {
+    throw new DistrictNotFoundError(districtId);
+  }
+
+  const trimmedName = input.name !== undefined ? input.name.trim() : current.name;
+  const newRegion = input.region !== undefined ? input.region : current.region;
+
+  if (input.name !== undefined && trimmedName.toLowerCase() !== current.name.toLowerCase()) {
+    const [existing] = await db
+      .select()
+      .from(districts)
+      .where(
+        sql`LOWER(${districts.name}) = LOWER(${trimmedName}) AND ${districts.id} != ${districtId}`
+      )
+      .limit(1);
+
+    if (existing) {
+      throw new DistrictNameExistsError(trimmedName);
+    }
+  }
+
+  const now = new Date();
+  let updatedRow: typeof districts.$inferSelect | undefined;
+
+  try {
+    await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(districts)
+        .set({
+          name: trimmedName,
+          region: newRegion,
+          updatedAt: now,
+        })
+        .where(eq(districts.id, districtId))
+        .returning();
+
+      updatedRow = updated;
+
+      const auditMetadata: Record<string, unknown> = {
+        districtId,
+        oldName: current.name,
+        newName: trimmedName,
+        oldRegion: current.region,
+        newRegion: newRegion,
+      };
+
+      await recordAuditEvent(tx, {
+        actorId: actor?.id || null,
+        actorRole: actor?.role || null,
+        action: 'DISTRICT_UPDATED',
+        ipAddress: context?.ipAddress || null,
+        userAgent: context?.userAgent || null,
+        metadata: auditMetadata,
+      });
+    });
+  } catch (err: unknown) {
+    if (
+      err instanceof DistrictNameExistsError ||
+      (typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        (err as { code: string }).code === '23505')
+    ) {
+      throw new DistrictNameExistsError(trimmedName);
+    }
+    throw err;
+  }
+
+  if (!updatedRow) {
+    throw new DistrictNotFoundError(districtId);
+  }
+
+  return formatDistrict(updatedRow);
+}
+
 
