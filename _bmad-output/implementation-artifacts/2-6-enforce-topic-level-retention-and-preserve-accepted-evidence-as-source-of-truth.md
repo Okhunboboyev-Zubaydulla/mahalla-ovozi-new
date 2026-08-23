@@ -4,7 +4,7 @@ baseline_commit: bb8a1c3
 
 # Story 2.6: Enforce Topic-Level Retention and Preserve Accepted Evidence as Source of Truth
 
-Status: review
+Status: done
 
 <!-- Note: Validation is complete. Story specification has passed adversarial, edge-case, and compliance pre-dev review. -->
 
@@ -207,6 +207,20 @@ So that retained evidence remains complete while needed and expires predictably 
     - Matrix #27: Database transaction rollback on simulated network glitch leaves Topic and evidence intact (AC 6).
     - Matrix #28: Story boundary check: confirms retention runs without dashboard API or UI components (AC 17).
   - [x] 4.3 Full regression verification: `pnpm typecheck`, `pnpm --filter backend test`, `pnpm build` (verifying 100% pass rate).
+
+### Review Findings
+
+- [x] [Review][Patch] Add draining loop to disaster restore reconciliation to handle backlogs >10,000 [`apps/backend/src/modules/retention/restore-reconciliation.ts:38-47`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/retention/restore-reconciliation.ts#L38-L47)
+- [x] [Review][Patch] Add per-district try/catch error isolation in worker scheduled retention scan [`apps/backend/src/entrypoints/worker.ts:1499-1506`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/entrypoints/worker.ts#L1499-L1506)
+- [x] [Review][Patch] Filter status = 'ACTIVE' in findExpiredTopicIds query [`apps/backend/src/modules/retention/topic-retention-repository.ts:25-38`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/retention/topic-retention-repository.ts#L25-L38)
+- [x] [Review][Patch] Sanitize and parse districtId and CLI arguments in restore reconciliation [`apps/backend/src/cli/reconcile-retention.ts:10-25`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/cli/reconcile-retention.ts#L10-L25)
+- [x] [Review][Patch] Add explicit bounds and type guards on limit, topicId, and timestamp inputs [`apps/backend/src/modules/retention/topic-retention-service.ts:22-97`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/retention/topic-retention-service.ts#L22-L97)
+- [x] [Review][Patch] Centralize retention math in worker via calculateRetentionDeadline [`apps/backend/src/entrypoints/worker.ts:917,970`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/entrypoints/worker.ts#L917-L970)
+- [x] [Review][Patch] Fix false-positive TELEGRAM_TOPIC_PROJECTION_COMMITTED telemetry on aborted projection jobs [`apps/backend/src/entrypoints/worker.ts:1390-1408`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/entrypoints/worker.ts#L1390-L1408)
+- [x] [Review][Patch] Normalize accessEligible check in retention worker to treat null/undefined as eligible [`apps/backend/src/entrypoints/worker.ts:1460,1492`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/entrypoints/worker.ts#L1460-L1492)
+- [x] [Review][Patch] Ensure retention cron schedule registers when running with explicit queue options [`apps/backend/src/entrypoints/worker.ts:1434-1441`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/entrypoints/worker.ts#L1434-L1441)
+- [x] [Review][Patch] Add composite index on (districtId, retentionExpiresAt) to topics schema [`apps/backend/src/adapters/db/schema/topics.ts:26-36`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/adapters/db/schema/topics.ts#L26-L36)
+- [x] [Review][Patch] Strengthen verification test matrix cases for #20, #27, and #28 [`apps/backend/tests/worker-topic-retention.test.ts:718-865`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/tests/worker-topic-retention.test.ts#L718-L865)
 
 ---
 

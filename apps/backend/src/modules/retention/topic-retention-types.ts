@@ -22,13 +22,18 @@ export interface RetentionBatchResult {
   topicsPurged: number;
   evidencePurged: number;
   projectionsPurged: number;
+  failedPurges?: number;
   durationMs: number;
 }
 
 export interface DisasterRestoreReconciliationResult {
   districtsReconciled: number;
+  districtsEvaluated?: number;
+  districtsSucceeded?: number;
+  districtsFailed?: number;
   totalTopicsPurged: number;
   totalEvidencePurged: number;
   totalProjectionsPurged: number;
+  errors?: Array<{ districtId: string; error: string }>;
   durationMs: number;
 }

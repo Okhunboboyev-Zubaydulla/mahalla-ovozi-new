@@ -32,6 +32,8 @@ export const topics = pgTable(
     ),
     // Query index for district topic status lookups
     index('topics_district_status_idx').on(table.districtId, table.status),
+    // Scoped index for retention scans and expiry cleanups (Story 2.6 / FR-12)
+    index('topics_district_retention_idx').on(table.districtId, table.retentionExpiresAt),
   ],
 );
 

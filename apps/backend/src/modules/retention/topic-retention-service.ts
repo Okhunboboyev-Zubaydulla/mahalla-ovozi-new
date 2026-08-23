@@ -20,6 +20,9 @@ export const EXACT_90_DAYS_MS = 90 * 24 * 60 * 60 * 1000; // 7,776,000,000 ms
  * Governed by FR-12, AD-3, AD-9.
  */
 export function calculateRetentionDeadline(latestEvidenceTimestamp: Date): Date {
+  if (!latestEvidenceTimestamp || Number.isNaN(latestEvidenceTimestamp.getTime())) {
+    throw new TypeError('INVALID_TIMESTAMP: latestEvidenceTimestamp must be a valid Date object');
+  }
   return new Date(latestEvidenceTimestamp.getTime() + EXACT_90_DAYS_MS);
 }
 
@@ -27,6 +30,9 @@ export function calculateRetentionDeadline(latestEvidenceTimestamp: Date): Date 
  * Determines whether a given retention deadline has arrived (is <= now).
  */
 export function isRetentionExpired(retentionExpiresAt: Date, now: Date = new Date()): boolean {
+  if (!retentionExpiresAt || Number.isNaN(retentionExpiresAt.getTime()) || Number.isNaN(now.getTime())) {
+    return false;
+  }
   return now.getTime() >= retentionExpiresAt.getTime();
 }
 
@@ -40,6 +46,15 @@ export function validateDistrictScope(districtId: string): void {
     throw new Error(
       'INVALID_DISTRICT_SCOPE: districtId is strictly required and cannot be empty or omitted',
     );
+  }
+}
+
+/**
+ * Validates that a topicId is a non-empty string.
+ */
+export function validateTopicId(topicId: string): void {
+  if (!topicId || typeof topicId !== 'string' || topicId.trim() === '') {
+    throw new Error('INVALID_TOPIC_ID: topicId must be a non-empty string');
   }
 }
 
@@ -65,9 +80,15 @@ export class TopicRetentionService {
     now: Date = new Date(),
   ): Promise<RetentionPurgeResult> {
     validateDistrictScope(districtId);
+    validateTopicId(topicId);
 
     return withTransactionalIntake(this.pool, this.boss, async ({ tx }) => {
-      const result = await deleteTopicWithEvidenceAtomic(tx, districtId, topicId, now);
+      const result = await deleteTopicWithEvidenceAtomic(
+        tx,
+        districtId.trim(),
+        topicId.trim(),
+        now,
+      );
 
       return {
         topicId,
@@ -92,17 +113,22 @@ export class TopicRetentionService {
     validateDistrictScope(districtId);
 
     const startTime = performance.now();
-    const limit = options?.limit ?? 100;
+    const cleanDistrictId = districtId.trim();
+    const limit =
+      typeof options?.limit === 'number' && Number.isFinite(options.limit) && options.limit > 0
+        ? Math.floor(options.limit)
+        : 100;
 
-    const expiredTopicIds = await findExpiredTopicIds(this.db, districtId, limit, now);
+    const expiredTopicIds = await findExpiredTopicIds(this.db, cleanDistrictId, limit, now);
 
     let topicsPurged = 0;
     let evidencePurged = 0;
     let projectionsPurged = 0;
+    let failedPurges = 0;
 
     for (const topicId of expiredTopicIds) {
       try {
-        const purgeResult = await this.purgeExpiredTopic(districtId, topicId, now);
+        const purgeResult = await this.purgeExpiredTopic(cleanDistrictId, topicId, now);
         if (purgeResult.purged) {
           topicsPurged++;
           evidencePurged += purgeResult.evidenceCount;
@@ -111,17 +137,18 @@ export class TopicRetentionService {
           console.log(
             JSON.stringify({
               event: 'TELEGRAM_TOPIC_RETENTION_ABORTED_ACTIVE',
-              districtId,
+              districtId: cleanDistrictId,
               topicId,
               reason: purgeResult.reason,
             }),
           );
         }
       } catch (topicError) {
+        failedPurges++;
         console.error(
           JSON.stringify({
             event: 'TELEGRAM_TOPIC_RETENTION_TOPIC_PURGE_ERROR',
-            districtId,
+            districtId: cleanDistrictId,
             topicId,
             error: topicError instanceof Error ? topicError.message : String(topicError),
           }),
@@ -135,7 +162,7 @@ export class TopicRetentionService {
       console.log(
         JSON.stringify({
           event: 'TELEGRAM_TOPIC_RETENTION_PURGED',
-          districtId,
+          districtId: cleanDistrictId,
           topicsEvaluated: expiredTopicIds.length,
           topicsPurgedCount: topicsPurged,
           evidencePurgedCount: evidencePurged,
@@ -146,11 +173,12 @@ export class TopicRetentionService {
     }
 
     return {
-      districtId,
+      districtId: cleanDistrictId,
       topicsEvaluated: expiredTopicIds.length,
       topicsPurged,
       evidencePurged,
       projectionsPurged,
+      failedPurges,
       durationMs,
     };
   }

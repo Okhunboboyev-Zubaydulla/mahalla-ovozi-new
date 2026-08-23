@@ -25,17 +25,28 @@ export async function findExpiredTopicIds(
   limit: number = 100,
   now: Date = new Date(),
 ): Promise<string[]> {
+  const cleanDistrictId = typeof districtId === 'string' ? districtId.trim() : '';
+  if (!cleanDistrictId) {
+    return [];
+  }
+
+  const safeLimit =
+    typeof limit === 'number' && Number.isFinite(limit) && limit > 0
+      ? Math.floor(limit)
+      : 100;
+
   const rows = await db
     .select({ id: topics.id })
     .from(topics)
     .where(
       and(
-        eq(topics.districtId, districtId),
+        eq(topics.districtId, cleanDistrictId),
+        eq(topics.status, 'ACTIVE'),
         lte(topics.retentionExpiresAt, now),
       ),
     )
     .orderBy(asc(topics.retentionExpiresAt))
-    .limit(limit);
+    .limit(safeLimit);
 
   return rows.map((r) => r.id);
 }
@@ -55,11 +66,23 @@ export async function deleteTopicWithEvidenceAtomic(
   topicId: string,
   now: Date = new Date(),
 ): Promise<TopicPurgeExecutionResult> {
+  const cleanDistrictId = typeof districtId === 'string' ? districtId.trim() : '';
+  const cleanTopicId = typeof topicId === 'string' ? topicId.trim() : '';
+
+  if (!cleanDistrictId || !cleanTopicId) {
+    return {
+      evidenceCount: 0,
+      projectionsCount: 0,
+      purged: false,
+      reason: 'TOPIC_NOT_FOUND',
+    };
+  }
+
   // 1. Acquire exclusive row lock on the target topic
   const [lockedTopic] = await tx
     .select()
     .from(topics)
-    .where(and(eq(topics.id, topicId), eq(topics.districtId, districtId)))
+    .where(and(eq(topics.id, cleanTopicId), eq(topics.districtId, cleanDistrictId)))
     .for('update')
     .limit(1);
 

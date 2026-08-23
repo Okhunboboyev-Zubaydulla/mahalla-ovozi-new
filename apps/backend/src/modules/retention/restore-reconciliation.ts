@@ -23,9 +23,10 @@ export async function reconcileRestoredRetention(
   const retentionService = new TopicRetentionService(pool, boss, db);
 
   let targetDistrictIds: string[] = [];
+  const cleanDistrictId = typeof districtId === 'string' ? districtId.trim() : '';
 
-  if (districtId) {
-    targetDistrictIds = [districtId];
+  if (cleanDistrictId) {
+    targetDistrictIds = [cleanDistrictId];
   } else {
     const allDistricts = await db.select({ id: districts.id }).from(districts);
     targetDistrictIds = allDistricts.map((d) => d.id);
@@ -34,16 +35,52 @@ export async function reconcileRestoredRetention(
   let totalTopicsPurged = 0;
   let totalEvidencePurged = 0;
   let totalProjectionsPurged = 0;
+  let districtsSucceeded = 0;
+  let districtsFailed = 0;
+  const errors: Array<{ districtId: string; error: string }> = [];
+
+  const BATCH_SIZE = 500;
+  const MAX_ITERATIONS = 2000;
 
   for (const currentDistrictId of targetDistrictIds) {
-    const batchResult = await retentionService.purgeDistrictExpiredTopicsBatch(
-      currentDistrictId,
-      { limit: 10000 },
-      now,
-    );
-    totalTopicsPurged += batchResult.topicsPurged;
-    totalEvidencePurged += batchResult.evidencePurged;
-    totalProjectionsPurged += batchResult.projectionsPurged;
+    try {
+      let hasMore = true;
+      let iterations = 0;
+
+      while (hasMore && iterations < MAX_ITERATIONS) {
+        iterations++;
+        const batchResult = await retentionService.purgeDistrictExpiredTopicsBatch(
+          currentDistrictId,
+          { limit: BATCH_SIZE },
+          now,
+        );
+
+        totalTopicsPurged += batchResult.topicsPurged;
+        totalEvidencePurged += batchResult.evidencePurged;
+        totalProjectionsPurged += batchResult.projectionsPurged;
+
+        if (batchResult.topicsEvaluated < BATCH_SIZE || (batchResult.topicsPurged === 0 && batchResult.topicsEvaluated > 0)) {
+          hasMore = false;
+        } else if (batchResult.topicsEvaluated === 0) {
+          hasMore = false;
+        } else {
+          await new Promise<void>((resolve) => setImmediate(resolve));
+        }
+      }
+
+      districtsSucceeded++;
+    } catch (districtErr) {
+      districtsFailed++;
+      const errorMsg = districtErr instanceof Error ? districtErr.message : String(districtErr);
+      errors.push({ districtId: currentDistrictId, error: errorMsg });
+      console.error(
+        JSON.stringify({
+          event: 'TELEGRAM_DISASTER_RESTORE_DISTRICT_ERROR',
+          districtId: currentDistrictId,
+          error: errorMsg,
+        }),
+      );
+    }
   }
 
   const durationMs = Math.round(performance.now() - startTime);
@@ -51,19 +88,27 @@ export async function reconcileRestoredRetention(
   console.log(
     JSON.stringify({
       event: 'TELEGRAM_DISASTER_RESTORE_RECONCILIATION_COMPLETED',
-      districtsReconciled: targetDistrictIds.length,
+      districtsReconciled: districtsSucceeded,
+      districtsEvaluated: targetDistrictIds.length,
+      districtsSucceeded,
+      districtsFailed,
       totalTopicsPurged,
       totalEvidencePurged,
       totalProjectionsPurged,
+      errorCount: errors.length,
       durationMs,
     }),
   );
 
   return {
-    districtsReconciled: targetDistrictIds.length,
+    districtsReconciled: districtsSucceeded,
+    districtsEvaluated: targetDistrictIds.length,
+    districtsSucceeded,
+    districtsFailed,
     totalTopicsPurged,
     totalEvidencePurged,
     totalProjectionsPurged,
+    errors,
     durationMs,
   };
 }

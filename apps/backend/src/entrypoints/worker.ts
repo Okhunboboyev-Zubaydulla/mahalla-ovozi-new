@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, not } from 'drizzle-orm';
 import {
   createBossClient,
   initBossQueues,
@@ -44,7 +44,10 @@ import {
   getMahallaDailySnapshot,
   type AcceptedEvidenceItem,
 } from '../modules/ai/context-snapshot.js';
-import { TopicRetentionService } from '../modules/retention/index.js';
+import {
+  TopicRetentionService,
+  calculateRetentionDeadline,
+} from '../modules/retention/index.js';
 
 let activeBossInstance: PgBoss | null = null;
 let internalPool: pg.Pool | null = null;
@@ -913,9 +916,7 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
                     candidateDate.getTime(),
                   ),
                 );
-                const retentionExpiresAt = new Date(
-                  latestEvidenceTime.getTime() + 90 * 24 * 60 * 60 * 1000,
-                );
+                const retentionExpiresAt = calculateRetentionDeadline(latestEvidenceTime);
                 const nextGeneration = existingTopic.requiredDerivedGeneration + 1;
 
                 // Update Topic
@@ -966,9 +967,7 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
                 });
               } else if (matchingDecision.decision === 'NEW_TOPIC') {
                 const newTopicId = `top_${crypto.randomUUID()}`;
-                const retentionExpiresAt = new Date(
-                  candidateDate.getTime() + 90 * 24 * 60 * 60 * 1000,
-                );
+                const retentionExpiresAt = calculateRetentionDeadline(candidateDate);
 
                 // Insert new Topic record
                 await tx.insert(topics).values({
@@ -1238,6 +1237,8 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
             const projectionOpId = `aiop_${crypto.randomUUID()}`;
             const opTargetId = `${topicId}:${targetGeneration}`;
 
+            let projectionCommitted = false;
+
             await withTransactionalIntake(pool, boss, async ({ tx }) => {
               // Row lock topic
               const [lockedTopic] = await tx
@@ -1385,27 +1386,31 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
                   updatedAt: new Date(),
                 })
                 .where(eq(topics.id, topicId));
+
+              projectionCommitted = true;
             });
 
-            const durationMs = Math.round(performance.now() - startTime);
+            if (projectionCommitted) {
+              const durationMs = Math.round(performance.now() - startTime);
 
-            // 8. Privacy-safe structured telemetry (AC 18 / AD-11)
-            console.log(
-              JSON.stringify({
-                event: 'TELEGRAM_TOPIC_PROJECTION_COMMITTED',
-                districtId,
-                mahallaName,
-                calendarDay,
-                topicId,
-                generation: targetGeneration,
-                primaryLane: targetTopic.primaryLane,
-                lanes: evaluation.lanes,
-                isHokimRelated: evaluation.isHokimRelated,
-                anchorEvidenceId: evaluation.anchorEvidenceId,
-                aiOperationId: projectionOpId,
-                durationMs,
-              }),
-            );
+              // 8. Privacy-safe structured telemetry (AC 18 / AD-11)
+              console.log(
+                JSON.stringify({
+                  event: 'TELEGRAM_TOPIC_PROJECTION_COMMITTED',
+                  districtId,
+                  mahallaName,
+                  calendarDay,
+                  topicId,
+                  generation: targetGeneration,
+                  primaryLane: targetTopic.primaryLane,
+                  lanes: evaluation.lanes,
+                  isHokimRelated: evaluation.isHokimRelated,
+                  anchorEvidenceId: evaluation.anchorEvidenceId,
+                  aiOperationId: projectionOpId,
+                  durationMs,
+                }),
+              );
+            }
           } catch (err) {
             console.error(
               JSON.stringify({
@@ -1431,12 +1436,18 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
   if (shouldWork(TELEGRAM_TOPIC_RETENTION_QUEUE)) {
     const retentionService = new TopicRetentionService(pool, boss, db);
 
-    if (!options?.queues) {
+    if (!options?.queues || options.queues.includes(TELEGRAM_TOPIC_RETENTION_QUEUE)) {
       await boss.schedule(
         TELEGRAM_TOPIC_RETENTION_QUEUE,
         '0 * * * *',
         {},
-        { tz: 'Asia/Tashkent' },
+        {
+          tz: 'Asia/Tashkent',
+          retryLimit: 3,
+          retryDelay: 30,
+          retryBackoff: true,
+          expireInMinutes: 30,
+        },
       );
     }
 
@@ -1446,7 +1457,11 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
       async (jobs) => {
         for (const job of jobs) {
           const startTime = performance.now();
-          const { districtId } = job.data;
+          const rawDistrictId = job.data?.districtId;
+          const districtId =
+            typeof rawDistrictId === 'string' && rawDistrictId.trim() !== ''
+              ? rawDistrictId.trim()
+              : undefined;
 
           try {
             if (districtId) {
@@ -1457,7 +1472,7 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
                 .where(eq(districts.id, districtId))
                 .limit(1);
 
-              if (!district || district.status !== 'ACTIVE' || !district.accessEligible) {
+              if (!district || district.status !== 'ACTIVE' || district.accessEligible === false) {
                 const durationMs = Math.round(performance.now() - startTime);
                 console.log(
                   JSON.stringify({
@@ -1481,6 +1496,7 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
                   topicsPurged: result.topicsPurged,
                   evidencePurged: result.evidencePurged,
                   projectionsPurged: result.projectionsPurged,
+                  failedPurges: result.failedPurges ?? 0,
                   durationMs,
                 }),
               );
@@ -1489,19 +1505,39 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
               const activeDistricts = await db
                 .select({ id: districts.id })
                 .from(districts)
-                .where(and(eq(districts.status, 'ACTIVE'), eq(districts.accessEligible, true)));
+                .where(
+                  and(
+                    eq(districts.status, 'ACTIVE'),
+                    not(eq(districts.accessEligible, false)),
+                  ),
+                );
 
               let totalEvaluated = 0;
               let totalPurged = 0;
               let totalEvidence = 0;
               let totalProjections = 0;
+              let districtsFailed = 0;
 
               for (const d of activeDistricts) {
-                const result = await retentionService.purgeDistrictExpiredTopicsBatch(d.id);
-                totalEvaluated += result.topicsEvaluated;
-                totalPurged += result.topicsPurged;
-                totalEvidence += result.evidencePurged;
-                totalProjections += result.projectionsPurged;
+                try {
+                  const result = await retentionService.purgeDistrictExpiredTopicsBatch(d.id);
+                  totalEvaluated += result.topicsEvaluated;
+                  totalPurged += result.topicsPurged;
+                  totalEvidence += result.evidencePurged;
+                  totalProjections += result.projectionsPurged;
+                } catch (districtErr) {
+                  districtsFailed++;
+                  console.error(
+                    JSON.stringify({
+                      event: 'TELEGRAM_TOPIC_RETENTION_DISTRICT_ERROR',
+                      districtId: d.id,
+                      error:
+                        districtErr instanceof Error
+                          ? districtErr.message
+                          : String(districtErr),
+                    }),
+                  );
+                }
               }
 
               const durationMs = Math.round(performance.now() - startTime);
@@ -1509,6 +1545,7 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
                 JSON.stringify({
                   event: 'TELEGRAM_TOPIC_RETENTION_SCAN_COMPLETED',
                   districtsScanned: activeDistricts.length,
+                  districtsFailed,
                   topicsEvaluated: totalEvaluated,
                   topicsPurged: totalPurged,
                   evidencePurged: totalEvidence,
