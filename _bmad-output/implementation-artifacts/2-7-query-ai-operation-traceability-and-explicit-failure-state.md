@@ -205,6 +205,21 @@ So that AI failures, retry lifecycles, and committed results can be investigated
     - Matrix #22–24: System Health aggregation facts (counts, token sums, cost totals, P95 latency).
     - Matrix #25: Privacy boundary validation (verifying zero citizen text in all returned query payloads).
 
+### Review Findings
+
+- [x] [Review][Patch] Fix `assertPrivacyBoundary` no-op: throw `PrivacyBoundaryViolationError` upon finding forbidden keys [`ai-operation-query-service.ts:49-76`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/ai/ai-operation-query-service.ts#L49-L76)
+- [x] [Review][Patch] Support single-bound `from` or `to` timeframe filters in Health Metrics route [`ai-operations-routes.ts:259-263`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/ai/ai-operations-routes.ts#L259-L263)
+- [x] [Review][Patch] Support timezone offsets (`+05:00`) in Zod datetime query schemas [`ai-operations.ts:146-147`](file:///c:/codevision-works/mahalla-ovozi-trial-2/packages/api-contracts/src/ai-operations.ts#L146-L147)
+- [x] [Review][Patch] Enforce `AiOperationTypeSchema` and `AiOperationStatusSchema` in `ListAiOperationsQuerySchema` [`ai-operations.ts:143-144`](file:///c:/codevision-works/mahalla-ovozi-trial-2/packages/api-contracts/src/ai-operations.ts#L143-L144)
+- [x] [Review][Patch] Add max page limit (`10000`) to pagination query schema [`ai-operations.ts:148`](file:///c:/codevision-works/mahalla-ovozi-trial-2/packages/api-contracts/src/ai-operations.ts#L148)
+- [x] [Review][Patch] Add optional `retryPolicy` and `capabilities` to `AiProfileSummarySchema` [`ai-operations.ts:64-78`](file:///c:/codevision-works/mahalla-ovozi-trial-2/packages/api-contracts/src/ai-operations.ts#L64-L78)
+- [x] [Review][Patch] Deduplicate `AiOperationErrorCodeEnum` by importing from `@mahalla-ovozi/api-contracts` [`ai-operation-types.ts:5-18`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/ai/ai-operation-types.ts#L5-L18)
+- [x] [Review][Patch] Enforce `Math.floor` on `page` and `pageSize` in repository `findOperations` [`ai-operation-repository.ts:56-58`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/ai/ai-operation-repository.ts#L56-L58)
+- [x] [Review][Patch] Enforce districtId guard in `findOperationsByDistrict` repository method [`ai-operation-repository.ts:105-110`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/ai/ai-operation-repository.ts#L105-L110)
+- [x] [Review][Patch] Optimize `findOperationDetailsById` with parallel `Promise.all([profile, attempts])` [`ai-operation-repository.ts:129-155`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/ai/ai-operation-repository.ts#L129-L155)
+- [x] [Review][Patch] Optimize `aggregateHealthMetrics` with concurrent `Promise.all` queries [`ai-operation-repository.ts:235-290`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/ai/ai-operation-repository.ts#L235-L290)
+- [x] [Review][Patch] Prevent prototype pollution in error code map with `hasOwnProperty` [`ai-operation-repository.ts:340`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/ai/ai-operation-repository.ts#L340)
+- [x] [Review][Patch] Structured Pino logging and sanitized generic messages for HTTP 500 errors [`ai-operations-routes.ts:90-95`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/ai/ai-operations-routes.ts#L90-L95), [`http.ts:70-76`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/entrypoints/http.ts#L70-L76)
 
 ---
 
@@ -266,6 +281,11 @@ So that AI failures, retry lifecycles, and committed results can be investigated
 | **M23** | System Health aggregation calculates total token counts and cost USD | AC 11 | Token sums and USD cost sum match database aggregate |
 | **M24** | Concurrent duplicate attempt insertion caught by unique index | AC 12 | Database unique constraint prevents duplicate attempt numbers |
 | **M25** | Complete privacy audit: zero resident text in returned query payloads | AC 1, 2, 11 | Payload regex / schema check proves 0 citizen text or credentials |
+| **M26** | Privacy boundary assertion throws on forbidden keys | Patch #1 | `assertPrivacyBoundary` throws `PrivacyBoundaryViolationError` |
+| **M27** | Single-bound timeframe filters in health metrics | Patch #2 | `from` and `to` independently filter metrics in `/health-metrics` |
+| **M28** | Query datetime filters accept timezone offsets (e.g. +05:00) | Patch #5 | ISO strings with `+05:00` pass Zod datetime validation |
+| **M29** | Invalid operationType or finalStatus rejected with 400 | Patch #6 | Invalid enum values return `400 VALIDATION_ERROR` |
+| **M30** | Repository findOperationsByDistrict throws on empty districtId | Patch #8 | Directly calling repository with empty `districtId` throws error |
 
 ---
 

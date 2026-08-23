@@ -11,6 +11,7 @@ import {
   aiOperationQueryService,
   InvalidDistrictScopeError,
   OperationNotFoundError,
+  PrivacyBoundaryViolationError,
 } from './ai-operation-query-service.js';
 
 export function createRequireDistrictAccess(db: DbClient) {
@@ -70,7 +71,7 @@ export function createRequireDistrictAccess(db: DbClient) {
   };
 }
 
-function handleAiOperationError(err: unknown, reply: FastifyReply) {
+function handleAiOperationError(err: unknown, reply: FastifyReply, req?: FastifyRequest) {
   if (err instanceof InvalidDistrictScopeError) {
     return reply.status(400).send({
       error: {
@@ -87,10 +88,21 @@ function handleAiOperationError(err: unknown, reply: FastifyReply) {
       },
     });
   }
+  if (err instanceof PrivacyBoundaryViolationError) {
+    req?.log?.error({ err }, 'Privacy boundary violation detected');
+    return reply.status(500).send({
+      error: {
+        code: err.code,
+        message: err.message,
+      },
+    });
+  }
+
+  req?.log?.error({ err }, 'Unhandled AI operations error');
   return reply.status(500).send({
     error: {
       code: 'INTERNAL_ERROR',
-      message: err instanceof Error ? err.message : 'Кутилмаган хатолик юз берди.',
+      message: 'Серверда кутилмаган хатолик юз берди.',
     },
   });
 }
@@ -146,7 +158,7 @@ export function registerAiOperationsRoutes(fastify: FastifyInstance, db: DbClien
 
           return reply.status(200).send(result);
         } catch (err: unknown) {
-          return handleAiOperationError(err, reply);
+          return handleAiOperationError(err, reply, req);
         }
       },
     );
@@ -186,7 +198,7 @@ export function registerAiOperationsRoutes(fastify: FastifyInstance, db: DbClien
           );
           return reply.status(200).send({ operation: details });
         } catch (err: unknown) {
-          return handleAiOperationError(err, reply);
+          return handleAiOperationError(err, reply, req);
         }
       },
     );
@@ -230,7 +242,7 @@ export function registerAiOperationsRoutes(fastify: FastifyInstance, db: DbClien
 
           return reply.status(200).send(result);
         } catch (err: unknown) {
-          return handleAiOperationError(err, reply);
+          return handleAiOperationError(err, reply, req);
         }
       },
     );
@@ -257,14 +269,17 @@ export function registerAiOperationsRoutes(fastify: FastifyInstance, db: DbClien
           const metrics = await aiOperationQueryService.getSystemHealthAiMetrics(db, {
             districtId: query.districtId,
             timeframe:
-              query.from && query.to
-                ? { from: new Date(query.from), to: new Date(query.to) }
+              query.from || query.to
+                ? {
+                    from: query.from ? new Date(query.from) : undefined,
+                    to: query.to ? new Date(query.to) : undefined,
+                  }
                 : undefined,
           });
 
           return reply.status(200).send({ metrics });
         } catch (err: unknown) {
-          return handleAiOperationError(err, reply);
+          return handleAiOperationError(err, reply, req);
         }
       },
     );
@@ -293,7 +308,7 @@ export function registerAiOperationsRoutes(fastify: FastifyInstance, db: DbClien
           );
           return reply.status(200).send({ operation: details });
         } catch (err: unknown) {
-          return handleAiOperationError(err, reply);
+          return handleAiOperationError(err, reply, req);
         }
       },
     );

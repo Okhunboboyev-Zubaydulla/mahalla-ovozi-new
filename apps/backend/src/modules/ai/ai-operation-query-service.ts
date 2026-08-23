@@ -32,6 +32,15 @@ export class OperationNotFoundError extends Error {
   }
 }
 
+export class PrivacyBoundaryViolationError extends Error {
+  readonly code = 'PRIVACY_BOUNDARY_VIOLATION' as const;
+  readonly statusCode = 500;
+  constructor(message = 'Махфийлик чегараси бузилди: тақиқланган маълумот майдони аниқланди.') {
+    super(message);
+    this.name = 'PrivacyBoundaryViolationError';
+  }
+}
+
 const FORBIDDEN_PRIVACY_KEYS = new Set([
   'residentText',
   'verbatimText',
@@ -46,32 +55,41 @@ const FORBIDDEN_PRIVACY_KEYS = new Set([
 
 /**
  * Validates that an object or nested structure does not contain forbidden privacy-violating keys.
+ * Throws PrivacyBoundaryViolationError if any forbidden keys are present.
  */
 export function assertPrivacyBoundary(obj: unknown): boolean {
-  if (!obj || typeof obj !== 'object') {
+  function check(item: unknown): boolean {
+    if (!item || typeof item !== 'object') {
+      return true;
+    }
+
+    if (Array.isArray(item)) {
+      for (const el of item) {
+        if (!check(el)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    for (const [key, value] of Object.entries(item as Record<string, unknown>)) {
+      if (FORBIDDEN_PRIVACY_KEYS.has(key)) {
+        return false;
+      }
+      if (typeof value === 'object' && value !== null) {
+        if (!check(value)) {
+          return false;
+        }
+      }
+    }
+
     return true;
   }
 
-  if (Array.isArray(obj)) {
-    for (const item of obj) {
-      if (!assertPrivacyBoundary(item)) {
-        return false;
-      }
-    }
-    return true;
+  const isSafe = check(obj);
+  if (!isSafe) {
+    throw new PrivacyBoundaryViolationError();
   }
-
-  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-    if (FORBIDDEN_PRIVACY_KEYS.has(key)) {
-      return false;
-    }
-    if (typeof value === 'object' && value !== null) {
-      if (!assertPrivacyBoundary(value)) {
-        return false;
-      }
-    }
-  }
-
   return true;
 }
 
@@ -94,6 +112,7 @@ export class AiOperationQueryService {
       districtId: trimmedDistrictId,
     });
 
+    assertPrivacyBoundary(result);
     return result;
   }
 
@@ -130,7 +149,9 @@ export class AiOperationQueryService {
     db: DbOrTx,
     filter?: AiOperationFilter,
   ): Promise<PaginatedResult<AiOperationListItem>> {
-    return findOperationsGlobal(db, filter ?? {});
+    const result = await findOperationsGlobal(db, filter ?? {});
+    assertPrivacyBoundary(result);
+    return result;
   }
 
   /**
@@ -158,7 +179,7 @@ export class AiOperationQueryService {
    */
   async getSystemHealthAiMetrics(
     db: DbOrTx,
-    options?: { districtId?: string; timeframe?: { from: Date; to: Date } },
+    options?: { districtId?: string; timeframe?: { from?: Date; to?: Date } },
   ): Promise<AiOperationHealthMetrics> {
     const districtId = options?.districtId?.trim() || undefined;
     const metrics = await aggregateHealthMetrics(db, districtId, options?.timeframe);

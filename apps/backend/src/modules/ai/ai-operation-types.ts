@@ -1,22 +1,12 @@
-import { z } from 'zod';
+import {
+  AiOperationErrorCodeSchema,
+  type AiOperationErrorCode,
+} from '@mahalla-ovozi/api-contracts';
 import type { AiOperation, AiProfile, AiProviderAttempt } from '../../adapters/db/schema/ai.js';
 import type { AiGatewayErrorCode } from './types.js';
 
-export const AiOperationErrorCodeEnum = z.enum([
-  'RATE_LIMIT_EXCEEDED',
-  'PROVIDER_TIMEOUT',
-  'PROVIDER_SERVER_ERROR',
-  'NETWORK_ERROR',
-  'INVALID_OUTPUT_SYNTAX',
-  'INVALID_OUTPUT_SEMANTICS',
-  'CONTEXT_LIMIT_EXCEEDED',
-  'PROVIDER_REFUSAL',
-  'AUTHENTICATION_ERROR',
-  'STALE_SNAPSHOT',
-  'PROFILE_NOT_FOUND',
-  'CIRCUIT_OPEN',
-]);
-export type AiOperationErrorCode = z.infer<typeof AiOperationErrorCodeEnum>;
+export const AiOperationErrorCodeEnum = AiOperationErrorCodeSchema;
+export type { AiOperationErrorCode };
 
 export interface AiOperationFilter {
   districtId?: string;

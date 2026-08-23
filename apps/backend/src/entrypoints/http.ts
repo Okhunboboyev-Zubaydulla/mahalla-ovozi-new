@@ -68,12 +68,16 @@ export async function buildHttpServer(options?: {
   // B8: Sanitized global error handler — logs the full error for observability,
   // then returns a safe generic response to the client (no stack traces exposed).
   server.setErrorHandler((error: unknown, request, reply) => {
-    // Log the actual error for debugging — never expose it to the client
-    console.error('[error]', {
-      method: request.method,
-      url: request.url,
-      error,
-    });
+    // Log the actual error for debugging via structured Pino logger — never expose it to the client
+    request.log.error(
+      {
+        err: error,
+        reqId: request.id,
+        method: request.method,
+        url: request.url,
+      },
+      'Unhandled request error',
+    );
 
     const statusCode =
       typeof error === 'object' && error && 'statusCode' in error && typeof (error as { statusCode: number }).statusCode === 'number'

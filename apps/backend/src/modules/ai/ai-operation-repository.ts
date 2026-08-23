@@ -53,8 +53,11 @@ export async function findOperations(
   const conditions = buildFilterConditions(filter);
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  const page = filter.page && filter.page > 0 ? filter.page : 1;
-  const pageSize = filter.pageSize && filter.pageSize > 0 ? Math.min(filter.pageSize, 200) : 50;
+  const page = filter.page && filter.page > 0 ? Math.floor(filter.page) : 1;
+  const pageSize =
+    filter.pageSize && filter.pageSize > 0
+      ? Math.min(Math.floor(filter.pageSize), 200)
+      : 50;
   const offset = (page - 1) * pageSize;
 
   const countQuery = db
@@ -106,7 +109,13 @@ export async function findOperationsByDistrict(
   db: DbOrTx,
   filter: AiOperationFilter & { districtId: string },
 ): Promise<PaginatedResult<AiOperationListItem>> {
-  return findOperations(db, filter);
+  if (!filter.districtId || typeof filter.districtId !== 'string' || filter.districtId.trim() === '') {
+    throw new Error('districtId is required for district-scoped AI operations');
+  }
+  return findOperations(db, {
+    ...filter,
+    districtId: filter.districtId.trim(),
+  });
 }
 
 export async function findOperationsGlobal(
@@ -131,21 +140,23 @@ export async function findOperationDetailsById(
     return null;
   }
 
-  const [profile] = await db
-    .select()
-    .from(aiProfiles)
-    .where(eq(aiProfiles.id, operation.pinnedProfileId))
-    .limit(1);
+  const [profile, attempts] = await Promise.all([
+    db
+      .select()
+      .from(aiProfiles)
+      .where(eq(aiProfiles.id, operation.pinnedProfileId))
+      .limit(1)
+      .then(([p]) => p || null),
+    db
+      .select()
+      .from(aiProviderAttempts)
+      .where(eq(aiProviderAttempts.operationId, operationId))
+      .orderBy(asc(aiProviderAttempts.attemptNumber)),
+  ]);
 
   if (!profile) {
     return null;
   }
-
-  const attempts = await db
-    .select()
-    .from(aiProviderAttempts)
-    .where(eq(aiProviderAttempts.operationId, operationId))
-    .orderBy(asc(aiProviderAttempts.attemptNumber));
 
   return {
     operation,
@@ -168,21 +179,23 @@ export async function findOperationDetailsByIdGlobal(
     return null;
   }
 
-  const [profile] = await db
-    .select()
-    .from(aiProfiles)
-    .where(eq(aiProfiles.id, operation.pinnedProfileId))
-    .limit(1);
+  const [profile, attempts] = await Promise.all([
+    db
+      .select()
+      .from(aiProfiles)
+      .where(eq(aiProfiles.id, operation.pinnedProfileId))
+      .limit(1)
+      .then(([p]) => p || null),
+    db
+      .select()
+      .from(aiProviderAttempts)
+      .where(eq(aiProviderAttempts.operationId, operationId))
+      .orderBy(asc(aiProviderAttempts.attemptNumber)),
+  ]);
 
   if (!profile) {
     return null;
   }
-
-  const attempts = await db
-    .select()
-    .from(aiProviderAttempts)
-    .where(eq(aiProviderAttempts.operationId, operationId))
-    .orderBy(asc(aiProviderAttempts.attemptNumber));
 
   return {
     operation,
@@ -205,7 +218,7 @@ export async function findAttemptsByOperationId(
 export async function aggregateHealthMetrics(
   db: DbOrTx,
   districtId?: string,
-  timeframe?: { from: Date; to: Date },
+  timeframe?: { from?: Date; to?: Date },
 ): Promise<AiOperationHealthMetrics> {
   const opConditions: SQL[] = [];
   if (districtId) {
@@ -232,7 +245,7 @@ export async function aggregateHealthMetrics(
   const attWhereClause = attConditions.length > 0 ? and(...attConditions) : undefined;
 
   // 1. Grouped operations count by type and status
-  const operationsGrouped = await db
+  const operationsGroupedQuery = db
     .select({
       operationType: aiOperations.operationType,
       finalStatus: aiOperations.finalStatus,
@@ -241,6 +254,40 @@ export async function aggregateHealthMetrics(
     .from(aiOperations)
     .where(opWhereClause)
     .groupBy(aiOperations.operationType, aiOperations.finalStatus);
+
+  // 2. Aggregate attempt metrics (tokens, cost, latency statistics)
+  const statsQuery = db
+    .select({
+      totalAttempts: sql<number>`coalesce(count(${aiProviderAttempts.id}), 0)::int`.mapWith(Number),
+      totalInputTokens: sql<number>`coalesce(sum(${aiProviderAttempts.inputTokens}), 0)::int`.mapWith(Number),
+      totalOutputTokens: sql<number>`coalesce(sum(${aiProviderAttempts.outputTokens}), 0)::int`.mapWith(Number),
+      totalCachedTokens: sql<number>`coalesce(sum(${aiProviderAttempts.cachedTokens}), 0)::int`.mapWith(Number),
+      totalEstimatedCostUsd: sql<number>`coalesce(sum(${aiProviderAttempts.estimatedCostUsd}::numeric), 0)::float`.mapWith(Number),
+      avgDurationMs: sql<number>`coalesce(avg(${aiProviderAttempts.durationMs}), 0)::float`.mapWith(Number),
+      p95DurationMs: sql<number>`coalesce(percentile_cont(0.95) within group (order by ${aiProviderAttempts.durationMs}), 0)::float`.mapWith(Number),
+    })
+    .from(aiProviderAttempts)
+    .innerJoin(aiOperations, eq(aiProviderAttempts.operationId, aiOperations.id))
+    .where(attWhereClause);
+
+  // 3. Grouped attempts breakdown by status & error code
+  const attemptsGroupedQuery = db
+    .select({
+      status: aiProviderAttempts.status,
+      errorCode: aiProviderAttempts.errorCode,
+      count: sql<number>`count(*)::int`.mapWith(Number),
+    })
+    .from(aiProviderAttempts)
+    .innerJoin(aiOperations, eq(aiProviderAttempts.operationId, aiOperations.id))
+    .where(attWhereClause)
+    .groupBy(aiProviderAttempts.status, aiProviderAttempts.errorCode);
+
+  const [operationsGrouped, statsRows, attemptsGrouped] = await Promise.all([
+    operationsGroupedQuery,
+    statsQuery,
+    attemptsGroupedQuery,
+  ]);
+  const statsResult = statsRows[0];
 
   let totalOperations = 0;
   const operationsByType: Record<string, number> = {
@@ -263,33 +310,6 @@ export async function aggregateHealthMetrics(
     operationsByType[row.operationType] = (operationsByType[row.operationType] ?? 0) + row.count;
     operationsByStatus[row.finalStatus] = (operationsByStatus[row.finalStatus] ?? 0) + row.count;
   }
-
-  // 2. Aggregate attempt metrics (tokens, cost, latency statistics)
-  const [statsResult] = await db
-    .select({
-      totalAttempts: sql<number>`coalesce(count(${aiProviderAttempts.id}), 0)::int`.mapWith(Number),
-      totalInputTokens: sql<number>`coalesce(sum(${aiProviderAttempts.inputTokens}), 0)::int`.mapWith(Number),
-      totalOutputTokens: sql<number>`coalesce(sum(${aiProviderAttempts.outputTokens}), 0)::int`.mapWith(Number),
-      totalCachedTokens: sql<number>`coalesce(sum(${aiProviderAttempts.cachedTokens}), 0)::int`.mapWith(Number),
-      totalEstimatedCostUsd: sql<number>`coalesce(sum(${aiProviderAttempts.estimatedCostUsd}::numeric), 0)::float`.mapWith(Number),
-      avgDurationMs: sql<number>`coalesce(avg(${aiProviderAttempts.durationMs}), 0)::float`.mapWith(Number),
-      p95DurationMs: sql<number>`coalesce(percentile_cont(0.95) within group (order by ${aiProviderAttempts.durationMs}), 0)::float`.mapWith(Number),
-    })
-    .from(aiProviderAttempts)
-    .innerJoin(aiOperations, eq(aiProviderAttempts.operationId, aiOperations.id))
-    .where(attWhereClause);
-
-  // 3. Grouped attempts breakdown by status & error code
-  const attemptsGrouped = await db
-    .select({
-      status: aiProviderAttempts.status,
-      errorCode: aiProviderAttempts.errorCode,
-      count: sql<number>`count(*)::int`.mapWith(Number),
-    })
-    .from(aiProviderAttempts)
-    .innerJoin(aiOperations, eq(aiProviderAttempts.operationId, aiOperations.id))
-    .where(attWhereClause)
-    .groupBy(aiProviderAttempts.status, aiProviderAttempts.errorCode);
 
   const attemptsByStatus: {
     SUCCESS: number;
@@ -329,7 +349,10 @@ export async function aggregateHealthMetrics(
     if (row.status) {
       attemptsByStatus[row.status] = (attemptsByStatus[row.status] ?? 0) + row.count;
     }
-    if (row.errorCode && row.errorCode in attemptsByErrorCode) {
+    if (
+      row.errorCode &&
+      Object.prototype.hasOwnProperty.call(attemptsByErrorCode, row.errorCode)
+    ) {
       const code = row.errorCode as AiGatewayErrorCode;
       attemptsByErrorCode[code] = (attemptsByErrorCode[code] ?? 0) + row.count;
     }

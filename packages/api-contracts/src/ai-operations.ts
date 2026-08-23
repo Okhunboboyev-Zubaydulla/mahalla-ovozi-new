@@ -72,6 +72,8 @@ export const AiProfileSummarySchema = z.object({
   temperature: z.number().min(0),
   maxOutputTokens: z.number().int().min(1),
   timeoutMs: z.number().int().min(1),
+  retryPolicy: z.record(z.unknown()).nullable().optional(),
+  capabilities: z.record(z.unknown()).nullable().optional(),
   isActive: z.boolean(),
   createdAt: z.string().datetime(),
 });
@@ -140,12 +142,12 @@ export type AiOperationHealthMetricsDto = z.infer<typeof AiOperationHealthMetric
 export const ListAiOperationsQuerySchema = z.object({
   mahallaName: z.string().trim().optional(),
   calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  operationType: z.string().trim().optional(),
-  finalStatus: z.string().trim().optional(),
+  operationType: AiOperationTypeSchema.optional(),
+  finalStatus: AiOperationStatusSchema.optional(),
   targetId: z.string().trim().optional(),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
-  page: z.coerce.number().int().min(1).default(1),
+  startDate: z.string().datetime({ offset: true }).optional(),
+  endDate: z.string().datetime({ offset: true }).optional(),
+  page: z.coerce.number().int().min(1).max(10000).default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(50),
 });
 export type ListAiOperationsQuery = z.infer<typeof ListAiOperationsQuerySchema>;
@@ -176,8 +178,8 @@ export type GetAiOperationResponse = z.infer<typeof GetAiOperationResponseSchema
 
 export const GetAiHealthMetricsQuerySchema = z.object({
   districtId: z.string().trim().optional(),
-  from: z.string().datetime().optional(),
-  to: z.string().datetime().optional(),
+  from: z.string().datetime({ offset: true }).optional(),
+  to: z.string().datetime({ offset: true }).optional(),
 });
 export type GetAiHealthMetricsQuery = z.infer<typeof GetAiHealthMetricsQuerySchema>;
 

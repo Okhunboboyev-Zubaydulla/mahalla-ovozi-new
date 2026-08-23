@@ -1033,4 +1033,87 @@ describe('Story 2.7: AI Operation Traceability and Failure State Verification Ma
     expect(combinedPayload).not.toMatch(/"apiKey"/);
     expect(combinedPayload).not.toMatch(/"rawHeaders"/);
   });
+
+  // -------------------------------------------------------------
+  // M26: Privacy boundary assertion throws on forbidden keys
+  // -------------------------------------------------------------
+  it('M26: Privacy boundary assertion throws on forbidden keys (Code Review Patch #1)', async () => {
+    const { assertPrivacyBoundary, PrivacyBoundaryViolationError } = await import(
+      '../src/modules/ai/ai-operation-query-service.js'
+    );
+    expect(() => assertPrivacyBoundary({ safeKey: 'value', residentText: 'leak' })).toThrow(
+      PrivacyBoundaryViolationError,
+    );
+    expect(() => assertPrivacyBoundary({ nested: { apiKey: 'secret' } })).toThrow(
+      PrivacyBoundaryViolationError,
+    );
+    expect(assertPrivacyBoundary({ safeKey: 'value', count: 123 })).toBe(true);
+  });
+
+  // -------------------------------------------------------------
+  // M27: Single-bound timeframe filters in health metrics
+  // -------------------------------------------------------------
+  it('M27: Single-bound timeframe filters in health metrics (Code Review Patch #2)', async () => {
+    const fromOnlyRes = await server.inject({
+      method: 'GET',
+      url: `/api/v1/admin/ai-operations/health-metrics?districtId=${districtAId}&from=2026-08-01T00:00:00Z`,
+      headers: { ...SAME_ORIGIN_HEADERS, cookie: poCookie },
+    });
+    expect(fromOnlyRes.statusCode).toBe(200);
+    expect(fromOnlyRes.json().metrics.totalOperations).toBe(10);
+
+    const toOnlyRes = await server.inject({
+      method: 'GET',
+      url: `/api/v1/admin/ai-operations/health-metrics?districtId=${districtAId}&to=2026-08-31T23:59:59Z`,
+      headers: { ...SAME_ORIGIN_HEADERS, cookie: poCookie },
+    });
+    expect(toOnlyRes.statusCode).toBe(200);
+    expect(toOnlyRes.json().metrics.totalOperations).toBe(10);
+  });
+
+  // -------------------------------------------------------------
+  // M28: Query datetime filters accept timezone offsets (e.g. +05:00)
+  // -------------------------------------------------------------
+  it('M28: Query datetime filters accept timezone offsets like +05:00 (Code Review Patch #5)', async () => {
+    const offsetRes = await server.inject({
+      method: 'GET',
+      url: `/api/v1/districts/${districtAId}/ai-operations?startDate=2026-08-20T00:00:00%2B05:00&endDate=2026-08-25T23:59:59%2B05:00`,
+      headers: { ...SAME_ORIGIN_HEADERS, cookie: hokimCookie },
+    });
+    expect(offsetRes.statusCode).toBe(200);
+    expect(offsetRes.json().items.length).toBeGreaterThanOrEqual(10);
+  });
+
+  // -------------------------------------------------------------
+  // M29: Invalid operationType or finalStatus rejected with 400 VALIDATION_ERROR
+  // -------------------------------------------------------------
+  it('M29: Invalid operationType or finalStatus rejected with 400 VALIDATION_ERROR (Code Review Patch #6)', async () => {
+    const invalidTypeRes = await server.inject({
+      method: 'GET',
+      url: `/api/v1/districts/${districtAId}/ai-operations?operationType=INVALID_TYPE`,
+      headers: { ...SAME_ORIGIN_HEADERS, cookie: hokimCookie },
+    });
+    expect(invalidTypeRes.statusCode).toBe(400);
+    expect(invalidTypeRes.json().error.code).toBe('VALIDATION_ERROR');
+
+    const invalidStatusRes = await server.inject({
+      method: 'GET',
+      url: `/api/v1/districts/${districtAId}/ai-operations?finalStatus=INVALID_STATUS`,
+      headers: { ...SAME_ORIGIN_HEADERS, cookie: hokimCookie },
+    });
+    expect(invalidStatusRes.statusCode).toBe(400);
+    expect(invalidStatusRes.json().error.code).toBe('VALIDATION_ERROR');
+  });
+
+  // -------------------------------------------------------------
+  // M30: Repository findOperationsByDistrict throws on empty districtId
+  // -------------------------------------------------------------
+  it('M30: Repository findOperationsByDistrict throws on empty districtId (Code Review Patch #8)', async () => {
+    const { findOperationsByDistrict } = await import(
+      '../src/modules/ai/ai-operation-repository.js'
+    );
+    await expect(
+      findOperationsByDistrict(db, { districtId: '   ' }),
+    ).rejects.toThrow('districtId is required');
+  });
 });
