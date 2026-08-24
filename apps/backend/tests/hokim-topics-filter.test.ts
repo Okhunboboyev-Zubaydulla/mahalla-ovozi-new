@@ -558,5 +558,20 @@ describe('Story 3.4: Filter Current and Retained Topics Integration Tests', () =
       expect(data.topics.length).toBe(1);
       expect(data.topics[0].summary).toBe('Наврўзда сув босими паст');
     });
+
+    it('rejects future calendarDay parameter beyond today with 400 error', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: `/api/v1/hokim/topics/board?calendarDay=2099-01-01`,
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+
+      expect(res.statusCode).toBe(400);
+      const body = JSON.parse(res.body);
+      expect(body.error.code).toBe('TOPIC_BOARD_ERROR');
+    });
   });
 });

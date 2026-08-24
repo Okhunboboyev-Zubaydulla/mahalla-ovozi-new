@@ -22,53 +22,63 @@ export interface DashboardFilterState {
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
+export function parseFiltersFromSearchParams(searchParams: URLSearchParams): DashboardFilterState {
+  // 1. Date Range
+  const rawDateFrom = searchParams.get('dateFrom');
+  const rawDateTo = searchParams.get('dateTo');
+  const dateFrom = rawDateFrom && DATE_REGEX.test(rawDateFrom) ? rawDateFrom : undefined;
+  const dateTo = rawDateTo && DATE_REGEX.test(rawDateTo) ? rawDateTo : undefined;
+
+  // 2. Date Scope (Fall back to today if custom is missing valid date bounds)
+  const rawDateScope = searchParams.get('dateScope');
+  let dateScope: DateFilterScope = 'today';
+  if (rawDateScope === 'yesterday') {
+    dateScope = 'yesterday';
+  } else if (rawDateScope === 'custom') {
+    if (dateFrom && dateTo && dateFrom <= dateTo) {
+      dateScope = 'custom';
+    } else {
+      dateScope = 'today';
+    }
+  }
+
+  // 3. Mahalla Name
+  const rawMahalla = searchParams.get('mahalla') || searchParams.get('mahallaName');
+  const mahallaName =
+    rawMahalla && rawMahalla.trim() !== '' && rawMahalla.trim() !== 'all'
+      ? rawMahalla.trim()
+      : undefined;
+
+  // 4. Lanes Multi-Select
+  const rawLanes = searchParams.get('lanes');
+  let lanes: QualifyingLane[] = CANONICAL_LANES;
+  if (rawLanes) {
+    const parsedLanes = rawLanes
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s): s is QualifyingLane => VALID_LANES_SET.has(s));
+
+    // Preserve canonical display order
+    const canonicalSubset = CANONICAL_LANES.filter((l) => parsedLanes.includes(l));
+    if (canonicalSubset.length > 0) {
+      lanes = canonicalSubset;
+    }
+  }
+
+  return {
+    dateScope,
+    dateFrom: dateScope === 'custom' ? dateFrom : undefined,
+    dateTo: dateScope === 'custom' ? dateTo : undefined,
+    mahallaName,
+    lanes,
+  };
+}
+
 export function useDashboardFilterParams() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const filters: DashboardFilterState = useMemo(() => {
-    // 1. Date Scope
-    const rawDateScope = searchParams.get('dateScope');
-    let dateScope: DateFilterScope = 'today';
-    if (rawDateScope === 'yesterday' || rawDateScope === 'custom') {
-      dateScope = rawDateScope;
-    }
-
-    // 2. Date Range
-    const rawDateFrom = searchParams.get('dateFrom');
-    const rawDateTo = searchParams.get('dateTo');
-    const dateFrom = rawDateFrom && DATE_REGEX.test(rawDateFrom) ? rawDateFrom : undefined;
-    const dateTo = rawDateTo && DATE_REGEX.test(rawDateTo) ? rawDateTo : undefined;
-
-    // 3. Mahalla Name
-    const rawMahalla = searchParams.get('mahalla') || searchParams.get('mahallaName');
-    const mahallaName =
-      rawMahalla && rawMahalla.trim() !== '' && rawMahalla.trim() !== 'all'
-        ? rawMahalla.trim()
-        : undefined;
-
-    // 4. Lanes Multi-Select
-    const rawLanes = searchParams.get('lanes');
-    let lanes: QualifyingLane[] = CANONICAL_LANES;
-    if (rawLanes) {
-      const parsedLanes = rawLanes
-        .split(',')
-        .map((s) => s.trim())
-        .filter((s): s is QualifyingLane => VALID_LANES_SET.has(s));
-
-      // Preserve canonical display order
-      const canonicalSubset = CANONICAL_LANES.filter((l) => parsedLanes.includes(l));
-      if (canonicalSubset.length > 0) {
-        lanes = canonicalSubset;
-      }
-    }
-
-    return {
-      dateScope,
-      dateFrom: dateScope === 'custom' ? dateFrom : undefined,
-      dateTo: dateScope === 'custom' ? dateTo : undefined,
-      mahallaName,
-      lanes,
-    };
+    return parseFiltersFromSearchParams(searchParams);
   }, [searchParams]);
 
   const isDefaultFilters = useMemo(() => {
@@ -92,8 +102,9 @@ export function useDashboardFilterParams() {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
+          const current = parseFiltersFromSearchParams(prev);
           const merged: DashboardFilterState = {
-            ...filters,
+            ...current,
             ...newFilters,
           };
 
@@ -147,7 +158,7 @@ export function useDashboardFilterParams() {
         { replace: true },
       );
     },
-    [filters, setSearchParams],
+    [setSearchParams],
   );
 
   const resetFilters = useCallback(() => {

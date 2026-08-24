@@ -4,7 +4,7 @@ baseline_commit: 4848dd2
 
 # Story 3.4: Filter Current and Retained Topics
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -332,6 +332,23 @@ so that I can focus on an earlier or narrower District situation without navigat
     - Test `Фильтрларни тозалаш` resets all filters to defaults.
     - Test mobile filter modal sheet focus trapping, Escape key, and focus return.
     - Test filtered empty state rendering vs failed request error banner.
+
+### Review Findings
+
+- [x] [Review][Patch] Fix premature URL search param mutation on filter change to ensure failed requests do not persist on reload [apps/web/src/hooks/useDashboardFilterParams.ts:90-151, apps/web/src/pages/HokimDashboardPage.tsx:30-55]
+- [x] [Review][Patch] Fix stale topic card retention in `useHokimTopicBoard` by guarding reconciliation effect against placeholder data [apps/web/src/topics/useHokimTopicBoard.ts:55-61, 156-196]
+- [x] [Review][Patch] Preserve visible lane headers and empty lane cards in `FiveLaneBoard` when filtered result has 0 total topics [apps/web/src/components/topics/FiveLaneBoard.tsx:91-153]
+- [x] [Review][Patch] Support multi-day date range strings (`..`) in `checkProcessingDelay` and `formatTashkentCalendarDate` [apps/backend/src/modules/topics/hokim-topic-service.ts:310-335, apps/web/src/lib/formatters.ts:75-91]
+- [x] [Review][Patch] Remove non-zero box-shadow in `LaneMultiSelect` popover container to adhere to Ant Design 5 tokens [apps/web/src/components/topics/LaneMultiSelect.tsx:131]
+- [x] [Review][Patch] Enforce 44px WCAG AA touch targets and add reduced motion support to filter modal sheet and bar controls [apps/web/src/components/topics/FilterModalSheet.tsx:242,250, apps/web/src/components/topics/FilterBar.tsx]
+- [x] [Review][Patch] Anchor calendar calculations in `DateScopeSelect` to `Asia/Tashkent` calendar day to eliminate client OS timezone skew [apps/web/src/components/topics/DateScopeSelect.tsx:24-40, apps/web/src/lib/formatters.ts]
+- [x] [Review][Patch] Standardize action button labels to `Барчасини кўрсатиш` (AC 6) and `Фильтрларни тозалаш` (AC 8) [apps/web/src/components/topics/LaneMultiSelect.tsx:72, apps/web/src/components/topics/FilterModalSheet.tsx:168,237]
+- [x] [Review][Patch] Filter topics in `getDistrictMahallas` for `status = 'ACTIVE' AND retention_expires_at > NOW()` [apps/backend/src/modules/topics/hokim-topic-service.ts:575-577]
+- [x] [Review][Patch] Add future date upper bound check (`calendarDay <= today`) in `resolveDateBoundary` [apps/backend/src/modules/topics/hokim-topic-service.ts:92-100]
+- [x] [Review][Patch] Deduplicate lane query parameters and guard against empty comma strings in `LanesQueryParamSchema` [packages/api-contracts/src/topics.ts:53-63]
+- [x] [Review][Patch] Fix stale closure in `useDashboardFilterParams.setFilters` by calculating state from functional updater `prev` search params [apps/web/src/hooks/useDashboardFilterParams.ts:90-151]
+- [x] [Review][Defer] N+1 SQL queries and duplicate count queries per board load [apps/backend/src/modules/topics/hokim-topic-service.ts:160-200] — deferred, pre-existing
+- [x] [Review][Defer] Unchecked `req.actor` cast in Fastify route handlers [apps/backend/src/modules/topics/hokim-topics-routes.ts:40,84,136] — deferred, pre-existing
 
 ---
 

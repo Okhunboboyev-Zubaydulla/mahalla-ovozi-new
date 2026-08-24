@@ -52,14 +52,19 @@ export type DateFilterScope = z.infer<typeof DateFilterScopeSchema>;
 
 export const LanesQueryParamSchema = z.preprocess((val) => {
   if (val === undefined || val === null || val === '') return undefined;
-  if (typeof val === 'string') return val.split(',').map((s) => s.trim()).filter(Boolean);
-  if (Array.isArray(val)) {
-    return val
+  let items: string[] = [];
+  if (typeof val === 'string') {
+    items = val.split(',').map((s) => s.trim()).filter(Boolean);
+  } else if (Array.isArray(val)) {
+    items = val
       .flatMap((item) => (typeof item === 'string' ? item.split(',') : item))
       .map((s) => (typeof s === 'string' ? s.trim() : s))
       .filter(Boolean);
+  } else {
+    return val;
   }
-  return val;
+  const unique = Array.from(new Set(items));
+  return unique.length > 0 ? unique : undefined;
 }, z.array(QualifyingLaneSchema).min(1, 'Камида 1 та йўналиш танланиши керак').max(5, 'Кўпи билан 5 та йўналиш танланиши мумкин').optional());
 export type LanesQueryParam = z.infer<typeof LanesQueryParamSchema>;
 

@@ -163,9 +163,9 @@ export const FilterModalSheet: React.FC<FilterModalSheetProps> = ({
                 type="link"
                 size="small"
                 onClick={() => setPendingFilters((prev) => ({ ...prev, lanes: CANONICAL_LANES }))}
-                style={{ padding: 0, fontSize: 12, height: 'auto', color: '#0284C7' }}
+                style={{ padding: '4px 8px', fontSize: 12, height: 'auto', color: '#0284C7' }}
               >
-                Барчасини танлаш
+                Барчасини кўрсатиш
               </Button>
             )}
           </div>
@@ -232,13 +232,13 @@ export const FilterModalSheet: React.FC<FilterModalSheetProps> = ({
             type="text"
             icon={<ClearOutlined />}
             onClick={handleReset}
-            style={{ color: '#DC2626', fontWeight: 500 }}
+            style={{ color: '#DC2626', fontWeight: 500, height: 44, display: 'flex', alignItems: 'center' }}
           >
-            Тозалаш
+            Фильтрларни тозалаш
           </Button>
 
           <Space size={10}>
-            <Button onClick={handleClose} style={{ borderRadius: 8, height: 40 }}>
+            <Button onClick={handleClose} style={{ borderRadius: 8, height: 44 }}>
               Бекор қилиш
             </Button>
             <Button
@@ -247,7 +247,7 @@ export const FilterModalSheet: React.FC<FilterModalSheetProps> = ({
               onClick={handleApply}
               style={{
                 borderRadius: 8,
-                height: 40,
+                height: 44,
                 fontWeight: 600,
                 backgroundColor: '#0284C7',
                 boxShadow: 'none',

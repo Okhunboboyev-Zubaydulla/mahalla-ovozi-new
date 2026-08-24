@@ -3,6 +3,7 @@ import { Segmented, DatePicker, Space } from 'antd';
 import { CalendarOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { DateFilterScope } from '@mahalla-ovozi/api-contracts';
+import { getTashkentToday } from '../../lib/formatters.js';
 
 const { RangePicker } = DatePicker;
 
@@ -21,8 +22,8 @@ export const DateScopeSelect: React.FC<DateScopeSelectProps> = ({
   onChange,
   disabled = false,
 }) => {
-  const today = dayjs();
-  const ninetyDaysAgo = today.subtract(90, 'day').startOf('day');
+  const todayYmd = getTashkentToday();
+  const ninetyDaysAgoYmd = dayjs(todayYmd, 'YYYY-MM-DD').subtract(90, 'day').format('YYYY-MM-DD');
 
   const rangeValue: [Dayjs | null, Dayjs | null] | null =
     dateFrom && dateTo ? [dayjs(dateFrom, 'YYYY-MM-DD'), dayjs(dateTo, 'YYYY-MM-DD')] : null;
@@ -35,8 +36,8 @@ export const DateScopeSelect: React.FC<DateScopeSelectProps> = ({
       onChange({ dateScope: 'yesterday' });
     } else if (scope === 'custom') {
       // Default custom to yesterday or past 7 days if not set
-      const defaultFrom = dateFrom || today.subtract(7, 'day').format('YYYY-MM-DD');
-      const defaultTo = dateTo || today.format('YYYY-MM-DD');
+      const defaultFrom = dateFrom || dayjs(todayYmd, 'YYYY-MM-DD').subtract(7, 'day').format('YYYY-MM-DD');
+      const defaultTo = dateTo || todayYmd;
       onChange({ dateScope: 'custom', dateFrom: defaultFrom, dateTo: defaultTo });
     }
   };
@@ -92,7 +93,8 @@ export const DateScopeSelect: React.FC<DateScopeSelectProps> = ({
           allowClear={false}
           disabledDate={(current) => {
             if (!current) return false;
-            return current.isAfter(today.endOf('day')) || current.isBefore(ninetyDaysAgo);
+            const currentYmd = current.format('YYYY-MM-DD');
+            return currentYmd > todayYmd || currentYmd < ninetyDaysAgoYmd;
           }}
           style={{
             height: 44,

@@ -92,8 +92,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             color: '#DC2626',
             fontWeight: 500,
             fontSize: 13,
-            padding: '4px 8px',
-            height: 'auto',
+            padding: '0 8px',
+            height: 44,
+            display: 'inline-flex',
+            alignItems: 'center',
           }}
           aria-label="Барча фильтрларни тозалаш"
         >

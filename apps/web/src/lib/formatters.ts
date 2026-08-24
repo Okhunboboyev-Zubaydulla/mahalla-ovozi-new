@@ -74,6 +74,12 @@ export function formatTashkentActivityTime(isoString: string, currentCalendarDay
 
 export function formatTashkentCalendarDate(calendarDay: string): string {
   try {
+    if (calendarDay.includes('..')) {
+      const [from, to] = calendarDay.split('..');
+      if (from && to) {
+        return `${formatTashkentCalendarDate(from)} – ${formatTashkentCalendarDate(to)}`;
+      }
+    }
     if (/^\d{4}-\d{2}-\d{2}$/.test(calendarDay)) {
       const [year, month, day] = calendarDay.split('-');
       return `${day}.${month}.${year}`;
@@ -87,5 +93,23 @@ export function formatTashkentCalendarDate(calendarDay: string): string {
     }).format(date);
   } catch {
     return calendarDay;
+  }
+}
+
+export function getTashkentToday(referenceDate?: Date): string {
+  try {
+    const d = referenceDate || new Date();
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Tashkent',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
+  } catch {
+    const d = referenceDate || new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

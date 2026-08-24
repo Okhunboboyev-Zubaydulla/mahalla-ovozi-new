@@ -76,7 +76,7 @@ describe('FilterModalSheet Component Tests', () => {
     expect(screen.getByText('Сана оралиғи')).toBeTruthy();
     expect(screen.getByText('Маҳалла')).toBeTruthy();
     expect(screen.getByText(/Йўналишлар/)).toBeTruthy();
-    expect(screen.getByText('Тозалаш')).toBeTruthy();
+    expect(screen.getByText('Фильтрларни тозалаш')).toBeTruthy();
     expect(screen.getByText('Бекор қилиш')).toBeTruthy();
     expect(screen.getByText('Қўллаш')).toBeTruthy();
   });
@@ -112,7 +112,7 @@ describe('FilterModalSheet Component Tests', () => {
       />,
     );
 
-    const resetButton = screen.getByText('Тозалаш');
+    const resetButton = screen.getByText('Фильтрларни тозалаш');
     fireEvent.click(resetButton);
 
     expect(handleReset).toHaveBeenCalledTimes(1);

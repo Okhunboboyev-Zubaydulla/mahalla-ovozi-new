@@ -67,9 +67,9 @@ export const LaneMultiSelect: React.FC<LaneMultiSelectProps> = ({
             type="link"
             size="small"
             onClick={handleSelectAll}
-            style={{ padding: 0, fontSize: 12, height: 'auto', color: '#0284C7' }}
+            style={{ padding: '4px 8px', fontSize: 12, height: 'auto', color: '#0284C7' }}
           >
-            Барчасини танлаш
+            Барчасини кўрсатиш
           </Button>
         )}
       </div>
@@ -128,7 +128,7 @@ export const LaneMultiSelect: React.FC<LaneMultiSelectProps> = ({
       styles={{
         body: {
           borderRadius: 8,
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+          boxShadow: 'none',
           border: '1px solid #E2E8F0',
         },
       }}

@@ -167,7 +167,7 @@ export const HokimDashboardPage: React.FC = () => {
               icon={<ReloadOutlined />}
               onClick={() => refetch()}
               disabled={isOffline}
-              style={{ fontWeight: 600, height: 40, borderRadius: 8, boxShadow: 'none' }}
+              style={{ fontWeight: 600, height: 44, borderRadius: 8, boxShadow: 'none' }}
             >
               Қайта уриниш
             </Button>
@@ -266,7 +266,7 @@ export const HokimDashboardPage: React.FC = () => {
                   borderColor: '#FCA5A5',
                   color: '#991B1B',
                   fontSize: 12,
-                  height: 28,
+                  height: 36,
                   borderRadius: 6,
                   boxShadow: 'none',
                 }}

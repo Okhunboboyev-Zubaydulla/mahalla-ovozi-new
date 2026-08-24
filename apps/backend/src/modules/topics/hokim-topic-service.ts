@@ -93,6 +93,9 @@ export function resolveDateBoundary(params: {
     if (params.calendarDay < retentionLowerBound) {
       throw new Error('Сана 90 кунлик сақлаш муддатидан эски бўлиши мумкин эмас.');
     }
+    if (params.calendarDay > today) {
+      throw new Error('Сана бугунги кундан кейин бўлиши мумкин эмас.');
+    }
     return {
       datePredicate: sql`t.calendar_day = ${params.calendarDay}`,
       resolvedCalendarDay: params.calendarDay,
@@ -306,11 +309,19 @@ export class HokimTopicService {
     }
 
     try {
+      let intakeDayPredicate = sql`tir.calendar_day = ${calendarDay}`;
+      let topicDayPredicate = sql`t.calendar_day = ${calendarDay}`;
+      if (calendarDay.includes('..')) {
+        const [fromDay, toDay] = calendarDay.split('..');
+        intakeDayPredicate = sql`tir.calendar_day >= ${fromDay} AND tir.calendar_day <= ${toDay}`;
+        topicDayPredicate = sql`t.calendar_day >= ${fromDay} AND t.calendar_day <= ${toDay}`;
+      }
+
       // 2. Check unprocessed intake records older than 30s
       const intakeDelay = await this.db.execute(sql`
         SELECT 1 FROM telegram_intake_records tir
         WHERE tir.district_id = ${districtId}
-          AND tir.calendar_day = ${calendarDay}
+          AND ${intakeDayPredicate}
           AND tir.created_at < NOW() - INTERVAL '30 seconds'
           AND NOT EXISTS (
             SELECT 1 FROM ai_operations ao 
@@ -328,7 +339,7 @@ export class HokimTopicService {
         SELECT 1 FROM topics t
         LEFT JOIN topic_projections tp ON tp.topic_id = t.id
         WHERE t.district_id = ${districtId}
-          AND t.calendar_day = ${calendarDay}
+          AND ${topicDayPredicate}
           AND t.status = 'ACTIVE'
           AND (tp.id IS NULL OR tp.updated_at < t.updated_at - INTERVAL '30 seconds')
           AND t.created_at < NOW() - INTERVAL '30 seconds'
@@ -575,6 +586,8 @@ export class HokimTopicService {
         SELECT mahalla_name 
         FROM topics 
         WHERE district_id = ${actorContext.districtId}
+          AND status = 'ACTIVE'
+          AND retention_expires_at > NOW()
       ) combined
       WHERE mahalla_name IS NOT NULL AND TRIM(mahalla_name) != '';
     `);

@@ -146,4 +146,14 @@ describe('useDashboardFilterParams Hook Tests', () => {
 
     expect(currentLocation.search).toBe('');
   });
+
+  it('falls back dateScope to today if dateScope=custom has missing or inverted date range in URL', () => {
+    const { result } = renderHook(() => useDashboardFilterParams(), {
+      wrapper: createWrapper(['/topics?dateScope=custom&dateFrom=2026-08-15&dateTo=2026-08-01']),
+    });
+
+    expect(result.current.filters.dateScope).toBe('today');
+    expect(result.current.filters.dateFrom).toBeUndefined();
+    expect(result.current.filters.dateTo).toBeUndefined();
+  });
 });

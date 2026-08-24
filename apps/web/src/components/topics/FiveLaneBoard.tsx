@@ -88,7 +88,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
     });
   };
 
-  if (totalVisibleCount === 0 && totalBufferedCount === 0) {
+  if (!isFiltered && totalVisibleCount === 0 && totalBufferedCount === 0) {
     return (
       <main
         role="region"
@@ -120,34 +120,14 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
             description={
               <div>
                 <Title level={4} style={{ color: '#0F172A', marginBottom: 8, fontSize: 18 }}>
-                  {isFiltered
-                    ? 'Танланган шартлар бўйича мавзулар топилмади'
-                    : 'Бугун ҳозирча мавзулар йўқ'}
+                  Бугун ҳозирча мавзулар йўқ
                 </Title>
                 <Text style={{ color: '#64748B', fontSize: 14 }}>
-                  {isFiltered
-                    ? 'Бошқа сана оралиғи, маҳалла ёки йўналишларни танлаб кўринг.'
-                    : 'Туман маҳаллалари гуруҳларидан янги хабарлар келиб тушганда бу ерда мавзулар шаклланади.'}
+                  Туман маҳаллалари гуруҳларидан янги хабарлар келиб тушганда бу ерда мавзулар шаклланади.
                 </Text>
               </div>
             }
           />
-          {isFiltered && onResetFilters && (
-            <Button
-              type="primary"
-              onClick={onResetFilters}
-              style={{
-                marginTop: 20,
-                backgroundColor: '#0284C7',
-                borderRadius: 8,
-                fontWeight: 600,
-                height: 40,
-                boxShadow: 'none',
-              }}
-            >
-              Фильтрларни тозалаш
-            </Button>
-          )}
         </div>
       </main>
     );
@@ -165,6 +145,47 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
         flexDirection: 'column',
       }}
     >
+      {/* Filtered Empty State Banner (AC 12) */}
+      {isFiltered && totalVisibleCount === 0 && totalBufferedCount === 0 && (
+        <div
+          role="status"
+          style={{
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: 8,
+            padding: '12px 16px',
+            marginBottom: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <div>
+            <Text strong style={{ color: '#0F172A', fontSize: 14 }}>
+              Танланган шартлар бўйича мавзулар топилмади
+            </Text>
+            <span style={{ color: '#64748B', fontSize: 13, marginLeft: 8 }}>
+              Бошқа сана оралиғи, маҳалла ёки йўналишларни танлаб кўринг.
+            </span>
+          </div>
+          {onResetFilters && (
+            <Button
+              type="primary"
+              onClick={onResetFilters}
+              style={{
+                backgroundColor: '#0284C7',
+                borderRadius: 6,
+                fontWeight: 600,
+                height: 36,
+                boxShadow: 'none',
+              }}
+            >
+              Фильтрларни тозалаш
+            </Button>
+          )}
+        </div>
+      )}
       {/* Scroll Navigation Controls (Mobile / Narrow screens < 1200px) */}
       <div
         style={{

@@ -154,7 +154,7 @@ export function useHokimTopicBoard(appliedFilters?: DashboardFilterState | strin
 
   // Reconcile board data on initial load and subsequent background/manual refreshes (AC 1, 2, 3, 4)
   useEffect(() => {
-    if (!boardQuery.data?.lanes) {
+    if (boardQuery.isPlaceholderData || !boardQuery.data?.lanes) {
       return;
     }
 
@@ -295,7 +295,7 @@ export function useHokimTopicBoard(appliedFilters?: DashboardFilterState | strin
         }
       }
     }
-  }, [boardQuery.data]);
+  }, [boardQuery.data, boardQuery.isPlaceholderData]);
 
   // Reveal buffered new topics for a specific lane (AC 3)
   const revealNewTopics = useCallback((lane: QualifyingLane) => {
@@ -334,7 +334,8 @@ export function useHokimTopicBoard(appliedFilters?: DashboardFilterState | strin
         !currentLane ||
         !currentLane.hasNextPage ||
         !currentLane.nextCursor ||
-        currentLane.isLoadingMore
+        currentLane.isLoadingMore ||
+        (boardQuery.isFetching && boardQuery.isPlaceholderData)
       ) {
         return;
       }
