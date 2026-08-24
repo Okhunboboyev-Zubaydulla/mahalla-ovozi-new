@@ -4,7 +4,7 @@ baseline_commit: 4e6c5fb
 
 # Story 3.5: Understand the Active Result Set Through Neutral Statistics
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -380,6 +380,14 @@ so that I can understand the shape of current or historical signals without mist
     - Test mobile carousel navigation buttons, 44px touch targets, and `aria-live` announcements.
     - Test reduced motion behavior.
 
+### Review Findings
+
+- [x] [Review][Patch] Avoid unwanted scroll jumps and live announcements on mobile re-render by removing inline cards dependency [apps/web/src/components/topics/TopicStatisticsStrip.tsx:164]
+- [x] [Review][Patch] Defend against undefined lanes property in filter object [apps/web/src/topics/useTopicStatistics.ts:46]
+- [x] [Review][Patch] Purge stale placeholder data across district tenant switches [apps/web/src/topics/useTopicStatistics.ts:70]
+- [x] [Review][Patch] Allow text selection on statistical metrics and refine accessibility labels [apps/web/src/components/topics/TopicStatisticCard.tsx:43,91]
+- [x] [Review][Patch] Guarantee fallback to test database mahalla_ovozi_test in test suite [apps/backend/tests/hokim-topics-statistics.test.ts:55]
+
 ---
 
 ## Dev Notes
@@ -468,4 +476,32 @@ None
 - `apps/web/src/pages/HokimDashboardPage.tsx`
 - `apps/web/tests/unit/useTopicStatistics.test.tsx`
 - `apps/web/tests/unit/TopicStatisticsStrip.test.tsx`
+
+---
+
+## Senior Developer Review (AI)
+
+### Review Outcome: APPROVED (Status: done)
+
+- **Review Date**: 2026-08-24
+- **Reviewer**: Antigravity AI Code Review Workflow (`bmad-code-review`)
+- **Review Mode**: Full Spec-Driven Multi-Layer Adversarial Review
+- **Subagent Review Passes**:
+  1. **Blind Hunter**: Code architecture, invariant compliance (AD-03, AD-09, AD-10), typing rigor, security, test DB isolation.
+  2. **Edge Case Hunter**: Boundary analysis, empty sets, tie resolution, fallback switches, responsive carousel navigation.
+  3. **Acceptance Auditor**: Traceability matrix for all 16 Acceptance Criteria and 9 Tasks.
+  4. **Current-Data Researcher**: Verification against current TanStack Query v5, Ant Design 5, and PostgreSQL/Drizzle patterns.
+
+### Patches Applied & Verified:
+1. **`TopicStatisticsStrip.tsx`**: Removed inline `cards` array from `useEffect` dependency array, preventing unprompted scroll snaps and redundant screen reader live announcements on re-render. Refined `isDesktop` hydration calculation.
+2. **`useTopicStatistics.ts`**: Safeguarded filter handling against undefined `lanes` property.
+3. **`useTopicStatistics.ts`**: Upgraded `placeholderData` to tenant-scoped callback preserving 0px CLS during filter changes while strictly purging stale placeholders across district context switches (AD-10).
+4. **`TopicStatisticCard.tsx`**: Removed `userSelect: 'none'` allowing Hokims to copy statistics for reports. Cleaned ARIA attributes and added responsive font scaling for long values.
+5. **`hokim-topics-statistics.test.ts`**: Explicitly enforced test DB connection string fallback (`mahalla_ovozi_test`) protecting development database isolation.
+
+### Verification Summary:
+- **Web Unit & Component Tests**: 11/11 passing (`TopicStatisticsStrip.test.tsx`, `useTopicStatistics.test.tsx`).
+- **Backend Integration Tests**: 10/10 passing against `mahalla_ovozi_test` (`hokim-topics-statistics.test.ts`).
+- **Monorepo Typechecks**: 0 errors across `@mahalla-ovozi/api-contracts`, `@mahalla-ovozi/backend`, and `@mahalla-ovozi/web`.
+
 

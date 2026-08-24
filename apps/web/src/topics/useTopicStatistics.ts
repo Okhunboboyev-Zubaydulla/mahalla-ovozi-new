@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   QualifyingLane,
   HokimTopicStatisticsResponse,
@@ -35,12 +35,17 @@ export function useTopicStatistics(
     if (typeof appliedFilters === 'string') {
       return { dateScope: 'today', lanes: CANONICAL_LANES };
     }
-    return (
-      appliedFilters ?? {
-        dateScope: 'today',
-        lanes: CANONICAL_LANES,
-      }
-    );
+    const lanes =
+      appliedFilters?.lanes && Array.isArray(appliedFilters.lanes) && appliedFilters.lanes.length > 0
+        ? appliedFilters.lanes
+        : CANONICAL_LANES;
+    return {
+      dateScope: appliedFilters?.dateScope ?? 'today',
+      dateFrom: appliedFilters?.dateFrom,
+      dateTo: appliedFilters?.dateTo,
+      mahallaName: appliedFilters?.mahallaName,
+      lanes,
+    };
   }, [appliedFilters]);
 
   const queryKey = [
@@ -67,7 +72,14 @@ export function useTopicStatistics(
         signal,
       ),
     enabled: Boolean(districtId && actor?.role === 'DISTRICT_HOKIM'),
-    placeholderData: keepPreviousData,
+    placeholderData: (previousData, previousQuery) => {
+      if (!previousData || !previousQuery) return undefined;
+      const prevDistrictId = previousQuery.queryKey[1];
+      if (prevDistrictId !== districtId) {
+        return undefined;
+      }
+      return previousData;
+    },
     staleTime: 5 * 60 * 1000,
     networkMode: 'online',
     retry: false,

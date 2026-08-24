@@ -40,7 +40,6 @@ export const TopicStatisticCard: React.FC<TopicStatisticCardProps> = ({
           flexDirection: 'column',
           justifyContent: 'space-between',
           outline: 'none',
-          userSelect: 'none',
         }}
       >
         <div
@@ -71,6 +70,8 @@ export const TopicStatisticCard: React.FC<TopicStatisticCardProps> = ({
     );
   }
 
+  const isLongTextValue = typeof value === 'string' && value.length > 12;
+
   return (
     <div
       id={id}
@@ -88,7 +89,6 @@ export const TopicStatisticCard: React.FC<TopicStatisticCardProps> = ({
         flexDirection: 'column',
         justifyContent: 'space-between',
         outline: 'none',
-        userSelect: 'none',
       }}
     >
       <div
@@ -99,6 +99,7 @@ export const TopicStatisticCard: React.FC<TopicStatisticCardProps> = ({
           gap: 8,
           marginBottom: 6,
         }}
+        aria-hidden="true"
       >
         <span
           style={{
@@ -136,9 +137,9 @@ export const TopicStatisticCard: React.FC<TopicStatisticCardProps> = ({
 
       <div
         style={{
-          fontSize: 28,
+          fontSize: isLongTextValue ? 20 : 28,
           fontWeight: 600,
-          lineHeight: '34px',
+          lineHeight: isLongTextValue ? '28px' : '34px',
           color: '#0F172A',
           fontVariantNumeric: 'tabular-nums',
           fontFeatureSettings: '"tnum"',
@@ -147,6 +148,7 @@ export const TopicStatisticCard: React.FC<TopicStatisticCardProps> = ({
           whiteSpace: 'nowrap',
         }}
         title={typeof value === 'string' ? value : String(value)}
+        aria-hidden="true"
       >
         {value}
       </div>
@@ -162,6 +164,7 @@ export const TopicStatisticCard: React.FC<TopicStatisticCardProps> = ({
           marginTop: 2,
         }}
         title={subtitle}
+        aria-hidden="true"
       >
         {subtitle}
       </div>

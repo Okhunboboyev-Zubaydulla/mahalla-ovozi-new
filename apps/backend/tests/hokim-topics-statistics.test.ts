@@ -52,7 +52,10 @@ describe('Story 3.5: Neutral Statistics Aggregation Integration Tests', () => {
   const createdRecordIds: string[] = [];
 
   beforeAll(async () => {
-    pool = createDbPool();
+    const testDbUrl =
+      process.env.DATABASE_URL ||
+      'postgresql://mahalla_user:mahalla_dev_password@localhost:5433/mahalla_ovozi_test';
+    pool = createDbPool(testDbUrl);
     db = createDbClient(pool);
     server = await buildHttpServer({ db, pool });
     await server.ready();

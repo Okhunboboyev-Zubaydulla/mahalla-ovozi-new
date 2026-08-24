@@ -31,7 +31,7 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
   const liveAnnouncer = useContext(LiveAnnouncerContext);
 
   // Desktop view when viewport >= 1024px
-  const isDesktop = screens.lg !== false;
+  const isDesktop = screens.lg ?? false;
 
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -139,6 +139,7 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
   };
 
   const cards = [card1, card2, card3, card4, card5];
+  const activeCardTitle = cards[currentIndex]?.title;
 
   // Announce and scroll when mobile index changes
   useEffect(() => {
@@ -157,11 +158,11 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
         });
       }
 
-      if (liveAnnouncer?.announce) {
-        liveAnnouncer.announce(`Кўрсаткич ${currentIndex + 1} / 5: ${cards[currentIndex].title}`);
+      if (liveAnnouncer?.announce && activeCardTitle) {
+        liveAnnouncer.announce(`Кўрсаткич ${currentIndex + 1} / 5: ${activeCardTitle}`);
       }
     }
-  }, [currentIndex, isDesktop, prefersReducedMotion, liveAnnouncer, cards]);
+  }, [currentIndex, isDesktop, prefersReducedMotion, liveAnnouncer, activeCardTitle]);
 
   const handlePrev = () => {
     setCurrentIndex((prev) => Math.max(0, prev - 1));
