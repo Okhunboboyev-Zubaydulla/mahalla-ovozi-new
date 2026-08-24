@@ -1,9 +1,10 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useContext } from 'react';
 import { Button, Typography, Empty, Alert } from 'antd';
 import { ReloadOutlined, DownOutlined } from '@ant-design/icons';
 import { QualifyingLane, TopicCardItem } from '@mahalla-ovozi/api-contracts';
 import { TopicCard, LANE_LABELS, LANE_STYLES } from './TopicCard.js';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
+import { LiveAnnouncerContext } from '../../hooks/useLiveAnnouncer.js';
 
 const { Text } = Typography;
 
@@ -39,7 +40,33 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
   const laneLabel = LANE_LABELS[lane];
   const laneStyle = LANE_STYLES[lane];
   const prefersReducedMotion = usePrefersReducedMotion();
+  const liveAnnouncer = useContext(LiveAnnouncerContext);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevTopicsLengthRef = useRef(topics.length);
+  const isKeyboardTriggerRef = useRef(false);
+
+  useEffect(() => {
+    const prevLength = prevTopicsLengthRef.current;
+    if (topics.length > prevLength) {
+      const newTopicsCount = topics.length - prevLength;
+      liveAnnouncer?.announce(`${laneLabel} йўналиши: ${newTopicsCount} та янги мавзу қўшилди`);
+
+      if (isKeyboardTriggerRef.current) {
+        const firstNewTopic = topics[prevLength];
+        if (firstNewTopic) {
+          requestAnimationFrame(() => {
+            const cardEl = document.getElementById(`topic-card-${firstNewTopic.id}`);
+            if (cardEl) {
+              cardEl.setAttribute('tabindex', '0');
+              cardEl.focus();
+            }
+          });
+        }
+      }
+      isKeyboardTriggerRef.current = false;
+    }
+    prevTopicsLengthRef.current = topics.length;
+  }, [topics, laneLabel, liveAnnouncer]);
 
   const handleReveal = () => {
     onRevealNewItems?.();
@@ -151,6 +178,7 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
       {/* Scrollable Topic Cards List */}
       <div
         ref={scrollContainerRef}
+        aria-busy={isLoadingMore}
         style={{
           flex: 1,
           overflowY: 'auto',
@@ -227,18 +255,35 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
           <div style={{ marginTop: 4, marginBottom: 8, textAlign: 'center' }}>
             <Button
               block
-              onClick={onLoadMore}
+              onClick={(e) => {
+                isKeyboardTriggerRef.current = e.detail === 0;
+                onLoadMore();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  isKeyboardTriggerRef.current = true;
+                }
+              }}
               loading={isLoadingMore}
               icon={!isLoadingMore ? <DownOutlined style={{ fontSize: 12 }} /> : undefined}
+              aria-label={`${laneLabel} бўйича яна 20 та мавзуни юклаш`}
               style={{
                 backgroundColor: '#FFFFFF',
                 borderColor: '#CBD5E1',
                 color: '#0F172A',
                 fontWeight: 600,
                 fontSize: 13,
-                height: 38,
+                minHeight: 44,
+                height: 44,
                 borderRadius: 6,
                 boxShadow: 'none',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.outline = '2px solid #0284C7';
+                e.currentTarget.style.outlineOffset = '2px';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.outline = 'none';
               }}
             >
               {isLoadingMore ? 'Юкланмоқда...' : 'Яна кўрсатиш'}

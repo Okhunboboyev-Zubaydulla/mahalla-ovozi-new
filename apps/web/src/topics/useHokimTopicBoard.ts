@@ -9,6 +9,7 @@ import { hokimTopicsClient } from './hokim-topics-client.js';
 import { useAuth } from '../auth/auth-context.js';
 import { LiveAnnouncerContext } from '../hooks/useLiveAnnouncer.js';
 import { DashboardFilterState } from '../hooks/useDashboardFilterParams.js';
+import { ApiError } from '../lib/api-client.js';
 
 export interface LaneLocalState extends HokimLaneBoardData {
   bufferedNewTopics: TopicCardItem[];
@@ -39,6 +40,7 @@ export function useHokimTopicBoard(
   const isInitialLoadRef = useRef<boolean>(true);
   const previousKnownTopicIdsRef = useRef<Set<string>>(new Set());
   const previousTopicTimestampsRef = useRef<Map<string, string>>(new Map());
+  const laneAbortControllersRef = useRef<Map<QualifyingLane, AbortController>>(new Map());
 
   const filterState: DashboardFilterState = useMemo(() => {
     if (typeof appliedFilters === 'string') {
@@ -54,8 +56,11 @@ export function useHokimTopicBoard(
 
   const trimmedSearch = searchQuery?.trim() || '';
 
-  // Reset baseline and known topic tracking when scope changes
+  // Reset baseline, known topic tracking, and in-flight requests when scope changes
   const currentScopeKey = `${districtId}:${filterState.dateScope}:${filterState.dateFrom || ''}:${filterState.dateTo || ''}:${filterState.mahallaName || ''}:${filterState.lanes.join(',')}:${trimmedSearch}`;
+  const currentScopeKeyRef = useRef<string>(currentScopeKey);
+  currentScopeKeyRef.current = currentScopeKey;
+
   const prevScopeKeyRef = useRef<string>(currentScopeKey);
   if (prevScopeKeyRef.current !== currentScopeKey) {
     prevScopeKeyRef.current = currentScopeKey;
@@ -63,7 +68,17 @@ export function useHokimTopicBoard(
     baselineTimestampRef.current = null;
     previousKnownTopicIdsRef.current.clear();
     previousTopicTimestampsRef.current.clear();
+    laneAbortControllersRef.current.forEach((ctrl) => ctrl.abort());
+    laneAbortControllersRef.current.clear();
   }
+
+  // Abort all in-flight requests on hook unmount
+  useEffect(() => {
+    return () => {
+      laneAbortControllersRef.current.forEach((ctrl) => ctrl.abort());
+      laneAbortControllersRef.current.clear();
+    };
+  }, []);
 
   const queryKey = [
     'hokim-board',
@@ -368,6 +383,15 @@ export function useHokimTopicBoard(
         return;
       }
 
+      const existingCtrl = laneAbortControllersRef.current.get(lane);
+      if (existingCtrl) {
+        existingCtrl.abort();
+      }
+      const controller = new AbortController();
+      laneAbortControllersRef.current.set(lane, controller);
+
+      const scopeKeyAtInvocation = currentScopeKeyRef.current;
+
       setLanesState((prev) => ({
         ...prev,
         [lane]: {
@@ -379,27 +403,37 @@ export function useHokimTopicBoard(
 
       try {
         const response = trimmedSearch
-          ? await hokimTopicsClient.searchLane({
-              lane,
-              search: trimmedSearch,
-              limit: 20,
-              dateScope: filterState.dateScope,
-              dateFrom: filterState.dateFrom,
-              dateTo: filterState.dateTo,
-              mahallaName: filterState.mahallaName,
-              cursor: currentLane.nextCursor,
-              baselineTimestamp: baselineTimestampRef.current ?? undefined,
-            })
-          : await hokimTopicsClient.getLaneBatch({
-              lane,
-              limit: 20,
-              dateScope: filterState.dateScope,
-              dateFrom: filterState.dateFrom,
-              dateTo: filterState.dateTo,
-              mahallaName: filterState.mahallaName,
-              cursor: currentLane.nextCursor,
-              baselineTimestamp: baselineTimestampRef.current ?? undefined,
-            });
+          ? await hokimTopicsClient.searchLane(
+              {
+                lane,
+                search: trimmedSearch,
+                limit: 20,
+                dateScope: filterState.dateScope,
+                dateFrom: filterState.dateFrom,
+                dateTo: filterState.dateTo,
+                mahallaName: filterState.mahallaName,
+                cursor: currentLane.nextCursor,
+                baselineTimestamp: baselineTimestampRef.current ?? undefined,
+              },
+              controller.signal,
+            )
+          : await hokimTopicsClient.getLaneBatch(
+              {
+                lane,
+                limit: 20,
+                dateScope: filterState.dateScope,
+                dateFrom: filterState.dateFrom,
+                dateTo: filterState.dateTo,
+                mahallaName: filterState.mahallaName,
+                cursor: currentLane.nextCursor,
+                baselineTimestamp: baselineTimestampRef.current ?? undefined,
+              },
+              controller.signal,
+            );
+
+        if (scopeKeyAtInvocation !== currentScopeKeyRef.current) {
+          return;
+        }
 
         setLanesState((prev) => {
           const prevLane = prev[lane];
@@ -428,19 +462,50 @@ export function useHokimTopicBoard(
           };
         });
       } catch (err: unknown) {
-        const errorMessage =
-          err instanceof Error ? err.message : 'Юклаб бўлмади. Қайта уриниш.';
+        if (
+          (err instanceof DOMException && err.name === 'AbortError') ||
+          (err as { name?: string })?.name === 'AbortError'
+        ) {
+          return;
+        }
+
+        if (scopeKeyAtInvocation !== currentScopeKeyRef.current) {
+          return;
+        }
+
+        if (
+          err instanceof ApiError &&
+          (err.code === 'INVALID_CURSOR' || err.code === 'STALE_CURSOR')
+        ) {
+          setLanesState((prev) => ({
+            ...prev,
+            [lane]: {
+              ...prev[lane],
+              nextCursor: null,
+              hasNextPage: false,
+              isLoadingMore: false,
+              loadMoreError: null,
+            },
+          }));
+          void boardQuery.refetch();
+          return;
+        }
+
         setLanesState((prev) => ({
           ...prev,
           [lane]: {
             ...prev[lane],
             isLoadingMore: false,
-            loadMoreError: errorMessage || 'Юклаб бўлмади. Қайта уриниш.',
+            loadMoreError: 'Юклаб бўлмади. Қайта уриниш.',
           },
         }));
+      } finally {
+        if (laneAbortControllersRef.current.get(lane) === controller) {
+          laneAbortControllersRef.current.delete(lane);
+        }
       }
     },
-    [lanesState, filterState, trimmedSearch, boardQuery.isFetching, boardQuery.isPlaceholderData],
+    [lanesState, filterState, trimmedSearch, boardQuery.isFetching, boardQuery.isPlaceholderData, boardQuery.refetch],
   );
 
   const manualRefresh = useCallback(async () => {

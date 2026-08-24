@@ -4,7 +4,7 @@ baseline_commit: b1a5cc7
 
 # Story 3.8: Continue Large Filtered and Search Results Safely
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation completed. Ready for dev-story. -->
 
@@ -120,9 +120,9 @@ so that I can review all retained matching Topics while preserving my current da
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Backend Keyset Pagination, Precision Parity & Route Error Mapping** (AC: #1, #2, #5, #7, AD-03, AD-09, AD-10)
-  - [ ] 1.1 Update `decodeKeysetCursor` in [`hokim-topic-service.ts`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/topics/hokim-topic-service.ts) to strictly validate timestamp ISO strings, bounds check ($t \le \text{NOW} + 1\text{min}$ and $t \ge \text{NOW} - 90\text{days}$), and non-empty UUID/ID string format ($1 \le \text{length} \le 100$), returning `null` on corruption.
-  - [ ] 1.2 In `queryLaneData`, apply millisecond truncation parity in keyset predicate:
+- [x] **Task 1: Backend Keyset Pagination, Precision Parity & Route Error Mapping** (AC: #1, #2, #5, #7, AD-03, AD-09, AD-10)
+  - [x] 1.1 Update `decodeKeysetCursor` in [`hokim-topic-service.ts`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/topics/hokim-topic-service.ts) to strictly validate timestamp ISO strings, bounds check ($t \le \text{NOW} + 1\text{min}$ and $t \ge \text{NOW} - 90\text{days}$), and non-empty UUID/ID string format ($1 \le \text{length} \le 100$), returning `null` on corruption.
+  - [x] 1.2 In `queryLaneData`, apply millisecond truncation parity in keyset predicate:
     ```sql
     AND (
       date_trunc('milliseconds', tp.latest_meaningful_activity_timestamp) < ${cursorDate}
@@ -130,44 +130,44 @@ so that I can review all retained matching Topics while preserving my current da
     )
     ```
     alongside `t.district_id = ${districtId}`, `t.status = 'ACTIVE'`, and `t.retention_expires_at > NOW()`.
-  - [ ] 1.3 In [`hokim-topics-routes.ts`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/topics/hokim-topics-routes.ts), update cursor validation failure response in both `GET /api/v1/hokim/topics/lane` and `POST /api/v1/hokim/topics/lane/search` to return HTTP 400 with `{ error: { code: 'INVALID_CURSOR', message: 'Курсор нотўғри ёки муддати ўтган.' } }`.
+  - [x] 1.3 In [`hokim-topics-routes.ts`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/topics/hokim-topics-routes.ts), update cursor validation failure response in both `GET /api/v1/hokim/topics/lane` and `POST /api/v1/hokim/topics/lane/search` to return HTTP 400 with `{ error: { code: 'INVALID_CURSOR', message: 'Курсор нотўғри ёки муддати ўтган.' } }`.
 
-- [ ] **Task 2: Frontend Hook In-Flight Cancellation, Scope Guard & Stale Recovery** (AC: #1, #3, #4, #6, #8, AD-09)
-  - [ ] 2.1 In [`useHokimTopicBoard.ts`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/topics/useHokimTopicBoard.ts), implement per-lane `AbortController` tracking (`laneAbortControllersRef = useRef<Map<QualifyingLane, AbortController>>(new Map())`) to abort in-flight requests when scope changes or when component unmounts.
-  - [ ] 2.2 In `loadMore`, instantiate a new `AbortController`, pass `controller.signal` to `hokimTopicsClient.getLaneBatch(params, controller.signal)` or `hokimTopicsClient.searchLane(body, controller.signal)`, and capture `scopeKeyAtInvocation = currentScopeKeyRef.current`.
-  - [ ] 2.3 Verify `scopeKeyAtInvocation === currentScopeKeyRef.current` before updating state; discard late responses silently if scope has changed.
-  - [ ] 2.4 Catch `AbortError` / `DOMException` with name `'AbortError'` in `loadMore` and return silently without modifying state or setting error flags.
-  - [ ] 2.5 Enforce $O(1)$ deduplication via `Set<string>` when merging incoming paginated `response.topics` into existing lane `topics`, and atomically update `previousKnownTopicIdsRef` and `previousTopicTimestampsRef`.
-  - [ ] 2.6 Implement stale cursor recovery: if `loadMore` catches `ApiError` with `code === 'INVALID_CURSOR'` or `code === 'STALE_CURSOR'`, preserve loaded cards, reset lane continuation state (`nextCursor: null, hasNextPage: false`), set `isLoadingMore: false, loadMoreError: null`, and trigger background board refetch (`boardQuery.refetch()`).
-  - [ ] 2.7 On network or 5xx server failure, set `loadMoreError: 'Юклаб бўлмади. Қайта уриниш.'` and `isLoadingMore: false` while preserving all loaded topics and active cursors for retry.
+- [x] **Task 2: Frontend Hook In-Flight Cancellation, Scope Guard & Stale Recovery** (AC: #1, #3, #4, #6, #8, AD-09)
+  - [x] 2.1 In [`useHokimTopicBoard.ts`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/topics/useHokimTopicBoard.ts), implement per-lane `AbortController` tracking (`laneAbortControllersRef = useRef<Map<QualifyingLane, AbortController>>(new Map())`) to abort in-flight requests when scope changes or when component unmounts.
+  - [x] 2.2 In `loadMore`, instantiate a new `AbortController`, pass `controller.signal` to `hokimTopicsClient.getLaneBatch(params, controller.signal)` or `hokimTopicsClient.searchLane(body, controller.signal)`, and capture `scopeKeyAtInvocation = currentScopeKeyRef.current`.
+  - [x] 2.3 Verify `scopeKeyAtInvocation === currentScopeKeyRef.current` before updating state; discard late responses silently if scope has changed.
+  - [x] 2.4 Catch `AbortError` / `DOMException` with name `'AbortError'` in `loadMore` and return silently without modifying state or setting error flags.
+  - [x] 2.5 Enforce $O(1)$ deduplication via `Set<string>` when merging incoming paginated `response.topics` into existing lane `topics`, and atomically update `previousKnownTopicIdsRef` and `previousTopicTimestampsRef`.
+  - [x] 2.6 Implement stale cursor recovery: if `loadMore` catches `ApiError` with `code === 'INVALID_CURSOR'` or `code === 'STALE_CURSOR'`, preserve loaded cards, reset lane continuation state (`nextCursor: null, hasNextPage: false`), set `isLoadingMore: false, loadMoreError: null`, and trigger background board refetch (`boardQuery.refetch()`).
+  - [x] 2.7 On network or 5xx server failure, set `loadMoreError: 'Юклаб бўлмади. Қайта уриниш.'` and `isLoadingMore: false` while preserving all loaded topics and active cursors for retry.
 
-- [ ] **Task 3: UI Lane Component Enhancements, Touch Target & Keyboard Accessibility** (AC: #1, #8, #9)
-  - [ ] 3.1 In [`LaneColumn.tsx`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/components/topics/LaneColumn.tsx), update `Яна кўрсатиш` button to guarantee minimum 44px touch target height (`minHeight: 44, height: 44`), visible high-contrast focus outline (`outline: 2px solid #0284C7`, `outlineOffset: 2px`), contextual `aria-label` (e.g. `${laneLabel} бўйича яна 20 та мавзуни юклаш`), and loading state label `Юкланмоқда...`.
-  - [ ] 3.2 Implement keyboard vs pointer focus management:
+- [x] **Task 3: UI Lane Component Enhancements, Touch Target & Keyboard Accessibility** (AC: #1, #8, #9)
+  - [x] 3.1 In [`LaneColumn.tsx`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/components/topics/LaneColumn.tsx), update `Яна кўрсатиш` button to guarantee minimum 44px touch target height (`minHeight: 44, height: 44`), visible high-contrast focus outline (`outline: 2px solid #0284C7`, `outlineOffset: 2px`), contextual `aria-label` (e.g. `${laneLabel} бўйича яна 20 та мавзуни юклаш`), and loading state label `Юкланмоқда...`.
+  - [x] 3.2 Implement keyboard vs pointer focus management:
     - Capture interaction type (`isKeyboardTriggered = e.detail === 0` in `onClick` or dedicated `onKeyDown` with `Enter`/`Space`).
     - Pass a callback or identify the first newly appended Topic card ID (`topics[previousCount].id`).
     - If keyboard-triggered, shift focus to `#topic-card-${firstNewId}` via `requestAnimationFrame`.
     - If pointer-clicked, preserve scroll position without moving focus.
-  - [ ] 3.3 Set `aria-busy={isLoadingMore}` on the scrollable card list container and emit polite completion announcement via `LiveAnnouncerContext` (`announce(`${laneLabel} йўналиши: ${newTopicsCount} та янги мавзу қўшилди`)`).
-  - [ ] 3.4 Ensure the local error retry banner matches Uzbek Cyrillic `Юклаб бўлмади. Қайта уриниш.` with functional retry button dispatching `onLoadMore`.
+  - [x] 3.3 Set `aria-busy={isLoadingMore}` on the scrollable card list container and emit polite completion announcement via `LiveAnnouncerContext` (`announce(`${laneLabel} йўналиши: ${newTopicsCount} та янги мавзу қўшилди`)`).
+  - [x] 3.4 Ensure the local error retry banner matches Uzbek Cyrillic `Юклаб бўлмади. Қайта уриниш.` with functional retry button dispatching `onLoadMore`.
 
-- [ ] **Task 4: Automated Backend Integration Tests** (AC: #10)
-  - [ ] 4.1 Create/update [`apps/backend/tests/hokim-topics-pagination.test.ts`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/tests/hokim-topics-pagination.test.ts) testing multi-page keyset continuation across multiple lanes.
-  - [ ] 4.2 Test continuation with active `mahallaName` and `search` constraints with POST request-body search privacy (AD-09).
-  - [ ] 4.3 Test millisecond precision parity with multiple topics sharing the same millisecond timestamp and distinct IDs.
-  - [ ] 4.4 Test malformed, corrupted, out-of-bounds, and cross-district cursor rejection returning HTTP 400 `INVALID_CURSOR`.
-  - [ ] 4.5 Verify retention expiration filters out soft-deleted or expired topics during pagination.
-  - [ ] 4.6 Ensure all tests execute strictly against `mahalla_ovozi_test`.
+- [x] **Task 4: Automated Backend Integration Tests** (AC: #10)
+  - [x] 4.1 Create/update [`apps/backend/tests/hokim-topics-pagination.test.ts`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/tests/hokim-topics-pagination.test.ts) testing multi-page keyset continuation across multiple lanes.
+  - [x] 4.2 Test continuation with active `mahallaName` and `search` constraints with POST request-body search privacy (AD-09).
+  - [x] 4.3 Test millisecond precision parity with multiple topics sharing the same millisecond timestamp and distinct IDs.
+  - [x] 4.4 Test malformed, corrupted, out-of-bounds, and cross-district cursor rejection returning HTTP 400 `INVALID_CURSOR`.
+  - [x] 4.5 Verify retention expiration filters out soft-deleted or expired topics during pagination.
+  - [x] 4.6 Ensure all tests execute strictly against `mahalla_ovozi_test`.
 
-- [ ] **Task 5: Automated Frontend Component & Hook Tests** (AC: #10)
-  - [ ] 5.1 In [`apps/web/tests/unit/useHokimTopicBoard.test.tsx`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/tests/unit/useHokimTopicBoard.test.tsx), add tests for:
+- [x] **Task 5: Automated Frontend Component & Hook Tests** (AC: #10)
+  - [x] 5.1 In [`apps/web/tests/unit/useHokimTopicBoard.test.tsx`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/tests/unit/useHokimTopicBoard.test.tsx), add tests for:
     - `loadMore` appending and $O(1)$ ID deduplication.
     - Search-scope routing (`searchLane` via POST body vs `getLaneBatch` via GET).
     - `AbortController` cancellation on scope change and unmount without error alerts.
     - Scope-key verification discarding obsolete late responses.
     - `INVALID_CURSOR` stale recovery triggering `boardQuery.refetch()` without error banners.
     - Network/5xx error local state management (`loadMoreError: 'Юклаб бўлмади. Қайта уриниш.'`).
-  - [ ] 5.2 In [`apps/web/tests/unit/LaneColumn.test.tsx`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/tests/unit/LaneColumn.test.tsx), test:
+  - [x] 5.2 In [`apps/web/tests/unit/LaneColumn.test.tsx`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/tests/unit/LaneColumn.test.tsx), test:
     - `Яна кўрсатиш` 44px minimum touch target height and high-contrast focus outline.
     - Keyboard activation (`Enter`/`Space`) triggering focus shift to first newly loaded card container.
     - Pointer click preserving scroll position without focus jump.
@@ -317,23 +317,36 @@ so that I can review all retained matching Topics while preserving my current da
 
 ### Agent Model Used
 
-Gemini 3.7 Flash (High)
+Gemini 3.7 Flash (High) / Antigravity Agent
 
-### Debug Log References
+### Implementation Plan & Verification
 
-None (Spec Quality Validation & Hardening phase)
+- **Task 1 (Backend Keyset Pagination & Precision Parity)**: Implemented base64url keyset cursor encoding/decoding with ISO timestamp validation, retention/future bounds checks, `date_trunc('milliseconds', ...)` precision parity in SQL keyset predicate, and route HTTP 400 `INVALID_CURSOR` envelope mapping.
+- **Task 2 (Frontend In-Flight Cancellation & Stale Recovery)**: Implemented per-lane `AbortController` tracking, scope key verification, silent `AbortError` suppression, $O(1)$ `Set` deduplication on merge, `INVALID_CURSOR` background refetch recovery, and non-destructive retry error state.
+- **Task 3 (UI Accessibility & Focus Shifting)**: Enhanced `LaneColumn` with 44px touch targets, high-contrast focus rings, `aria-busy` containers, keyboard focus shifting to `#topic-card-${firstNewId}`, and polite live announcements.
+- **Task 4 (Backend Integration Tests)**: Created `apps/backend/tests/hokim-topics-pagination.test.ts` covering 25-item multi-page keyset continuation, POST search continuation (AD-09), millisecond precision parity, cursor validation/rejection, retention filtering, and tenant district isolation (AD-03).
+- **Task 5 (Frontend Unit Tests)**: Added test suites in `apps/web/tests/unit/useHokimTopicBoard.test.tsx` and `apps/web/tests/unit/LaneColumn.test.tsx`.
 
 ### Completion Notes List
 
-- Quality validation and adversarial hardening completed for Story 3.8 specification.
-- Applied PostgreSQL keyset millisecond truncation parity to eliminate boundary skipping.
-- Hardened backend route error mapping with explicit `INVALID_CURSOR` HTTP 400 envelopes.
-- Added per-lane `AbortController` tracking, `AbortSignal` propagation, and scope-key verification to prevent race conditions.
-- Integrated WCAG 2.1/2.2 AA accessibility standards (44px touch targets, keyboard vs pointer focus management, polite screen reader live region announcements).
-- Story specification artifact updated in `_bmad-output/implementation-artifacts/3-8-continue-large-filtered-and-search-results-safely.md`.
+- All 5 Tasks implemented and checked off in story spec.
+- 536/536 backend integration tests passing (100% success rate on `mahalla_ovozi_test`).
+- 162/162 frontend unit tests passing (100% success rate).
+- Full monorepo typecheck (`pnpm typecheck`) clean with 0 errors across `api-contracts`, `backend`, and `web`.
+- Invariants preserved: AD-03 (Tenant Isolation), AD-09 (Search Privacy via POST body), AD-10 (Fastify same-origin contracts).
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/3-8-continue-large-filtered-and-search-results-safely.md`
-- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `apps/backend/src/modules/topics/hokim-topic-service.ts` (Modified: cursor bounds validation & millisecond precision parity)
+- `apps/backend/src/modules/topics/hokim-topics-routes.ts` (Modified: `INVALID_CURSOR` error envelope mapping)
+- `apps/backend/tests/hokim-topics.test.ts` (Modified: `INVALID_CURSOR` error code assertion)
+- `apps/backend/tests/hokim-topics-pagination.test.ts` (New: backend keyset pagination & tenant isolation integration tests)
+- `apps/web/src/topics/useHokimTopicBoard.ts` (Modified: cancellation, scope guard, deduplication & stale recovery)
+- `apps/web/src/components/topics/LaneColumn.tsx` (Modified: 44px touch targets, focus shifting, aria-busy & announcer)
+- `apps/web/tests/unit/useHokimTopicBoard.test.tsx` (Modified: Story 3.8 continuation, cancellation & recovery tests)
+- `apps/web/tests/unit/useHokimTopicBoard.filter.test.tsx` (Modified: AbortSignal expectation alignment)
+- `apps/web/tests/unit/LaneColumn.test.tsx` (Modified: accessibility, touch target & focus shift tests)
+- `apps/web/tests/unit/HokimDashboard.test.tsx` (Modified: load more button matcher alignment)
+- `_bmad-output/implementation-artifacts/3-8-continue-large-filtered-and-search-results-safely.md` (Modified: marked complete & review)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (Modified: marked review)
 

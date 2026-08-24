@@ -197,6 +197,7 @@ describe('Story 3.4: useHokimTopicBoard Filter Synchronization Tests', () => {
         mahallaName: 'Наврўз',
         cursor: 'cursor_w2',
       }),
+      expect.any(AbortSignal),
     );
   });
 });

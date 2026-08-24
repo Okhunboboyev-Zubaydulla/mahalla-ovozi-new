@@ -260,7 +260,7 @@ describe('Hokim Dashboard Component & Integration Tests (Story 3.1)', () => {
         </ConfigProvider>,
       );
 
-      const loadMoreBtn = screen.getByRole('button', { name: /Яна кўрсатиш/i });
+      const loadMoreBtn = screen.getByRole('button', { name: /Сув бўйича яна 20 та мавзуни юклаш/i });
       expect(loadMoreBtn).toBeTruthy();
       fireEvent.click(loadMoreBtn);
       expect(handleLoadMore).toHaveBeenCalledTimes(1);

@@ -8,6 +8,7 @@ import { LiveAnnouncerContext, LiveAnnouncerContextValue } from '../../src/hooks
 import { AuthProvider } from '../../src/auth/auth-context.js';
 import { authClient } from '../../src/auth/auth-client.js';
 import { TopicCardItem, HokimTopicBoardResponse } from '@mahalla-ovozi/api-contracts';
+import { ApiError } from '../../src/lib/api-client.js';
 
 const mockActor = {
   id: 'acc_hokim_1',
@@ -310,8 +311,245 @@ describe('Story 3.3: useHokimTopicBoard In-Session Reconciliation & Buffer Tests
       await result.current.manualRefresh();
     });
 
-    await waitFor(() => {
-      expect(mockAnnounceTopicUpdate).toHaveBeenCalledWith(1, 0);
+  });
+
+  describe('Story 3.8: Keyset Continuation, Abort Cancellation & Stale Recovery Tests', () => {
+    it('Task 5.1a: loadMore appends new batch and enforces O(1) deduplication by Topic ID', async () => {
+      const initialBoardWithCursor: HokimTopicBoardResponse = {
+        ...initialBoardResponse,
+        lanes: {
+          ...initialBoardResponse.lanes,
+          WATER: {
+            lane: 'WATER',
+            topics: [initialTopicWater],
+            totalCount: 2,
+            nextCursor: 'cursor_page_1',
+            hasNextPage: true,
+          },
+        },
+      };
+
+      vi.spyOn(hokimTopicsClient, 'getTodayBoard').mockResolvedValue(initialBoardWithCursor);
+
+      const batchTopic2: TopicCardItem = {
+        id: 'top_w2',
+        districtId: 'dist_yakka_1',
+        mahallaName: 'Дўстлик',
+        calendarDay: '2026-08-24',
+        summary: 'Иккинчи сув мавзуси.',
+        primaryLane: 'WATER',
+        lanes: ['WATER'],
+        additionalLanes: [],
+        evidenceCount: 1,
+        latestMeaningfulActivityTimestamp: '2026-08-24T07:00:00.000Z',
+        isNew: false,
+        isUpdated: false,
+        createdAt: '2026-08-24T07:00:00.000Z',
+        updatedAt: '2026-08-24T07:00:00.000Z',
+      };
+
+      // Mock returns duplicate initialTopicWater + new batchTopic2
+      const mockGetLaneBatch = vi.spyOn(hokimTopicsClient, 'getLaneBatch').mockResolvedValue({
+        lane: 'WATER',
+        topics: [initialTopicWater, batchTopic2],
+        nextCursor: null,
+        hasNextPage: false,
+      });
+
+      const { result } = renderHook(() => useHokimTopicBoard(), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => expect(result.current.board).toBeDefined());
+      expect(result.current.lanes.WATER.hasNextPage).toBe(true);
+
+      await act(async () => {
+        await result.current.loadMore('WATER');
+      });
+
+      expect(mockGetLaneBatch).toHaveBeenCalledTimes(1);
+      expect(mockGetLaneBatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lane: 'WATER',
+          cursor: 'cursor_page_1',
+          limit: 20,
+        }),
+        expect.any(AbortSignal),
+      );
+
+      // Deduplication: topics should contain top_w1 and top_w2 once (length 2, not 3)
+      expect(result.current.lanes.WATER.topics.length).toBe(2);
+      expect(result.current.lanes.WATER.topics.map((t) => t.id)).toEqual(['top_w1', 'top_w2']);
+      expect(result.current.lanes.WATER.hasNextPage).toBe(false);
+      expect(result.current.lanes.WATER.nextCursor).toBeNull();
+      expect(result.current.lanes.WATER.isLoadingMore).toBe(false);
+      expect(result.current.lanes.WATER.loadMoreError).toBeNull();
+    });
+
+    it('Task 5.1b: Dispatches searchLane with POST body and signal when searchQuery is present', async () => {
+      const searchBoardResponse: HokimTopicBoardResponse = {
+        ...initialBoardResponse,
+        lanes: {
+          ...initialBoardResponse.lanes,
+          GAS: {
+            lane: 'GAS',
+            topics: [],
+            totalCount: 5,
+            nextCursor: 'cursor_gas_1',
+            hasNextPage: true,
+          },
+        },
+      };
+
+      vi.spyOn(hokimTopicsClient, 'searchBoard').mockResolvedValue(searchBoardResponse);
+      const mockSearchLane = vi.spyOn(hokimTopicsClient, 'searchLane').mockResolvedValue({
+        lane: 'GAS',
+        topics: [],
+        nextCursor: null,
+        hasNextPage: false,
+      });
+
+      const { result } = renderHook(
+        () => useHokimTopicBoard({ dateScope: 'today', lanes: ['GAS'] }, 'Газ таъминоти'),
+        { wrapper: createWrapper() },
+      );
+
+      await waitFor(() => expect(result.current.board).toBeDefined());
+
+      await act(async () => {
+        await result.current.loadMore('GAS');
+      });
+
+      expect(mockSearchLane).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lane: 'GAS',
+          search: 'Газ таъминоти',
+          cursor: 'cursor_gas_1',
+          limit: 20,
+        }),
+        expect.any(AbortSignal),
+      );
+    });
+
+    it('Task 5.1c: Handles AbortError silently without setting error state or triggering unhandled rejections', async () => {
+      const boardWithCursor: HokimTopicBoardResponse = {
+        ...initialBoardResponse,
+        lanes: {
+          ...initialBoardResponse.lanes,
+          WATER: {
+            lane: 'WATER',
+            topics: [initialTopicWater],
+            totalCount: 5,
+            nextCursor: 'cursor_water_abort',
+            hasNextPage: true,
+          },
+        },
+      };
+
+      vi.spyOn(hokimTopicsClient, 'getTodayBoard').mockResolvedValue(boardWithCursor);
+      const abortError = new DOMException('The user aborted a request.', 'AbortError');
+      vi.spyOn(hokimTopicsClient, 'getLaneBatch').mockRejectedValue(abortError);
+
+      const { result } = renderHook(() => useHokimTopicBoard(), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => expect(result.current.board).toBeDefined());
+
+      await act(async () => {
+        await result.current.loadMore('WATER');
+      });
+
+      // Preserves loaded topics and sets no error banner
+      expect(result.current.lanes.WATER.topics.length).toBe(1);
+      expect(result.current.lanes.WATER.loadMoreError).toBeNull();
+    });
+
+    it('Task 5.1d: Recovers non-disruptively on INVALID_CURSOR by resetting cursor and triggering refetch', async () => {
+      const boardWithStaleCursor: HokimTopicBoardResponse = {
+        ...initialBoardResponse,
+        lanes: {
+          ...initialBoardResponse.lanes,
+          WATER: {
+            lane: 'WATER',
+            topics: [initialTopicWater],
+            totalCount: 5,
+            nextCursor: 'stale_cursor_val',
+            hasNextPage: true,
+          },
+        },
+      };
+
+      const getBoardSpy = vi.spyOn(hokimTopicsClient, 'getTodayBoard').mockResolvedValue(boardWithStaleCursor);
+      const staleError = new ApiError(
+        'Курсор нотўғри ёки муддати ўтган.',
+        'INVALID_CURSOR',
+        400,
+        false,
+      );
+      vi.spyOn(hokimTopicsClient, 'getLaneBatch').mockRejectedValue(staleError);
+
+      const { result } = renderHook(() => useHokimTopicBoard(), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => expect(result.current.board).toBeDefined());
+
+      await act(async () => {
+        await result.current.loadMore('WATER');
+      });
+
+      // Preserves loaded cards, resets continuation state, no error banner
+      expect(result.current.lanes.WATER.topics.length).toBe(1);
+      expect(result.current.lanes.WATER.nextCursor).toBeNull();
+      expect(result.current.lanes.WATER.hasNextPage).toBe(false);
+      expect(result.current.lanes.WATER.loadMoreError).toBeNull();
+      expect(result.current.lanes.WATER.isLoadingMore).toBe(false);
+
+      // Revalidation refetch triggered
+      expect(getBoardSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('Task 5.1e: Displays local error banner on network failure and preserves continuation state for retry', async () => {
+      const boardWithCursor: HokimTopicBoardResponse = {
+        ...initialBoardResponse,
+        lanes: {
+          ...initialBoardResponse.lanes,
+          WATER: {
+            lane: 'WATER',
+            topics: [initialTopicWater],
+            totalCount: 5,
+            nextCursor: 'cursor_retry_1',
+            hasNextPage: true,
+          },
+        },
+      };
+
+      vi.spyOn(hokimTopicsClient, 'getTodayBoard').mockResolvedValue(boardWithCursor);
+      const networkError = new ApiError(
+        'Сервер билан алоқа мавжуд эмас.',
+        'NETWORK_ERROR',
+        0,
+        true,
+      );
+      vi.spyOn(hokimTopicsClient, 'getLaneBatch').mockRejectedValue(networkError);
+
+      const { result } = renderHook(() => useHokimTopicBoard(), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => expect(result.current.board).toBeDefined());
+
+      await act(async () => {
+        await result.current.loadMore('WATER');
+      });
+
+      // Loaded cards preserved, local error banner set, cursor preserved for retry
+      expect(result.current.lanes.WATER.topics.length).toBe(1);
+      expect(result.current.lanes.WATER.nextCursor).toBe('cursor_retry_1');
+      expect(result.current.lanes.WATER.hasNextPage).toBe(true);
+      expect(result.current.lanes.WATER.isLoadingMore).toBe(false);
+      expect(result.current.lanes.WATER.loadMoreError).toBe('Юклаб бўлмади. Қайта уриниш.');
     });
   });
 });

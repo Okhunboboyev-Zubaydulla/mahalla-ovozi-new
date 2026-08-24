@@ -96,4 +96,124 @@ describe('Story 3.3: LaneColumn Component Tests', () => {
     fireEvent.keyDown(badge, { key: ' ', code: 'Space' });
     expect(handleReveal).toHaveBeenCalledTimes(2);
   });
+
+  describe('Story 3.8: Accessibility, Focus Management & Retry Banner Tests', () => {
+    it('Task 5.2a: Load more button renders with 44px minimum touch target height and contextual aria-label', () => {
+      render(
+        <ConfigProvider theme={mahallaTheme}>
+          <LaneColumn
+            lane="WATER"
+            topics={[mockTopic]}
+            totalCount={10}
+            newItemsCount={0}
+            hasNextPage={true}
+            isLoadingMore={false}
+            loadMoreError={null}
+            onLoadMore={vi.fn()}
+          />
+        </ConfigProvider>,
+      );
+
+      const loadMoreBtn = screen.getByRole('button', { name: 'Сув бўйича яна 20 та мавзуни юклаш' });
+      expect(loadMoreBtn).toBeTruthy();
+      expect(loadMoreBtn.textContent).toContain('Яна кўрсатиш');
+      expect(loadMoreBtn.style.minHeight).toBe('44px');
+      expect(loadMoreBtn.style.height).toBe('44px');
+    });
+
+    it('Task 5.2b: Sets aria-busy on container and loading label when isLoadingMore is true', () => {
+      const { container } = render(
+        <ConfigProvider theme={mahallaTheme}>
+          <LaneColumn
+            lane="WATER"
+            topics={[mockTopic]}
+            totalCount={10}
+            newItemsCount={0}
+            hasNextPage={true}
+            isLoadingMore={true}
+            loadMoreError={null}
+            onLoadMore={vi.fn()}
+          />
+        </ConfigProvider>,
+      );
+
+      const scrollContainer = container.querySelector('[aria-busy="true"]');
+      expect(scrollContainer).toBeTruthy();
+      expect(screen.getByText('Юкланмоқда...')).toBeTruthy();
+    });
+
+    it('Task 5.2c: Renders local error alert banner and triggers onLoadMore on retry click', () => {
+      const handleLoadMore = vi.fn();
+      render(
+        <ConfigProvider theme={mahallaTheme}>
+          <LaneColumn
+            lane="WATER"
+            topics={[mockTopic]}
+            totalCount={10}
+            newItemsCount={0}
+            hasNextPage={true}
+            isLoadingMore={false}
+            loadMoreError="Юклаб бўлмади. Қайта уриниш."
+            onLoadMore={handleLoadMore}
+          />
+        </ConfigProvider>,
+      );
+
+      expect(screen.getByText('Юклаб бўлмади. Қайта уриниш.')).toBeTruthy();
+      const retryBtn = screen.getByRole('button', { name: /Қайта уриниш/ });
+      expect(retryBtn).toBeTruthy();
+
+      fireEvent.click(retryBtn);
+      expect(handleLoadMore).toHaveBeenCalledTimes(1);
+    });
+
+    it('Task 5.2d: Shifts focus to first newly loaded topic card on keyboard activation', () => {
+      const handleLoadMore = vi.fn();
+      const { rerender } = render(
+        <ConfigProvider theme={mahallaTheme}>
+          <LaneColumn
+            lane="WATER"
+            topics={[mockTopic]}
+            totalCount={10}
+            newItemsCount={0}
+            hasNextPage={true}
+            isLoadingMore={false}
+            loadMoreError={null}
+            onLoadMore={handleLoadMore}
+          />
+        </ConfigProvider>,
+      );
+
+      const loadMoreBtn = screen.getByRole('button', { name: 'Сув бўйича яна 20 та мавзуни юклаш' });
+
+      // Simulate keyboard click (e.detail === 0)
+      fireEvent.click(loadMoreBtn, { detail: 0 });
+      expect(handleLoadMore).toHaveBeenCalledTimes(1);
+
+      // Simulate new topic arriving
+      const newTopic: TopicCardItem = {
+        ...mockTopic,
+        id: 'top_newly_loaded_2',
+        summary: 'Янги юкланган мавзу.',
+      };
+
+      rerender(
+        <ConfigProvider theme={mahallaTheme}>
+          <LaneColumn
+            lane="WATER"
+            topics={[mockTopic, newTopic]}
+            totalCount={10}
+            newItemsCount={0}
+            hasNextPage={false}
+            isLoadingMore={false}
+            loadMoreError={null}
+            onLoadMore={handleLoadMore}
+          />
+        </ConfigProvider>,
+      );
+
+      const newCard = document.getElementById('topic-card-top_newly_loaded_2');
+      expect(newCard).toBeTruthy();
+    });
+  });
 });

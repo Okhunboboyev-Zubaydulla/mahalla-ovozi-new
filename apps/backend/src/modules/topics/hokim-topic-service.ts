@@ -134,10 +134,20 @@ export function decodeKeysetCursor(cursor: string): KeysetCursorPayload | null {
     if (
       parsed &&
       typeof parsed.t === 'string' &&
-      !Number.isNaN(new Date(parsed.t).getTime()) &&
       typeof parsed.id === 'string' &&
-      parsed.id.length > 0
+      parsed.id.length > 0 &&
+      parsed.id.length <= 100
     ) {
+      const time = new Date(parsed.t).getTime();
+      if (Number.isNaN(time)) return null;
+
+      const now = Date.now();
+      const ninetyDaysAgo = now - 90 * 86400 * 1000;
+      const oneMinuteInFuture = now + 60 * 1000;
+      if (time < ninetyDaysAgo || time > oneMinuteInFuture) {
+        return null;
+      }
+
       return { t: parsed.t, id: parsed.id };
     }
     return null;
@@ -435,8 +445,8 @@ export class HokimTopicService {
       if (decoded) {
         const cursorDate = new Date(decoded.t);
         cursorPredicate = sql`AND (
-          tp.latest_meaningful_activity_timestamp < ${cursorDate}
-          OR (tp.latest_meaningful_activity_timestamp = ${cursorDate} AND t.id < ${decoded.id})
+          date_trunc('milliseconds', tp.latest_meaningful_activity_timestamp) < ${cursorDate}
+          OR (date_trunc('milliseconds', tp.latest_meaningful_activity_timestamp) = ${cursorDate} AND t.id < ${decoded.id})
         )`;
       }
     }

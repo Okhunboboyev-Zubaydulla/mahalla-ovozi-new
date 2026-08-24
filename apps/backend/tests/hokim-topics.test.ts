@@ -555,7 +555,7 @@ describe('Story 3.1: Hokim Topic Board & Keyset Pagination Integration Tests', (
       expect(body.error.code).toBe('VALIDATION_ERROR');
     });
 
-    it('rejects malformed or non-date cursor on GET /lane with 400 VALIDATION_ERROR', async () => {
+    it('rejects malformed or non-date cursor on GET /lane with 400 INVALID_CURSOR', async () => {
       const invalidCursor = Buffer.from(JSON.stringify({ t: 'not-a-date', id: 'top_1' })).toString('base64url');
       const res = await server.inject({
         method: 'GET',
@@ -567,7 +567,7 @@ describe('Story 3.1: Hokim Topic Board & Keyset Pagination Integration Tests', (
       });
       expect(res.statusCode).toBe(400);
       const body = JSON.parse(res.body);
-      expect(body.error.code).toBe('VALIDATION_ERROR');
+      expect(body.error.code).toBe('INVALID_CURSOR');
       expect(body.error.message).toBe('Курсор нотўғри ёки муддати ўтган.');
     });
   });

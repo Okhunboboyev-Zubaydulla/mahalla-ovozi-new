@@ -129,7 +129,7 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         if (cursor && !decodeKeysetCursor(cursor)) {
           return reply.status(400).send({
             error: {
-              code: 'VALIDATION_ERROR',
+              code: 'INVALID_CURSOR',
               message: 'Курсор нотўғри ёки муддати ўтган.',
             },
           });
@@ -351,7 +351,7 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         if (cursor && !decodeKeysetCursor(cursor)) {
           return reply.status(400).send({
             error: {
-              code: 'VALIDATION_ERROR',
+              code: 'INVALID_CURSOR',
               message: 'Курсор нотўғри ёки муддати ўтган.',
             },
           });
