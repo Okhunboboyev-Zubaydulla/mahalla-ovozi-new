@@ -57,6 +57,8 @@ const mockBoardResponse: HokimTopicBoardResponse = {
   calendarDay: '2026-08-23',
   visitBaselineTimestamp: '2026-08-23T08:00:00.000Z',
   currentVisitTimestamp: '2026-08-23T10:30:00.000Z',
+  serverEvaluatedAt: '2026-08-23T10:30:00.000Z',
+  hasProcessingDelay: false,
   lanes: {
     HOKIM_RELATED: {
       lane: 'HOKIM_RELATED',
@@ -202,11 +204,11 @@ describe('Hokim Dashboard Component & Integration Tests (Story 3.1)', () => {
         <ConfigProvider theme={mahallaTheme}>
           <FiveLaneBoard
             lanes={{
-              HOKIM_RELATED: { lane: 'HOKIM_RELATED', topics: [mockTopic], totalCount: 1, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              WATER: { lane: 'WATER', topics: [mockTopic], totalCount: 1, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              ELECTRICITY: { lane: 'ELECTRICITY', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              GAS: { lane: 'GAS', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              WASTE: { lane: 'WASTE', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              HOKIM_RELATED: { lane: 'HOKIM_RELATED', topics: [mockTopic], bufferedNewTopics: [], newItemsCount: 0, totalCount: 1, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              WATER: { lane: 'WATER', topics: [mockTopic], bufferedNewTopics: [], newItemsCount: 0, totalCount: 1, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              ELECTRICITY: { lane: 'ELECTRICITY', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              GAS: { lane: 'GAS', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              WASTE: { lane: 'WASTE', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
             }}
             onLoadMore={vi.fn()}
           />
@@ -225,11 +227,11 @@ describe('Hokim Dashboard Component & Integration Tests (Story 3.1)', () => {
         <ConfigProvider theme={mahallaTheme}>
           <FiveLaneBoard
             lanes={{
-              HOKIM_RELATED: { lane: 'HOKIM_RELATED', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              WATER: { lane: 'WATER', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              ELECTRICITY: { lane: 'ELECTRICITY', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              GAS: { lane: 'GAS', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              WASTE: { lane: 'WASTE', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              HOKIM_RELATED: { lane: 'HOKIM_RELATED', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              WATER: { lane: 'WATER', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              ELECTRICITY: { lane: 'ELECTRICITY', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              GAS: { lane: 'GAS', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              WASTE: { lane: 'WASTE', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
             }}
             onLoadMore={vi.fn()}
           />
@@ -301,6 +303,34 @@ describe('Hokim Dashboard Component & Integration Tests (Story 3.1)', () => {
       // Verify topic summary is rendered in both HOKIM_RELATED and WATER lanes
       const summaries = screen.getAllByText('Сув босими пасайиши кузатилмоқда.');
       expect(summaries.length).toBe(2);
+    });
+
+    it('renders stale error banner when background refresh fails but retains board (AC 8)', async () => {
+      let shouldFail = false;
+      vi.spyOn(hokimTopicsClient, 'getTodayBoard').mockImplementation(async () => {
+        if (shouldFail) {
+          throw new Error('Network timeout during refresh');
+        }
+        return mockBoardResponse;
+      });
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Яккасарой тумани')).toBeTruthy();
+      });
+
+      // Trigger background refresh failure
+      shouldFail = true;
+      const refreshBtn = screen.getByRole('button', { name: 'Маълумотларни янгилаш' });
+      fireEvent.click(refreshBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Янги маълумотларни юклаб бўлмади/)).toBeTruthy();
+      });
+
+      // Board remains mounted and visible
+      expect(screen.getAllByText('Сув босими пасайиши кузатилмоқда.').length).toBe(2);
     });
   });
 });

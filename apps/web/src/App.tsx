@@ -18,6 +18,7 @@ import { AiOperationsPage } from './pages/placeholders/AiOperationsPage.js';
 import { AuditHistoryPage } from './pages/placeholders/AuditHistoryPage.js';
 import { HokimDashboardPage } from './pages/HokimDashboardPage.js';
 import { TopicEvidencePage } from './pages/TopicEvidencePage.js';
+import { LiveAnnouncerProvider } from './components/topics/LiveRegionAnnouncer.js';
 import { AppErrorBoundary } from './components/AppErrorBoundary.js';
 import { useAuth } from './auth/auth-context.js';
 
@@ -46,8 +47,9 @@ export function App() {
           <AuthProvider>
             {/* P4-E: DistrictProvider inside AuthProvider & QueryClientProvider */}
             <DistrictProvider>
-              <BrowserRouter>
-                <Routes>
+              <LiveAnnouncerProvider>
+                <BrowserRouter>
+                  <Routes>
                   <Route path="/sign-in" element={<SignInPage />} />
                   <Route
                     path="/first-login-password-change"
@@ -90,11 +92,12 @@ export function App() {
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </BrowserRouter>
-            </DistrictProvider>
-          </AuthProvider>
-        </ConfigProvider>
-      </QueryClientProvider>
-    </AppErrorBoundary>
+            </LiveAnnouncerProvider>
+          </DistrictProvider>
+        </AuthProvider>
+      </ConfigProvider>
+    </QueryClientProvider>
+  </AppErrorBoundary>
   );
 }
 

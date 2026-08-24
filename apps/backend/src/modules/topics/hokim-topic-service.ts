@@ -71,11 +71,13 @@ export class HokimTopicService {
 
   /**
    * Retrieves today's 5-lane unified board for the authenticated Hokim's district,
-   * capturing a new visit timestamp and evaluating freshness against the preceding visit baseline.
+   * evaluating freshness against the baseline timestamp (or preceding visit) and
+   * returning server-backed evaluation time and processing delay status.
    */
   async getTodayBoard(
     actorContext: { id: string; districtId: string; role: string },
     calendarDayOverride?: string,
+    baselineTimestampOverride?: string,
   ): Promise<HokimTopicBoardResponse> {
     if (!actorContext.districtId) {
       throw new Error('Ҳоким ҳисоби туманга бириктирилмаган.');
@@ -92,26 +94,37 @@ export class HokimTopicService {
     const calendarDay =
       calendarDayOverride || getTashkentCalendarDay(Math.floor(Date.now() / 1000));
 
-    // Capture preceding visit boundary
-    const prevVisit = await this.db.query.userDashboardVisits.findFirst({
-      where: and(
-        eq(userDashboardVisits.userId, actorContext.id),
-        eq(userDashboardVisits.districtId, actorContext.districtId),
-      ),
-      orderBy: [desc(userDashboardVisits.visitedAt)],
-    });
-
-    const visitBaselineTimestamp = prevVisit ? prevVisit.visitedAt.toISOString() : null;
     const currentVisitDate = new Date();
+    let visitBaselineTimestamp: string | null = null;
 
-    // Record new visit record
-    await this.db.insert(userDashboardVisits).values({
-      id: `vis_${crypto.randomUUID()}`,
-      userId: actorContext.id,
-      districtId: actorContext.districtId,
-      visitedAt: currentVisitDate,
-      createdAt: currentVisitDate,
-    });
+    if (baselineTimestampOverride) {
+      // In-session background / manual refresh: preserve established baseline and skip duplicate visit insertion
+      visitBaselineTimestamp = baselineTimestampOverride;
+    } else {
+      // Initial cold load: capture preceding visit boundary and record new visit record
+      const prevVisit = await this.db.query.userDashboardVisits.findFirst({
+        where: and(
+          eq(userDashboardVisits.userId, actorContext.id),
+          eq(userDashboardVisits.districtId, actorContext.districtId),
+        ),
+        orderBy: [desc(userDashboardVisits.visitedAt)],
+      });
+
+      visitBaselineTimestamp = prevVisit ? prevVisit.visitedAt.toISOString() : null;
+
+      await this.db.insert(userDashboardVisits).values({
+        id: `vis_${crypto.randomUUID()}`,
+        userId: actorContext.id,
+        districtId: actorContext.districtId,
+        visitedAt: currentVisitDate,
+        createdAt: currentVisitDate,
+      });
+    }
+
+    const hasProcessingDelay = await this.checkProcessingDelay(
+      actorContext.districtId,
+      calendarDay,
+    );
 
     // Query 5 canonical lanes in parallel
     const laneResults = await Promise.all(
@@ -153,8 +166,75 @@ export class HokimTopicService {
       calendarDay,
       visitBaselineTimestamp,
       currentVisitTimestamp: currentVisitDate.toISOString(),
+      serverEvaluatedAt: currentVisitDate.toISOString(),
+      hasProcessingDelay,
       lanes: lanesRecord,
     };
+  }
+
+  /**
+   * Checks if unprocessed intake records or active processing jobs older than 30s indicate a processing delay.
+   */
+  async checkProcessingDelay(districtId: string, calendarDay: string): Promise<boolean> {
+    try {
+      // 1. Check pgboss active/queued jobs older than 30s for this district
+      const bossDelay = await this.db.execute(sql`
+        SELECT 1 FROM pgboss.job
+        WHERE name IN (
+          'telegram-content-qualification',
+          'telegram-semantic-relevance',
+          'telegram-topic-assignment',
+          'telegram-topic-projection'
+        )
+        AND state IN ('created', 'retry', 'active')
+        AND (data->>'districtId' = ${districtId})
+        AND createdon < NOW() - INTERVAL '30 seconds'
+        LIMIT 1;
+      `);
+      if (bossDelay.rows && bossDelay.rows.length > 0) {
+        return true;
+      }
+    } catch {
+      // pgboss table might not exist in certain test setups or schemas
+    }
+
+    try {
+      // 2. Check unprocessed intake records older than 30s
+      const intakeDelay = await this.db.execute(sql`
+        SELECT 1 FROM telegram_intake_records tir
+        WHERE tir.district_id = ${districtId}
+          AND tir.calendar_day = ${calendarDay}
+          AND tir.created_at < NOW() - INTERVAL '30 seconds'
+          AND NOT EXISTS (
+            SELECT 1 FROM ai_operations ao 
+            WHERE ao.district_id = tir.district_id 
+              AND ao.target_id = tir.id
+          )
+        LIMIT 1;
+      `);
+      if (intakeDelay.rows && intakeDelay.rows.length > 0) {
+        return true;
+      }
+
+      // 3. Check active topics without completed projection or with outdated projection older than 30s
+      const projectionDelay = await this.db.execute(sql`
+        SELECT 1 FROM topics t
+        LEFT JOIN topic_projections tp ON tp.topic_id = t.id
+        WHERE t.district_id = ${districtId}
+          AND t.calendar_day = ${calendarDay}
+          AND t.status = 'ACTIVE'
+          AND (tp.id IS NULL OR tp.updated_at < t.updated_at - INTERVAL '30 seconds')
+          AND t.created_at < NOW() - INTERVAL '30 seconds'
+        LIMIT 1;
+      `);
+      if (projectionDelay.rows && projectionDelay.rows.length > 0) {
+        return true;
+      }
+    } catch {
+      // Fallback safely to false if query fails
+    }
+
+    return false;
   }
 
   /**

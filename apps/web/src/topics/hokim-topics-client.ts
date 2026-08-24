@@ -11,10 +11,20 @@ import {
 import { request } from '../lib/api-client.js';
 
 export const hokimTopicsClient = {
-  getTodayBoard(calendarDay?: string): Promise<HokimTopicBoardResponse> {
+  getTodayBoard(
+    params?: { calendarDay?: string; baselineTimestamp?: string } | string,
+    signal?: AbortSignal,
+  ): Promise<HokimTopicBoardResponse> {
     const searchParams = new URLSearchParams();
-    if (calendarDay) {
-      searchParams.set('calendarDay', calendarDay);
+    if (typeof params === 'string') {
+      searchParams.set('calendarDay', params);
+    } else if (params) {
+      if (params.calendarDay) {
+        searchParams.set('calendarDay', params.calendarDay);
+      }
+      if (params.baselineTimestamp) {
+        searchParams.set('baselineTimestamp', params.baselineTimestamp);
+      }
     }
     const queryString = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
@@ -22,12 +32,13 @@ export const hokimTopicsClient = {
       `/api/v1/hokim/topics/board${queryString}`,
       {
         method: 'GET',
+        signal,
       },
       HokimTopicBoardResponseSchema,
     );
   },
 
-  getLaneBatch(params: HokimLaneQuery): Promise<HokimLaneResponse> {
+  getLaneBatch(params: HokimLaneQuery, signal?: AbortSignal): Promise<HokimLaneResponse> {
     const searchParams = new URLSearchParams();
     searchParams.set('lane', params.lane);
     if (params.calendarDay) {
@@ -47,6 +58,7 @@ export const hokimTopicsClient = {
       `/api/v1/hokim/topics/lane?${searchParams.toString()}`,
       {
         method: 'GET',
+        signal,
       },
       HokimLaneResponseSchema,
     );

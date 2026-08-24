@@ -52,6 +52,7 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
           const board = await topicService.getTodayBoard(
             req.actor as { id: string; districtId: string; role: string },
             parseResult.data.calendarDay,
+            parseResult.data.baselineTimestamp,
           );
           return reply.status(200).send(board);
         } catch (err: unknown) {

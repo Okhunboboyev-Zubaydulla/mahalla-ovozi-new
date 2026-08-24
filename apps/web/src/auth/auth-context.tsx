@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode, useCallback, useMemo } from 'react';
+import { createContext, useContext, ReactNode, useCallback, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ActorContext,
@@ -35,6 +35,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
+
+  // Active offline session expiration checker (AC 8)
+  useEffect(() => {
+    if (!sessionData?.session?.expiresAt) {
+      return;
+    }
+
+    const expiresAt = new Date(sessionData.session.expiresAt).getTime();
+
+    const intervalId = setInterval(() => {
+      if (Date.now() >= expiresAt) {
+        queryClient.clear();
+        queryClient.setQueryData(['auth', 'session'], null);
+        if (typeof window !== 'undefined' && window.location.pathname !== '/sign-in') {
+          window.location.href = '/sign-in';
+        }
+      }
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [sessionData?.session?.expiresAt, queryClient]);
 
   const signInMutation = useMutation({
     mutationFn: (credentials: SignInRequest) => authClient.signIn(credentials),
@@ -77,13 +98,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
+    try {
+      await queryClient.cancelQueries();
+    } catch {
+      // ignore
+    }
+    queryClient.clear();
     queryClient.setQueryData(['auth', 'session'], null);
     try {
       await authClient.signOut();
     } catch {
       // ignore
-    } finally {
-      queryClient.removeQueries({ queryKey: ['auth', 'session'] });
     }
   }, [queryClient]);
 

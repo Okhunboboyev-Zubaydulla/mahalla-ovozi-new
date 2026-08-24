@@ -49,6 +49,7 @@ export type HokimLaneBoardData = z.infer<typeof HokimLaneBoardDataSchema>;
 
 export const HokimTopicBoardQuerySchema = z.object({
   calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  baselineTimestamp: z.string().datetime().optional(),
 });
 export type HokimTopicBoardQuery = z.input<typeof HokimTopicBoardQuerySchema>;
 export type HokimTopicBoardQueryOutput = z.output<typeof HokimTopicBoardQuerySchema>;
@@ -59,6 +60,8 @@ export const HokimTopicBoardResponseSchema = z.object({
   calendarDay: z.string(),
   visitBaselineTimestamp: z.string().datetime().nullable(),
   currentVisitTimestamp: z.string().datetime(),
+  serverEvaluatedAt: z.string().datetime(),
+  hasProcessingDelay: z.boolean().default(false),
   lanes: z.record(QualifyingLaneSchema, HokimLaneBoardDataSchema),
 });
 export type HokimTopicBoardResponse = z.infer<typeof HokimTopicBoardResponseSchema>;

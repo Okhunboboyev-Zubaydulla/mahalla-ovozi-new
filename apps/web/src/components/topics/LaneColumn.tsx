@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Button, Typography, Empty, Alert } from 'antd';
 import { ReloadOutlined, DownOutlined } from '@ant-design/icons';
 import { QualifyingLane, TopicCardItem } from '@mahalla-ovozi/api-contracts';
 import { TopicCard, LANE_LABELS, LANE_STYLES } from './TopicCard.js';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 
 const { Text } = Typography;
 
@@ -10,27 +11,47 @@ export interface LaneColumnProps {
   lane: QualifyingLane;
   topics: TopicCardItem[];
   totalCount: number;
+  newItemsCount?: number;
   hasNextPage: boolean;
   isLoadingMore: boolean;
   loadMoreError: string | null;
   selectedTopicId?: string | null;
   onLoadMore: () => void;
   onSelectTopic?: (topic: TopicCardItem) => void;
+  onRevealNewItems?: () => void;
 }
 
 export const LaneColumn: React.FC<LaneColumnProps> = ({
   lane,
   topics,
   totalCount,
+  newItemsCount = 0,
   hasNextPage,
   isLoadingMore,
   loadMoreError,
   selectedTopicId,
   onLoadMore,
   onSelectTopic,
+  onRevealNewItems,
 }) => {
   const laneLabel = LANE_LABELS[lane];
   const laneStyle = LANE_STYLES[lane];
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleReveal = () => {
+    onRevealNewItems?.();
+    if (scrollContainerRef.current) {
+      if (typeof scrollContainerRef.current.scrollTo === 'function') {
+        scrollContainerRef.current.scrollTo({
+          top: 0,
+          behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        });
+      } else {
+        scrollContainerRef.current.scrollTop = 0;
+      }
+    }
+  };
 
   return (
     <section
@@ -78,6 +99,37 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
           >
             {laneLabel}
           </span>
+
+          {/* Discoverability Badge for Buffered Items (AC 3, AC 9) */}
+          {newItemsCount > 0 && (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label={`${newItemsCount} та янги мавзуни кўрсатиш`}
+              onClick={handleReveal}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleReveal();
+                }
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                backgroundColor: '#FEF3C7',
+                color: '#D97706',
+                border: '1px solid #FDE68A',
+                borderRadius: 12,
+                padding: '2px 8px',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              +{newItemsCount} янги
+            </span>
+          )}
         </div>
 
         <span
@@ -96,6 +148,7 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
 
       {/* Scrollable Topic Cards List */}
       <div
+        ref={scrollContainerRef}
         style={{
           flex: 1,
           overflowY: 'auto',

@@ -4,7 +4,7 @@ baseline_commit: 36cb493
 
 # Story 3.3: Refresh Dashboard Without Disrupting Review
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -102,23 +102,23 @@ so that newer information becomes discoverable while the dashboard remains stabl
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Shared API Contracts, Baseline Query & AbortSignal Propagation** (AC: 1, 3, 6, 9)
-  - [ ] 1.1 In `packages/api-contracts/src/topics.ts`:
+- [x] **Task 1: Shared API Contracts, Baseline Query & AbortSignal Propagation** (AC: 1, 3, 6, 9)
+  - [x] 1.1 In `packages/api-contracts/src/topics.ts`:
     - Extend `HokimTopicBoardQuerySchema` to accept optional `baselineTimestamp: z.string().datetime().optional()`.
     - Update `HokimTopicBoardResponseSchema` to include `serverEvaluatedAt: z.string().datetime()` and `hasProcessingDelay: z.boolean().default(false)`.
-  - [ ] 1.2 In `apps/backend/src/modules/topics/hokim-topics-routes.ts`:
+  - [x] 1.2 In `apps/backend/src/modules/topics/hokim-topics-routes.ts`:
     - Forward `baselineTimestamp` query parameter from `HokimTopicBoardQuerySchema` to `topicService.getTodayBoard`.
-  - [ ] 1.3 In `apps/backend/src/modules/topics/hokim-topic-service.ts`:
+  - [x] 1.3 In `apps/backend/src/modules/topics/hokim-topic-service.ts`:
     - Update `getTodayBoard(actorContext, calendarDayOverride?, baselineTimestampOverride?)`:
       - If `baselineTimestampOverride` is provided: evaluate `isNew` / `isUpdated` against it, reuse it as `visitBaselineTimestamp`, and **skip** inserting a new `userDashboardVisits` row.
       - If `baselineTimestampOverride` is not provided: capture preceding visit, record new visit row in `userDashboardVisits`, and set `visitBaselineTimestamp`.
       - Implement `checkProcessingDelay(districtId, calendarDay)`: check if any `ai_operations` or `telegram_intake_records` for that district older than 30 seconds have not completed projections or if active `pgboss.job` exists in intake/qualification/relevance/projection queues.
       - Return `serverEvaluatedAt: currentVisitDate.toISOString()` and `hasProcessingDelay`.
-  - [ ] 1.4 In `apps/web/src/topics/hokim-topics-client.ts`:
+  - [x] 1.4 In `apps/web/src/topics/hokim-topics-client.ts`:
     - Accept optional `signal?: AbortSignal` across `getTodayBoard`, `getLaneBatch`, and `getTopicEvidence`, forwarding `signal` to `fetch`/axios requests.
 
-- [ ] **Task 2: In-Session Reconciliation, Discoverability Buffer & ARIA Live Announcer** (AC: 1, 2, 3, 4)
-  - [ ] 2.1 In `apps/web/src/topics/useHokimTopicBoard.ts`:
+- [x] **Task 2: In-Session Reconciliation, Discoverability Buffer & ARIA Live Announcer** (AC: 1, 2, 3, 4)
+  - [x] 2.1 In `apps/web/src/topics/useHokimTopicBoard.ts`:
     - Initialize and hold `sessionBaselineTimestamp` from initial load's `currentVisitTimestamp`.
     - Configure `useQuery`:
       - `queryKey: ['hokim-board', districtId, calendarDay, sessionBaselineTimestamp]`
@@ -132,7 +132,7 @@ so that newer information becomes discoverable while the dashboard remains stabl
       - Collect distinct canonical topic IDs across all lanes using `Set<string>`.
       - Compute `totalNewTopicsCount` (distinct IDs newly added across any lane) and `totalUpdatedTopicsCount` (distinct IDs updated but not new).
     - Expose `lastRefreshedAt: string | null`, `isRefreshing: boolean`, `isStale: boolean`, `hasProcessingDelay: boolean`, `newTopicsPerLane: Record<QualifyingLane, number>`, `manualRefresh: () => Promise<void>`, `revealNewTopics: (lane: QualifyingLane) => void`.
-  - [ ] 2.2 In `apps/web/src/components/topics/LiveRegionAnnouncer.tsx` and `apps/web/src/hooks/useLiveAnnouncer.ts`:
+  - [x] 2.2 In `apps/web/src/components/topics/LiveRegionAnnouncer.tsx` and `apps/web/src/hooks/useLiveAnnouncer.ts`:
     - Create `LiveAnnouncerProvider` with a permanently mounted visually-hidden `<div id="dashboard-live-region" role="status" aria-live="polite" aria-atomic="true">`.
     - Implement a 350ms debounced `announce(message)` with brief string reset to guarantee that repeated updates are perceived by screen readers.
     - Wire board update diffs to emit atomic Uzbek Cyrillic announcements:
@@ -141,53 +141,53 @@ so that newer information becomes discoverable while the dashboard remains stabl
       - If only updated: `${updatedCount} та мавзу янгиланди.`
       - If 0 changes: emit nothing (silent).
 
-- [ ] **Task 3: Board Toolbar Freshness Display, Delay Warning & Accessible Refresh Button** (AC: 6, 7, 8, 9)
-  - [ ] 3.1 In `apps/web/src/hooks/usePrefersReducedMotion.ts`:
+- [x] **Task 3: Board Toolbar Freshness Display, Delay Warning & Accessible Refresh Button** (AC: 6, 7, 8, 9)
+  - [x] 3.1 In `apps/web/src/hooks/usePrefersReducedMotion.ts`:
     - Create lightweight hook listening to `window.matchMedia('(prefers-reduced-motion: reduce)')`.
-  - [ ] 3.2 In `apps/web/src/components/topics/BoardToolbar.tsx`:
+  - [x] 3.2 In `apps/web/src/components/topics/BoardToolbar.tsx`:
     - Add `lastRefreshedAt?: string`, `isRefreshing?: boolean`, `isOffline?: boolean`, `hasProcessingDelay?: boolean`, `onRefresh?: () => void` props.
     - Render `Янгилаш` button with `<ReloadOutlined spin={isRefreshing && !prefersReducedMotion} />`, disabled when `isOffline` or `isRefreshing`.
     - Render server-backed freshness label: `Охирги янгиланиш: HH:mm` formatted in Tashkent time (`Asia/Tashkent`).
     - If `hasProcessingDelay` is true, render persistent warning badge/callout: `Янгиланиш давом этмоқда — айрим сўнгги хабарлар ҳали кўринмаслиги мумкин (охирги муваффақиятли янгиланиш: HH:mm).`
     - Adhere strictly to `DESIGN.md` zero box-shadows (`boxShadow: 'none'`), light-only tokens (`#0284C7`, `#64748B`, `#E2E8F0`).
 
-- [ ] **Task 4: Fixed Lane Header Textual New-Item Count & Discoverability Interaction** (AC: 3, 9)
-  - [ ] 4.1 In `apps/web/src/components/topics/LaneColumn.tsx`:
+- [x] **Task 4: Fixed Lane Header Textual New-Item Count & Discoverability Interaction** (AC: 3, 9)
+  - [x] 4.1 In `apps/web/src/components/topics/LaneColumn.tsx`:
     - Add `newItemsCount?: number` and `onRevealNewItems?: () => void` props.
     - If `newItemsCount > 0`, render textual badge in fixed header: `+${newItemsCount} янги` (`backgroundColor: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A'`).
     - Make badge accessible via keyboard (`tabIndex={0}`, `role="button"`, `aria-label="${newItemsCount} та янги мавзуни кўрсатиш"`).
     - When activated (click / Enter / Space), invoke `onRevealNewItems()` to prepend buffered items and scroll smoothly (immediate if `prefersReducedMotion`) to the top of the lane container.
-  - [ ] 4.2 In `apps/web/src/components/topics/FiveLaneBoard.tsx`:
+  - [x] 4.2 In `apps/web/src/components/topics/FiveLaneBoard.tsx`:
     - Pass `newItemsCount` and `onRevealNewItems` from `useHokimTopicBoard` to each `LaneColumn`.
 
-- [ ] **Task 5: Open Topic Evidence Drawer Synchronization & Invalidation Handling** (AC: 5)
-  - [ ] 5.1 In `apps/web/src/topics/useTopicEvidence.ts`:
+- [x] **Task 5: Open Topic Evidence Drawer Synchronization & Invalidation Handling** (AC: 5)
+  - [x] 5.1 In `apps/web/src/topics/useTopicEvidence.ts`:
     - Pass `signal` to `hokimTopicsClient.getTopicEvidence`.
     - When `refetch()` is called during board refresh, revalidate all loaded pages sequentially in background without resetting scroll container.
     - Merge newly arrived evidence items oldest-to-newest by ID and timestamp.
     - Update `topic` metadata and `totalCount` in-place.
     - Intercept 404 `TopicNotFoundError` or 401/403: notify caller to close drawer immediately and purge query cache for that topic.
-  - [ ] 5.2 In `apps/web/src/pages/HokimDashboardPage.tsx`:
+  - [x] 5.2 In `apps/web/src/pages/HokimDashboardPage.tsx`:
     - When background or manual refresh triggers, invoke `useTopicEvidence.refetch()` if `selectedTopicId` is active.
     - If drawer revalidation detects invalidation (404/401/403), close drawer immediately (`setSelectedTopicId(null)`), purge protected query cache, and return focus deterministically via `useFocusFallback.ts`.
 
-- [ ] **Task 6: Network Loss, Offline Warning, Active Session Expiry & Stale Error Dismissal** (AC: 8)
-  - [ ] 6.1 In `apps/web/src/auth/auth-context.tsx`:
+- [x] **Task 6: Network Loss, Offline Warning, Active Session Expiry & Stale Error Dismissal** (AC: 8)
+  - [x] 6.1 In `apps/web/src/auth/auth-context.tsx`:
     - Add active offline session expiration checker interval (every 5 seconds when `navigator.onLine === false`).
     - If `new Date() >= new Date(session.expiresAt)` while offline, immediately clear all protected query cache (`queryClient.clear()`), reset auth state, and redirect to `/sign-in`.
-  - [ ] 6.2 In `apps/web/src/pages/HokimDashboardPage.tsx`:
+  - [x] 6.2 In `apps/web/src/pages/HokimDashboardPage.tsx`:
     - Track online/offline status using window event listeners and `onlineManager`.
     - If `isOffline` is true, render persistent warning banner: `Интернет алоқаси йўқ. Охирги муваффақиятли янгиланиш: ${lastRefreshedTime}`.
     - If background refresh encounters an error while `board` data exists, do **not** unmount the board; render persistent top alert banner: `Янги маълумотларни юклаб бўлмади (охирги муваффақиятли янгиланиш: ${lastRefreshedTime})`.
     - When a subsequent background or manual refresh succeeds, automatically dismiss the stale error banner.
 
-- [ ] **Task 7: Comprehensive Automated Vitest & Integration Test Coverage** (AC: 1-9)
-  - [ ] 7.1 Backend integration tests in `apps/backend/tests/integration/hokim-topics-refresh.test.ts`:
+- [x] **Task 7: Comprehensive Automated Vitest & Integration Test Coverage** (AC: 1-9)
+  - [x] 7.1 Backend integration tests in `apps/backend/tests/integration/hokim-topics-refresh.test.ts`:
     - Test `GET /api/v1/hokim/topics/board` with `baselineTimestamp`: verifies visit record is not duplicated and `isNew`/`isUpdated` flags evaluate correctly against baseline.
     - Test multi-lane canonical topic deduplication across lanes.
     - Test `checkProcessingDelay` correctly flags pending intake/qualification jobs older than 30s.
     - Execute strictly on isolated test database `mahalla_ovozi_test` with transactional cleanup.
-  - [ ] 7.2 Web unit & component tests in `apps/web/src/topics/__tests__/useHokimTopicBoard.test.ts`, `apps/web/src/components/topics/__tests__/BoardToolbar.test.tsx`, `apps/web/src/components/topics/__tests__/LiveRegionAnnouncer.test.tsx`, `apps/web/src/pages/__tests__/HokimDashboardPage.test.tsx`:
+  - [x] 7.2 Web unit & component tests in `apps/web/src/topics/__tests__/useHokimTopicBoard.test.ts`, `apps/web/src/components/topics/__tests__/BoardToolbar.test.tsx`, `apps/web/src/components/topics/__tests__/LiveRegionAnnouncer.test.tsx`, `apps/web/src/pages/__tests__/HokimDashboardPage.test.tsx`:
     - Test in-session reconciliation preserves card positions and loaded pagination pages without layout shifts.
     - Test buffered new topics model and `revealNewTopics` prepending.
     - Test multi-lane distinct canonical topic deduplication for polite announcements.
@@ -195,6 +195,18 @@ so that newer information becomes discoverable while the dashboard remains stabl
     - Test open drawer revalidation merges evidence oldest-to-newest and closes drawer with focus fallback on 404 invalidation.
     - Test offline status displays persistent warning banner, and offline session expiry purges cache and redirects.
     - Test successful refresh dismisses stale error warning banner.
+
+### Review Findings
+- [x] [Review][Patch] Empty placeholder traps user when topics are buffered on empty board [`apps/web/src/components/topics/FiveLaneBoard.tsx:39-43`]
+- [x] [Review][Patch] AntD `<Button loading>` overrides reduced-motion setting [`apps/web/src/components/topics/BoardToolbar.tsx:144`]
+- [x] [Review][Patch] Baseline and known IDs not reset on date/district change [`apps/web/src/topics/useHokimTopicBoard.ts:34-40`]
+- [x] [Review][Patch] Accurately track updated topic IDs from isUpdated flag or timestamp differences [`apps/web/src/topics/useHokimTopicBoard.ts:190-195`]
+- [x] [Review][Patch] Untracked nested reset timer & missing unmount cleanup in live region [`apps/web/src/components/topics/LiveRegionAnnouncer.tsx:28-41`]
+- [x] [Review][Patch] Invalidation effect re-runs on every render due to inline options [`apps/web/src/topics/useTopicEvidence.ts:126-132`]
+- [x] [Review][Patch] Drawer refresh sync effect depends on full evidenceQuery object [`apps/web/src/pages/HokimDashboardPage.tsx:53-61`]
+- [x] [Review][Patch] Discoverability badge hardcodes outline none [`apps/web/src/components/topics/LaneColumn.tsx:128`]
+- [x] [Review][Patch] Explicit sign-out does not clear query cache [`apps/web/src/auth/auth-context.tsx:100-109`]
+- [x] [Review][Patch] Paginated items from loadMore not registered in known refs [`apps/web/src/topics/useHokimTopicBoard.ts:325-348`]
 
 ---
 

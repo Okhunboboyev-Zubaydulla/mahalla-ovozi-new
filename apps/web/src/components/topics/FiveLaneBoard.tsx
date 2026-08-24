@@ -4,6 +4,7 @@ import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { QualifyingLane, TopicCardItem } from '@mahalla-ovozi/api-contracts';
 import { LaneColumn } from './LaneColumn.js';
 import { LaneLocalState } from '../../topics/useHokimTopicBoard.js';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 
 const { Title, Text } = Typography;
 
@@ -20,6 +21,7 @@ export interface FiveLaneBoardProps {
   selectedTopicId?: string | null;
   onLoadMore: (lane: QualifyingLane) => void;
   onSelectTopic?: (topic: TopicCardItem) => void;
+  onRevealNewTopics?: (lane: QualifyingLane) => void;
 }
 
 export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
@@ -27,13 +29,19 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
   selectedTopicId,
   onLoadMore,
   onSelectTopic,
+  onRevealNewTopics,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
-  const totalTopicsCount = Object.values(lanes).reduce(
+  const totalVisibleCount = Object.values(lanes).reduce(
     (sum, l) => sum + (l?.topics?.length || 0),
+    0,
+  );
+  const totalBufferedCount = Object.values(lanes).reduce(
+    (sum, l) => sum + (l?.bufferedNewTopics?.length || 0),
     0,
   );
 
@@ -61,9 +69,6 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
     const el = scrollContainerRef.current;
     if (!el) return;
     const laneWidth = 320; // Approx lane column width + gap
-    const prefersReducedMotion = window.matchMedia(
-      '(prefers-reduced-motion: reduce)',
-    ).matches;
     const behavior: ScrollBehavior = prefersReducedMotion ? 'auto' : 'smooth';
 
     el.scrollBy({
@@ -72,7 +77,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
     });
   };
 
-  if (totalTopicsCount === 0) {
+  if (totalVisibleCount === 0 && totalBufferedCount === 0) {
     return (
       <main
         role="region"
@@ -196,6 +201,8 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
           const laneData = lanes[laneKey] || {
             lane: laneKey,
             topics: [],
+            bufferedNewTopics: [],
+            newItemsCount: 0,
             totalCount: 0,
             nextCursor: null,
             hasNextPage: false,
@@ -209,12 +216,14 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
               lane={laneKey}
               topics={laneData.topics}
               totalCount={laneData.totalCount}
+              newItemsCount={laneData.newItemsCount || 0}
               hasNextPage={laneData.hasNextPage}
               isLoadingMore={laneData.isLoadingMore}
               loadMoreError={laneData.loadMoreError}
               selectedTopicId={selectedTopicId}
               onLoadMore={() => onLoadMore(laneKey)}
               onSelectTopic={onSelectTopic}
+              onRevealNewItems={() => onRevealNewTopics?.(laneKey)}
             />
           );
         })}
