@@ -67,14 +67,15 @@ export const HokimDashboardPage: React.FC = () => {
   const {
     statistics,
     isLoading: isStatsLoading,
+    isFetching: isStatsFetching,
     refetch: refetchStats,
   } = useTopicStatistics(filters, searchQuery);
 
-  // Announce search result count when search query settles (AC 7)
+  // Announce search result count when search query settles (AC 3, AC 7)
   const prevSearchAnnouncedRef = useRef<string>('');
   useEffect(() => {
     const trimmed = searchQuery.trim();
-    if (trimmed && !isFilterTransitioning && statistics !== undefined) {
+    if (trimmed && !isFilterTransitioning && !isStatsLoading && !isStatsFetching && statistics !== undefined) {
       const searchScopeSignature = `${trimmed}:${statistics.totalUniqueTopics}`;
       if (prevSearchAnnouncedRef.current !== searchScopeSignature) {
         prevSearchAnnouncedRef.current = searchScopeSignature;
@@ -83,7 +84,7 @@ export const HokimDashboardPage: React.FC = () => {
     } else if (!trimmed) {
       prevSearchAnnouncedRef.current = '';
     }
-  }, [searchQuery, isFilterTransitioning, statistics, liveAnnouncer]);
+  }, [searchQuery, isFilterTransitioning, isStatsLoading, isStatsFetching, statistics, liveAnnouncer]);
 
   const handleResetAll = useCallback(() => {
     resetFilters();

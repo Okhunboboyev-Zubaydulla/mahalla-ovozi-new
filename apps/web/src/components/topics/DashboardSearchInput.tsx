@@ -26,6 +26,10 @@ export const DashboardSearchInput: React.FC<DashboardSearchInputProps> = ({
 
   // Synchronize local input state if external value changes (e.g., reset)
   useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
     setLocalValue(value);
   }, [value]);
 
@@ -75,6 +79,8 @@ export const DashboardSearchInput: React.FC<DashboardSearchInputProps> = ({
   return (
     <Input
       className={className}
+      type="search"
+      role="searchbox"
       value={localValue}
       onChange={handleChange}
       onPressEnter={handlePressEnter}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useContext, useMemo } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   QualifyingLane,
   TopicCardItem,
@@ -106,7 +106,14 @@ export function useHokimTopicBoard(
       );
     },
     enabled: Boolean(districtId && actor?.role === 'DISTRICT_HOKIM'),
-    placeholderData: keepPreviousData,
+    placeholderData: (previousData, previousQuery) => {
+      if (!previousData || !previousQuery) return undefined;
+      const prevDistrictId = previousQuery.queryKey[1];
+      if (prevDistrictId !== districtId) {
+        return undefined;
+      }
+      return previousData;
+    },
     staleTime: 5 * 60 * 1000,
     networkMode: 'online',
     retry: false,

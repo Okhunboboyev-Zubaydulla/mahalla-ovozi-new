@@ -307,6 +307,19 @@ describe('Story 3.7: Private Lexical Search Integration Tests', () => {
       evidenceText: 'Бошқа тумандаги сув муаммоси',
       userMetadata: { username: 'dist_b_user', firstName: 'Botir', lastName: 'Nazarov' },
     });
+
+    // Topic 5: In District A with NO username (null username) to test null username safety
+    await createTestTopicWithEvidence({
+      id: `top_s5_${crypto.randomUUID().slice(0, 8)}`,
+      districtId: districtAId,
+      mahallaName: 'Наврўз',
+      calendarDay: todayCalendarDay,
+      primaryLane: 'WASTE',
+      lanes: ['WASTE'],
+      summary: 'Чиқиндихона тўлиб кетган ва тозаланмаган',
+      evidenceText: 'Маҳалла кўчасида ахлат тўпланиб қолган',
+      userMetadata: { firstName: 'NoUsernameCitizen' },
+    });
   });
 
   afterAll(async () => {
@@ -423,6 +436,88 @@ describe('Story 3.7: Private Lexical Search Integration Tests', () => {
       expect(json.lanes.GAS.topics.length).toBeGreaterThanOrEqual(1);
       const gasTopic = json.lanes.GAS.topics[0];
       expect(gasTopic.searchMatchBadge).toBe('author');
+    });
+
+    it('strictly excludes phone numbers and non-matching resident identifiers from search (AC 1)', async () => {
+      const res = await server.inject({
+        method: 'POST',
+        url: '/api/v1/hokim/topics/board/search',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+        payload: {
+          search: '+998901234567',
+          dateScope: 'today',
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const json = JSON.parse(res.body);
+      for (const lane of Object.values(json.lanes) as Array<{ topics: unknown[] }>) {
+        expect(lane.topics.length).toBe(0);
+      }
+    });
+
+    it('does not match evidence records with NULL usernames when searching for "@" (AC 1, AC 2)', async () => {
+      // 1. Searching for specific username with '@' matches only the topic with that username
+      const resSpecific = await server.inject({
+        method: 'POST',
+        url: '/api/v1/hokim/topics/board/search',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+        payload: {
+          search: '@toshmatov',
+          dateScope: 'today',
+        },
+      });
+
+      expect(resSpecific.statusCode).toBe(200);
+      const jsonSpecific = JSON.parse(resSpecific.body);
+      expect(jsonSpecific.lanes.GAS.topics.length).toBeGreaterThanOrEqual(1);
+      expect(jsonSpecific.lanes.GAS.topics[0].searchMatchBadge).toBe('author');
+      expect(jsonSpecific.lanes.WASTE.topics.length).toBe(0);
+
+      // 2. Searching for '@' does NOT match Topic 5 (WASTE lane, which has NULL username)
+      const resAt = await server.inject({
+        method: 'POST',
+        url: '/api/v1/hokim/topics/board/search',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+        payload: {
+          search: '@',
+          dateScope: 'today',
+        },
+      });
+
+      expect(resAt.statusCode).toBe(200);
+      const jsonAt = JSON.parse(resAt.body);
+      // Topic 5 (WASTE) has no username, so it must not match '@'
+      expect(jsonAt.lanes.WASTE.topics.length).toBe(0);
+
+      // 3. Searching for a non-existent username with '@' returns 0 matches
+      const resNonExistent = await server.inject({
+        method: 'POST',
+        url: '/api/v1/hokim/topics/board/search',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+        payload: {
+          search: '@nonexistent_citizen_123',
+          dateScope: 'today',
+        },
+      });
+
+      expect(resNonExistent.statusCode).toBe(200);
+      const jsonNonExistent = JSON.parse(resNonExistent.body);
+      for (const lane of Object.values(jsonNonExistent.lanes) as Array<{ topics: unknown[] }>) {
+        expect(lane.topics.length).toBe(0);
+      }
     });
   });
 

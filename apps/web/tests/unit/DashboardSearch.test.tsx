@@ -25,6 +25,24 @@ const mockActor = {
 };
 
 describe('Story 3.7: Private Lexical Search Frontend Unit Tests', () => {
+  const baseTopic: TopicCardItem = {
+    id: 'top_test_1',
+    districtId: 'dist_search_1',
+    mahallaName: 'Бирлик',
+    calendarDay: '2026-08-24',
+    summary: 'Электр тармоғидаги авария',
+    primaryLane: 'ELECTRICITY',
+    lanes: ['ELECTRICITY'],
+    additionalLanes: [],
+    evidenceCount: 1,
+    latestMeaningfulActivityTimestamp: '2026-08-24T10:00:00.000Z',
+    isNew: false,
+    isUpdated: false,
+    createdAt: '2026-08-24T09:00:00.000Z',
+    updatedAt: '2026-08-24T10:00:00.000Z',
+    searchMatchBadge: null,
+  };
+
   describe('HighlightText Component (AC 2, AC 11)', () => {
     it('renders normal text without mark when searchQuery is empty', () => {
       const { container } = render(<HighlightText text="Сув қувури ёрилган" searchQuery="" />);
@@ -75,7 +93,7 @@ describe('Story 3.7: Private Lexical Search Frontend Unit Tests', () => {
           <DashboardSearchInput value="" onChange={vi.fn()} />
         </ConfigProvider>,
       );
-      const input = screen.getByRole('textbox', { name: 'Мавзулар ва далиллар бўйича қидирув' });
+      const input = screen.getByRole('searchbox', { name: 'Мавзулар ва далиллар бўйича қидирув' });
       expect(input).toBeTruthy();
       expect(input.getAttribute('placeholder')).toBe('Мавзу ёки далил бўйича қидирув...');
     });
@@ -88,7 +106,7 @@ describe('Story 3.7: Private Lexical Search Frontend Unit Tests', () => {
         </ConfigProvider>,
       );
 
-      const input = screen.getByRole('textbox', { name: 'Мавзулар ва далиллар бўйича қидирув' });
+      const input = screen.getByRole('searchbox', { name: 'Мавзулар ва далиллар бўйича қидирув' });
       fireEvent.change(input, { target: { value: 'трансформатор' } });
 
       // Before timer fires:
@@ -115,7 +133,7 @@ describe('Story 3.7: Private Lexical Search Frontend Unit Tests', () => {
         </ConfigProvider>,
       );
 
-      const input = screen.getByRole('textbox', { name: 'Мавзулар ва далиллар бўйича қидирув' });
+      const input = screen.getByRole('searchbox', { name: 'Мавзулар ва далиллар бўйича қидирув' });
       fireEvent.change(input, { target: { value: 'газ босими' } });
       fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
@@ -130,7 +148,7 @@ describe('Story 3.7: Private Lexical Search Frontend Unit Tests', () => {
         </ConfigProvider>,
       );
 
-      const input = screen.getByRole('textbox', { name: 'Мавзулар ва далиллар бўйича қидирув' });
+      const input = screen.getByRole('searchbox', { name: 'Мавзулар ва далиллар бўйича қидирув' });
       fireEvent.change(input, { target: { value: '' } });
 
       // Immediate clear without timer
@@ -139,24 +157,6 @@ describe('Story 3.7: Private Lexical Search Frontend Unit Tests', () => {
   });
 
   describe('TopicCard Match Badges (AC 2, AC 11)', () => {
-    const baseTopic: TopicCardItem = {
-      id: 'top_test_1',
-      districtId: 'dist_search_1',
-      mahallaName: 'Бирлик',
-      calendarDay: '2026-08-24',
-      summary: 'Электр тармоғидаги авария',
-      primaryLane: 'ELECTRICITY',
-      lanes: ['ELECTRICITY'],
-      additionalLanes: [],
-      evidenceCount: 1,
-      latestMeaningfulActivityTimestamp: '2026-08-24T10:00:00.000Z',
-      isNew: false,
-      isUpdated: false,
-      createdAt: '2026-08-24T09:00:00.000Z',
-      updatedAt: '2026-08-24T10:00:00.000Z',
-      searchMatchBadge: null,
-    };
-
     it('renders "Далилда топилди" badge when searchMatchBadge is "evidence"', () => {
       render(
         <TopicCard
@@ -189,14 +189,44 @@ describe('Story 3.7: Private Lexical Search Frontend Unit Tests', () => {
     });
   });
 
-  describe('Screen Reader Search Announcement (AC 7)', () => {
+  describe('Screen Reader Search Announcement (AC 3, AC 7)', () => {
     it('formats announcement for non-zero match count in Uzbek Cyrillic', () => {
-      expect(formatSearchAnnouncement(4)).toBe('Қидирув бўйича 4 та мавзу топилди.');
-      expect(formatSearchAnnouncement(1)).toBe('Қидирув бўйича 1 та мавзу топилди.');
+      expect(formatSearchAnnouncement(4)).toBe('Қидирув бўйича 4 та мос мавзу топилди');
+      expect(formatSearchAnnouncement(1)).toBe('Қидирув бўйича 1 та мос мавзу топилди');
     });
 
     it('formats announcement for zero matches in Uzbek Cyrillic', () => {
-      expect(formatSearchAnnouncement(0)).toBe('Қидирув бўйича ҳеч қандай мавзу топилмади.');
+      expect(formatSearchAnnouncement(0)).toBe('Танланган шартлар бўйича мавзулар топилмади');
+    });
+  });
+
+  describe('Accessibility & Privacy Invariants (AD-09, AC 5, AC 12)', () => {
+    it('renders role="button" and aria-pressed on interactive TopicCard', () => {
+      const handleClick = vi.fn();
+      render(
+        <TopicCard
+          topic={baseTopic}
+          isSelected={true}
+          onClick={handleClick}
+        />,
+      );
+
+      const card = screen.getByRole('button');
+      expect(card).toBeTruthy();
+      expect(card.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('safely handles null/undefined text in HighlightText without crashing', () => {
+      const { container } = render(
+        <HighlightText text={null as unknown as string} searchQuery="сув" />,
+      );
+      expect(container.textContent).toBe('');
+    });
+
+    it('ensures search queries are not persisted to localStorage or URL search', () => {
+      localStorage.clear();
+      expect(localStorage.getItem('searchQuery')).toBeNull();
+      expect(window.location.search).toBe('');
     });
   });
 

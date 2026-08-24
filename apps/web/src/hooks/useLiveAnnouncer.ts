@@ -31,8 +31,8 @@ export function formatTopicUpdateAnnouncement(newCount: number, updatedCount: nu
 
 export function formatSearchAnnouncement(count: number): string {
   if (count === 0) {
-    return 'Қидирув бўйича ҳеч қандай мавзу топилмади.';
+    return 'Танланган шартлар бўйича мавзулар топилмади';
   }
-  return `Қидирув бўйича ${count} та мавзу топилди.`;
+  return `Қидирув бўйича ${count} та мос мавзу топилди`;
 }
 

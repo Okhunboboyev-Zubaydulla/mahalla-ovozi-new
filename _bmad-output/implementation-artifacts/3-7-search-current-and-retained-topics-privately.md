@@ -4,7 +4,7 @@ baseline_commit: f795f9a
 
 # Story 3.7: Search Current and Retained Topics Privately
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -204,6 +204,18 @@ so that I can find a situation quickly without sending sensitive search text int
     - Verify search retry and error handling.
   - [x] 8.3 Run full verification: `pnpm --filter @mahalla-ovozi/backend test`, `pnpm --filter @mahalla-ovozi/web test`, and `pnpm typecheck`.
 
+### Review Findings
+
+- [x] [Review][Patch] PostgreSQL null username @-search match & district index pruning [`apps/backend/src/modules/topics/hokim-topic-service.ts:472`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/topics/hokim-topic-service.ts#L472)
+- [x] [Review][Patch] TanStack Query v5 placeholderData district scoping in useHokimTopicBoard [`apps/web/src/topics/useHokimTopicBoard.ts:109`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/topics/useHokimTopicBoard.ts#L109)
+- [x] [Review][Patch] Debounce timer race condition on external value reset [`apps/web/src/components/topics/DashboardSearchInput.tsx:28`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/components/topics/DashboardSearchInput.tsx#L28)
+- [x] [Review][Patch] Stale count announcement guard on concurrent board/statistics fetching [`apps/web/src/pages/HokimDashboardPage.tsx:77`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/pages/HokimDashboardPage.tsx#L77)
+- [x] [Review][Patch] Screen reader announcement phrasing alignment with story specification [`apps/web/src/hooks/useLiveAnnouncer.ts:32`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/hooks/useLiveAnnouncer.ts#L32)
+- [x] [Review][Patch] HighlightText null/undefined string protection & useMemo regex optimization [`apps/web/src/components/topics/HighlightText.tsx:14`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/components/topics/HighlightText.tsx#L14)
+- [x] [Review][Patch] Accessible button role and aria-pressed for interactive TopicCard [`apps/web/src/components/topics/TopicCard.tsx:50`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/components/topics/TopicCard.tsx#L50)
+- [x] [Review][Patch] Explicit test assertions for phone number exclusion, @-search null safety, and search privacy invariants [`apps/backend/tests/hokim-topic-search.test.ts:338`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/tests/hokim-topic-search.test.ts#L338)
+- [x] [Review][Defer] GIN trigram / text search indexing for large-volume JSONB evidence text queries [`apps/backend/src/modules/topics/hokim-topic-service.ts:471`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/topics/hokim-topic-service.ts#L471) — deferred, pre-existing database indexing scope
+
 ---
 
 ## Dev Notes
@@ -261,7 +273,7 @@ apps/web/src/
 └── pages/
     └── HokimDashboardPage.tsx        # UPDATE: Ephemeral in-memory search state, retry & live announcer
 
-apps/backend/tests/integration/
+apps/backend/tests/
 └── hokim-topic-search.test.ts        # NEW: Integration tests for lexical search & privacy
 
 apps/web/tests/unit/
@@ -273,9 +285,40 @@ apps/web/tests/unit/
 ## Dev Agent Record
 
 ### Agent Model Used
+- Gemini 3.7 Flash
 
 ### Debug Log References
+- All vitest and integration test runs executed against `mahalla_ovozi_test`.
 
 ### Completion Notes List
+- Completed Story 3.7 implementation and thorough BMAD Adversarial Code Review workflow (`bmad-code-review`).
+- All 8 code review patches applied and verified:
+  1. PostgreSQL NULL username `@`-search bug fixed with `IS NOT NULL` guard and `ae.district_id` pruning.
+  2. TanStack Query v5 `placeholderData` scoped to `districtId` in `useHokimTopicBoard`.
+  3. Search input debounce timer cleared on external reset.
+  4. Live announcer concurrency race condition guarded against `isStatsFetching`.
+  5. Live announcer phrasing aligned with story specification.
+  6. `HighlightText` null-guarded and regex-memoized.
+  7. `TopicCard` equipped with `role="button"` and `aria-pressed`.
+  8. Automated integration and unit tests expanded for phone number exclusion, `@`-search null safety, and privacy invariants.
+- Full monorepo typecheck passed with 0 errors.
 
 ### File List
+- `packages/api-contracts/src/topics.ts`
+- `apps/backend/src/modules/topics/hokim-topic-service.ts`
+- `apps/backend/src/modules/topics/hokim-topics-routes.ts`
+- `apps/backend/tests/hokim-topic-search.test.ts`
+- `apps/web/src/topics/hokim-topics-client.ts`
+- `apps/web/src/topics/useHokimTopicBoard.ts`
+- `apps/web/src/topics/useTopicStatistics.ts`
+- `apps/web/src/components/topics/DashboardSearchInput.tsx`
+- `apps/web/src/components/topics/HighlightText.tsx`
+- `apps/web/src/components/topics/TopicCard.tsx`
+- `apps/web/src/components/topics/FilterBar.tsx`
+- `apps/web/src/components/topics/FilterModalSheet.tsx`
+- `apps/web/src/components/topics/FiveLaneBoard.tsx`
+- `apps/web/src/components/topics/LaneColumn.tsx`
+- `apps/web/src/hooks/useLiveAnnouncer.ts`
+- `apps/web/src/pages/HokimDashboardPage.tsx`
+- `apps/web/tests/unit/DashboardSearch.test.tsx`
+

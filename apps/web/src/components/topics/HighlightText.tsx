@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 export interface HighlightTextProps {
   text: string;
@@ -11,19 +11,29 @@ export const HighlightText: React.FC<HighlightTextProps> = ({
   searchQuery,
   style,
 }) => {
-  if (!searchQuery || !searchQuery.trim()) {
+  if (!text || typeof text !== 'string') {
+    return <span style={style}>{text ?? ''}</span>;
+  }
+
+  const query = searchQuery?.trim() || '';
+
+  const parts = useMemo(() => {
+    if (!query) return null;
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedQuery})`, 'gi');
+    return text.split(regex);
+  }, [text, query]);
+
+  if (!parts || !query) {
     return <span style={style}>{text}</span>;
   }
 
-  const query = searchQuery.trim();
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${escapedQuery})`, 'gi');
-  const parts = text.split(regex);
+  const normalizedQuery = query.normalize('NFC').toLowerCase();
 
   return (
     <span style={style}>
       {parts.map((part, index) => {
-        const isMatch = part.toLowerCase() === query.toLowerCase();
+        const isMatch = part.normalize('NFC').toLowerCase() === normalizedQuery;
         if (isMatch) {
           return (
             <mark

@@ -49,6 +49,8 @@ export const TopicCard: React.FC<TopicCardProps> = ({
   return (
     <article
       id={`topic-card-${topic.id}`}
+      role={onClick ? 'button' : undefined}
+      aria-pressed={onClick ? isSelected : undefined}
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
       onKeyDown={(e) => {
