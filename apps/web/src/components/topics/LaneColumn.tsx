@@ -55,7 +55,9 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
         const firstNewTopic = topics[prevLength];
         if (firstNewTopic) {
           requestAnimationFrame(() => {
-            const cardEl = document.getElementById(`topic-card-${firstNewTopic.id}`);
+            const cardEl =
+              scrollContainerRef.current?.querySelector<HTMLElement>(`#topic-card-${firstNewTopic.id}`) ||
+              document.getElementById(`topic-card-${firstNewTopic.id}`);
             if (cardEl) {
               cardEl.setAttribute('tabindex', '0');
               cardEl.focus();
@@ -63,8 +65,8 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
           });
         }
       }
-      isKeyboardTriggerRef.current = false;
     }
+    isKeyboardTriggerRef.current = false;
     prevTopicsLengthRef.current = topics.length;
   }, [topics, laneLabel, liveAnnouncer]);
 
@@ -240,7 +242,15 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
                   type="text"
                   danger
                   icon={<ReloadOutlined />}
-                  onClick={onLoadMore}
+                  onClick={(e) => {
+                    isKeyboardTriggerRef.current = e.detail === 0;
+                    onLoadMore();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      isKeyboardTriggerRef.current = true;
+                    }
+                  }}
                   style={{ fontWeight: 600, fontSize: 12, boxShadow: 'none' }}
                 >
                   Қайта уриниш

@@ -8,3 +8,7 @@
 ## Deferred from: code review of 3-7-search-current-and-retained-topics-privately.md (2026-08-24)
 
 - **GIN Trigram / Text Search Indexing for JSONB Evidence Queries** (`apps/backend/src/modules/topics/hokim-topic-service.ts:471-476, 633-638, 763-768`): Lexical pattern matching against `ae.verbatim_text` and `ae.user_metadata` JSONB attributes uses parameterized PostgreSQL ILIKE within active district scope. Future high-volume evidence queries may benefit from GIN trigram index migrations; defer to a dedicated database performance optimization epic.
+
+## Deferred from: code review of 3-8-continue-large-filtered-and-search-results-safely.md (2026-08-24)
+
+- **Unpaginated Evidence Count Aggregation in `queryLaneData`** (`apps/backend/src/modules/topics/hokim-topic-service.ts:511-541`): Topic queries join `accepted_evidence` across the district before applying limit pagination. Pre-existing query architecture from Story 3.1; defer to a future performance optimization epic if district evidence volumes grow significantly.

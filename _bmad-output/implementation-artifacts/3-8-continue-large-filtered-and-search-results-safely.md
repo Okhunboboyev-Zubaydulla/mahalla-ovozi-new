@@ -4,7 +4,7 @@ baseline_commit: b1a5cc7
 
 # Story 3.8: Continue Large Filtered and Search Results Safely
 
-Status: review
+Status: done
 
 <!-- Note: Validation completed. Ready for dev-story. -->
 
@@ -173,6 +173,14 @@ so that I can review all retained matching Topics while preserving my current da
     - Pointer click preserving scroll position without focus jump.
     - Container `aria-busy` attribute during fetching.
     - Local error alert render and retry interaction.
+
+### Review Findings
+
+- [x] [Review][Patch] Always reset isKeyboardTriggerRef.current to prevent stale focus hijacking when zero new items are appended [apps/web/src/components/topics/LaneColumn.tsx:48]
+- [x] [Review][Patch] Scope focus targeting DOM query strictly to the current lane scroll container [apps/web/src/components/topics/LaneColumn.tsx:58]
+- [x] [Review][Patch] Set keyboard trigger flag on local error Alert retry button activation [apps/web/src/components/topics/LaneColumn.tsx:243]
+- [x] [Review][Patch] Add missing assertions to Test 4 in useHokimTopicBoard.test.tsx [apps/web/tests/unit/useHokimTopicBoard.test.tsx:310]
+- [x] [Review][Defer] Unpaginated evidence count join in queryLaneData [apps/backend/src/modules/topics/hokim-topic-service.ts:511] — deferred, pre-existing from Story 3.1
 
 ---
 

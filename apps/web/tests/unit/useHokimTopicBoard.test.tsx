@@ -311,6 +311,12 @@ describe('Story 3.3: useHokimTopicBoard In-Session Reconciliation & Buffer Tests
       await result.current.manualRefresh();
     });
 
+    await waitFor(() => {
+      expect(result.current.lanes.WATER.newItemsCount).toBe(1);
+      expect(result.current.lanes.HOKIM_RELATED.newItemsCount).toBe(1);
+      expect(result.current.lanes.WATER.bufferedNewTopics.length).toBe(1);
+      expect(result.current.lanes.HOKIM_RELATED.bufferedNewTopics.length).toBe(1);
+    });
   });
 
   describe('Story 3.8: Keyset Continuation, Abort Cancellation & Stale Recovery Tests', () => {
