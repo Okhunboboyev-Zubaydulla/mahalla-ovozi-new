@@ -219,6 +219,29 @@ export const TopicEvidenceResponseSchema = z.object({
 });
 export type TopicEvidenceResponse = z.infer<typeof TopicEvidenceResponseSchema>;
 
+export const TopicStatisticCard1ComparisonSchema = z.discriminatedUnion('isAvailable', [
+  z.object({
+    isAvailable: z.literal(true),
+    previousValue: z.number().int().min(0),
+    delta: z.number().int(),
+    comparisonPeriodType: z.enum([
+      'equivalent_same_time_yesterday',
+      'previous_calendar_day',
+      'previous_custom_range',
+    ]),
+    comparisonPeriodLabel: z.string(),
+  }),
+  z.object({
+    isAvailable: z.literal(false),
+    reason: z.enum([
+      'UNSUPPORTED_FILTER_SCOPE',
+      'OUTSIDE_RETENTION_WINDOW',
+      'NO_PRIOR_PERIOD',
+    ]),
+  }),
+]);
+export type TopicStatisticCard1Comparison = z.infer<typeof TopicStatisticCard1ComparisonSchema>;
+
 export const TopicStatisticCard4Schema = z.discriminatedUnion('mode', [
   z.object({
     mode: z.literal('most_active_service_lane'),
@@ -300,6 +323,7 @@ export const HokimTopicStatisticsResponseSchema = z.object({
   calendarDay: z.string(),
   serverEvaluatedAt: z.string().datetime(),
   totalUniqueTopics: z.number().int().min(0),
+  card1Comparison: TopicStatisticCard1ComparisonSchema,
   hokimRelatedTopics: z.number().int().min(0),
   hokimEvidenceCount: z.number().int().min(0),
   activeMahallasCount: z.number().int().min(0),

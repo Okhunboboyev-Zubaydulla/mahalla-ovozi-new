@@ -17,6 +17,13 @@ const mockDefaultStats: HokimTopicStatisticsResponse = {
   hokimEvidenceCount: 9,
   activeMahallasCount: 6,
   totalAcceptedEvidenceCount: 32,
+  card1Comparison: {
+    isAvailable: true,
+    previousValue: 12,
+    delta: 3,
+    comparisonPeriodType: 'equivalent_same_time_yesterday',
+    comparisonPeriodLabel: 'кечаги шу вақтга нисбатан',
+  },
   card4: {
     mode: 'most_active_service_lane',
     leaderLane: 'WATER',
@@ -267,5 +274,126 @@ describe('TopicStatisticsStrip Component Tests', () => {
       fireEvent.click(nextBtn);
       expect((prevBtn as HTMLButtonElement).disabled).toBe(false);
     }
+  });
+
+  describe('Story 3.9: Card 1 Prior-Period Trend & Accessibility (AC 1, AC 3, AC 7)', () => {
+    it('renders positive delta badge with neutral styling and contextual label (AC 7)', () => {
+      const statsWithPositiveDelta: HokimTopicStatisticsResponse = {
+        ...mockDefaultStats,
+        totalUniqueTopics: 20,
+        card1Comparison: {
+          isAvailable: true,
+          previousValue: 15,
+          delta: 5,
+          comparisonPeriodType: 'equivalent_same_time_yesterday',
+          comparisonPeriodLabel: 'кечаги шу вақтга нисбатан',
+        },
+      };
+
+      renderWithProviders(<TopicStatisticsStrip statistics={statsWithPositiveDelta} />);
+
+      const badge = screen.getByTestId('comparison-delta-badge');
+      expect(badge.textContent).toBe('+5');
+      expect(screen.getByText('кечаги шу вақтга нисбатан')).toBeTruthy();
+
+      // Verify Card 1 accessible label with full descriptive phrasing
+      const card1 = document.getElementById('statistic-card-1');
+      expect(card1?.getAttribute('aria-label')).toBe(
+        'Жами мавзулар: 20 та, танланган фильтр бўйича. кечаги шу вақтга нисбатан 5 та кўп (+5)',
+      );
+    });
+
+    it('renders negative delta badge with neutral styling (AC 7)', () => {
+      const statsWithNegativeDelta: HokimTopicStatisticsResponse = {
+        ...mockDefaultStats,
+        totalUniqueTopics: 10,
+        card1Comparison: {
+          isAvailable: true,
+          previousValue: 14,
+          delta: -4,
+          comparisonPeriodType: 'previous_calendar_day',
+          comparisonPeriodLabel: 'олдинги кунга нисбатан',
+        },
+      };
+
+      renderWithProviders(<TopicStatisticsStrip statistics={statsWithNegativeDelta} />);
+
+      const badge = screen.getByTestId('comparison-delta-badge');
+      expect(badge.textContent).toBe('-4');
+      expect(screen.getByText('олдинги кунга нисбатан')).toBeTruthy();
+
+      const card1 = document.getElementById('statistic-card-1');
+      expect(card1?.getAttribute('aria-label')).toBe(
+        'Жами мавзулар: 10 та, танланган фильтр бўйича. олдинги кунга нисбатан 4 та кам (-4)',
+      );
+    });
+
+    it('renders zero delta badge with neutral styling (AC 7)', () => {
+      const statsWithZeroDelta: HokimTopicStatisticsResponse = {
+        ...mockDefaultStats,
+        totalUniqueTopics: 12,
+        card1Comparison: {
+          isAvailable: true,
+          previousValue: 12,
+          delta: 0,
+          comparisonPeriodType: 'previous_custom_range',
+          comparisonPeriodLabel: 'олдинги даврга нисбатан',
+        },
+      };
+
+      renderWithProviders(<TopicStatisticsStrip statistics={statsWithZeroDelta} />);
+
+      const badge = screen.getByTestId('comparison-delta-badge');
+      expect(badge.textContent).toBe('0');
+      expect(screen.getByText('олдинги даврга нисбатан')).toBeTruthy();
+
+      const card1 = document.getElementById('statistic-card-1');
+      expect(card1?.getAttribute('aria-label')).toBe(
+        'Жами мавзулар: 12 та, танланган фильтр бўйича. олдинги даврга нисбатан ўзгаришсиз (0)',
+      );
+    });
+
+    it('renders unavailable indicator with accessible announcement for UNSUPPORTED_FILTER_SCOPE (AC 3, AC 7)', () => {
+      const statsWithUnavailableScope: HokimTopicStatisticsResponse = {
+        ...mockDefaultStats,
+        totalUniqueTopics: 8,
+        card1Comparison: {
+          isAvailable: false,
+          reason: 'UNSUPPORTED_FILTER_SCOPE',
+        },
+      };
+
+      renderWithProviders(<TopicStatisticsStrip statistics={statsWithUnavailableScope} />);
+
+      const unavail = screen.getByTestId('comparison-unavailable');
+      expect(unavail).toBeTruthy();
+      expect(unavail.textContent).toContain('Маълумот йўқ');
+
+      const card1 = document.getElementById('statistic-card-1');
+      expect(card1?.getAttribute('aria-label')).toBe(
+        'Жами мавзулар: 8 та, танланган фильтр бўйича. Таққослаш мавжуд эмас: барча йўналишлар танланмаган ёки қидирув фаол',
+      );
+    });
+
+    it('renders unavailable indicator with accessible announcement for OUTSIDE_RETENTION_WINDOW (AC 6, AC 7)', () => {
+      const statsWithOutsideRetention: HokimTopicStatisticsResponse = {
+        ...mockDefaultStats,
+        totalUniqueTopics: 3,
+        card1Comparison: {
+          isAvailable: false,
+          reason: 'OUTSIDE_RETENTION_WINDOW',
+        },
+      };
+
+      renderWithProviders(<TopicStatisticsStrip statistics={statsWithOutsideRetention} />);
+
+      const unavail = screen.getByTestId('comparison-unavailable');
+      expect(unavail).toBeTruthy();
+
+      const card1 = document.getElementById('statistic-card-1');
+      expect(card1?.getAttribute('aria-label')).toBe(
+        'Жами мавзулар: 3 та, танланган фильтр бўйича. Таққослаш мавжуд эмас: 90 кунлик сақлаш муддатидан ташқарида',
+      );
+    });
   });
 });

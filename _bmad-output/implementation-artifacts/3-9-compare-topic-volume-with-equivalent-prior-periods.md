@@ -4,7 +4,7 @@ baseline_commit: 3a81063
 
 # Story 3.9: Compare Topic Volume With Equivalent Prior Periods
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation completed. Ready for dev-story. -->
 
@@ -113,8 +113,8 @@ so that I can understand change over time without invented or mismatched histori
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Shared API Contracts & Zod Schemas for Card 1 Prior-Period Comparison** (AC: 1-7)
-  - [ ] 1.1 In `packages/api-contracts/src/topics.ts`:
+- [x] **Task 1: Shared API Contracts & Zod Schemas for Card 1 Prior-Period Comparison** (AC: 1-7)
+  - [x] 1.1 In `packages/api-contracts/src/topics.ts`:
     - Define `TopicStatisticCard1ComparisonSchema`:
       ```ts
       export const TopicStatisticCard1ComparisonSchema = z.discriminatedUnion('isAvailable', [
@@ -144,8 +144,8 @@ so that I can understand change over time without invented or mismatched histori
       - Add `card1Comparison: TopicStatisticCard1ComparisonSchema`
     - Export updated types `HokimTopicStatisticsResponse`.
 
-- [ ] **Task 2: Backend Prior-Period Computation in `HokimTopicService`** (AC: 1-6)
-  - [ ] 2.1 In `apps/backend/src/modules/topics/hokim-topic-service.ts`:
+- [x] **Task 2: Backend Prior-Period Computation in `HokimTopicService`** (AC: 1-6)
+  - [x] 2.1 In `apps/backend/src/modules/topics/hokim-topic-service.ts`:
     - Implement helper `resolvePriorPeriodComparison(params, districtId, asOfDate, selectedLanes, trimmedSearch, mahallaPredicate, lanePredicate, searchPredicate)`:
       - Calculate `nowSeconds = Math.floor(asOfDate.getTime() / 1000)`, `today = getTashkentCalendarDay(nowSeconds)`, and `retentionLowerBound = getTashkentCalendarDay(nowSeconds - 90 * 86400)`.
       - **Case 1: `dateScope === 'today'` (or default today) OR `params.calendarDay === today`**:
@@ -210,10 +210,10 @@ so that I can understand change over time without invented or mismatched histori
             ${searchPredicate}
           ```
         - Return `{ isAvailable: true, previousValue: prev_count, delta: totalUniqueTopics - prev_count, comparisonPeriodType: 'previous_custom_range', comparisonPeriodLabel: 'олдинги даврга нисбатан' }`.
-    - [ ] 2.2 Integrate prior-period calculation cleanly into `getStatistics(actorContext, params)` and assemble `card1Comparison` in response payload.
+    - [x] 2.2 Integrate prior-period calculation cleanly into `getStatistics(actorContext, params)` and assemble `card1Comparison` in response payload.
 
-- [ ] **Task 3: Web UI Component Enhancements for Card 1 Trend & Comparison Presentation** (AC: 1, 3, 7)
-  - [ ] 3.1 In `apps/web/src/components/topics/TopicStatisticCard.tsx`:
+- [x] **Task 3: Web UI Component Enhancements for Card 1 Trend & Comparison Presentation** (AC: 1, 3, 7)
+  - [x] 3.1 In `apps/web/src/components/topics/TopicStatisticCard.tsx`:
     - Add optional `comparison?: TopicStatisticCard1Comparison` prop.
     - Render comparison info in a dedicated, accessible, non-color-only sub-block:
       - If `comparison?.isAvailable`:
@@ -222,12 +222,12 @@ so that I can understand change over time without invented or mismatched histori
         - ARIA label: Includes full descriptive phrasing (e.g. `${title}: ${value}, ${subtitle}. ${comparison.comparisonPeriodLabel} ${Math.abs(comparison.delta)} та ${comparison.delta > 0 ? 'кўп' : comparison.delta < 0 ? 'кам' : 'ўзгаришсиз'}`).
       - If `comparison && !comparison.isAvailable`:
         - Render neutral muted comparison status: `Таққослаш: Маълумот йўқ` (or `—`) with accessible reason tooltip / aria-label.
-  - [ ] 3.2 In `apps/web/src/components/topics/TopicStatisticsStrip.tsx`:
+  - [x] 3.2 In `apps/web/src/components/topics/TopicStatisticsStrip.tsx`:
     - Pass `statistics?.card1Comparison` to Card 1 descriptor.
     - Verify loading skeleton reserves matching layout space without height jitter or cumulative layout shift (0px CLS).
 
-- [ ] **Task 4: Backend Automated Integration Tests** (AC: 1-6, 8)
-  - [ ] 4.1 In `apps/backend/tests/hokim-topics-statistics.test.ts` (or `hokim-topics-prior-period.test.ts`):
+- [x] **Task 4: Backend Automated Integration Tests** (AC: 1-6, 8)
+  - [x] 4.1 In `apps/backend/tests/hokim-topics-statistics.test.ts` (or `hokim-topics-prior-period.test.ts`):
     - Test Today `asOf` comparison with all 5 lanes and empty search:
       - Insert topics yesterday with earliest evidence before yesterday cutoff -> counted in previous period.
       - Insert topics yesterday with earliest evidence after yesterday cutoff -> excluded from previous period.
@@ -243,8 +243,8 @@ so that I can understand change over time without invented or mismatched histori
     - Test canonical Topic multi-lane deduplication in prior period.
     - Test strict tenant isolation across districts.
 
-- [ ] **Task 5: Web Unit & Component Tests** (AC: 1, 3, 7, 8)
-  - [ ] 5.1 In `apps/web/tests/unit/TopicStatisticCard.test.tsx` (or `TopicStatisticsStrip.test.tsx`):
+- [x] **Task 5: Web Unit & Component Tests** (AC: 1, 3, 7, 8)
+  - [x] 5.1 In `apps/web/tests/unit/TopicStatisticCard.test.tsx` (or `TopicStatisticsStrip.test.tsx`):
     - Test Card 1 rendering with positive delta (`+5`), negative delta (`-3`), and zero delta (`0`).
     - Test Card 1 rendering with `isAvailable: false` and reason `UNSUPPORTED_FILTER_SCOPE`.
     - Test Card 1 rendering with `isAvailable: false` and reason `OUTSIDE_RETENTION_WINDOW`.
@@ -311,14 +311,29 @@ Gemini 3.7 Flash (High) via Antigravity Agentic Harness
 
 ### Debug Log References
 
-None (Specification creation phase).
+None (All unit and integration tests passed cleanly).
 
 ### Completion Notes List
 
-- Authored comprehensive story specification for Story 3.9 (*Compare Topic Volume with Equivalent Prior Periods*).
-- Established all 8 acceptance criteria, task breakdowns, Asia/Tashkent prior-period cutoff formulas, earliest-evidence timestamp queries, unavailability rules (search query active / lane subset selected / outside 90-day retention), neutral non-color-only trend presentations, and test matrix.
+- Implemented `TopicStatisticCard1ComparisonSchema` discriminated union in shared API contracts (`packages/api-contracts/src/topics.ts`).
+- Implemented `resolvePriorPeriodComparison` helper in `apps/backend/src/modules/topics/hokim-topic-service.ts` supporting authoritative Asia/Tashkent partial-day cutoff matching by earliest Telegram message timestamp (`MIN(ae.original_timestamp)`), completed single-day ($D - 1$) comparisons, and completed custom $N$-day range comparisons.
+- Enforced unavailability guards returning `isAvailable: false` for lane subsets ($< 5$), active plain-text search, custom date ranges ending on Today, and 90-day retention limits.
+- Enhanced `TopicStatisticCard.tsx` and `TopicStatisticsStrip.tsx` to render neutral, non-color-only trend delta pills, contextual Uzbek labels, full descriptive ARIA labels, and fixed-height layout reservation (0px CLS).
+- Authored and verified 20 backend integration tests against `mahalla_ovozi_test` and 12 web unit tests covering trend rendering, accessibility, and unavailability states.
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/3-9-compare-topic-volume-with-equivalent-prior-periods.md` (NEW)
+- `packages/api-contracts/src/topics.ts` (UPDATE)
+- `apps/backend/src/modules/topics/hokim-topic-service.ts` (UPDATE)
+- `apps/backend/tests/hokim-topics-statistics.test.ts` (UPDATE)
+- `apps/web/src/components/topics/TopicStatisticCard.tsx` (UPDATE)
+- `apps/web/src/components/topics/TopicStatisticsStrip.tsx` (UPDATE)
+- `apps/web/tests/unit/TopicStatisticsStrip.test.tsx` (UPDATE)
+- `apps/web/tests/unit/DashboardSearch.test.tsx` (UPDATE)
+- `apps/web/tests/unit/useTopicStatistics.test.tsx` (UPDATE)
+- `_bmad-output/implementation-artifacts/3-9-compare-topic-volume-with-equivalent-prior-periods.md` (UPDATE)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (UPDATE)
+
+### Change Log
+
+- 2026-08-24: Story 3.9 implementation completed and verified across API contracts, backend service, web UI, integration tests, and sprint tracking.

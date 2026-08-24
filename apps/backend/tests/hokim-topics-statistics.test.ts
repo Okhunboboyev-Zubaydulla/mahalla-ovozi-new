@@ -47,6 +47,9 @@ describe('Story 3.5: Neutral Statistics Aggregation Integration Tests', () => {
   const nowEpoch = Math.floor(Date.now() / 1000);
   const todayCalendarDay = getTashkentCalendarDay(nowEpoch);
   const yesterdayCalendarDay = getTashkentCalendarDay(nowEpoch - 86400);
+  const twoDaysAgo = getTashkentCalendarDay(nowEpoch - 2 * 86400);
+  const fourDaysAgo = getTashkentCalendarDay(nowEpoch - 4 * 86400);
+  const fiveDaysAgo = getTashkentCalendarDay(nowEpoch - 5 * 86400);
 
   const createdTopicIds: string[] = [];
   const createdRecordIds: string[] = [];
@@ -246,11 +249,16 @@ describe('Story 3.5: Neutral Statistics Aggregation Integration Tests', () => {
       mahallaName: string;
       title: string;
       evidenceCount: number;
+      evidenceOriginalTimestamp?: Date;
+      projectionCreatedAt?: Date;
     }) {
       const topicId = `top_st_${crypto.randomUUID().slice(0, 8)}`;
       createdTopicIds.push(topicId);
 
       const now = new Date();
+      const evTimestamp = params.evidenceOriginalTimestamp ?? now;
+      const projTimestamp = params.projectionCreatedAt ?? now;
+
       await db.insert(topics).values({
         id: topicId,
         districtId: params.districtId,
@@ -258,7 +266,7 @@ describe('Story 3.5: Neutral Statistics Aggregation Integration Tests', () => {
         calendarDay: params.calendarDay,
         primaryLane: params.primaryLane,
         status: 'ACTIVE',
-        latestRelevantEvidenceTimestamp: now,
+        latestRelevantEvidenceTimestamp: evTimestamp,
         retentionExpiresAt: new Date(now.getTime() + 90 * 86400000),
         createdAt: now,
         updatedAt: now,
@@ -280,7 +288,7 @@ describe('Story 3.5: Neutral Statistics Aggregation Integration Tests', () => {
           telegramChatId: '123456',
           telegramMessageId: String(Math.floor(Math.random() * 1000000)),
           rawPayload: {},
-          originalTimestamp: now,
+          originalTimestamp: evTimestamp,
           calendarDay: params.calendarDay,
           createdAt: now,
         });
@@ -294,7 +302,7 @@ describe('Story 3.5: Neutral Statistics Aggregation Integration Tests', () => {
           intakeRecordId: intakeId,
           telegramChatId: '123456',
           telegramMessageId: String(Math.floor(Math.random() * 1000000)),
-          originalTimestamp: now,
+          originalTimestamp: evTimestamp,
           verbatimText: `${params.title} evidence #${i + 1}`,
           contentType: 'TEXT',
           createdAt: now,
@@ -314,13 +322,13 @@ describe('Story 3.5: Neutral Statistics Aggregation Integration Tests', () => {
         primaryLane: params.primaryLane,
         anchorEvidenceId: firstEvidenceId,
         anchorQuote: params.title,
-        latestMeaningfulActivityTimestamp: now,
+        latestMeaningfulActivityTimestamp: evTimestamp,
         attribution: 'Маҳалла аҳолиси',
         isHokimRelated: params.isHokimRelated ?? params.lanes.includes('HOKIM_RELATED'),
         generation: 1,
         aiProfileId: defaultAiProfile.id,
-        createdAt: now,
-        updatedAt: now,
+        createdAt: projTimestamp,
+        updatedAt: projTimestamp,
       });
 
       return topicId;
@@ -373,7 +381,7 @@ describe('Story 3.5: Neutral Statistics Aggregation Integration Tests', () => {
     });
 
     // Seed Data in District A for YESTERDAY:
-    // Topic 5: WATER, Боғбон, 2 evidence
+    // Topic 5: WATER, Боғбон, 2 evidence, earliest evidence BEFORE yesterday cutoff (e.g. 1 hour before cutoff)
     await seedTopicWithEvidence({
       districtId: districtAId,
       primaryLane: 'WATER',
@@ -382,6 +390,69 @@ describe('Story 3.5: Neutral Statistics Aggregation Integration Tests', () => {
       mahallaName: 'Боғбон',
       title: 'Кечаги сув муаммоси',
       evidenceCount: 2,
+      evidenceOriginalTimestamp: new Date(Date.now() - 86400000 - 3600000),
+    });
+
+    // Topic 6: GAS, Шодлик, 1 evidence, earliest evidence AFTER yesterday cutoff (e.g. +2 hours after cutoff)
+    await seedTopicWithEvidence({
+      districtId: districtAId,
+      primaryLane: 'GAS',
+      lanes: ['GAS'],
+      calendarDay: yesterdayCalendarDay,
+      mahallaName: 'Шодлик',
+      title: 'Кечаги кеч келган газ муаммоси',
+      evidenceCount: 1,
+      evidenceOriginalTimestamp: new Date(Date.now() - 86400000 + 7200000),
+    });
+
+    // Topic 7: Multi-lane (WATER + ELECTRICITY), Наврўз, earliest evidence BEFORE cutoff, but projection createdAt in future
+    await seedTopicWithEvidence({
+      districtId: districtAId,
+      primaryLane: 'WATER',
+      lanes: ['WATER', 'ELECTRICITY'],
+      calendarDay: yesterdayCalendarDay,
+      mahallaName: 'Наврўз',
+      title: 'Кечаги кўп тармоқли муаммо',
+      evidenceCount: 2,
+      evidenceOriginalTimestamp: new Date(Date.now() - 86400000 - 7200000),
+      projectionCreatedAt: new Date(Date.now() + 60000),
+    });
+
+    // Seed Data in District A for Historical Days:
+    // Topic 8: Two Days Ago, Боғбон, WATER
+    await seedTopicWithEvidence({
+      districtId: districtAId,
+      primaryLane: 'WATER',
+      lanes: ['WATER'],
+      calendarDay: twoDaysAgo,
+      mahallaName: 'Боғбон',
+      title: 'Икки кун олдинги сув муаммоси',
+      evidenceCount: 1,
+      evidenceOriginalTimestamp: new Date(Date.now() - 2 * 86400000),
+    });
+
+    // Topic 9: Four Days Ago, Наврўз, GAS
+    await seedTopicWithEvidence({
+      districtId: districtAId,
+      primaryLane: 'GAS',
+      lanes: ['GAS'],
+      calendarDay: fourDaysAgo,
+      mahallaName: 'Наврўз',
+      title: 'Тўрт кун олдинги газ муаммоси',
+      evidenceCount: 1,
+      evidenceOriginalTimestamp: new Date(Date.now() - 4 * 86400000),
+    });
+
+    // Topic 10: Five Days Ago, Шодлик, WASTE
+    await seedTopicWithEvidence({
+      districtId: districtAId,
+      primaryLane: 'WASTE',
+      lanes: ['WASTE'],
+      calendarDay: fiveDaysAgo,
+      mahallaName: 'Шодлик',
+      title: 'Беш кун олдинги чиқинди муаммоси',
+      evidenceCount: 1,
+      evidenceOriginalTimestamp: new Date(Date.now() - 5 * 86400000),
     });
 
     // Seed Data in District Single Mahalla:
@@ -667,6 +738,235 @@ describe('Story 3.5: Neutral Statistics Aggregation Integration Tests', () => {
       expect(dataB.activeMahallasCount).toBe(1);
       expect(dataB.totalAcceptedEvidenceCount).toBe(5);
       expect(dataB.card4.leaderLane).toBe('ELECTRICITY');
+    });
+  });
+
+  describe('Story 3.9: Prior-Period Topic Volume Comparison (Card 1)', () => {
+    it('computes Today partial-day comparison matching earliest evidence original timestamp (AC 1, AC 2)', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: '/api/v1/hokim/topics/statistics',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.body);
+
+      expect(data.totalUniqueTopics).toBe(4);
+      expect(data.card1Comparison).toBeDefined();
+      expect(data.card1Comparison.isAvailable).toBe(true);
+
+      if (data.card1Comparison.isAvailable) {
+        // Yesterday before cutoff: Topic 5 and Topic 7 (Topic 6 arrived after cutoff) -> 2 topics
+        expect(data.card1Comparison.previousValue).toBe(2);
+        expect(data.card1Comparison.delta).toBe(2); // 4 - 2 = 2
+        expect(data.card1Comparison.comparisonPeriodType).toBe('equivalent_same_time_yesterday');
+        expect(data.card1Comparison.comparisonPeriodLabel).toBe('кечаги шу вақтга нисбатан');
+      }
+    });
+
+    it('marks Today comparison as unavailable when a subset of lanes is selected (AC 3)', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: '/api/v1/hokim/topics/statistics?lanes=WATER,GAS',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.body);
+
+      expect(data.card1Comparison).toEqual({
+        isAvailable: false,
+        reason: 'UNSUPPORTED_FILTER_SCOPE',
+      });
+    });
+
+    it('marks Today comparison as unavailable when plain-text search is active (AC 3)', async () => {
+      const res = await server.inject({
+        method: 'POST',
+        url: '/api/v1/hokim/topics/statistics/search',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+        payload: {
+          search: 'сув',
+          dateScope: 'today',
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.body);
+
+      expect(data.card1Comparison).toEqual({
+        isAvailable: false,
+        reason: 'UNSUPPORTED_FILTER_SCOPE',
+      });
+    });
+
+    it('computes completed single-day comparison against D-1 for yesterday scope (AC 4)', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: '/api/v1/hokim/topics/statistics?dateScope=yesterday',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.body);
+
+      // Yesterday has Topic 5, Topic 6, Topic 7 = 3 topics
+      expect(data.totalUniqueTopics).toBe(3);
+      expect(data.card1Comparison.isAvailable).toBe(true);
+
+      if (data.card1Comparison.isAvailable) {
+        // D-1 (twoDaysAgo) has Topic 8 = 1 topic
+        expect(data.card1Comparison.previousValue).toBe(1);
+        expect(data.card1Comparison.delta).toBe(2); // 3 - 1 = 2
+        expect(data.card1Comparison.comparisonPeriodType).toBe('previous_calendar_day');
+        expect(data.card1Comparison.comparisonPeriodLabel).toBe('олдинги кунга нисбатан');
+      }
+    });
+
+    it('applies Mahalla filter equally to both current and prior periods for completed days (AC 4)', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: '/api/v1/hokim/topics/statistics?dateScope=yesterday&mahallaName=Боғбон',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.body);
+
+      // Yesterday in Боғбон: Topic 5 = 1 topic
+      expect(data.totalUniqueTopics).toBe(1);
+      expect(data.card1Comparison.isAvailable).toBe(true);
+
+      if (data.card1Comparison.isAvailable) {
+        // D-1 in Боғбон: Topic 8 = 1 topic
+        expect(data.card1Comparison.previousValue).toBe(1);
+        expect(data.card1Comparison.delta).toBe(0); // 1 - 1 = 0
+      }
+    });
+
+    it('computes completed custom N-day range comparison against preceding contiguous N-day range (AC 5)', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: `/api/v1/hokim/topics/statistics?dateScope=custom&dateFrom=${fiveDaysAgo}&dateTo=${fourDaysAgo}`,
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.body);
+
+      // Current 2-day range (fiveDaysAgo to fourDaysAgo): Topic 9 + Topic 10 = 2 topics
+      expect(data.totalUniqueTopics).toBe(2);
+      expect(data.card1Comparison.isAvailable).toBe(true);
+
+      if (data.card1Comparison.isAvailable) {
+        // Preceding 2-day range (sevenDaysAgo to sixDaysAgo): 0 topics
+        expect(data.card1Comparison.previousValue).toBe(0);
+        expect(data.card1Comparison.delta).toBe(2); // 2 - 0 = 2
+        expect(data.card1Comparison.comparisonPeriodType).toBe('previous_custom_range');
+        expect(data.card1Comparison.comparisonPeriodLabel).toBe('олдинги даврга нисбатан');
+      }
+    });
+
+    it('marks custom date range ending on or after Today as unavailable (AC 5)', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: `/api/v1/hokim/topics/statistics?dateScope=custom&dateFrom=${yesterdayCalendarDay}&dateTo=${todayCalendarDay}`,
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.body);
+
+      expect(data.card1Comparison).toEqual({
+        isAvailable: false,
+        reason: 'UNSUPPORTED_FILTER_SCOPE',
+      });
+    });
+
+    it('marks prior comparison outside 90-day retention window as unavailable (AC 6)', async () => {
+      const eightyNineDaysAgo = getTashkentCalendarDay(nowEpoch - 89 * 86400);
+      const eightyEightDaysAgo = getTashkentCalendarDay(nowEpoch - 88 * 86400);
+
+      const res = await server.inject({
+        method: 'GET',
+        url: `/api/v1/hokim/topics/statistics?dateScope=custom&dateFrom=${eightyNineDaysAgo}&dateTo=${eightyEightDaysAgo}`,
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.body);
+
+      // Preceding 2-day range starts at 91 days ago (< 90-day retention lower bound)
+      expect(data.card1Comparison).toEqual({
+        isAvailable: false,
+        reason: 'OUTSIDE_RETENTION_WINDOW',
+      });
+    });
+
+    it('deduplicates multi-lane canonical topics in prior-period totals (AC 2, AC 8)', async () => {
+      // Topic 7 in yesterday has lanes ['WATER', 'ELECTRICITY'] and qualifies before cutoff.
+      // Total unique topics in yesterday before cutoff should count Topic 7 only once.
+      const res = await server.inject({
+        method: 'GET',
+        url: '/api/v1/hokim/topics/statistics',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.body);
+
+      if (data.card1Comparison.isAvailable) {
+        expect(data.card1Comparison.previousValue).toBe(2);
+      }
+    });
+
+    it('strictly isolates prior-period comparisons between districts (AC 8)', async () => {
+      const resB = await server.inject({
+        method: 'GET',
+        url: '/api/v1/hokim/topics/statistics',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimBCookie,
+        },
+      });
+
+      expect(resB.statusCode).toBe(200);
+      const dataB = JSON.parse(resB.body);
+
+      // District B has 1 topic today, 0 topics yesterday before cutoff
+      expect(dataB.totalUniqueTopics).toBe(1);
+      if (dataB.card1Comparison.isAvailable) {
+        expect(dataB.card1Comparison.previousValue).toBe(0);
+        expect(dataB.card1Comparison.delta).toBe(1);
+      }
     });
   });
 });

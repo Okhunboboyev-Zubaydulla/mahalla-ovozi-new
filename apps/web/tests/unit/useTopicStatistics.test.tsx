@@ -23,6 +23,13 @@ const mockStatisticsResponse: HokimTopicStatisticsResponse = {
   calendarDay: '2026-08-24',
   serverEvaluatedAt: '2026-08-24T10:00:00.000Z',
   totalUniqueTopics: 12,
+  card1Comparison: {
+    isAvailable: true,
+    previousValue: 10,
+    delta: 2,
+    comparisonPeriodType: 'equivalent_same_time_yesterday',
+    comparisonPeriodLabel: 'кечаги шу вақтга нисбатан',
+  },
   hokimRelatedTopics: 3,
   hokimEvidenceCount: 8,
   activeMahallasCount: 4,

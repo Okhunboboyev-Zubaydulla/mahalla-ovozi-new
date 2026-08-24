@@ -9,13 +9,25 @@ import {
   AppstoreOutlined,
   EnvironmentOutlined,
 } from '@ant-design/icons';
-import { HokimTopicStatisticsResponse } from '@mahalla-ovozi/api-contracts';
+import { HokimTopicStatisticsResponse, TopicStatisticCard1Comparison } from '@mahalla-ovozi/api-contracts';
 import { TopicStatisticCard } from './TopicStatisticCard.js';
 import { LANE_LABELS } from './TopicCard.js';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 import { LiveAnnouncerContext } from '../../hooks/useLiveAnnouncer.js';
 
 const { useBreakpoint } = Grid;
+
+interface CardDescriptor {
+  id: string;
+  title: string;
+  value: string | number;
+  subtitle: string;
+  icon: React.ReactNode;
+  iconBgColor: string;
+  iconColor?: string;
+  comparison?: TopicStatisticCard1Comparison;
+  hasComparisonSlot?: boolean;
+}
 
 export interface TopicStatisticsStripProps {
   statistics?: HokimTopicStatisticsResponse;
@@ -38,7 +50,7 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
   const isMountedRef = useRef<boolean>(false);
 
   // Build card descriptors
-  const card1 = {
+  const card1: CardDescriptor = {
     id: 'statistic-card-1',
     title: 'Жами мавзулар',
     value: statistics?.totalUniqueTopics ?? 0,
@@ -46,6 +58,8 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
     icon: <FileTextOutlined />,
     iconBgColor: '#FEE2E2',
     iconColor: '#DC2626',
+    comparison: statistics?.card1Comparison,
+    hasComparisonSlot: true,
   };
 
   const card2 = {
@@ -138,7 +152,7 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
     iconColor: '#059669',
   };
 
-  const cards = [card1, card2, card3, card4, card5];
+  const cards: CardDescriptor[] = [card1, card2, card3, card4, card5];
   const activeCardTitle = cards[currentIndex]?.title;
 
   // Announce and scroll when mobile index changes
@@ -282,6 +296,8 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
               iconBgColor={card.iconBgColor}
               iconColor={card.iconColor}
               isLoading={isLoading}
+              comparison={card.comparison}
+              hasComparisonSlot={card.hasComparisonSlot}
             />
           </div>
         ))}

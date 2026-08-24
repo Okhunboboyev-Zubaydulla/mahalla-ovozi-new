@@ -256,6 +256,10 @@ describe('Story 3.7: Private Lexical Search Frontend Unit Tests', () => {
       calendarDay: '2026-08-24',
       serverEvaluatedAt: '2026-08-24T08:30:00.000Z',
       totalUniqueTopics: 0,
+      card1Comparison: {
+        isAvailable: false,
+        reason: 'UNSUPPORTED_FILTER_SCOPE',
+      },
       hokimRelatedTopics: 0,
       hokimEvidenceCount: 0,
       activeMahallasCount: 0,

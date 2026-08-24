@@ -16,6 +16,7 @@ import {
   HokimTopicStatisticsResponse,
   TopicStatisticCard4,
   TopicStatisticCard5,
+  TopicStatisticCard1Comparison,
 } from '@mahalla-ovozi/api-contracts';
 import { getTashkentCalendarDay } from '../telegram-intake/timezone-util.js';
 
@@ -997,18 +998,235 @@ export class HokimTopicService {
       }
     }
 
+    const asOfDate = new Date();
+    const serverEvaluatedAt = asOfDate.toISOString();
+
+    const card1Comparison = await this.resolvePriorPeriodComparison({
+      districtId,
+      asOfDate,
+      totalUniqueTopics,
+      query: params,
+      selectedLanes,
+      trimmedSearch,
+      mahallaPredicate,
+      lanePredicate,
+      searchPredicate,
+    });
+
     return {
       districtId,
       districtName,
       calendarDay: resolvedCalendarDay,
-      serverEvaluatedAt: new Date().toISOString(),
+      serverEvaluatedAt,
       totalUniqueTopics,
+      card1Comparison,
       hokimRelatedTopics,
       hokimEvidenceCount,
       activeMahallasCount,
       totalAcceptedEvidenceCount,
       card4,
       card5,
+    };
+  }
+
+  /**
+   * Computes the authoritative prior-period comparison for Card 1 (Total Unique Topics)
+   * across Today partial-day, completed single-day, and completed custom N-day ranges.
+   */
+  private async resolvePriorPeriodComparison(params: {
+    districtId: string;
+    asOfDate: Date;
+    totalUniqueTopics: number;
+    query: HokimTopicStatisticsQueryOutput & { search?: string };
+    selectedLanes: QualifyingLane[];
+    trimmedSearch?: string;
+    mahallaPredicate: ReturnType<typeof sql>;
+    lanePredicate: ReturnType<typeof sql>;
+    searchPredicate: ReturnType<typeof sql>;
+  }): Promise<TopicStatisticCard1Comparison> {
+    const {
+      districtId,
+      asOfDate,
+      totalUniqueTopics,
+      query,
+      selectedLanes,
+      trimmedSearch,
+      mahallaPredicate,
+      lanePredicate,
+      searchPredicate,
+    } = params;
+
+    const nowSeconds = Math.floor(asOfDate.getTime() / 1000);
+    const today = getTashkentCalendarDay(nowSeconds);
+    const retentionLowerBound = getTashkentCalendarDay(nowSeconds - 90 * 86400);
+
+    const scope = query.dateScope ?? 'today';
+
+    // Case 1: Today scope (or query.calendarDay === today)
+    if (scope === 'today' || (query.calendarDay && query.calendarDay === today && !query.dateScope)) {
+      // In Today scope, prior period comparison is available ONLY IF all 5 lanes are selected AND search is empty
+      if (selectedLanes.length < 5 || (trimmedSearch && trimmedSearch.length > 0)) {
+        return {
+          isAvailable: false,
+          reason: 'UNSUPPORTED_FILTER_SCOPE',
+        };
+      }
+
+      const yesterdayCutoffSeconds = nowSeconds - 86400;
+      const yesterdayCutoffDate = new Date(yesterdayCutoffSeconds * 1000);
+      const yesterdayDay = getTashkentCalendarDay(yesterdayCutoffSeconds);
+
+      if (yesterdayDay < retentionLowerBound) {
+        return {
+          isAvailable: false,
+          reason: 'OUTSIDE_RETENTION_WINDOW',
+        };
+      }
+
+      // Query yesterday's partial day where earliest retained accepted evidence original timestamp <= yesterdayCutoffDate
+      const prevResult = await this.db.execute<{ prev_count: number }>(sql`
+        SELECT COUNT(DISTINCT t.id)::int as prev_count
+        FROM topics t
+        WHERE t.district_id = ${districtId}
+          AND t.status = 'ACTIVE'
+          AND t.retention_expires_at > NOW()
+          AND t.calendar_day = ${yesterdayDay}
+          ${mahallaPredicate}
+          AND EXISTS (
+            SELECT 1 FROM accepted_evidence ae
+            WHERE ae.topic_id = t.id
+              AND ae.district_id = ${districtId}
+              AND ae.calendar_day = ${yesterdayDay}
+              AND ae.original_timestamp <= ${yesterdayCutoffDate}
+          );
+      `);
+
+      const prevCount = Number(prevResult.rows[0]?.prev_count ?? 0);
+      return {
+        isAvailable: true,
+        previousValue: prevCount,
+        delta: totalUniqueTopics - prevCount,
+        comparisonPeriodType: 'equivalent_same_time_yesterday',
+        comparisonPeriodLabel: 'кечаги шу вақтга нисбатан',
+      };
+    }
+
+    // Case 2: Completed Single Day Scope ('yesterday' or historical calendarDay < today)
+    if (scope === 'yesterday' || (query.calendarDay && query.calendarDay < today)) {
+      const targetDay = scope === 'yesterday'
+        ? getTashkentCalendarDay(nowSeconds - 86400)
+        : query.calendarDay!;
+
+      const parts = targetDay.split('-').map(Number);
+      const y = parts[0] ?? 2026;
+      const m = parts[1] ?? 1;
+      const d = parts[2] ?? 1;
+      const dMidday = new Date(Date.UTC(y, m - 1, d, 7, 0, 0));
+      const priorDaySeconds = Math.floor(dMidday.getTime() / 1000) - 86400;
+      const priorDay = getTashkentCalendarDay(priorDaySeconds);
+
+      if (priorDay < retentionLowerBound) {
+        return {
+          isAvailable: false,
+          reason: 'OUTSIDE_RETENTION_WINDOW',
+        };
+      }
+
+      const prevResult = await this.db.execute<{ prev_count: number }>(sql`
+        SELECT COUNT(DISTINCT t.id)::int as prev_count
+        FROM topics t
+        JOIN topic_projections tp ON tp.topic_id = t.id
+        WHERE t.district_id = ${districtId}
+          AND t.status = 'ACTIVE'
+          AND t.retention_expires_at > NOW()
+          AND t.calendar_day = ${priorDay}
+          ${mahallaPredicate}
+          AND (${lanePredicate})
+          ${searchPredicate};
+      `);
+
+      const prevCount = Number(prevResult.rows[0]?.prev_count ?? 0);
+      return {
+        isAvailable: true,
+        previousValue: prevCount,
+        delta: totalUniqueTopics - prevCount,
+        comparisonPeriodType: 'previous_calendar_day',
+        comparisonPeriodLabel: 'олдинги кунга нисбатан',
+      };
+    }
+
+    // Case 3: Completed Custom N-day Range Scope ('custom')
+    if (scope === 'custom') {
+      const { dateFrom, dateTo } = query;
+      if (!dateFrom || !dateTo) {
+        return {
+          isAvailable: false,
+          reason: 'UNSUPPORTED_FILTER_SCOPE',
+        };
+      }
+
+      // Guard: custom date range cannot end on or after Today
+      if (dateTo >= today) {
+        return {
+          isAvailable: false,
+          reason: 'UNSUPPORTED_FILTER_SCOPE',
+        };
+      }
+
+      const fromParts = dateFrom.split('-').map(Number);
+      const yFrom = fromParts[0] ?? 2026;
+      const mFrom = fromParts[1] ?? 1;
+      const dFrom = fromParts[2] ?? 1;
+
+      const toParts = dateTo.split('-').map(Number);
+      const yTo = toParts[0] ?? 2026;
+      const mTo = toParts[1] ?? 1;
+      const dTo = toParts[2] ?? 1;
+
+      const fromMidday = new Date(Date.UTC(yFrom, mFrom - 1, dFrom, 7, 0, 0));
+      const toMidday = new Date(Date.UTC(yTo, mTo - 1, dTo, 7, 0, 0));
+      const diffDays = Math.round((toMidday.getTime() - fromMidday.getTime()) / (86400 * 1000));
+      const nDays = diffDays + 1;
+
+      const priorToSeconds = Math.floor(fromMidday.getTime() / 1000) - 86400; // dateFrom - 1 day
+      const priorFromSeconds = Math.floor(fromMidday.getTime() / 1000) - nDays * 86400; // dateFrom - N days
+
+      const priorDateTo = getTashkentCalendarDay(priorToSeconds);
+      const priorDateFrom = getTashkentCalendarDay(priorFromSeconds);
+
+      if (priorDateFrom < retentionLowerBound) {
+        return {
+          isAvailable: false,
+          reason: 'OUTSIDE_RETENTION_WINDOW',
+        };
+      }
+
+      const prevResult = await this.db.execute<{ prev_count: number }>(sql`
+        SELECT COUNT(DISTINCT t.id)::int as prev_count
+        FROM topics t
+        JOIN topic_projections tp ON tp.topic_id = t.id
+        WHERE t.district_id = ${districtId}
+          AND t.status = 'ACTIVE'
+          AND t.retention_expires_at > NOW()
+          AND t.calendar_day >= ${priorDateFrom} AND t.calendar_day <= ${priorDateTo}
+          ${mahallaPredicate}
+          AND (${lanePredicate})
+          ${searchPredicate};
+      `);
+
+      const prevCount = Number(prevResult.rows[0]?.prev_count ?? 0);
+      return {
+        isAvailable: true,
+        previousValue: prevCount,
+        delta: totalUniqueTopics - prevCount,
+        comparisonPeriodType: 'previous_custom_range',
+        comparisonPeriodLabel: 'олдинги даврга нисбатан',
+      };
+    }
+
+    return {
+      isAvailable: false,
+      reason: 'UNSUPPORTED_FILTER_SCOPE',
     };
   }
 }
