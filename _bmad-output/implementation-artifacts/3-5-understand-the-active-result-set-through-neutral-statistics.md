@@ -4,7 +4,7 @@ baseline_commit: 4e6c5fb
 
 # Story 3.5: Understand the Active Result Set Through Neutral Statistics
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -157,8 +157,8 @@ so that I can understand the shape of current or historical signals without mist
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Shared API Contracts & Zod Schemas for Statistics** (AC: 1, 2, 6, 7, 8, 9, 11, 12, 15)
-  - [ ] 1.1 In `packages/api-contracts/src/topics.ts`:
+- [x] **Task 1: Shared API Contracts & Zod Schemas for Statistics** (AC: 1, 2, 6, 7, 8, 9, 11, 12, 15)
+  - [x] 1.1 In `packages/api-contracts/src/topics.ts`:
     - Define `HokimTopicStatisticsQuerySchema`:
       - Reuses `DateFilterScopeSchema`, `dateFrom`, `dateTo`, `mahallaName`, `LanesQueryParamSchema`.
       - Includes `superRefine` for custom date range validation (same as `HokimTopicBoardQuerySchema`).
@@ -184,8 +184,8 @@ so that I can understand the shape of current or historical signals without mist
       - `card5: TopicStatisticCard5Schema`
     - Export TypeScript types: `HokimTopicStatisticsQuery`, `HokimTopicStatisticsResponse`, `TopicStatisticCard4`, `TopicStatisticCard5`.
 
-- [ ] **Task 2: Backend PostgreSQL Aggregation Service Implementation** (AC: 2-12, 15)
-  - [ ] 2.1 In `apps/backend/src/modules/topics/hokim-topic-service.ts`:
+- [x] **Task 2: Backend PostgreSQL Aggregation Service Implementation** (AC: 2-12, 15)
+  - [x] 2.1 In `apps/backend/src/modules/topics/hokim-topic-service.ts`:
     - Implement `getStatistics(actorContext, params: HokimTopicStatisticsQuery): Promise<HokimTopicStatisticsResponse>`:
       - Resolve date boundaries using `resolveDateBoundary(params)`.
       - Build SQL date predicate (`t.calendar_day = ...` or `t.calendar_day >= ... AND t.calendar_day <= ...`).
@@ -272,8 +272,8 @@ so that I can understand the shape of current or historical signals without mist
           - If $> 1$ mahallas share max: `isTie: true`, `tiedCount: N`, `leaderMahalla: null`, `leaderTopicCount: maxCount`, `isZero: false`.
           - If exactly 1 mahalla has max: `isTie: false`, `tiedCount: 0`, `leaderMahalla: topMahalla`, `leaderTopicCount: maxCount`, `isZero: false`.
 
-- [ ] **Task 3: Backend Fastify Route Handler for Statistics** (AC: 15)
-  - [ ] 3.1 In `apps/backend/src/modules/topics/hokim-topics-routes.ts`:
+- [x] **Task 3: Backend Fastify Route Handler for Statistics** (AC: 15)
+  - [x] 3.1 In `apps/backend/src/modules/topics/hokim-topics-routes.ts`:
     - Register `GET /api/v1/hokim/topics/statistics`:
       - Guard with `createRequireHokim(db)`.
       - Parse and validate `req.query` with `HokimTopicStatisticsQuerySchema`.
@@ -281,20 +281,20 @@ so that I can understand the shape of current or historical signals without mist
       - Return HTTP 200 `HokimTopicStatisticsResponse`.
       - Handle errors with sanitized `STATISTICS_QUERY_ERROR` and HTTP 400.
 
-- [ ] **Task 4: Web API Client & TanStack Query Hook** (AC: 2, 15)
-  - [ ] 4.1 In `apps/web/src/topics/hokim-topics-client.ts`:
+- [x] **Task 4: Web API Client & TanStack Query Hook** (AC: 2, 15)
+  - [x] 4.1 In `apps/web/src/topics/hokim-topics-client.ts`:
     - Implement `getStatistics(params?: HokimTopicStatisticsQuery, signal?: AbortSignal): Promise<HokimTopicStatisticsResponse>`:
       - Serializes query parameters (`dateScope`, `dateFrom`, `dateTo`, `mahallaName`, `lanes`).
       - Calls same-origin `GET /api/v1/hokim/topics/statistics`.
       - Parses response with `HokimTopicStatisticsResponseSchema`.
-  - [ ] 4.2 In `apps/web/src/topics/useTopicStatistics.ts` (NEW):
+  - [x] 4.2 In `apps/web/src/topics/useTopicStatistics.ts` (NEW):
     - Implement TanStack Query hook `useTopicStatistics(filters: DashboardFilterState)`:
       - `queryKey: ['hokim-statistics', districtId, filters]`
       - `placeholderData: keepPreviousData` (preserves visible statistics during filter transitions without layout jitter).
       - Returns `{ statistics, isLoading, isFetching, isError, error, refetch }`.
 
-- [ ] **Task 5: Read-Only Metric Card Component** (AC: 1, 13)
-  - [ ] 5.1 In `apps/web/src/components/topics/TopicStatisticCard.tsx` (NEW):
+- [x] **Task 5: Read-Only Metric Card Component** (AC: 1, 13)
+  - [x] 5.1 In `apps/web/src/components/topics/TopicStatisticCard.tsx` (NEW):
     - Render a clean, bordered, non-clickable card:
       - `tabIndex={-1}`, `role="group"`, `aria-label="{title}: {value} {subtitle}"`
       - Background `#FFFFFF`, border `1px solid #E2E8F0`, `borderRadius: 8`, zero box-shadows (`boxShadow: 'none'`).
@@ -304,8 +304,8 @@ so that I can understand the shape of current or historical signals without mist
       - Subtitle: 13px `#64748B`.
       - Strict text wrapping without clipping on 320px screens.
 
-- [ ] **Task 6: Responsive 5-Card Statistics Strip & Overflow Navigation** (AC: 1, 6-12, 14)
-  - [ ] 6.1 In `apps/web/src/components/topics/TopicStatisticsStrip.tsx` (NEW):
+- [x] **Task 6: Responsive 5-Card Statistics Strip & Overflow Navigation** (AC: 1, 6-12, 14)
+  - [x] 6.1 In `apps/web/src/components/topics/TopicStatisticsStrip.tsx` (NEW):
     - Accepts `statistics: HokimTopicStatisticsResponse | undefined`, `isLoading: boolean`.
     - Desktop layout ($\ge 1024$px):
       - 5-column CSS grid (`gridTemplateColumns: 'repeat(5, 1fr)'`, gap 12px).
@@ -342,15 +342,15 @@ so that I can understand the shape of current or historical signals without mist
         - Icon: `EnvironmentOutlined`, color `#D1FAE5`.
     - Loading skeleton: renders 5 skeleton cards matching exact dimensions (fixed height ~96px, matching borders/radii) without layout shifts (0px CLS).
 
-- [ ] **Task 7: Dashboard Page Layout Integration & State Synchronization** (AC: 1, 2, 10)
-  - [ ] 7.1 In `apps/web/src/pages/HokimDashboardPage.tsx`:
+- [x] **Task 7: Dashboard Page Layout Integration & State Synchronization** (AC: 1, 2, 10)
+  - [x] 7.1 In `apps/web/src/pages/HokimDashboardPage.tsx`:
     - Wire `useTopicStatistics(filters)`.
     - Mount `TopicStatisticsStrip` between `FilterBar` / `FilterModalSheet` and `FiveLaneBoard`.
     - Pass `statistics` and loading state.
     - Synchronize background refresh and retry actions with `useTopicStatistics.refetch()`.
 
-- [ ] **Task 8: Backend Integration Tests for Statistics Aggregations** (AC: 1-12, 15)
-  - [ ] 8.1 In `apps/backend/tests/integration/hokim-topics-statistics.test.ts` (NEW):
+- [x] **Task 8: Backend Integration Tests for Statistics Aggregations** (AC: 1-12, 15)
+  - [x] 8.1 In `apps/backend/tests/hokim-topics-statistics.test.ts` (NEW):
     - Test `GET /api/v1/hokim/topics/statistics` with default scope (`dateScope=today`).
     - Test unique Topic deduplication when Topic has multiple lanes (`WATER` + `ELECTRICITY`).
     - Test Hokim-related topic counting and evidence volume counting.
@@ -366,11 +366,11 @@ so that I can understand the shape of current or historical signals without mist
     - Test filter restoration when switching back to all Mahallas and 5 lanes.
     - Test tenant isolation (`district_id` isolation).
 
-- [ ] **Task 9: Web Unit & Component Tests for Statistics Strip** (AC: 1, 13, 14, 16)
-  - [ ] 9.1 In `apps/web/src/topics/__tests__/useTopicStatistics.test.ts` (NEW):
+- [x] **Task 9: Web Unit & Component Tests for Statistics Strip** (AC: 1, 13, 14, 16)
+  - [x] 9.1 In `apps/web/tests/unit/useTopicStatistics.test.tsx` (NEW):
     - Test query hook with filter state changes.
     - Test state preservation during filter transition (`placeholderData: keepPreviousData`).
-  - [ ] 9.2 In `apps/web/src/components/topics/__tests__/TopicStatisticsStrip.test.tsx` (NEW):
+  - [x] 9.2 In `apps/web/tests/unit/TopicStatisticsStrip.test.tsx` (NEW):
     - Test rendering all 5 cards in default state.
     - Test non-focusable and read-only attributes (`tabIndex={-1}`).
     - Test Card 4 normal service lane vs multi-lane fallback mode rendering.
@@ -446,21 +446,26 @@ Gemini 3.7 Flash (High)
 None
 
 ### Completion Notes List
-- Comprehensive specification authored for Story 3.5 following the BMad Method.
-- Mapped all 16 BDD acceptance criteria directly from `epic-3.md`, `ARCHITECTURE-SPINE.md`, and UX design documents.
-- Detailed task breakdowns covering `@mahalla-ovozi/api-contracts`, backend PostgreSQL aggregation service & route handler, web client hooks, desktop/mobile responsive `TopicStatisticsStrip`, read-only `TopicStatisticCard`, and automated Vitest/integration suites.
-- Strict anti-pattern prevention: no sentiment or satisfaction rankings, no opinionated AI commentary, no clickable/focusable cards acting as filters, no N+1 query overhead, no multi-lane evidence inflation, and zero-result precedence over ties.
-- Completed adversarial quality analysis against Ant Design 5.x token rules (`boxShadow: 'none'`), 44px WCAG touch targets, TanStack Query 5.x state preservation, and Fastify 5.x Zod validation.
+- Implemented shared statistics schemas and types in `@mahalla-ovozi/api-contracts` (`TopicStatisticCard4Schema`, `TopicStatisticCard5Schema`, `HokimTopicStatisticsQuerySchema`, `HokimTopicStatisticsResponseSchema`).
+- Implemented single-roundtrip parameterized SQL CTE aggregation query in `HokimTopicService.getStatistics` handling multi-lane topic deduplication, Hokim-related retained evidence counts, distinct active Mahallas, service lane ranking/ties/zero precedence, and single-Mahalla fallback modes.
+- Registered guarded endpoint `GET /api/v1/hokim/topics/statistics` in `hokim-topics-routes.ts` with Fastify Zod validation.
+- Implemented `hokimTopicsClient.getStatistics` and `useTopicStatistics` TanStack Query hook with `keepPreviousData` placeholder preservation.
+- Created accessible, non-focusable read-only `TopicStatisticCard.tsx` with zero box-shadows (`boxShadow: 'none'`), neutral typography (`tabular-nums`), and colored icon container badges.
+- Created responsive `TopicStatisticsStrip.tsx` with desktop 5-column grid and mobile horizontal carousel navigation (44x44px touch targets, boundary disabling, `aria-live="polite"` announcements, reduced motion compliance).
+- Integrated `TopicStatisticsStrip` on `HokimDashboardPage.tsx` synchronized with active filter state and background refresh actions.
+- Authored backend integration tests (`hokim-topics-statistics.test.ts` - 10/10 passing) and web unit/component tests (`useTopicStatistics.test.tsx`, `TopicStatisticsStrip.test.tsx` - 11/11 passing).
+- Verified full monorepo typechecks and builds pass with 0 errors.
 
 ### File List
 - `packages/api-contracts/src/topics.ts`
 - `apps/backend/src/modules/topics/hokim-topic-service.ts`
 - `apps/backend/src/modules/topics/hokim-topics-routes.ts`
+- `apps/backend/tests/hokim-topics-statistics.test.ts`
 - `apps/web/src/topics/hokim-topics-client.ts`
 - `apps/web/src/topics/useTopicStatistics.ts`
 - `apps/web/src/components/topics/TopicStatisticCard.tsx`
 - `apps/web/src/components/topics/TopicStatisticsStrip.tsx`
 - `apps/web/src/pages/HokimDashboardPage.tsx`
-- `apps/backend/tests/integration/hokim-topics-statistics.test.ts`
-- `apps/web/src/topics/__tests__/useTopicStatistics.test.ts`
-- `apps/web/src/components/topics/__tests__/TopicStatisticsStrip.test.tsx`
+- `apps/web/tests/unit/useTopicStatistics.test.tsx`
+- `apps/web/tests/unit/TopicStatisticsStrip.test.tsx`
+

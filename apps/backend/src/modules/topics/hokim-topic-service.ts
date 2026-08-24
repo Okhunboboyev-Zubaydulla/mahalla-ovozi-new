@@ -12,6 +12,10 @@ import {
   HokimTopicBoardResponse,
   HokimLaneResponse,
   DateFilterScope,
+  HokimTopicStatisticsQueryOutput,
+  HokimTopicStatisticsResponse,
+  TopicStatisticCard4,
+  TopicStatisticCard5,
 } from '@mahalla-ovozi/api-contracts';
 import { getTashkentCalendarDay } from '../telegram-intake/timezone-util.js';
 
@@ -600,5 +604,287 @@ export class HokimTopicService {
     uniqueMahallas.sort((a, b) => a.localeCompare(b, 'uz-Cyrl', { sensitivity: 'base' }));
 
     return uniqueMahallas;
+  }
+
+  /**
+   * Retrieves compact neutral statistics following the active filter scope
+   * and single-roundtrip authoritative PostgreSQL aggregations.
+   */
+  async getStatistics(
+    actorContext: {
+      id: string;
+      districtId: string;
+      role: string;
+    },
+    params: HokimTopicStatisticsQueryOutput,
+  ): Promise<HokimTopicStatisticsResponse> {
+    if (!actorContext.districtId) {
+      throw new Error('Ҳоким ҳисоби туманга бириктирилмаган.');
+    }
+    const districtId = actorContext.districtId;
+
+    const districtResult = await this.db
+      .select({ name: districts.name })
+      .from(districts)
+      .where(eq(districts.id, districtId))
+      .limit(1);
+    const districtName = districtResult[0]?.name || 'Номаълум туман';
+
+    const { datePredicate, resolvedCalendarDay } = resolveDateBoundary(params);
+
+    let mahallaPredicate = sql``;
+    if (params.mahallaName && params.mahallaName.trim() !== '' && params.mahallaName !== 'all') {
+      mahallaPredicate = sql`AND t.mahalla_name = ${params.mahallaName.trim()}`;
+    }
+
+    const selectedLanes: QualifyingLane[] =
+      params.lanes && Array.isArray(params.lanes) && params.lanes.length > 0
+        ? params.lanes
+        : CANONICAL_LANES;
+
+    const laneClauses = selectedLanes.map((l) => {
+      if (l === 'HOKIM_RELATED') {
+        return sql`(tp.is_hokim_related = true OR tp.lanes @> '["HOKIM_RELATED"]'::jsonb OR t.primary_lane = 'HOKIM_RELATED')`;
+      }
+      return sql`(tp.lanes @> ${JSON.stringify([l])}::jsonb OR t.primary_lane = ${l})`;
+    });
+    const lanePredicate = sql.join(laneClauses, sql` OR `);
+
+    const statsQuery = sql`
+      WITH filtered_topics AS (
+        SELECT 
+          t.id,
+          t.mahalla_name,
+          t.primary_lane,
+          tp.lanes,
+          tp.is_hokim_related
+        FROM topics t
+        JOIN topic_projections tp ON tp.topic_id = t.id
+        WHERE t.district_id = ${districtId}
+          AND t.status = 'ACTIVE'
+          AND t.retention_expires_at > NOW()
+          AND ${datePredicate}
+          ${mahallaPredicate}
+          AND (${lanePredicate})
+      ),
+      evidence_counts AS (
+        SELECT 
+          ae.topic_id,
+          COUNT(DISTINCT ae.id)::int as count
+        FROM accepted_evidence ae
+        WHERE ae.topic_id IN (SELECT id FROM filtered_topics)
+          AND ae.district_id = ${districtId}
+        GROUP BY ae.topic_id
+      ),
+      mahalla_topic_counts AS (
+        SELECT 
+          mahalla_name, 
+          COUNT(DISTINCT id)::int as topic_count
+        FROM filtered_topics
+        WHERE mahalla_name IS NOT NULL AND TRIM(mahalla_name) != ''
+        GROUP BY mahalla_name
+      ),
+      district_mahallas_total AS (
+        SELECT COUNT(DISTINCT mahalla_name)::int as total_mahallas_count
+        FROM (
+          SELECT mahalla_name FROM district_telegram_groups WHERE district_id = ${districtId} AND status != 'FAILED'
+          UNION
+          SELECT mahalla_name FROM topics WHERE district_id = ${districtId} AND status = 'ACTIVE' AND retention_expires_at > NOW()
+        ) d_mahallas
+        WHERE mahalla_name IS NOT NULL AND TRIM(mahalla_name) != ''
+      )
+      SELECT 
+        COUNT(DISTINCT ft.id)::int as total_unique_topics,
+        COUNT(DISTINCT CASE WHEN ft.is_hokim_related = true OR ft.lanes @> '["HOKIM_RELATED"]'::jsonb OR ft.primary_lane = 'HOKIM_RELATED' THEN ft.id END)::int as hokim_topics_count,
+        COALESCE(SUM(CASE WHEN ft.is_hokim_related = true OR ft.lanes @> '["HOKIM_RELATED"]'::jsonb OR ft.primary_lane = 'HOKIM_RELATED' THEN ec.count ELSE 0 END), 0)::int as hokim_evidence_count,
+        COUNT(DISTINCT CASE WHEN ft.mahalla_name IS NOT NULL AND TRIM(ft.mahalla_name) != '' THEN ft.mahalla_name END)::int as active_mahallas_count,
+        COALESCE(SUM(ec.count), 0)::int as total_accepted_evidence_count,
+        COUNT(DISTINCT CASE WHEN ft.lanes IS NOT NULL AND jsonb_typeof(ft.lanes) = 'array' AND jsonb_array_length(ft.lanes) > 1 THEN ft.id END)::int as multi_lane_topics_count,
+        COUNT(DISTINCT CASE WHEN COALESCE(ec.count, 0) > 1 THEN ft.id END)::int as multi_evidence_topics_count,
+        COUNT(DISTINCT CASE WHEN ft.lanes @> '["WATER"]'::jsonb OR ft.primary_lane = 'WATER' THEN ft.id END)::int as water_count,
+        COUNT(DISTINCT CASE WHEN ft.lanes @> '["ELECTRICITY"]'::jsonb OR ft.primary_lane = 'ELECTRICITY' THEN ft.id END)::int as electricity_count,
+        COUNT(DISTINCT CASE WHEN ft.lanes @> '["GAS"]'::jsonb OR ft.primary_lane = 'GAS' THEN ft.id END)::int as gas_count,
+        COUNT(DISTINCT CASE WHEN ft.lanes @> '["WASTE"]'::jsonb OR ft.primary_lane = 'WASTE' THEN ft.id END)::int as waste_count,
+        COALESCE((SELECT jsonb_object_agg(mahalla_name, topic_count) FROM mahalla_topic_counts), '{}'::jsonb) as mahalla_counts,
+        COALESCE((SELECT total_mahallas_count FROM district_mahallas_total), 0)::int as total_district_mahallas_count
+      FROM filtered_topics ft
+      LEFT JOIN evidence_counts ec ON ec.topic_id = ft.id;
+    `;
+
+    const result = await this.db.execute<{
+      total_unique_topics: number;
+      hokim_topics_count: number;
+      hokim_evidence_count: number;
+      active_mahallas_count: number;
+      total_accepted_evidence_count: number;
+      multi_lane_topics_count: number;
+      multi_evidence_topics_count: number;
+      water_count: number;
+      electricity_count: number;
+      gas_count: number;
+      waste_count: number;
+      mahalla_counts: Record<string, number> | null;
+      total_district_mahallas_count: number;
+    }>(statsQuery);
+
+    const row = result.rows[0];
+
+    const totalUniqueTopics = Number(row?.total_unique_topics ?? 0);
+    const hokimRelatedTopics = Number(row?.hokim_topics_count ?? 0);
+    const hokimEvidenceCount = Number(row?.hokim_evidence_count ?? 0);
+    const activeMahallasCount = Number(row?.active_mahallas_count ?? 0);
+    const totalAcceptedEvidenceCount = Number(row?.total_accepted_evidence_count ?? 0);
+    const multiLaneTopicCount = Number(row?.multi_lane_topics_count ?? 0);
+    const multiEvidenceTopicCount = Number(row?.multi_evidence_topics_count ?? 0);
+    const totalDistrictMahallasCount = Number(row?.total_district_mahallas_count ?? 0);
+
+    // Compute Card 4 (Service Lane or Multi-Lane)
+    const activeServiceLanes = selectedLanes.filter(
+      (l): l is 'WATER' | 'ELECTRICITY' | 'GAS' | 'WASTE' =>
+        l === 'WATER' || l === 'ELECTRICITY' || l === 'GAS' || l === 'WASTE',
+    );
+
+    let card4: TopicStatisticCard4;
+    if (activeServiceLanes.length < 2) {
+      card4 = {
+        mode: 'multi_lane_topics',
+        multiLaneTopicCount,
+      };
+    } else {
+      const serviceCounts: Record<'WATER' | 'ELECTRICITY' | 'GAS' | 'WASTE', number> = {
+        WATER: Number(row?.water_count ?? 0),
+        ELECTRICITY: Number(row?.electricity_count ?? 0),
+        GAS: Number(row?.gas_count ?? 0),
+        WASTE: Number(row?.waste_count ?? 0),
+      };
+
+      let maxCount = 0;
+      for (const lane of activeServiceLanes) {
+        const c = serviceCounts[lane];
+        if (c > maxCount) {
+          maxCount = c;
+        }
+      }
+
+      if (maxCount === 0) {
+        card4 = {
+          mode: 'most_active_service_lane',
+          leaderLane: null,
+          leaderTopicCount: 0,
+          isTie: false,
+          tiedCount: 0,
+          isZero: true,
+        };
+      } else {
+        const tied = activeServiceLanes.filter((lane) => serviceCounts[lane] === maxCount);
+        if (tied.length > 1) {
+          card4 = {
+            mode: 'most_active_service_lane',
+            leaderLane: null,
+            leaderTopicCount: maxCount,
+            isTie: true,
+            tiedCount: tied.length,
+            isZero: false,
+          };
+        } else {
+          card4 = {
+            mode: 'most_active_service_lane',
+            leaderLane: tied[0] ?? null,
+            leaderTopicCount: maxCount,
+            isTie: false,
+            tiedCount: 0,
+            isZero: false,
+          };
+        }
+      }
+    }
+
+    // Compute Card 5 (Mahalla or Multi-Evidence)
+    const isSingleMahallaScope =
+      (params.mahallaName &&
+        params.mahallaName.trim() !== '' &&
+        params.mahallaName.trim() !== 'all') ||
+      totalDistrictMahallasCount <= 1;
+
+    let card5: TopicStatisticCard5;
+    if (isSingleMahallaScope) {
+      card5 = {
+        mode: 'multi_evidence_topics',
+        multiEvidenceTopicCount,
+      };
+    } else {
+      const rawMahallaCounts = (row?.mahalla_counts ?? {}) as Record<string, number>;
+      const mahallaEntries = Object.entries(rawMahallaCounts).filter(
+        ([name, count]) => name && name.trim() !== '' && Number(count) > 0,
+      );
+
+      if (mahallaEntries.length === 0 || totalUniqueTopics === 0) {
+        card5 = {
+          mode: 'most_active_mahalla',
+          leaderMahalla: null,
+          leaderTopicCount: 0,
+          isTie: false,
+          tiedCount: 0,
+          isZero: true,
+        };
+      } else {
+        let maxCount = 0;
+        for (const [, count] of mahallaEntries) {
+          const c = Number(count);
+          if (c > maxCount) {
+            maxCount = c;
+          }
+        }
+
+        if (maxCount === 0) {
+          card5 = {
+            mode: 'most_active_mahalla',
+            leaderMahalla: null,
+            leaderTopicCount: 0,
+            isTie: false,
+            tiedCount: 0,
+            isZero: true,
+          };
+        } else {
+          const tied = mahallaEntries
+            .filter(([, count]) => Number(count) === maxCount)
+            .map(([name]) => name);
+
+          if (tied.length > 1) {
+            card5 = {
+              mode: 'most_active_mahalla',
+              leaderMahalla: null,
+              leaderTopicCount: maxCount,
+              isTie: true,
+              tiedCount: tied.length,
+              isZero: false,
+            };
+          } else {
+            card5 = {
+              mode: 'most_active_mahalla',
+              leaderMahalla: tied[0] ?? null,
+              leaderTopicCount: maxCount,
+              isTie: false,
+              tiedCount: 0,
+              isZero: false,
+            };
+          }
+        }
+      }
+    }
+
+    return {
+      districtId,
+      districtName,
+      calendarDay: resolvedCalendarDay,
+      serverEvaluatedAt: new Date().toISOString(),
+      totalUniqueTopics,
+      hokimRelatedTopics,
+      hokimEvidenceCount,
+      activeMahallasCount,
+      totalAcceptedEvidenceCount,
+      card4,
+      card5,
+    };
   }
 }

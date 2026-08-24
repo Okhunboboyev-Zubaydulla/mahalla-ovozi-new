@@ -6,9 +6,11 @@ import { TopicCardItem } from '@mahalla-ovozi/api-contracts';
 import { BoardToolbar } from '../components/topics/BoardToolbar.js';
 import { FilterBar } from '../components/topics/FilterBar.js';
 import { FilterModalSheet } from '../components/topics/FilterModalSheet.js';
+import { TopicStatisticsStrip } from '../components/topics/TopicStatisticsStrip.js';
 import { FiveLaneBoard } from '../components/topics/FiveLaneBoard.js';
 import { TopicEvidenceDrawer } from '../components/topics/TopicEvidenceDrawer.js';
 import { useHokimTopicBoard } from '../topics/useHokimTopicBoard.js';
+import { useTopicStatistics } from '../topics/useTopicStatistics.js';
 import { useTopicEvidence } from '../topics/useTopicEvidence.js';
 import { useDashboardFilterParams } from '../hooks/useDashboardFilterParams.js';
 import { useFocusFallback } from '../hooks/useFocusFallback.js';
@@ -52,6 +54,22 @@ export const HokimDashboardPage: React.FC = () => {
     refetch,
     retryFilter,
   } = useHokimTopicBoard(filters);
+
+  const {
+    statistics,
+    isLoading: isStatsLoading,
+    refetch: refetchStats,
+  } = useTopicStatistics(filters);
+
+  const handleManualRefresh = useCallback(() => {
+    manualRefresh();
+    refetchStats();
+  }, [manualRefresh, refetchStats]);
+
+  const handleRetry = useCallback(() => {
+    retryFilter();
+    refetchStats();
+  }, [retryFilter, refetchStats]);
 
   const handleInvalidatedTopic = useCallback(() => {
     const prevLane = originatingLane;
@@ -193,7 +211,7 @@ export const HokimDashboardPage: React.FC = () => {
         isRefreshing={isRefreshing}
         isOffline={isOffline}
         hasProcessingDelay={hasProcessingDelay}
-        onRefresh={manualRefresh}
+        onRefresh={handleManualRefresh}
         onOpenFilters={() => setFilterModalOpen(true)}
         activeFilterCount={activeFilterCount}
         mobileFilterButtonRef={mobileFilterButtonRef}
@@ -216,6 +234,12 @@ export const HokimDashboardPage: React.FC = () => {
         onApplyFilters={setFilters}
         onResetFilters={resetFilters}
         openerRef={mobileFilterButtonRef}
+      />
+
+      {/* 5-Card Statistics Strip (AC 1, AC 14) */}
+      <TopicStatisticsStrip
+        statistics={statistics}
+        isLoading={isStatsLoading && !statistics}
       />
 
       {/* Offline Warning Banner (AC 8) */}
@@ -261,7 +285,7 @@ export const HokimDashboardPage: React.FC = () => {
               <Button
                 size="small"
                 icon={<ReloadOutlined />}
-                onClick={() => retryFilter()}
+                onClick={handleRetry}
                 style={{
                   borderColor: '#FCA5A5',
                   color: '#991B1B',

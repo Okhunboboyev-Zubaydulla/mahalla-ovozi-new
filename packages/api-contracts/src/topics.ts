@@ -215,4 +215,95 @@ export const TopicEvidenceResponseSchema = z.object({
 });
 export type TopicEvidenceResponse = z.infer<typeof TopicEvidenceResponseSchema>;
 
+export const TopicStatisticCard4Schema = z.discriminatedUnion('mode', [
+  z.object({
+    mode: z.literal('most_active_service_lane'),
+    leaderLane: QualifyingLaneSchema.nullable(),
+    leaderTopicCount: z.number().int().min(0),
+    isTie: z.boolean(),
+    tiedCount: z.number().int().min(0),
+    isZero: z.boolean(),
+  }),
+  z.object({
+    mode: z.literal('multi_lane_topics'),
+    multiLaneTopicCount: z.number().int().min(0),
+  }),
+]);
+export type TopicStatisticCard4 = z.infer<typeof TopicStatisticCard4Schema>;
+
+export const TopicStatisticCard5Schema = z.discriminatedUnion('mode', [
+  z.object({
+    mode: z.literal('most_active_mahalla'),
+    leaderMahalla: z.string().nullable(),
+    leaderTopicCount: z.number().int().min(0),
+    isTie: z.boolean(),
+    tiedCount: z.number().int().min(0),
+    isZero: z.boolean(),
+  }),
+  z.object({
+    mode: z.literal('multi_evidence_topics'),
+    multiEvidenceTopicCount: z.number().int().min(0),
+  }),
+]);
+export type TopicStatisticCard5 = z.infer<typeof TopicStatisticCard5Schema>;
+
+export const HokimTopicStatisticsQuerySchema = z
+  .object({
+    dateScope: DateFilterScopeSchema.default('today'),
+    dateFrom: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
+      .optional(),
+    dateTo: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
+      .optional(),
+    mahallaName: z.string().trim().min(1).optional(),
+    lanes: LanesQueryParamSchema,
+    calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.dateScope === 'custom') {
+      if (!data.dateFrom) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Бошланиш санаси (dateFrom) киритилиши шарт.',
+          path: ['dateFrom'],
+        });
+      }
+      if (!data.dateTo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Тугаш санаси (dateTo) киритилиши шарт.',
+          path: ['dateTo'],
+        });
+      }
+      if (data.dateFrom && data.dateTo && data.dateFrom > data.dateTo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.',
+          path: ['dateFrom'],
+        });
+      }
+    }
+  });
+export type HokimTopicStatisticsQuery = z.input<typeof HokimTopicStatisticsQuerySchema>;
+export type HokimTopicStatisticsQueryOutput = z.output<typeof HokimTopicStatisticsQuerySchema>;
+
+export const HokimTopicStatisticsResponseSchema = z.object({
+  districtId: z.string(),
+  districtName: z.string(),
+  calendarDay: z.string(),
+  serverEvaluatedAt: z.string().datetime(),
+  totalUniqueTopics: z.number().int().min(0),
+  hokimRelatedTopics: z.number().int().min(0),
+  hokimEvidenceCount: z.number().int().min(0),
+  activeMahallasCount: z.number().int().min(0),
+  totalAcceptedEvidenceCount: z.number().int().min(0),
+  card4: TopicStatisticCard4Schema,
+  card5: TopicStatisticCard5Schema,
+});
+export type HokimTopicStatisticsResponse = z.infer<typeof HokimTopicStatisticsResponseSchema>;
+
+
 

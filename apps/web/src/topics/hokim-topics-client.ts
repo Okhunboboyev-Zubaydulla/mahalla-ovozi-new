@@ -9,6 +9,9 @@ import {
   TopicEvidenceResponse,
   TopicEvidenceResponseSchema,
   HokimMahallasResponseSchema,
+  HokimTopicStatisticsQuery,
+  HokimTopicStatisticsResponse,
+  HokimTopicStatisticsResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
 
@@ -129,6 +132,46 @@ export const hokimTopicsClient = {
         signal,
       },
       TopicEvidenceResponseSchema,
+    );
+  },
+
+  getStatistics(
+    params?: HokimTopicStatisticsQuery,
+    signal?: AbortSignal,
+  ): Promise<HokimTopicStatisticsResponse> {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      if (params.dateScope) {
+        searchParams.set('dateScope', params.dateScope);
+      }
+      if (params.dateFrom) {
+        searchParams.set('dateFrom', params.dateFrom);
+      }
+      if (params.dateTo) {
+        searchParams.set('dateTo', params.dateTo);
+      }
+      if (params.mahallaName) {
+        searchParams.set('mahallaName', params.mahallaName);
+      }
+      if (params.lanes) {
+        const lanesStr = Array.isArray(params.lanes) ? params.lanes.join(',') : String(params.lanes);
+        if (lanesStr) {
+          searchParams.set('lanes', lanesStr);
+        }
+      }
+      if (params.calendarDay) {
+        searchParams.set('calendarDay', params.calendarDay);
+      }
+    }
+    const queryString = searchParams.toString() ? `?${searchParams.toString()}` : '';
+
+    return request<HokimTopicStatisticsResponse>(
+      `/api/v1/hokim/topics/statistics${queryString}`,
+      {
+        method: 'GET',
+        signal,
+      },
+      HokimTopicStatisticsResponseSchema,
     );
   },
 };

@@ -1,0 +1,290 @@
+import React, { useState, useRef, useEffect, useContext } from 'react';
+import { Button, Grid } from 'antd';
+import {
+  LeftOutlined,
+  RightOutlined,
+  FileTextOutlined,
+  CrownOutlined,
+  HomeOutlined,
+  AppstoreOutlined,
+  EnvironmentOutlined,
+} from '@ant-design/icons';
+import { HokimTopicStatisticsResponse } from '@mahalla-ovozi/api-contracts';
+import { TopicStatisticCard } from './TopicStatisticCard.js';
+import { LANE_LABELS } from './TopicCard.js';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
+import { LiveAnnouncerContext } from '../../hooks/useLiveAnnouncer.js';
+
+const { useBreakpoint } = Grid;
+
+export interface TopicStatisticsStripProps {
+  statistics?: HokimTopicStatisticsResponse;
+  isLoading?: boolean;
+}
+
+export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
+  statistics,
+  isLoading = false,
+}) => {
+  const screens = useBreakpoint();
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const liveAnnouncer = useContext(LiveAnnouncerContext);
+
+  // Desktop view when viewport >= 1024px
+  const isDesktop = screens.lg !== false;
+
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const isMountedRef = useRef<boolean>(false);
+
+  // Build card descriptors
+  const card1 = {
+    id: 'statistic-card-1',
+    title: 'Жами мавзулар',
+    value: statistics?.totalUniqueTopics ?? 0,
+    subtitle: 'танланган фильтр бўйича',
+    icon: <FileTextOutlined />,
+    iconBgColor: '#FEE2E2',
+    iconColor: '#DC2626',
+  };
+
+  const card2 = {
+    id: 'statistic-card-2',
+    title: 'Ҳокимга оид',
+    value: statistics?.hokimRelatedTopics ?? 0,
+    subtitle: `${statistics?.hokimEvidenceCount ?? 0} та далил`,
+    icon: <CrownOutlined />,
+    iconBgColor: '#FCE7F3',
+    iconColor: '#DB2777',
+  };
+
+  const card3 = {
+    id: 'statistic-card-3',
+    title: 'Фаол маҳаллалар',
+    value: statistics?.activeMahallasCount ?? 0,
+    subtitle: `${statistics?.totalAcceptedEvidenceCount ?? 0} та далил`,
+    icon: <HomeOutlined />,
+    iconBgColor: '#DBEAFE',
+    iconColor: '#1D4ED8',
+  };
+
+  // Card 4: Most active service lane or multi-lane fallback
+  let card4Title = 'Энг фаол соҳа';
+  let card4Value: string | number = '—';
+  let card4Subtitle = 'мавзулар йўқ';
+
+  if (statistics?.card4) {
+    if (statistics.card4.mode === 'multi_lane_topics') {
+      card4Title = 'Кўп йўналишли';
+      card4Value = statistics.card4.multiLaneTopicCount;
+      card4Subtitle = 'мавзулар';
+    } else {
+      card4Title = 'Энг фаол соҳа';
+      if (statistics.card4.isZero) {
+        card4Value = '—';
+        card4Subtitle = 'мавзулар йўқ';
+      } else if (statistics.card4.isTie) {
+        card4Value = `Тенг: ${statistics.card4.tiedCount} та йўналиш`;
+        card4Subtitle = `${statistics.card4.leaderTopicCount} тадан мавзу`;
+      } else {
+        card4Value = statistics.card4.leaderLane ? LANE_LABELS[statistics.card4.leaderLane] : '—';
+        card4Subtitle = `${statistics.card4.leaderTopicCount} та мавзу`;
+      }
+    }
+  }
+
+  const card4 = {
+    id: 'statistic-card-4',
+    title: card4Title,
+    value: card4Value,
+    subtitle: card4Subtitle,
+    icon: <AppstoreOutlined />,
+    iconBgColor: '#F3E8FF',
+    iconColor: '#7C3AED',
+  };
+
+  // Card 5: Most active Mahalla or multi-evidence fallback
+  let card5Title = 'Энг фаол маҳалла';
+  let card5Value: string | number = '—';
+  let card5Subtitle = 'мавзулар йўқ';
+
+  if (statistics?.card5) {
+    if (statistics.card5.mode === 'multi_evidence_topics') {
+      card5Title = 'Кўп далилли';
+      card5Value = statistics.card5.multiEvidenceTopicCount;
+      card5Subtitle = 'мавзулар';
+    } else {
+      card5Title = 'Энг фаол маҳалла';
+      if (statistics.card5.isZero) {
+        card5Value = '—';
+        card5Subtitle = 'мавзулар йўқ';
+      } else if (statistics.card5.isTie) {
+        card5Value = `Тенг: ${statistics.card5.tiedCount} та маҳалла`;
+        card5Subtitle = `${statistics.card5.leaderTopicCount} тадан мавзу`;
+      } else {
+        card5Value = statistics.card5.leaderMahalla || '—';
+        card5Subtitle = `${statistics.card5.leaderTopicCount} та мавзу`;
+      }
+    }
+  }
+
+  const card5 = {
+    id: 'statistic-card-5',
+    title: card5Title,
+    value: card5Value,
+    subtitle: card5Subtitle,
+    icon: <EnvironmentOutlined />,
+    iconBgColor: '#D1FAE5',
+    iconColor: '#059669',
+  };
+
+  const cards = [card1, card2, card3, card4, card5];
+
+  // Announce and scroll when mobile index changes
+  useEffect(() => {
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      return;
+    }
+
+    if (!isDesktop) {
+      const activeCard = cardRefs.current[currentIndex];
+      if (activeCard && typeof activeCard.scrollIntoView === 'function') {
+        activeCard.scrollIntoView({
+          behavior: prefersReducedMotion ? 'auto' : 'smooth',
+          inline: 'center',
+          block: 'nearest',
+        });
+      }
+
+      if (liveAnnouncer?.announce) {
+        liveAnnouncer.announce(`Кўрсаткич ${currentIndex + 1} / 5: ${cards[currentIndex].title}`);
+      }
+    }
+  }, [currentIndex, isDesktop, prefersReducedMotion, liveAnnouncer, cards]);
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => Math.min(cards.length - 1, prev + 1));
+  };
+
+  return (
+    <section
+      role="region"
+      aria-label="Муҳим кўрсаткичлар"
+      style={{
+        backgroundColor: '#F4F6F8',
+        padding: isDesktop ? '12px 24px' : '10px 16px',
+        borderBottom: '1px solid #E2E8F0',
+      }}
+    >
+      {/* Mobile Overflow Navigation Header (< 1024px) */}
+      {!isDesktop && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#475569',
+            }}
+            aria-live="polite"
+          >
+            Кўрсаткич {currentIndex + 1} / 5: {cards[currentIndex].title}
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Button
+              type="default"
+              size="small"
+              icon={<LeftOutlined />}
+              onClick={handlePrev}
+              disabled={currentIndex === 0}
+              aria-label="Олдинги кўрсаткич"
+              style={{
+                minWidth: 44,
+                minHeight: 44,
+                width: 44,
+                height: 44,
+                borderRadius: 8,
+                boxShadow: 'none',
+                borderColor: '#CBD5E1',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            />
+            <Button
+              type="default"
+              size="small"
+              icon={<RightOutlined />}
+              onClick={handleNext}
+              disabled={currentIndex === cards.length - 1}
+              aria-label="Кейинги кўрсаткич"
+              style={{
+                minWidth: 44,
+                minHeight: 44,
+                width: 44,
+                height: 44,
+                borderRadius: 8,
+                boxShadow: 'none',
+                borderColor: '#CBD5E1',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Cards Layout: 5-column grid on desktop, smooth horizontal snap on mobile */}
+      <div
+        style={{
+          display: isDesktop ? 'grid' : 'flex',
+          gridTemplateColumns: isDesktop ? 'repeat(5, minmax(0, 1fr))' : undefined,
+          gap: 12,
+          overflowX: isDesktop ? 'visible' : 'auto',
+          scrollSnapType: isDesktop ? undefined : 'x mandatory',
+          scrollbarWidth: 'none',
+          WebkitOverflowScrolling: 'touch',
+          paddingBottom: isDesktop ? 0 : 4,
+        }}
+      >
+        {cards.map((card, index) => (
+          <div
+            key={card.id}
+            ref={(el) => {
+              cardRefs.current[index] = el;
+            }}
+            style={{
+              flex: isDesktop ? undefined : '0 0 85%',
+              minWidth: isDesktop ? 0 : 260,
+              maxWidth: isDesktop ? undefined : 320,
+              scrollSnapAlign: isDesktop ? undefined : 'center',
+            }}
+          >
+            <TopicStatisticCard
+              id={card.id}
+              title={card.title}
+              value={card.value}
+              subtitle={card.subtitle}
+              icon={card.icon}
+              iconBgColor={card.iconBgColor}
+              iconColor={card.iconColor}
+              isLoading={isLoading}
+            />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
