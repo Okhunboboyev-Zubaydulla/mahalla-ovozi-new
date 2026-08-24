@@ -201,7 +201,7 @@ export const TopicStatisticCard: React.FC<TopicStatisticCardProps> = ({
       </div>
 
       {/* Optional Prior-Period Comparison Sub-block (Card 1) */}
-      {comparison !== undefined && (
+      {(comparison !== undefined || hasComparisonSlot) && (
         <div
           data-testid="card-comparison-subblock"
           style={{
@@ -217,77 +217,79 @@ export const TopicStatisticCard: React.FC<TopicStatisticCardProps> = ({
           }}
           aria-hidden="true"
         >
-          {comparison.isAvailable ? (
-            <>
+          {comparison !== undefined ? (
+            comparison.isAvailable ? (
+              <>
+                <span
+                  data-testid="comparison-delta-badge"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '1px 6px',
+                    borderRadius: 4,
+                    backgroundColor: '#F1F5F9',
+                    border: '1px solid #E2E8F0',
+                    color: '#334155',
+                    fontWeight: 600,
+                    fontSize: 11,
+                    fontVariantNumeric: 'tabular-nums',
+                    fontFeatureSettings: '"tnum"',
+                  }}
+                >
+                  {comparison.delta > 0 ? `+${comparison.delta}` : comparison.delta}
+                </span>
+                <span
+                  data-testid="comparison-label"
+                  style={{
+                    color: '#64748B',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                  title={comparison.comparisonPeriodLabel}
+                >
+                  {comparison.comparisonPeriodLabel}
+                </span>
+              </>
+            ) : (
               <span
-                data-testid="comparison-delta-badge"
+                data-testid="comparison-unavailable"
                 style={{
+                  color: '#475569',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  padding: '1px 6px',
-                  borderRadius: 4,
-                  backgroundColor: '#F1F5F9',
-                  border: '1px solid #E2E8F0',
-                  color: '#334155',
-                  fontWeight: 600,
-                  fontSize: 11,
-                  fontVariantNumeric: 'tabular-nums',
-                  fontFeatureSettings: '"tnum"',
-                }}
-              >
-                {comparison.delta > 0 ? `+${comparison.delta}` : comparison.delta}
-              </span>
-              <span
-                data-testid="comparison-label"
-                style={{
-                  color: '#64748B',
+                  gap: 4,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                 }}
-                title={comparison.comparisonPeriodLabel}
+                title={
+                  comparison.reason === 'UNSUPPORTED_FILTER_SCOPE'
+                    ? 'Барча йўналишлар танланмаган ёки қидирув фаол'
+                    : comparison.reason === 'OUTSIDE_RETENTION_WINDOW'
+                      ? '90 кунлик сақлаш муддатидан ташқарида'
+                      : 'Маълумот мавжуд эмас'
+                }
               >
-                {comparison.comparisonPeriodLabel}
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '1px 5px',
+                    borderRadius: 4,
+                    backgroundColor: '#F1F5F9',
+                    border: '1px solid #E2E8F0',
+                    color: '#475569',
+                    fontWeight: 600,
+                    fontSize: 11,
+                  }}
+                >
+                  —
+                </span>
+                <span>Маълумот йўқ</span>
               </span>
-            </>
-          ) : (
-            <span
-              data-testid="comparison-unavailable"
-              style={{
-                color: '#475569',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-              title={
-                comparison.reason === 'UNSUPPORTED_FILTER_SCOPE'
-                  ? 'Барча йўналишлар танланмаган ёки қидирув фаол'
-                  : comparison.reason === 'OUTSIDE_RETENTION_WINDOW'
-                    ? '90 кунлик сақлаш муддатидан ташқарида'
-                    : 'Маълумот мавжуд эмас'
-              }
-            >
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  padding: '1px 5px',
-                  borderRadius: 4,
-                  backgroundColor: '#F1F5F9',
-                  border: '1px solid #E2E8F0',
-                  color: '#475569',
-                  fontWeight: 600,
-                  fontSize: 11,
-                }}
-              >
-                —
-              </span>
-              <span>Маълумот йўқ</span>
-            </span>
-          )}
+            )
+          ) : null}
         </div>
       )}
     </div>

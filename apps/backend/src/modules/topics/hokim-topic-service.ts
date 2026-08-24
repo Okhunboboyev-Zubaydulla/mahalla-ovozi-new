@@ -1060,10 +1060,15 @@ export class HokimTopicService {
     const today = getTashkentCalendarDay(nowSeconds);
     const retentionLowerBound = getTashkentCalendarDay(nowSeconds - 90 * 86400);
 
-    const scope = query.dateScope ?? 'today';
+    const isHistoricalSingleDay = Boolean(query.calendarDay && query.calendarDay < today);
+    const isYesterdayScope = Boolean(!query.calendarDay && query.dateScope === 'yesterday');
+    const isCustomScope = Boolean(query.dateScope === 'custom');
+    const isTodayScope =
+      query.calendarDay === today ||
+      (!query.calendarDay && (query.dateScope === 'today' || !query.dateScope));
 
     // Case 1: Today scope (or query.calendarDay === today)
-    if (scope === 'today' || (query.calendarDay && query.calendarDay === today && !query.dateScope)) {
+    if (isTodayScope) {
       // In Today scope, prior period comparison is available ONLY IF all 5 lanes are selected AND search is empty
       if (selectedLanes.length < 5 || (trimmedSearch && trimmedSearch.length > 0)) {
         return {
@@ -1112,8 +1117,8 @@ export class HokimTopicService {
     }
 
     // Case 2: Completed Single Day Scope ('yesterday' or historical calendarDay < today)
-    if (scope === 'yesterday' || (query.calendarDay && query.calendarDay < today)) {
-      const targetDay = scope === 'yesterday'
+    if (isYesterdayScope || isHistoricalSingleDay) {
+      const targetDay = isYesterdayScope
         ? getTashkentCalendarDay(nowSeconds - 86400)
         : query.calendarDay!;
 
@@ -1156,7 +1161,7 @@ export class HokimTopicService {
     }
 
     // Case 3: Completed Custom N-day Range Scope ('custom')
-    if (scope === 'custom') {
+    if (isCustomScope) {
       const { dateFrom, dateTo } = query;
       if (!dateFrom || !dateTo) {
         return {

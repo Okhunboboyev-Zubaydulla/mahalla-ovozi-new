@@ -395,5 +395,20 @@ describe('TopicStatisticsStrip Component Tests', () => {
         'Жами мавзулар: 3 та, танланган фильтр бўйича. Таққослаш мавжуд эмас: 90 кунлик сақлаш муддатидан ташқарида',
       );
     });
+
+    it('reserves comparison sub-block slot with minHeight when statistics has no comparison data (0px CLS)', () => {
+      const statsWithoutComparison: HokimTopicStatisticsResponse = {
+        ...mockDefaultStats,
+        card1Comparison: undefined as any,
+      };
+
+      renderWithProviders(<TopicStatisticsStrip statistics={statsWithoutComparison} />);
+
+      const card1 = document.getElementById('statistic-card-1');
+      expect(card1).toBeTruthy();
+
+      const subblock = card1?.querySelector('[data-testid="card-comparison-subblock"]');
+      expect(subblock).toBeTruthy();
+    });
   });
 });

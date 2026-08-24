@@ -836,6 +836,30 @@ describe('Story 3.5: Neutral Statistics Aggregation Integration Tests', () => {
       }
     });
 
+    it('computes completed single-day comparison against D-1 when calendarDay is queried without dateScope (AC 4)', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: `/api/v1/hokim/topics/statistics?calendarDay=${yesterdayCalendarDay}`,
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.body);
+
+      expect(data.totalUniqueTopics).toBe(3);
+      expect(data.card1Comparison.isAvailable).toBe(true);
+
+      if (data.card1Comparison.isAvailable) {
+        expect(data.card1Comparison.previousValue).toBe(1);
+        expect(data.card1Comparison.delta).toBe(2);
+        expect(data.card1Comparison.comparisonPeriodType).toBe('previous_calendar_day');
+        expect(data.card1Comparison.comparisonPeriodLabel).toBe('олдинги кунга нисбатан');
+      }
+    });
+
     it('applies Mahalla filter equally to both current and prior periods for completed days (AC 4)', async () => {
       const res = await server.inject({
         method: 'GET',

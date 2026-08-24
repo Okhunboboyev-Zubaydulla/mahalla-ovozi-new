@@ -4,7 +4,7 @@ baseline_commit: 3a81063
 
 # Story 3.9: Compare Topic Volume With Equivalent Prior Periods
 
-Status: review
+Status: done
 
 <!-- Note: Validation completed. Ready for dev-story. -->
 
@@ -250,6 +250,17 @@ so that I can understand change over time without invented or mismatched histori
     - Test Card 1 rendering with `isAvailable: false` and reason `OUTSIDE_RETENTION_WINDOW`.
     - Verify neutral styling: strict absence of green/red alert classes, presence of neutral slate tokens.
     - Verify screen reader accessible labels and `aria-label` text formatting.
+
+### Review Findings
+
+- [x] [Review][Patch] Fix historical `calendarDay` condition in `resolvePriorPeriodComparison` when `dateScope` defaults to `'today'` [`apps/backend/src/modules/topics/hokim-topic-service.ts:1066`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/topics/hokim-topic-service.ts#L1066)
+- [x] [Review][Patch] Reserve fixed comparison height in `TopicStatisticCard` when `hasComparisonSlot` is true and `comparison` is undefined [`apps/web/src/components/topics/TopicStatisticCard.tsx:206-208`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/components/topics/TopicStatisticCard.tsx#L206-L208)
+- [x] [Review][Defer] Card 5 single-mahalla mode fallback when district has 0 total mahallas [`apps/backend/src/modules/topics/hokim-topic-service.ts:932`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/topics/hokim-topic-service.ts#L932) — deferred, pre-existing
+- [x] [Review][Defer] Untrimmed `mahalla_name` grouping in legacy statistics query [`apps/backend/src/modules/topics/hokim-topic-service.ts:804-820`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/topics/hokim-topic-service.ts#L804-L820) — deferred, pre-existing
+- [x] [Review][Defer] Base accessible name concatenation spacing for Cards 2 and 3 [`apps/web/src/components/topics/TopicStatisticCard.tsx:85`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/components/topics/TopicStatisticCard.tsx#L85) — deferred, pre-existing
+- [x] [Review][Defer] Mobile carousel scroll synchronization with index indicator [`apps/web/src/components/topics/TopicStatisticsStrip.tsx:215`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/components/topics/TopicStatisticsStrip.tsx#L215) — deferred, pre-existing
+- [x] [Review][Defer] Query cache key serialization with unsorted lane arrays [`apps/web/src/topics/useTopicStatistics.ts:61`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/topics/useTopicStatistics.ts#L61) — deferred, pre-existing
+- [x] [Review][Defer] Premature clear trigger on whitespace input in search input [`apps/web/src/components/topics/DashboardSearchInput.tsx:61`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/components/topics/DashboardSearchInput.tsx#L61) — deferred, pre-existing
 
 ---
 
