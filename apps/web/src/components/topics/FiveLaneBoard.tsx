@@ -18,6 +18,9 @@ const CANONICAL_LANE_ORDER: QualifyingLane[] = [
 
 export interface FiveLaneBoardProps {
   lanes: Record<QualifyingLane, LaneLocalState>;
+  activeLanes?: QualifyingLane[];
+  isFiltered?: boolean;
+  onResetFilters?: () => void;
   selectedTopicId?: string | null;
   onLoadMore: (lane: QualifyingLane) => void;
   onSelectTopic?: (topic: TopicCardItem) => void;
@@ -26,6 +29,9 @@ export interface FiveLaneBoardProps {
 
 export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
   lanes,
+  activeLanes,
+  isFiltered = false,
+  onResetFilters,
   selectedTopicId,
   onLoadMore,
   onSelectTopic,
@@ -36,12 +42,17 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
   const [canScrollRight, setCanScrollRight] = useState(false);
   const prefersReducedMotion = usePrefersReducedMotion();
 
-  const totalVisibleCount = Object.values(lanes).reduce(
-    (sum, l) => sum + (l?.topics?.length || 0),
+  const lanesToRender =
+    activeLanes && activeLanes.length > 0
+      ? CANONICAL_LANE_ORDER.filter((l) => activeLanes.includes(l))
+      : CANONICAL_LANE_ORDER;
+
+  const totalVisibleCount = lanesToRender.reduce(
+    (sum, laneKey) => sum + (lanes[laneKey]?.topics?.length || 0),
     0,
   );
-  const totalBufferedCount = Object.values(lanes).reduce(
-    (sum, l) => sum + (l?.bufferedNewTopics?.length || 0),
+  const totalBufferedCount = lanesToRender.reduce(
+    (sum, laneKey) => sum + (lanes[laneKey]?.bufferedNewTopics?.length || 0),
     0,
   );
 
@@ -63,7 +74,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
       el.removeEventListener('scroll', updateScrollButtons);
       window.removeEventListener('resize', updateScrollButtons);
     };
-  }, [lanes]);
+  }, [lanes, lanesToRender]);
 
   const scrollByLane = (direction: 'left' | 'right') => {
     const el = scrollContainerRef.current;
@@ -109,14 +120,34 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
             description={
               <div>
                 <Title level={4} style={{ color: '#0F172A', marginBottom: 8, fontSize: 18 }}>
-                  Бугун ҳозирча мавзулар йўқ
+                  {isFiltered
+                    ? 'Танланган шартлар бўйича мавзулар топилмади'
+                    : 'Бугун ҳозирча мавзулар йўқ'}
                 </Title>
                 <Text style={{ color: '#64748B', fontSize: 14 }}>
-                  Туман маҳаллалари гуруҳларидан янги хабарлар келиб тушганда бу ерда мавзулар шаклланади.
+                  {isFiltered
+                    ? 'Бошқа сана оралиғи, маҳалла ёки йўналишларни танлаб кўринг.'
+                    : 'Туман маҳаллалари гуруҳларидан янги хабарлар келиб тушганда бу ерда мавзулар шаклланади.'}
                 </Text>
               </div>
             }
           />
+          {isFiltered && onResetFilters && (
+            <Button
+              type="primary"
+              onClick={onResetFilters}
+              style={{
+                marginTop: 20,
+                backgroundColor: '#0284C7',
+                borderRadius: 8,
+                fontWeight: 600,
+                height: 40,
+                boxShadow: 'none',
+              }}
+            >
+              Фильтрларни тозалаш
+            </Button>
+          )}
         </div>
       </main>
     );
@@ -197,7 +228,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
           e.currentTarget.style.outline = 'none';
         }}
       >
-        {CANONICAL_LANE_ORDER.map((laneKey) => {
+        {lanesToRender.map((laneKey) => {
           const laneData = lanes[laneKey] || {
             lane: laneKey,
             topics: [],

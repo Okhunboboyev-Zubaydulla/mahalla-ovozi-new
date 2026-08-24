@@ -22,7 +22,38 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
     scope.addHook('preHandler', verifyStateChangingOrigin);
     scope.addHook('preHandler', createRequireHokim(db));
 
-    // 1. Get today's 5-lane topic board
+    // 1. Get district mahallas list (sorted uz-Cyrl)
+    scope.get(
+      '/api/v1/hokim/topics/mahallas',
+      async (req: FastifyRequest, reply: FastifyReply) => {
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHENTICATED',
+              message: 'Сессия топилмади ёки муддати тугаган.',
+            },
+          });
+        }
+
+        try {
+          const mahallas = await topicService.getDistrictMahallas(
+            req.actor as { id: string; districtId: string; role: string },
+          );
+          return reply.status(200).send({ mahallas });
+        } catch (err: unknown) {
+          const message =
+            err instanceof Error ? err.message : 'Маҳаллалар рўйхатини юклашда хатолик юз берди.';
+          return reply.status(400).send({
+            error: {
+              code: 'MAHALLAS_QUERY_ERROR',
+              message,
+            },
+          });
+        }
+      },
+    );
+
+    // 2. Get today's or filtered 5-lane topic board
     scope.get(
       '/api/v1/hokim/topics/board',
       async (
@@ -51,8 +82,7 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         try {
           const board = await topicService.getTodayBoard(
             req.actor as { id: string; districtId: string; role: string },
-            parseResult.data.calendarDay,
-            parseResult.data.baselineTimestamp,
+            parseResult.data,
           );
           return reply.status(200).send(board);
         } catch (err: unknown) {
@@ -67,7 +97,7 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
       },
     );
 
-    // 2. Get paginated batch for a specific lane
+    // 3. Get paginated batch for a specific lane
     scope.get(
       '/api/v1/hokim/topics/lane',
       async (req: FastifyRequest<{ Querystring: unknown }>, reply: FastifyReply) => {
@@ -90,7 +120,7 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
           });
         }
 
-        const { lane, calendarDay, cursor, limit, baselineTimestamp } = parseResult.data;
+        const { cursor } = parseResult.data;
 
         if (cursor && !decodeKeysetCursor(cursor)) {
           return reply.status(400).send({
@@ -104,11 +134,7 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         try {
           const laneBatch = await topicService.getLaneBatch({
             actorContext: req.actor as { id: string; districtId: string; role: string },
-            lane,
-            calendarDay,
-            cursor,
-            limit,
-            baselineTimestamp,
+            ...parseResult.data,
           });
 
           return reply.status(200).send(laneBatch);

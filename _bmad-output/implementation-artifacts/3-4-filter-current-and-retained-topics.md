@@ -4,7 +4,7 @@ baseline_commit: 4848dd2
 
 # Story 3.4: Filter Current and Retained Topics
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -137,8 +137,8 @@ so that I can focus on an earlier or narrower District situation without navigat
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Shared API Contracts & Zod Query Schemas** (AC: 1, 2, 3, 5, 6, 15)
-  - [ ] 1.1 In `packages/api-contracts/src/topics.ts`:
+- [x] **Task 1: Shared API Contracts & Zod Query Schemas** (AC: 1, 2, 3, 5, 6, 15)
+  - [x] 1.1 In `packages/api-contracts/src/topics.ts`:
     - Define `DateFilterScopeSchema = z.enum(['today', 'yesterday', 'custom'])` and export `DateFilterScope` type.
     - Implement `LanesQueryParamSchema` with `z.preprocess()` to robustly parse comma-separated strings (`"WATER,GAS"`), array inputs, or single strings into `QualifyingLane[]`, validating `.min(1).max(5)`:
       ```typescript
@@ -176,8 +176,8 @@ so that I can focus on an earlier or narrower District situation without navigat
       - `baselineTimestamp: z.string().datetime().optional()`
     - Define `HokimMahallasResponseSchema = z.object({ mahallas: z.array(z.string()) })` and export `HokimMahallasResponse` type.
 
-- [ ] **Task 2: Backend Hokim Topic Service Filter Queries & 90-Day Boundary Validation** (AC: 1, 2, 3, 4, 5, 6, 7)
-  - [ ] 2.1 In `apps/backend/src/modules/topics/hokim-topic-service.ts`:
+- [x] **Task 2: Backend Hokim Topic Service Filter Queries & 90-Day Boundary Validation** (AC: 1, 2, 3, 4, 5, 6, 7)
+  - [x] 2.1 In `apps/backend/src/modules/topics/hokim-topic-service.ts`:
     - Define filter options interfaces:
       ```typescript
       export interface HokimTopicBoardFilterParams {
@@ -222,8 +222,8 @@ so that I can focus on an earlier or narrower District situation without navigat
       - Filter out null, empty, or whitespace-only names and trim values.
       - Sort Mahalla names alphabetically using Uzbek Cyrillic collation (`a.localeCompare(b, 'uz-Cyrl', { sensitivity: 'base' })`).
 
-- [ ] **Task 3: Backend Hokim Topics Route Handlers & Route Registration** (AC: 5, 15)
-  - [ ] 3.1 In `apps/backend/src/modules/topics/hokim-topics-routes.ts`:
+- [x] **Task 3: Backend Hokim Topics Route Handlers & Route Registration** (AC: 5, 15)
+  - [x] 3.1 In `apps/backend/src/modules/topics/hokim-topics-routes.ts`:
     - Register `GET /api/v1/hokim/topics/mahallas`:
       - Guard with `createRequireHokim(db)`.
       - Call `topicService.getDistrictMahallas(req.actor)`.
@@ -231,19 +231,19 @@ so that I can focus on an earlier or narrower District situation without navigat
     - Update `GET /api/v1/hokim/topics/board` handler to parse extended `HokimTopicBoardQuerySchema` query parameters and pass to `topicService.getTodayBoard`.
     - Update `GET /api/v1/hokim/topics/lane` handler to parse extended `HokimLaneQuerySchema` query parameters and pass to `topicService.getLaneBatch`.
 
-- [ ] **Task 4: Web API Client & Mahallas Query Hook** (AC: 1, 5, 15)
-  - [ ] 4.1 In `apps/web/src/topics/hokim-topics-client.ts`:
+- [x] **Task 4: Web API Client & Mahallas Query Hook** (AC: 1, 5, 15)
+  - [x] 4.1 In `apps/web/src/topics/hokim-topics-client.ts`:
     - Update `getTodayBoard(params?: HokimTopicBoardFilterParams, signal?: AbortSignal)` to serialize query params: `dateScope`, `dateFrom`, `dateTo`, `mahallaName`, `lanes` (comma-separated), `calendarDay`, `baselineTimestamp`.
     - Update `getLaneBatch(params: HokimLaneQueryParams, signal?: AbortSignal)` to serialize filter params: `lane`, `dateScope`, `dateFrom`, `dateTo`, `mahallaName`, `calendarDay`, `cursor`, `limit`, `baselineTimestamp`.
     - Implement `getDistrictMahallas(signal?: AbortSignal): Promise<string[]>` calling `GET /api/v1/hokim/topics/mahallas`.
-  - [ ] 4.2 In `apps/web/src/topics/useDistrictMahallas.ts` (NEW):
+  - [x] 4.2 In `apps/web/src/topics/useDistrictMahallas.ts` (NEW):
     - Create TanStack Query hook `useDistrictMahallas()`:
       - `queryKey: ['district-mahallas', districtId]`
       - `staleTime: 15 * 60 * 1000` (15 minutes cache).
       - Returns `{ mahallas: string[], isLoading: boolean, isError: boolean }`.
 
-- [ ] **Task 5: URL Search Parameter Synchronization & Dashboard Filter Hook** (AC: 1, 8, 10, 11, 15)
-  - [ ] 5.1 In `apps/web/src/hooks/useDashboardFilterParams.ts` (NEW):
+- [x] **Task 5: URL Search Parameter Synchronization & Dashboard Filter Hook** (AC: 1, 8, 10, 11, 15)
+  - [x] 5.1 In `apps/web/src/hooks/useDashboardFilterParams.ts` (NEW):
     - Implement hook using `useSearchParams` from `react-router-dom`:
       - Derive active filter state directly from URL search params via `useMemo`:
         - `dateScope`: `'today' | 'yesterday' | 'custom'` (default `'today'`).
@@ -255,7 +255,7 @@ so that I can focus on an earlier or narrower District situation without navigat
         - Cleanly omit default parameters (`dateScope=today`, empty mahalla, all 5 lanes) to preserve clean `/topics` URL.
       - Provide `resetFilters()`: resets URL search params cleanly to empty query string.
       - Guard: ensure search terms, personal data, and evidence text are never serialized to URL.
-  - [ ] 5.2 In `apps/web/src/topics/useHokimTopicBoard.ts`:
+  - [x] 5.2 In `apps/web/src/topics/useHokimTopicBoard.ts`:
     - Integrate TanStack Query v5 state preservation:
       - `queryKey: ['hokim-board', districtId, appliedFilters]`
       - `placeholderData: keepPreviousData` (preserves visible board cards during filter transition).
@@ -268,32 +268,32 @@ so that I can focus on an earlier or narrower District situation without navigat
       - `filterError`: captures failure of a requested filter query.
       - Actions: `applyFilters(newFilters)`, `resetFilters()`, `retryFilter()`.
 
-- [ ] **Task 6: Desktop Filter Bar Component & Sub-Controls** (AC: 1, 2, 3, 5, 6, 8, 14)
-  - [ ] 6.1 In `apps/web/src/components/topics/DateScopeSelect.tsx` (NEW):
+- [x] **Task 6: Desktop Filter Bar Component & Sub-Controls** (AC: 1, 2, 3, 5, 6, 8, 14)
+  - [x] 6.1 In `apps/web/src/components/topics/DateScopeSelect.tsx` (NEW):
     - Ant Design `Radio.Group` / `Segmented` for `Бугун`, `Кеча`, `Сана бўйича`.
     - When `Сана бўйича` is chosen, render AntD `DatePicker.RangePicker`:
       - Configured with `Asia/Tashkent` calendar formatting (`DD.MM.YYYY`).
       - `disabledDate`, `minDate`, `maxDate`: restrict selection to 90-day retention window (`today - 90 days` to `today`).
       - 44px touch targets (`controlHeight: 44`), zero box-shadows.
-  - [ ] 6.2 In `apps/web/src/components/topics/MahallaSelect.tsx` (NEW):
+  - [x] 6.2 In `apps/web/src/components/topics/MahallaSelect.tsx` (NEW):
     - Ant Design `Select` dropdown with search capability.
     - Options: `Барча маҳаллалар` (value: `all`) followed by sorted list from `useDistrictMahallas`.
     - Accessible aria-label: `Маҳалла бўйича фильтр`, 44px touch target, zero box-shadows.
-  - [ ] 6.3 In `apps/web/src/components/topics/LaneMultiSelect.tsx` (NEW):
+  - [x] 6.3 In `apps/web/src/components/topics/LaneMultiSelect.tsx` (NEW):
     - Ant Design `Dropdown` / `Popover` triggered by button: `Йўналишлар: N/5` with `DownOutlined` icon.
     - Content:
       - 5 Checkbox items for each lane with lane-specific color dots/labels.
       - Non-zero invariant: when only 1 lane remains checked, its checkbox is disabled (cannot uncheck to 0).
       - `Барчасини кўрсатиш` link/button to check all 5 lanes.
-  - [ ] 6.4 In `apps/web/src/components/topics/FilterBar.tsx` (NEW):
+  - [x] 6.4 In `apps/web/src/components/topics/FilterBar.tsx` (NEW):
     - Desktop sticky filter container positioned below `BoardToolbar`:
       - Background `#FFFFFF` or `#F4F6F8`, border `#E2E8F0`, zero box-shadows.
       - Renders `DateScopeSelect`, `MahallaSelect`, `LaneMultiSelect`.
       - Renders `Фильтрларни тозалаш` button when any non-default filter is active.
       - Visual indicator when requested filters are loading.
 
-- [ ] **Task 7: Narrow-Screen Responsive Filter Sheet & Mobile Toolbar Integration** (AC: 9, 14)
-  - [ ] 7.1 In `apps/web/src/components/topics/FilterModalSheet.tsx` (NEW):
+- [x] **Task 7: Narrow-Screen Responsive Filter Sheet & Mobile Toolbar Integration** (AC: 9, 14)
+  - [x] 7.1 In `apps/web/src/components/topics/FilterModalSheet.tsx` (NEW):
     - Responsive modal sheet for viewports < 1024px:
       - Ant Design `Modal` or full-screen drawer with `role="dialog"`, `aria-modal="true"`, `aria-labelledby="filter-sheet-title"`.
       - Programmatic header: `Фильтрлар`.
@@ -301,31 +301,31 @@ so that I can focus on an earlier or narrower District situation without navigat
       - Stacks Date, Mahalla, and Lane controls vertically with minimum 44px touch targets.
       - Primary footer button: `Қўллаш` (Apply) which applies pending changes and closes sheet.
       - Returns focus deterministically to `Фильтрлар N` trigger button on close.
-  - [ ] 7.2 In `apps/web/src/components/topics/BoardToolbar.tsx`:
+  - [x] 7.2 In `apps/web/src/components/topics/BoardToolbar.tsx`:
     - At viewports < 1024px, render compact `Фильтрлар N` button (where `N` is active non-default filter count).
     - Clicking opens `FilterModalSheet`.
 
-- [ ] **Task 8: Filtered Board Layout, Empty State & Error Boundary Handling** (AC: 1, 6, 7, 8, 10, 11, 12)
-  - [ ] 8.1 In `apps/web/src/components/topics/FiveLaneBoard.tsx`:
+- [x] **Task 8: Filtered Board Layout, Empty State & Error Boundary Handling** (AC: 1, 6, 7, 8, 10, 11, 12)
+  - [x] 8.1 In `apps/web/src/components/topics/FiveLaneBoard.tsx`:
     - Accept `activeLanes: QualifyingLane[]` prop and render only selected lanes in canonical order (`HOKIM_RELATED` → `WATER` → `ELECTRICITY` → `GAS` → `WASTE`).
     - If total topics across all active lanes is 0 and non-default filters are active:
       - Render empty state card: `Танланган шартлар бўйича мавзулар топилмади` with `Фильтрларни тозалаш` action button.
     - For individually empty active lanes, render lane header and `Мос мавзу топилмади` placeholder.
-  - [ ] 8.2 In `apps/web/src/pages/HokimDashboardPage.tsx`:
+  - [x] 8.2 In `apps/web/src/pages/HokimDashboardPage.tsx`:
     - Mount `FilterBar` (desktop) and `FilterModalSheet` (mobile).
     - Wire `useDashboardFilterParams` with `useHokimTopicBoard`.
     - If filter revalidation fails while previous board data is present:
       - Keep previous board visible (`placeholderData: keepPreviousData`).
       - Display scoped top warning alert: `Танланган фильтрлар бўйича маълумотларни юклаб бўлмади` with `Қайта уриниш` button.
 
-- [ ] **Task 9: Comprehensive Automated Vitest & Integration Test Coverage** (AC: 1-16)
-  - [ ] 9.1 Backend integration tests in `apps/backend/tests/integration/hokim-topics-filter.test.ts` (NEW):
+- [x] **Task 9: Comprehensive Automated Vitest & Integration Test Coverage** (AC: 1-16)
+  - [x] 9.1 Backend integration tests in `apps/backend/tests/integration/hokim-topics-filter.test.ts` (NEW):
     - Test `GET /api/v1/hokim/topics/board` with `dateScope=today`, `dateScope=yesterday`, `dateScope=custom` (single day & multi-day ranges).
     - Test 90-day retention boundary enforcement (reject dates > 90 days ago).
     - Test Mahalla filtering and tenant isolation (cannot query other districts' mahallas).
     - Test Lane multi-select filtering (`lanes=WATER,GAS`) returns only requested lanes.
     - Test `GET /api/v1/hokim/topics/mahallas` returns distinct, sorted district mahallas.
-  - [ ] 9.2 Web unit & component tests in `apps/web/src/topics/__tests__/useHokimTopicBoard.filter.test.ts`, `apps/web/src/hooks/__tests__/useDashboardFilterParams.test.ts`, `apps/web/src/components/topics/__tests__/FilterBar.test.tsx`, `apps/web/src/components/topics/__tests__/FilterModalSheet.test.tsx` (NEW):
+  - [x] 9.2 Web unit & component tests in `apps/web/src/topics/__tests__/useHokimTopicBoard.filter.test.ts`, `apps/web/src/hooks/__tests__/useDashboardFilterParams.test.ts`, `apps/web/src/components/topics/__tests__/FilterBar.test.tsx`, `apps/web/src/components/topics/__tests__/FilterModalSheet.test.tsx` (NEW):
     - Test filter state machine: requested vs applied state separation and retry promotion.
     - Test non-zero lane selection invariant (cannot uncheck to 0 lanes).
     - Test URL parameter synchronization and clean default omission.

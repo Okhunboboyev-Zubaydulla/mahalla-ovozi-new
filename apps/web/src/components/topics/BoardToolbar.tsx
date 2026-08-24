@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Space, Typography, Alert } from 'antd';
+import { Button, Space, Typography, Alert, Grid } from 'antd';
 import {
   LogoutOutlined,
   CalendarOutlined,
@@ -7,12 +7,14 @@ import {
   ReloadOutlined,
   ClockCircleOutlined,
   WarningOutlined,
+  FilterOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../auth/auth-context.js';
 import { formatTashkentCalendarDate, formatTashkentTime } from '../../lib/formatters.js';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 
 const { Text, Title } = Typography;
+const { useBreakpoint } = Grid;
 
 export interface BoardToolbarProps {
   districtName?: string;
@@ -22,6 +24,9 @@ export interface BoardToolbarProps {
   isOffline?: boolean;
   hasProcessingDelay?: boolean;
   onRefresh?: () => void;
+  onOpenFilters?: () => void;
+  activeFilterCount?: number;
+  mobileFilterButtonRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 export const BoardToolbar: React.FC<BoardToolbarProps> = ({
@@ -32,9 +37,14 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
   isOffline = false,
   hasProcessingDelay = false,
   onRefresh,
+  onOpenFilters,
+  activeFilterCount = 0,
+  mobileFilterButtonRef,
 }) => {
   const { signOut, isSigningOut } = useAuth();
   const prefersReducedMotion = usePrefersReducedMotion();
+  const screens = useBreakpoint();
+  const isMobile = screens.lg === false;
 
   const formattedDate = calendarDay
     ? formatTashkentCalendarDate(calendarDay)
@@ -129,6 +139,33 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
               <ClockCircleOutlined style={{ color: '#94A3B8' }} />
               Охирги янгиланиш: <strong style={{ color: '#334155' }}>{formattedRefreshTime}</strong>
             </Text>
+          )}
+
+          {onOpenFilters && (
+            <Button
+              id="mobile-filter-button"
+              ref={mobileFilterButtonRef}
+              icon={
+                <FilterOutlined
+                  style={{ color: activeFilterCount > 0 ? '#0284C7' : '#64748B' }}
+                />
+              }
+              onClick={onOpenFilters}
+              style={{
+                display: isMobile ? 'inline-flex' : 'none',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 14,
+                fontWeight: 500,
+                color: activeFilterCount > 0 ? '#0284C7' : '#334155',
+                borderColor: activeFilterCount > 0 ? '#0284C7' : '#CBD5E1',
+                backgroundColor: activeFilterCount > 0 ? '#F0F9FF' : '#FFFFFF',
+                boxShadow: 'none',
+              }}
+              aria-label={`Фильтрлар: ${activeFilterCount} та фаол`}
+            >
+              Фильтрлар {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+            </Button>
           )}
 
           <Button

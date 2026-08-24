@@ -11,6 +11,7 @@ import {
   HokimLaneBoardData,
   HokimTopicBoardResponse,
   HokimLaneResponse,
+  DateFilterScope,
 } from '@mahalla-ovozi/api-contracts';
 import { getTashkentCalendarDay } from '../telegram-intake/timezone-util.js';
 
@@ -21,6 +22,88 @@ export const CANONICAL_LANES: QualifyingLane[] = [
   'GAS',
   'WASTE',
 ];
+
+export interface HokimTopicBoardFilterParams {
+  dateScope?: DateFilterScope;
+  dateFrom?: string;
+  dateTo?: string;
+  mahallaName?: string;
+  lanes?: QualifyingLane[];
+  calendarDay?: string;
+  baselineTimestamp?: string;
+}
+
+export interface HokimLaneQueryParams {
+  lane: QualifyingLane;
+  dateScope?: DateFilterScope;
+  dateFrom?: string;
+  dateTo?: string;
+  mahallaName?: string;
+  calendarDay?: string;
+  cursor?: string;
+  limit?: number;
+  baselineTimestamp?: string;
+}
+
+export function resolveDateBoundary(params: {
+  dateScope?: DateFilterScope;
+  dateFrom?: string;
+  dateTo?: string;
+  calendarDay?: string;
+}): {
+  datePredicate: ReturnType<typeof sql>;
+  resolvedCalendarDay: string;
+} {
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const today = getTashkentCalendarDay(nowSeconds);
+  const yesterday = getTashkentCalendarDay(nowSeconds - 86400);
+  const retentionLowerBound = getTashkentCalendarDay(nowSeconds - 90 * 86400);
+
+  const scope = params.dateScope ?? 'today';
+
+  if (scope === 'yesterday') {
+    return {
+      datePredicate: sql`t.calendar_day = ${yesterday}`,
+      resolvedCalendarDay: yesterday,
+    };
+  }
+
+  if (scope === 'custom') {
+    const { dateFrom, dateTo } = params;
+    if (!dateFrom || !dateTo) {
+      throw new Error('Бошланиш ва тугаш саналари киритилиши шарт.');
+    }
+    if (dateFrom > dateTo) {
+      throw new Error('Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.');
+    }
+    if (dateFrom < retentionLowerBound) {
+      throw new Error('Сана 90 кунлик сақлаш муддатидан эски бўлиши мумкин эмас.');
+    }
+    if (dateTo > today) {
+      throw new Error('Сана бугунги кундан кейин бўлиши мумкин эмас.');
+    }
+
+    return {
+      datePredicate: sql`t.calendar_day >= ${dateFrom} AND t.calendar_day <= ${dateTo}`,
+      resolvedCalendarDay: dateFrom === dateTo ? dateFrom : `${dateFrom}..${dateTo}`,
+    };
+  }
+
+  if (params.calendarDay) {
+    if (params.calendarDay < retentionLowerBound) {
+      throw new Error('Сана 90 кунлик сақлаш муддатидан эски бўлиши мумкин эмас.');
+    }
+    return {
+      datePredicate: sql`t.calendar_day = ${params.calendarDay}`,
+      resolvedCalendarDay: params.calendarDay,
+    };
+  }
+
+  return {
+    datePredicate: sql`t.calendar_day = ${today}`,
+    resolvedCalendarDay: today,
+  };
+}
 
 export interface KeysetCursorPayload {
   t: string; // ISO datetime string
@@ -70,13 +153,13 @@ export class HokimTopicService {
   constructor(private readonly db: DbClient) {}
 
   /**
-   * Retrieves today's 5-lane unified board for the authenticated Hokim's district,
+   * Retrieves today's or filtered multi-lane unified board for the authenticated Hokim's district,
    * evaluating freshness against the baseline timestamp (or preceding visit) and
    * returning server-backed evaluation time and processing delay status.
    */
   async getTodayBoard(
     actorContext: { id: string; districtId: string; role: string },
-    calendarDayOverride?: string,
+    paramsOrCalendarDay?: HokimTopicBoardFilterParams | string,
     baselineTimestampOverride?: string,
   ): Promise<HokimTopicBoardResponse> {
     if (!actorContext.districtId) {
@@ -91,15 +174,29 @@ export class HokimTopicService {
       throw new Error('Туман топилмади.');
     }
 
-    const calendarDay =
-      calendarDayOverride || getTashkentCalendarDay(Math.floor(Date.now() / 1000));
+    const filterParams: HokimTopicBoardFilterParams =
+      typeof paramsOrCalendarDay === 'string'
+        ? {
+            calendarDay: paramsOrCalendarDay,
+            baselineTimestamp: baselineTimestampOverride,
+          }
+        : paramsOrCalendarDay || {};
+
+    const { datePredicate, resolvedCalendarDay } = resolveDateBoundary({
+      dateScope: filterParams.dateScope,
+      dateFrom: filterParams.dateFrom,
+      dateTo: filterParams.dateTo,
+      calendarDay: filterParams.calendarDay,
+    });
 
     const currentVisitDate = new Date();
     let visitBaselineTimestamp: string | null = null;
 
-    if (baselineTimestampOverride) {
+    const baseline = filterParams.baselineTimestamp || baselineTimestampOverride;
+
+    if (baseline) {
       // In-session background / manual refresh: preserve established baseline and skip duplicate visit insertion
-      visitBaselineTimestamp = baselineTimestampOverride;
+      visitBaselineTimestamp = baseline;
     } else {
       // Initial cold load: capture preceding visit boundary and record new visit record
       const prevVisit = await this.db.query.userDashboardVisits.findFirst({
@@ -123,15 +220,24 @@ export class HokimTopicService {
 
     const hasProcessingDelay = await this.checkProcessingDelay(
       actorContext.districtId,
-      calendarDay,
+      resolvedCalendarDay,
     );
 
-    // Query 5 canonical lanes in parallel
+    // Determine active lanes preserving canonical order
+    const requestedLanes =
+      filterParams.lanes && filterParams.lanes.length > 0
+        ? CANONICAL_LANES.filter((l) => filterParams.lanes!.includes(l))
+        : CANONICAL_LANES;
+
+    const activeLanes = requestedLanes.length > 0 ? requestedLanes : CANONICAL_LANES;
+
+    // Query active lanes in parallel
     const laneResults = await Promise.all(
-      CANONICAL_LANES.map(async (lane) => {
+      activeLanes.map(async (lane) => {
         const laneData = await this.queryLaneData({
           districtId: actorContext.districtId,
-          calendarDay,
+          datePredicate,
+          mahallaName: filterParams.mahallaName,
           lane,
           limit: 20,
           cursor: undefined,
@@ -140,7 +246,8 @@ export class HokimTopicService {
 
         const totalCount = await this.countLaneTopics({
           districtId: actorContext.districtId,
-          calendarDay,
+          datePredicate,
+          mahallaName: filterParams.mahallaName,
           lane,
         });
 
@@ -163,7 +270,7 @@ export class HokimTopicService {
     return {
       districtId: district.id,
       districtName: district.name,
-      calendarDay,
+      calendarDay: resolvedCalendarDay,
       visitBaselineTimestamp,
       currentVisitTimestamp: currentVisitDate.toISOString(),
       serverEvaluatedAt: currentVisitDate.toISOString(),
@@ -243,24 +350,33 @@ export class HokimTopicService {
   async getLaneBatch(params: {
     actorContext: { id: string; districtId: string; role: string };
     lane: QualifyingLane;
+    dateScope?: DateFilterScope;
+    dateFrom?: string;
+    dateTo?: string;
+    mahallaName?: string;
     calendarDay?: string;
     cursor?: string;
     limit?: number;
     baselineTimestamp?: string;
   }): Promise<HokimLaneResponse> {
-    const { actorContext, lane, cursor, baselineTimestamp } = params;
+    const { actorContext, lane, cursor, baselineTimestamp, mahallaName } = params;
     const limit = params.limit ?? 20;
 
     if (!actorContext.districtId) {
       throw new Error('Ҳоким ҳисоби туманга бириктирилмаган.');
     }
 
-    const calendarDay =
-      params.calendarDay || getTashkentCalendarDay(Math.floor(Date.now() / 1000));
+    const { datePredicate } = resolveDateBoundary({
+      dateScope: params.dateScope,
+      dateFrom: params.dateFrom,
+      dateTo: params.dateTo,
+      calendarDay: params.calendarDay,
+    });
 
     const laneData = await this.queryLaneData({
       districtId: actorContext.districtId,
-      calendarDay,
+      datePredicate,
+      mahallaName,
       lane,
       limit,
       cursor,
@@ -277,13 +393,14 @@ export class HokimTopicService {
 
   private async queryLaneData(params: {
     districtId: string;
-    calendarDay: string;
+    datePredicate: ReturnType<typeof sql>;
+    mahallaName?: string;
     lane: QualifyingLane;
     limit: number;
     cursor?: string;
     baselineTimestamp?: string;
   }): Promise<{ topics: TopicCardItem[]; nextCursor: string | null; hasNextPage: boolean }> {
-    const { districtId, calendarDay, lane, limit, cursor, baselineTimestamp } = params;
+    const { districtId, datePredicate, mahallaName, lane, limit, cursor, baselineTimestamp } = params;
 
     let cursorPredicate = sql``;
     if (cursor) {
@@ -295,6 +412,11 @@ export class HokimTopicService {
           OR (tp.latest_meaningful_activity_timestamp = ${cursorDate} AND t.id < ${decoded.id})
         )`;
       }
+    }
+
+    let mahallaPredicate = sql``;
+    if (mahallaName && mahallaName.trim() !== '' && mahallaName !== 'all') {
+      mahallaPredicate = sql`AND t.mahalla_name = ${mahallaName.trim()}`;
     }
 
     const lanePredicate =
@@ -321,8 +443,10 @@ export class HokimTopicService {
       JOIN topic_projections tp ON tp.topic_id = t.id
       LEFT JOIN accepted_evidence ae ON ae.topic_id = t.id
       WHERE t.district_id = ${districtId}
-        AND t.calendar_day = ${calendarDay}
+        AND ${datePredicate}
+        ${mahallaPredicate}
         AND t.status = 'ACTIVE'
+        AND t.retention_expires_at > NOW()
         AND ${lanePredicate}
         ${cursorPredicate}
       GROUP BY t.id, tp.id
@@ -396,10 +520,16 @@ export class HokimTopicService {
 
   private async countLaneTopics(params: {
     districtId: string;
-    calendarDay: string;
+    datePredicate: ReturnType<typeof sql>;
+    mahallaName?: string;
     lane: QualifyingLane;
   }): Promise<number> {
-    const { districtId, calendarDay, lane } = params;
+    const { districtId, datePredicate, mahallaName, lane } = params;
+
+    let mahallaPredicate = sql``;
+    if (mahallaName && mahallaName.trim() !== '' && mahallaName !== 'all') {
+      mahallaPredicate = sql`AND t.mahalla_name = ${mahallaName.trim()}`;
+    }
 
     const lanePredicate =
       lane === 'HOKIM_RELATED'
@@ -411,12 +541,51 @@ export class HokimTopicService {
       FROM topics t
       JOIN topic_projections tp ON tp.topic_id = t.id
       WHERE t.district_id = ${districtId}
-        AND t.calendar_day = ${calendarDay}
+        AND ${datePredicate}
+        ${mahallaPredicate}
         AND t.status = 'ACTIVE'
+        AND t.retention_expires_at > NOW()
         AND ${lanePredicate};
     `;
 
     const countResult = await this.db.execute<{ count: number }>(countQuery);
     return Number(countResult.rows[0]?.count ?? 0);
+  }
+
+  /**
+   * Retrieves distinct, non-empty Mahalla names from telegram groups and topics for the Hokim's district,
+   * sorted with Uzbek Cyrillic collation.
+   */
+  async getDistrictMahallas(actorContext: {
+    id: string;
+    districtId: string;
+    role: string;
+  }): Promise<string[]> {
+    if (!actorContext.districtId) {
+      throw new Error('Ҳоким ҳисоби туманга бириктирилмаган.');
+    }
+
+    const result = await this.db.execute<{ mahalla_name: string }>(sql`
+      SELECT DISTINCT mahalla_name FROM (
+        SELECT mahalla_name 
+        FROM district_telegram_groups 
+        WHERE district_id = ${actorContext.districtId} 
+          AND status != 'FAILED'
+        UNION
+        SELECT mahalla_name 
+        FROM topics 
+        WHERE district_id = ${actorContext.districtId}
+      ) combined
+      WHERE mahalla_name IS NOT NULL AND TRIM(mahalla_name) != '';
+    `);
+
+    const mahallas = result.rows
+      .map((r) => r.mahalla_name?.trim())
+      .filter((name): name is string => Boolean(name && name.length > 0));
+
+    const uniqueMahallas = Array.from(new Set(mahallas));
+    uniqueMahallas.sort((a, b) => a.localeCompare(b, 'uz-Cyrl', { sensitivity: 'base' }));
+
+    return uniqueMahallas;
   }
 }

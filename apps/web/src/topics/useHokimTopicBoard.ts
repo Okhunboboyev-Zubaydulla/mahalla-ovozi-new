@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef, useContext } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect, useCallback, useRef, useContext, useMemo } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   QualifyingLane,
   TopicCardItem,
@@ -8,6 +8,7 @@ import {
 import { hokimTopicsClient } from './hokim-topics-client.js';
 import { useAuth } from '../auth/auth-context.js';
 import { LiveAnnouncerContext } from '../hooks/useLiveAnnouncer.js';
+import { DashboardFilterState } from '../hooks/useDashboardFilterParams.js';
 
 export interface LaneLocalState extends HokimLaneBoardData {
   bufferedNewTopics: TopicCardItem[];
@@ -24,7 +25,7 @@ const CANONICAL_LANES: QualifyingLane[] = [
   'WASTE',
 ];
 
-export function useHokimTopicBoard(calendarDayOverride?: string) {
+export function useHokimTopicBoard(appliedFilters?: DashboardFilterState | string) {
   const { actor } = useAuth();
   const districtId = actor?.districtId || '';
   const liveAnnouncer = useContext(LiveAnnouncerContext);
@@ -36,9 +37,21 @@ export function useHokimTopicBoard(calendarDayOverride?: string) {
   const previousKnownTopicIdsRef = useRef<Set<string>>(new Set());
   const previousTopicTimestampsRef = useRef<Map<string, string>>(new Map());
 
+  const filterState: DashboardFilterState = useMemo(() => {
+    if (typeof appliedFilters === 'string') {
+      return { dateScope: 'today', lanes: CANONICAL_LANES };
+    }
+    return (
+      appliedFilters ?? {
+        dateScope: 'today',
+        lanes: CANONICAL_LANES,
+      }
+    );
+  }, [appliedFilters]);
+
   // Reset baseline and known topic tracking when scope changes
-  const prevScopeKeyRef = useRef<string>(`${districtId}:${calendarDayOverride || 'today'}`);
-  const currentScopeKey = `${districtId}:${calendarDayOverride || 'today'}`;
+  const currentScopeKey = `${districtId}:${filterState.dateScope}:${filterState.dateFrom || ''}:${filterState.dateTo || ''}:${filterState.mahallaName || ''}:${filterState.lanes.join(',')}`;
+  const prevScopeKeyRef = useRef<string>(currentScopeKey);
   if (prevScopeKeyRef.current !== currentScopeKey) {
     prevScopeKeyRef.current = currentScopeKey;
     isInitialLoadRef.current = true;
@@ -47,19 +60,32 @@ export function useHokimTopicBoard(calendarDayOverride?: string) {
     previousTopicTimestampsRef.current.clear();
   }
 
-  const queryKey = ['hokim-board', districtId, calendarDayOverride || 'today'];
+  const queryKey = [
+    'hokim-board',
+    districtId,
+    filterState.dateScope,
+    filterState.dateFrom ?? null,
+    filterState.dateTo ?? null,
+    filterState.mahallaName ?? null,
+    filterState.lanes.join(','),
+  ];
 
   const boardQuery = useQuery({
     queryKey,
     queryFn: ({ signal }) =>
       hokimTopicsClient.getTodayBoard(
         {
-          calendarDay: calendarDayOverride,
+          dateScope: filterState.dateScope,
+          dateFrom: filterState.dateFrom,
+          dateTo: filterState.dateTo,
+          mahallaName: filterState.mahallaName,
+          lanes: filterState.lanes,
           baselineTimestamp: baselineTimestampRef.current ?? undefined,
         },
         signal,
       ),
     enabled: Boolean(districtId && actor?.role === 'DISTRICT_HOKIM'),
+    placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
     networkMode: 'online',
     retry: false,
@@ -326,7 +352,10 @@ export function useHokimTopicBoard(calendarDayOverride?: string) {
         const response = await hokimTopicsClient.getLaneBatch({
           lane,
           limit: 20,
-          calendarDay: boardQuery.data?.calendarDay,
+          dateScope: filterState.dateScope,
+          dateFrom: filterState.dateFrom,
+          dateTo: filterState.dateTo,
+          mahallaName: filterState.mahallaName,
           cursor: currentLane.nextCursor,
           baselineTimestamp: baselineTimestampRef.current ?? undefined,
         });
@@ -370,7 +399,7 @@ export function useHokimTopicBoard(calendarDayOverride?: string) {
         }));
       }
     },
-    [lanesState, boardQuery.data],
+    [lanesState, filterState],
   );
 
   const manualRefresh = useCallback(async () => {
@@ -386,11 +415,17 @@ export function useHokimTopicBoard(calendarDayOverride?: string) {
   };
 
   const isRefreshing = boardQuery.isFetching && !boardQuery.isLoading;
+  const isFilterTransitioning = Boolean(boardQuery.isFetching && boardQuery.isPlaceholderData);
+  const isBackgroundRefreshing = Boolean(
+    boardQuery.isFetching && !boardQuery.isPlaceholderData && !boardQuery.isLoading,
+  );
 
   return {
     board: boardQuery.data,
     isLoading: boardQuery.isLoading,
     isRefreshing,
+    isFilterTransitioning,
+    isBackgroundRefreshing,
     isError: boardQuery.isError,
     error: boardQuery.error,
     isStale: boardQuery.isStale,
@@ -398,9 +433,11 @@ export function useHokimTopicBoard(calendarDayOverride?: string) {
     hasProcessingDelay: Boolean(boardQuery.data?.hasProcessingDelay),
     newTopicsPerLane,
     lanes: lanesState,
+    activeLanes: filterState.lanes,
     loadMore,
     revealNewTopics,
     manualRefresh,
     refetch: boardQuery.refetch,
+    retryFilter: boardQuery.refetch,
   };
 }
