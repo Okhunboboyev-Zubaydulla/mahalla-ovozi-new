@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Drawer, Typography } from 'antd';
 import { CloseOutlined } from '@ant-design/icons';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 import { HelpContent } from './HelpContent.js';
 
 const { Title } = Typography;
@@ -15,6 +16,7 @@ export const DashboardHelpDrawer: React.FC<DashboardHelpDrawerProps> = ({
   onClose,
 }) => {
   const headingRef = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   // Programmatic focus on drawer heading when opened (AC 3)
   useEffect(() => {
@@ -37,13 +39,18 @@ export const DashboardHelpDrawer: React.FC<DashboardHelpDrawerProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
 
+  const noMotion = { motionAppear: false, motionEnter: false, motionLeave: false };
+
   return (
     <Drawer
       open={open}
       onClose={onClose}
       mask={false}
       rootStyle={{ pointerEvents: 'none' }}
-      width={520}
+      style={{ maxWidth: '100vw' }}
+      width={typeof window !== 'undefined' ? Math.min(520, window.innerWidth) : 520}
+      motion={prefersReducedMotion ? noMotion : undefined}
+      maskMotion={prefersReducedMotion ? noMotion : undefined}
       aria-label="Тизим ёрдами ва тушунтиришлар"
       aria-modal={false}
       keyboard={false}

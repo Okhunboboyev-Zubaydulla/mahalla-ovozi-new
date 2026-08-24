@@ -105,7 +105,7 @@ export const HelpContent: React.FC = () => {
           style={{
             backgroundColor: '#FFFFFF',
             border: '1px solid #E2E8F0',
-            borderRadius: 8,
+            borderRadius: 10,
             padding: '16px',
             boxShadow: 'none',
           }}

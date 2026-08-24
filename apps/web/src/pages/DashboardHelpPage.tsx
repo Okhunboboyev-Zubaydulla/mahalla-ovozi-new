@@ -61,22 +61,34 @@ export const DashboardHelpPage: React.FC = () => {
               fontWeight: 600,
               fontSize: 14,
               color: '#0F172A',
+              minHeight: 44,
+              minWidth: 44,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             Орқага
           </Button>
 
-          <Title
-            level={4}
-            style={{
-              margin: 0,
-              fontSize: 16,
-              fontWeight: 700,
-              color: '#0F172A',
-            }}
+          <div
+            ref={headingRef}
+            tabIndex={-1}
+            id="dashboard-help-page-heading"
+            style={{ outline: 'none' }}
           >
-            Тизим ёрдами
-          </Title>
+            <Title
+              level={4}
+              style={{
+                margin: 0,
+                fontSize: 16,
+                fontWeight: 700,
+                color: '#0F172A',
+              }}
+            >
+              Тизим ёрдами
+            </Title>
+          </div>
         </Space>
       </header>
 
@@ -93,14 +105,7 @@ export const DashboardHelpPage: React.FC = () => {
           gap: 16,
         }}
       >
-        <div
-          ref={headingRef}
-          tabIndex={-1}
-          id="dashboard-help-page-heading"
-          style={{ outline: 'none' }}
-        >
-          <HelpContent />
-        </div>
+        <HelpContent />
       </main>
     </div>
   );

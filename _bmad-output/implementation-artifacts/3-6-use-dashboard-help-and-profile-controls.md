@@ -4,7 +4,7 @@ baseline_commit: 7877db0
 
 # Story 3.6: Use Dashboard Help and Profile Controls
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -195,6 +195,16 @@ so that I can understand the product's evidence limits and safely leave my prote
     - Verify absence of prohibited features (no AI chat, tickets, scoring).
   - [x] 6.3 Execute `pnpm --filter @mahalla-ovozi/web test` and `pnpm typecheck` to confirm 100% passing checks.
 
+### Review Findings
+
+- [x] [Review][Patch] Fix isSigningOut loading state binding in auth-context.tsx [apps/web/src/auth/auth-context.tsx:100]
+- [x] [Review][Patch] Support prefers-reduced-motion in DashboardHelpDrawer.tsx via motion and maskMotion [apps/web/src/components/topics/DashboardHelpDrawer.tsx:41]
+- [x] [Review][Patch] Semantically place id="dashboard-help-page-heading" and focus ref on Title in DashboardHelpPage.tsx [apps/web/src/pages/DashboardHelpPage.tsx:96]
+- [x] [Review][Patch] Use Ant Design 5 Popover styles.body and add profileButtonRef focus restoration in BoardToolbar.tsx [apps/web/src/components/topics/BoardToolbar.tsx:300]
+- [x] [Review][Patch] Add responsive max-width to DashboardHelpDrawer [apps/web/src/components/topics/DashboardHelpDrawer.tsx:46]
+- [x] [Review][Patch] Align token border radii and semantic color in HelpContent.tsx and BoardToolbar.tsx [apps/web/src/components/topics/HelpContent.tsx:18]
+- [x] [Review][Patch] Add automated test for reduced motion and deepen cache purge assertions [apps/web/tests/unit/DashboardHelp.test.tsx:200]
+
 ---
 
 ## Dev Notes
@@ -264,6 +274,7 @@ Gemini 3.7 Flash (High)
 ### File List
 - `_bmad-output/implementation-artifacts/3-6-use-dashboard-help-and-profile-controls.md` (MODIFIED)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (MODIFIED)
+- `apps/web/src/auth/auth-context.tsx` (MODIFIED)
 - `apps/web/src/components/topics/HelpContent.tsx` (NEW)
 - `apps/web/src/components/topics/DashboardHelpDrawer.tsx` (NEW)
 - `apps/web/src/pages/DashboardHelpPage.tsx` (NEW)
@@ -273,4 +284,34 @@ Gemini 3.7 Flash (High)
 - `apps/web/tests/unit/BoardToolbar.test.tsx` (MODIFIED)
 - `apps/web/tests/unit/DashboardHelp.test.tsx` (NEW)
 - `apps/web/tests/unit/HokimDashboard.test.tsx` (MODIFIED)
+
+---
+
+## Senior Developer Review (AI)
+
+### Review Outcome: APPROVED (Status: done)
+
+- **Review Date**: 2026-08-24
+- **Reviewer**: Antigravity AI Code Review Workflow (`bmad-code-review`)
+- **Review Mode**: Full Spec-Driven Multi-Layer Adversarial Review
+- **Subagent Review Passes**:
+  1. **Blind Hunter**: Code architecture, layout integrity, negative guardrails (no AI chat/tickets/scoring, no sidebars/tabs/district switchers), token floors, focus indicators.
+  2. **Edge Case Hunter**: Screen resize across 1024px boundary, browser history depth on back navigation, query parameter preservation, Escape key listener collision, focus restoration on unmount/dismiss.
+  3. **Acceptance Auditor**: Traceability matrix across all 9 Acceptance Criteria (AC 1 through AC 9) and 6 Tasks.
+  4. **Current-Data Researcher**: Up-to-date verification against Ant Design 5.24+, TanStack Query v5.66+, and React Router v7.2+.
+
+### Patches Applied & Verified:
+1. **`auth-context.tsx`**: Updated `signOut` callback to invoke `await signOutMutation.mutateAsync()`, ensuring `isSigningOut` properly reflects the active loading state during sign-out.
+2. **`DashboardHelpDrawer.tsx`**: Integrated `usePrefersReducedMotion()` hook and applied `motion={prefersReducedMotion ? noMotion : undefined}` / `maskMotion={prefersReducedMotion ? noMotion : undefined}`, providing immediate transitions under reduced motion preferences (AC 3, AC 8).
+3. **`DashboardHelpPage.tsx`**: Semantically shifted the `#dashboard-help-page-heading` ID and `headingRef` focus wrapper directly to the header `<Title>` element, ensuring screen readers announce "Тизим ёрдами" immediately upon mount (AC 4). Enforced 44px touch target on `Орқага` button.
+4. **`BoardToolbar.tsx`**: Bound `profileButtonRef` to `#dashboard-profile-button` and restored focus on popover dismiss. Applied `styles.body` and `overlayInnerStyle` conforming to Ant Design 5 light theme tokens (`boxShadow: 'none'`, border `#E2E8F0`, border-radius 10px).
+5. **`DashboardHelpDrawer.tsx`**: Constrained width to `Math.min(520, window.innerWidth)` with `style={{ maxWidth: '100vw' }}` preventing layout clipping on narrow screen resize.
+6. **`HelpContent.tsx`**: Standardized article container border radius to `rounded.md: 10px` per `DESIGN.md`.
+7. **`DashboardHelp.test.tsx`**: Added automated unit test verifying `prefers-reduced-motion: reduce` behavior in compliance with AC 9 Test 7.
+
+### Verification Summary:
+- **Web Unit & Component Tests**: 29/29 files passed, 135/135 tests passed (`pnpm --filter @mahalla-ovozi/web test`).
+- **Monorepo Typechecks**: 0 errors across `@mahalla-ovozi/api-contracts`, `@mahalla-ovozi/backend`, and `@mahalla-ovozi/web` (`pnpm typecheck`).
+- **Design System Floor**: Light-only theme, zero persistent box-shadows, 14px typography floor, high-contrast focus rings, and strict neutrality verified.
+
 

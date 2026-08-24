@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button, Space, Typography, Alert, Grid, Popover, Tag, Divider } from 'antd';
 import {
   LogoutOutlined,
@@ -49,6 +49,7 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
 }) => {
   const { actor, signOut, isSigningOut } = useAuth();
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const profileButtonRef = useRef<HTMLButtonElement | null>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
   const screens = useBreakpoint();
   const isMobile = screens.lg === false;
@@ -283,12 +284,13 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
                     gap: 6,
                     fontSize: 14,
                     fontWeight: 500,
-                    color: '#DC2626',
+                    color: '#EF4444',
                     padding: '4px 8px',
                     height: 36,
                     width: '100%',
                     justifyContent: 'flex-start',
                     boxShadow: 'none',
+                    borderRadius: 6,
                   }}
                   aria-label="Тизимдан чиқиш"
                 >
@@ -298,20 +300,33 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
             }
             trigger="click"
             open={popoverOpen}
-            onOpenChange={setPopoverOpen}
+            onOpenChange={(nextOpen) => {
+              setPopoverOpen(nextOpen);
+              if (!nextOpen) {
+                profileButtonRef.current?.focus();
+              }
+            }}
             placement="bottomRight"
             styles={{
               body: {
                 boxShadow: 'none',
                 border: '1px solid #E2E8F0',
                 backgroundColor: '#FFFFFF',
-                borderRadius: 8,
+                borderRadius: 10,
                 padding: '12px 16px',
               },
+            }}
+            overlayInnerStyle={{
+              boxShadow: 'none',
+              border: '1px solid #E2E8F0',
+              backgroundColor: '#FFFFFF',
+              borderRadius: 10,
+              padding: '12px 16px',
             }}
           >
             <Button
               id="dashboard-profile-button"
+              ref={profileButtonRef}
               type="text"
               icon={<UserOutlined style={{ color: '#0284C7' }} />}
               aria-label="Ҳоким профили ва сессия созламалари"

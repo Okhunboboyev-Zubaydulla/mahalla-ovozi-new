@@ -106,11 +106,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.clear();
     queryClient.setQueryData(['auth', 'session'], null);
     try {
-      await authClient.signOut();
+      await signOutMutation.mutateAsync();
     } catch {
       // ignore
     }
-  }, [queryClient]);
+  }, [queryClient, signOutMutation]);
 
   const changeFirstLoginPassword = useCallback(
     async (payload: FirstSignInPasswordChangeRequest) => {

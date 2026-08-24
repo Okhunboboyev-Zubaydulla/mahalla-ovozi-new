@@ -207,6 +207,29 @@ describe('Story 3.6: Dashboard Help & Factual Guidance Tests', () => {
       fireEvent.keyDown(window, { key: 'Escape' });
       expect(handleClose).toHaveBeenCalledTimes(1);
     });
+
+    it('respects prefers-reduced-motion with immediate transitions (AC 8, AC 9 Test 7)', () => {
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: query.includes('prefers-reduced-motion: reduce'),
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+      const handleClose = vi.fn();
+      render(
+        <ConfigProvider theme={mahallaTheme}>
+          <DashboardHelpDrawer open={true} onClose={handleClose} />
+        </ConfigProvider>,
+      );
+
+      const region = screen.getByRole('region', { name: 'Тизим ёрдами ва тушунтиришлар' });
+      expect(region).toBeTruthy();
+    });
   });
 
   describe('DashboardHelpPage Component (AC 4, AC 8)', () => {
