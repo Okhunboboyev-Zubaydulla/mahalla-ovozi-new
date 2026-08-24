@@ -3,6 +3,7 @@ import { Tag, Typography, Space } from 'antd';
 import { ClockCircleOutlined, MessageOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { TopicCardItem, QualifyingLane } from '@mahalla-ovozi/api-contracts';
 import { formatTashkentActivityTime } from '../../lib/formatters.js';
+import { HighlightText } from './HighlightText.js';
 
 const { Text, Paragraph } = Typography;
 
@@ -29,6 +30,7 @@ export interface TopicCardProps {
   topic: TopicCardItem;
   currentLane?: QualifyingLane;
   isSelected?: boolean;
+  searchQuery?: string;
   onClick?: () => void;
 }
 
@@ -36,6 +38,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
   topic,
   currentLane: _currentLane,
   isSelected = false,
+  searchQuery,
   onClick,
 }) => {
   const formattedTime = formatTashkentActivityTime(
@@ -85,7 +88,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
       aria-current={isSelected ? 'true' : undefined}
       aria-label={`Мавзу: ${topic.mahallaName}, ${topic.summary}`}
     >
-      {/* Header: Mahalla name + Badges (New / Updated) */}
+      {/* Header: Mahalla name + Badges (New / Updated / Search Match) */}
       <div
         style={{
           display: 'flex',
@@ -110,7 +113,38 @@ export const TopicCard: React.FC<TopicCardProps> = ({
           </Text>
         </Space>
 
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+          {/* Match Badges (AC 2) */}
+          {topic.searchMatchBadge === 'evidence' && (
+            <Tag
+              style={{
+                backgroundColor: '#FEF3C7',
+                color: '#B45309',
+                borderColor: '#FDE68A',
+                fontWeight: 500,
+                fontSize: 11,
+                margin: 0,
+                borderRadius: 4,
+              }}
+            >
+              Далилда топилди
+            </Tag>
+          )}
+          {topic.searchMatchBadge === 'author' && (
+            <Tag
+              style={{
+                backgroundColor: '#E0E7FF',
+                color: '#4338CA',
+                borderColor: '#C7D2FE',
+                fontWeight: 500,
+                fontSize: 11,
+                margin: 0,
+                borderRadius: 4,
+              }}
+            >
+              Фойдаланувчида топилди
+            </Tag>
+          )}
           {topic.isNew && (
             <Tag
               color="#DC2626"
@@ -146,7 +180,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
         </div>
       </div>
 
-      {/* Summary Body (Complete Unclamped Text in Uzbek Cyrillic) */}
+      {/* Summary Body (Complete Unclamped Text in Uzbek Cyrillic with Highlight) */}
       <Paragraph
         style={{
           fontSize: 14,
@@ -157,7 +191,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({
           wordBreak: 'break-word',
         }}
       >
-        {topic.summary}
+        <HighlightText text={topic.summary} searchQuery={searchQuery} />
       </Paragraph>
 
       {/* Additional Lanes Textual Indication */}

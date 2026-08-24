@@ -28,6 +28,7 @@ export const CANONICAL_LANES: QualifyingLane[] = [
 ];
 
 export interface HokimTopicBoardFilterParams {
+  search?: string;
   dateScope?: DateFilterScope;
   dateFrom?: string;
   dateTo?: string;
@@ -39,6 +40,7 @@ export interface HokimTopicBoardFilterParams {
 
 export interface HokimLaneQueryParams {
   lane: QualifyingLane;
+  search?: string;
   dateScope?: DateFilterScope;
   dateFrom?: string;
   dateTo?: string;
@@ -47,6 +49,10 @@ export interface HokimLaneQueryParams {
   cursor?: string;
   limit?: number;
   baselineTimestamp?: string;
+}
+
+export function escapeLikePattern(input: string): string {
+  return input.replace(/[%_\\]/g, '\\$&');
 }
 
 export function resolveDateBoundary(params: {
@@ -154,6 +160,7 @@ interface RawTopicRow extends Record<string, unknown> {
   latestMeaningfulActivityTimestamp: Date;
   projectionUpdatedAt: Date;
   evidenceCount: number;
+  searchMatchBadge?: 'evidence' | 'author' | null;
 }
 
 export class HokimTopicService {
@@ -249,6 +256,7 @@ export class HokimTopicService {
           limit: 20,
           cursor: undefined,
           baselineTimestamp: visitBaselineTimestamp ?? undefined,
+          search: filterParams.search,
         });
 
         const totalCount = await this.countLaneTopics({
@@ -256,6 +264,7 @@ export class HokimTopicService {
           datePredicate,
           mahallaName: filterParams.mahallaName,
           lane,
+          search: filterParams.search,
         });
 
         return {
@@ -365,6 +374,7 @@ export class HokimTopicService {
   async getLaneBatch(params: {
     actorContext: { id: string; districtId: string; role: string };
     lane: QualifyingLane;
+    search?: string;
     dateScope?: DateFilterScope;
     dateFrom?: string;
     dateTo?: string;
@@ -374,7 +384,7 @@ export class HokimTopicService {
     limit?: number;
     baselineTimestamp?: string;
   }): Promise<HokimLaneResponse> {
-    const { actorContext, lane, cursor, baselineTimestamp, mahallaName } = params;
+    const { actorContext, lane, cursor, baselineTimestamp, mahallaName, search } = params;
     const limit = params.limit ?? 20;
 
     if (!actorContext.districtId) {
@@ -396,6 +406,7 @@ export class HokimTopicService {
       limit,
       cursor,
       baselineTimestamp,
+      search,
     });
 
     return {
@@ -414,8 +425,9 @@ export class HokimTopicService {
     limit: number;
     cursor?: string;
     baselineTimestamp?: string;
+    search?: string;
   }): Promise<{ topics: TopicCardItem[]; nextCursor: string | null; hasNextPage: boolean }> {
-    const { districtId, datePredicate, mahallaName, lane, limit, cursor, baselineTimestamp } = params;
+    const { districtId, datePredicate, mahallaName, lane, limit, cursor, baselineTimestamp, search } = params;
 
     let cursorPredicate = sql``;
     if (cursor) {
@@ -439,6 +451,54 @@ export class HokimTopicService {
         ? sql`(tp.is_hokim_related = true OR tp.lanes @> '["HOKIM_RELATED"]'::jsonb OR t.primary_lane = 'HOKIM_RELATED')`
         : sql`(tp.lanes @> ${JSON.stringify([lane])}::jsonb OR t.primary_lane = ${lane})`;
 
+    let searchPredicate = sql``;
+    let badgeSelect = sql`NULL::text AS "searchMatchBadge"`;
+
+    const trimmedSearch = search?.trim();
+    if (trimmedSearch) {
+      const pattern = `%${escapeLikePattern(trimmedSearch)}%`;
+      searchPredicate = sql`AND (
+        tp.summary ILIKE ${pattern}
+        OR EXISTS (
+          SELECT 1 FROM accepted_evidence ae 
+          WHERE ae.topic_id = t.id 
+            AND ae.verbatim_text ILIKE ${pattern}
+        )
+        OR EXISTS (
+          SELECT 1 FROM accepted_evidence ae 
+          WHERE ae.topic_id = t.id 
+            AND (
+              ae.user_metadata->>'username' ILIKE ${pattern}
+              OR CONCAT('@', ae.user_metadata->>'username') ILIKE ${pattern}
+              OR ae.user_metadata->>'firstName' ILIKE ${pattern}
+              OR ae.user_metadata->>'lastName' ILIKE ${pattern}
+              OR CONCAT_WS(' ', ae.user_metadata->>'firstName', ae.user_metadata->>'lastName') ILIKE ${pattern}
+            )
+        )
+      )`;
+
+      badgeSelect = sql`CASE 
+        WHEN tp.summary ILIKE ${pattern} THEN NULL
+        WHEN EXISTS (
+          SELECT 1 FROM accepted_evidence ae 
+          WHERE ae.topic_id = t.id 
+            AND ae.verbatim_text ILIKE ${pattern}
+        ) THEN 'evidence'
+        WHEN EXISTS (
+          SELECT 1 FROM accepted_evidence ae 
+          WHERE ae.topic_id = t.id 
+            AND (
+              ae.user_metadata->>'username' ILIKE ${pattern}
+              OR CONCAT('@', ae.user_metadata->>'username') ILIKE ${pattern}
+              OR ae.user_metadata->>'firstName' ILIKE ${pattern}
+              OR ae.user_metadata->>'lastName' ILIKE ${pattern}
+              OR CONCAT_WS(' ', ae.user_metadata->>'firstName', ae.user_metadata->>'lastName') ILIKE ${pattern}
+            )
+        ) THEN 'author'
+        ELSE NULL 
+      END AS "searchMatchBadge"`;
+    }
+
     const query = sql<RawTopicRow>`
       SELECT 
         t.id, 
@@ -453,7 +513,8 @@ export class HokimTopicService {
         tp.is_hokim_related AS "isHokimRelated", 
         tp.latest_meaningful_activity_timestamp AS "latestMeaningfulActivityTimestamp",
         tp.updated_at AS "projectionUpdatedAt",
-        COUNT(ae.id)::int AS "evidenceCount"
+        COUNT(ae.id)::int AS "evidenceCount",
+        ${badgeSelect}
       FROM topics t
       JOIN topic_projections tp ON tp.topic_id = t.id
       LEFT JOIN accepted_evidence ae ON ae.topic_id = t.id
@@ -464,6 +525,7 @@ export class HokimTopicService {
         AND t.retention_expires_at > NOW()
         AND ${lanePredicate}
         ${cursorPredicate}
+        ${searchPredicate}
       GROUP BY t.id, tp.id
       ORDER BY tp.latest_meaningful_activity_timestamp DESC, t.id DESC
       LIMIT ${limit + 1};
@@ -498,6 +560,11 @@ export class HokimTopicService {
         }
       }
 
+      let searchMatchBadge: 'evidence' | 'author' | null = null;
+      if (row.searchMatchBadge === 'evidence' || row.searchMatchBadge === 'author') {
+        searchMatchBadge = row.searchMatchBadge;
+      }
+
       return {
         id: row.id,
         districtId: row.districtId,
@@ -513,6 +580,7 @@ export class HokimTopicService {
         ).toISOString(),
         isNew,
         isUpdated,
+        searchMatchBadge,
         createdAt: new Date(row.createdAt).toISOString(),
         updatedAt: new Date(row.updatedAt).toISOString(),
       };
@@ -538,12 +606,38 @@ export class HokimTopicService {
     datePredicate: ReturnType<typeof sql>;
     mahallaName?: string;
     lane: QualifyingLane;
+    search?: string;
   }): Promise<number> {
-    const { districtId, datePredicate, mahallaName, lane } = params;
+    const { districtId, datePredicate, mahallaName, lane, search } = params;
 
     let mahallaPredicate = sql``;
     if (mahallaName && mahallaName.trim() !== '' && mahallaName !== 'all') {
       mahallaPredicate = sql`AND t.mahalla_name = ${mahallaName.trim()}`;
+    }
+
+    let searchPredicate = sql``;
+    const trimmedSearch = search?.trim();
+    if (trimmedSearch) {
+      const pattern = `%${escapeLikePattern(trimmedSearch)}%`;
+      searchPredicate = sql`AND (
+        tp.summary ILIKE ${pattern}
+        OR EXISTS (
+          SELECT 1 FROM accepted_evidence ae 
+          WHERE ae.topic_id = t.id 
+            AND ae.verbatim_text ILIKE ${pattern}
+        )
+        OR EXISTS (
+          SELECT 1 FROM accepted_evidence ae 
+          WHERE ae.topic_id = t.id 
+            AND (
+              ae.user_metadata->>'username' ILIKE ${pattern}
+              OR CONCAT('@', ae.user_metadata->>'username') ILIKE ${pattern}
+              OR ae.user_metadata->>'firstName' ILIKE ${pattern}
+              OR ae.user_metadata->>'lastName' ILIKE ${pattern}
+              OR CONCAT_WS(' ', ae.user_metadata->>'firstName', ae.user_metadata->>'lastName') ILIKE ${pattern}
+            )
+        )
+      )`;
     }
 
     const lanePredicate =
@@ -560,7 +654,8 @@ export class HokimTopicService {
         ${mahallaPredicate}
         AND t.status = 'ACTIVE'
         AND t.retention_expires_at > NOW()
-        AND ${lanePredicate};
+        AND ${lanePredicate}
+        ${searchPredicate};
     `;
 
     const countResult = await this.db.execute<{ count: number }>(countQuery);
@@ -616,7 +711,7 @@ export class HokimTopicService {
       districtId: string;
       role: string;
     },
-    params: HokimTopicStatisticsQueryOutput,
+    params: HokimTopicStatisticsQueryOutput & { search?: string },
   ): Promise<HokimTopicStatisticsResponse> {
     if (!actorContext.districtId) {
       throw new Error('Ҳоким ҳисоби туманга бириктирилмаган.');
@@ -650,6 +745,31 @@ export class HokimTopicService {
     });
     const lanePredicate = sql.join(laneClauses, sql` OR `);
 
+    let searchPredicate = sql``;
+    const trimmedSearch = typeof params.search === 'string' ? params.search.trim() : undefined;
+    if (trimmedSearch) {
+      const pattern = `%${escapeLikePattern(trimmedSearch)}%`;
+      searchPredicate = sql`AND (
+        tp.summary ILIKE ${pattern}
+        OR EXISTS (
+          SELECT 1 FROM accepted_evidence ae 
+          WHERE ae.topic_id = t.id 
+            AND ae.verbatim_text ILIKE ${pattern}
+        )
+        OR EXISTS (
+          SELECT 1 FROM accepted_evidence ae 
+          WHERE ae.topic_id = t.id 
+            AND (
+              ae.user_metadata->>'username' ILIKE ${pattern}
+              OR CONCAT('@', ae.user_metadata->>'username') ILIKE ${pattern}
+              OR ae.user_metadata->>'firstName' ILIKE ${pattern}
+              OR ae.user_metadata->>'lastName' ILIKE ${pattern}
+              OR CONCAT_WS(' ', ae.user_metadata->>'firstName', ae.user_metadata->>'lastName') ILIKE ${pattern}
+            )
+        )
+      )`;
+    }
+
     const statsQuery = sql`
       WITH filtered_topics AS (
         SELECT 
@@ -666,6 +786,7 @@ export class HokimTopicService {
           AND ${datePredicate}
           ${mahallaPredicate}
           AND (${lanePredicate})
+          ${searchPredicate}
       ),
       evidence_counts AS (
         SELECT 

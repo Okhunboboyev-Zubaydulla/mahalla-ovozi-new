@@ -22,6 +22,7 @@ export interface FiveLaneBoardProps {
   isFiltered?: boolean;
   onResetFilters?: () => void;
   selectedTopicId?: string | null;
+  searchQuery?: string;
   onLoadMore: (lane: QualifyingLane) => void;
   onSelectTopic?: (topic: TopicCardItem) => void;
   onRevealNewTopics?: (lane: QualifyingLane) => void;
@@ -33,6 +34,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
   isFiltered = false,
   onResetFilters,
   selectedTopicId,
+  searchQuery,
   onLoadMore,
   onSelectTopic,
   onRevealNewTopics,
@@ -273,6 +275,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
               isLoadingMore={laneData.isLoadingMore}
               loadMoreError={laneData.loadMoreError}
               selectedTopicId={selectedTopicId}
+              searchQuery={searchQuery}
               onLoadMore={() => onLoadMore(laneKey)}
               onSelectTopic={onSelectTopic}
               onRevealNewItems={() => onRevealNewTopics?.(laneKey)}

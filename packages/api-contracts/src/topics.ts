@@ -20,6 +20,9 @@ export const TelegramReplyMetadataSchema = z.object({
 });
 export type TelegramReplyMetadata = z.infer<typeof TelegramReplyMetadataSchema>;
 
+export const SearchMatchBadgeSchema = z.enum(['evidence', 'author']);
+export type SearchMatchBadge = z.infer<typeof SearchMatchBadgeSchema>;
+
 export const TopicCardItemSchema = z.object({
   id: z.string(),
   districtId: z.string(),
@@ -33,6 +36,7 @@ export const TopicCardItemSchema = z.object({
   latestMeaningfulActivityTimestamp: z.string().datetime(),
   isNew: z.boolean(),
   isUpdated: z.boolean(),
+  searchMatchBadge: SearchMatchBadgeSchema.nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -304,6 +308,155 @@ export const HokimTopicStatisticsResponseSchema = z.object({
   card5: TopicStatisticCard5Schema,
 });
 export type HokimTopicStatisticsResponse = z.infer<typeof HokimTopicStatisticsResponseSchema>;
+
+export const HokimTopicBoardSearchBodySchema = z
+  .object({
+    search: z
+      .string()
+      .trim()
+      .max(200, 'Қидирув сўзи 200 та белгидан ошмаслиги керак')
+      .optional(),
+    dateScope: DateFilterScopeSchema.default('today'),
+    dateFrom: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
+      .optional(),
+    dateTo: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
+      .optional(),
+    mahallaName: z.string().trim().min(1).optional(),
+    lanes: LanesQueryParamSchema,
+    calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    baselineTimestamp: z.string().datetime().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.dateScope === 'custom') {
+      if (!data.dateFrom) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Бошланиш санаси (dateFrom) киритилиши шарт.',
+          path: ['dateFrom'],
+        });
+      }
+      if (!data.dateTo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Тугаш санаси (dateTo) киритилиши шарт.',
+          path: ['dateTo'],
+        });
+      }
+      if (data.dateFrom && data.dateTo && data.dateFrom > data.dateTo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.',
+          path: ['dateFrom'],
+        });
+      }
+    }
+  });
+export type HokimTopicBoardSearchBody = z.input<typeof HokimTopicBoardSearchBodySchema>;
+export type HokimTopicBoardSearchBodyOutput = z.output<typeof HokimTopicBoardSearchBodySchema>;
+
+export const HokimLaneSearchBodySchema = z
+  .object({
+    lane: QualifyingLaneSchema,
+    search: z
+      .string()
+      .trim()
+      .max(200, 'Қидирув сўзи 200 та белгидан ошмаслиги керак')
+      .optional(),
+    dateScope: DateFilterScopeSchema.default('today'),
+    dateFrom: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
+      .optional(),
+    dateTo: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
+      .optional(),
+    mahallaName: z.string().trim().min(1).optional(),
+    calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    cursor: z.string().optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    baselineTimestamp: z.string().datetime().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.dateScope === 'custom') {
+      if (!data.dateFrom) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Бошланиш санаси (dateFrom) киритилиши шарт.',
+          path: ['dateFrom'],
+        });
+      }
+      if (!data.dateTo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Тугаш санаси (dateTo) киритилиши шарт.',
+          path: ['dateTo'],
+        });
+      }
+      if (data.dateFrom && data.dateTo && data.dateFrom > data.dateTo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.',
+          path: ['dateFrom'],
+        });
+      }
+    }
+  });
+export type HokimLaneSearchBody = z.input<typeof HokimLaneSearchBodySchema>;
+export type HokimLaneSearchBodyOutput = z.output<typeof HokimLaneSearchBodySchema>;
+
+export const HokimTopicStatisticsSearchBodySchema = z
+  .object({
+    search: z
+      .string()
+      .trim()
+      .max(200, 'Қидирув сўзи 200 та белгидан ошмаслиги керак')
+      .optional(),
+    dateScope: DateFilterScopeSchema.default('today'),
+    dateFrom: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
+      .optional(),
+    dateTo: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
+      .optional(),
+    mahallaName: z.string().trim().min(1).optional(),
+    lanes: LanesQueryParamSchema,
+    calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.dateScope === 'custom') {
+      if (!data.dateFrom) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Бошланиш санаси (dateFrom) киритилиши шарт.',
+          path: ['dateFrom'],
+        });
+      }
+      if (!data.dateTo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Тугаш санаси (dateTo) киритилиши шарт.',
+          path: ['dateTo'],
+        });
+      }
+      if (data.dateFrom && data.dateTo && data.dateFrom > data.dateTo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.',
+          path: ['dateFrom'],
+        });
+      }
+    }
+  });
+export type HokimTopicStatisticsSearchBody = z.input<typeof HokimTopicStatisticsSearchBodySchema>;
+export type HokimTopicStatisticsSearchBodyOutput = z.output<typeof HokimTopicStatisticsSearchBodySchema>;
+
 
 
 

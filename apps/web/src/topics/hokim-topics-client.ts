@@ -12,6 +12,9 @@ import {
   HokimTopicStatisticsQuery,
   HokimTopicStatisticsResponse,
   HokimTopicStatisticsResponseSchema,
+  HokimTopicBoardSearchBody,
+  HokimLaneSearchBody,
+  HokimTopicStatisticsSearchBody,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
 
@@ -174,4 +177,59 @@ export const hokimTopicsClient = {
       HokimTopicStatisticsResponseSchema,
     );
   },
+
+  searchBoard(
+    body: HokimTopicBoardSearchBody,
+    signal?: AbortSignal,
+  ): Promise<HokimTopicBoardResponse> {
+    return request<HokimTopicBoardResponse>(
+      '/api/v1/hokim/topics/board/search',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal,
+      },
+      HokimTopicBoardResponseSchema,
+    );
+  },
+
+  searchLane(
+    body: HokimLaneSearchBody,
+    signal?: AbortSignal,
+  ): Promise<HokimLaneResponse> {
+    return request<HokimLaneResponse>(
+      '/api/v1/hokim/topics/lane/search',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal,
+      },
+      HokimLaneResponseSchema,
+    );
+  },
+
+  searchStatistics(
+    body: HokimTopicStatisticsSearchBody,
+    signal?: AbortSignal,
+  ): Promise<HokimTopicStatisticsResponse> {
+    return request<HokimTopicStatisticsResponse>(
+      '/api/v1/hokim/topics/statistics/search',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal,
+      },
+      HokimTopicStatisticsResponseSchema,
+    );
+  },
 };
+

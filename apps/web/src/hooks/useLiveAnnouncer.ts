@@ -28,3 +28,11 @@ export function formatTopicUpdateAnnouncement(newCount: number, updatedCount: nu
   }
   return null;
 }
+
+export function formatSearchAnnouncement(count: number): string {
+  if (count === 0) {
+    return 'Қидирув бўйича ҳеч қандай мавзу топилмади.';
+  }
+  return `Қидирув бўйича ${count} та мавзу топилди.`;
+}
+

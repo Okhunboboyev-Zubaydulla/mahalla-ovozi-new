@@ -4,6 +4,7 @@ import { FilterOutlined, CheckOutlined, ClearOutlined } from '@ant-design/icons'
 import { QualifyingLane } from '@mahalla-ovozi/api-contracts';
 import { DateScopeSelect } from './DateScopeSelect.js';
 import { MahallaSelect } from './MahallaSelect.js';
+import { DashboardSearchInput } from './DashboardSearchInput.js';
 import { DashboardFilterState } from '../../hooks/useDashboardFilterParams.js';
 import { LANE_LABELS, LANE_STYLES } from './TopicCard.js';
 import { CANONICAL_LANES } from './LaneMultiSelect.js';
@@ -17,6 +18,8 @@ export interface FilterModalSheetProps {
   onApplyFilters: (newFilters: DashboardFilterState) => void;
   onResetFilters: () => void;
   openerRef?: React.RefObject<HTMLElement | null>;
+  searchQuery?: string;
+  onSearchChange?: (search: string) => void;
 }
 
 export const FilterModalSheet: React.FC<FilterModalSheetProps> = ({
@@ -26,15 +29,19 @@ export const FilterModalSheet: React.FC<FilterModalSheetProps> = ({
   onApplyFilters,
   onResetFilters,
   openerRef,
+  searchQuery = '',
+  onSearchChange,
 }) => {
   const [pendingFilters, setPendingFilters] = useState<DashboardFilterState>(filters);
+  const [pendingSearch, setPendingSearch] = useState<string>(searchQuery);
 
   // Sync pending filters when modal opens
   useEffect(() => {
     if (open) {
       setPendingFilters(filters);
+      setPendingSearch(searchQuery);
     }
-  }, [open, filters]);
+  }, [open, filters, searchQuery]);
 
   const handleClose = () => {
     onClose();
@@ -52,11 +59,13 @@ export const FilterModalSheet: React.FC<FilterModalSheetProps> = ({
 
   const handleApply = () => {
     onApplyFilters(pendingFilters);
+    onSearchChange?.(pendingSearch);
     handleClose();
   };
 
   const handleReset = () => {
     onResetFilters();
+    onSearchChange?.('');
     handleClose();
   };
 
@@ -107,6 +116,20 @@ export const FilterModalSheet: React.FC<FilterModalSheetProps> = ({
       aria-labelledby="filter-sheet-title"
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingTop: 12 }}>
+        {/* 0. Lexical Search Section */}
+        <div>
+          <Text strong style={{ display: 'block', marginBottom: 8, color: '#334155', fontSize: 14 }}>
+            Қидирув
+          </Text>
+          <DashboardSearchInput
+            value={pendingSearch}
+            onChange={(val) => setPendingSearch(val)}
+            style={{ maxWidth: '100%' }}
+          />
+        </div>
+
+        <Divider style={{ margin: 0, borderColor: '#F1F5F9' }} />
+
         {/* 1. Date Scope Section */}
         <div>
           <Text strong style={{ display: 'block', marginBottom: 8, color: '#334155', fontSize: 14 }}>

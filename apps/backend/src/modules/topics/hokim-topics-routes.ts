@@ -4,6 +4,9 @@ import {
   HokimLaneQuerySchema,
   TopicEvidenceQuerySchema,
   HokimTopicStatisticsQuerySchema,
+  HokimTopicBoardSearchBodySchema,
+  HokimLaneSearchBodySchema,
+  HokimTopicStatisticsSearchBodySchema,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import { verifyStateChangingOrigin } from '../auth/origin-guard.js';
@@ -151,7 +154,7 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
       },
     );
 
-    // 3. Get complete retained evidence for a specific topic (AC 1-6)
+    // 4. Get complete retained evidence for a specific topic (AC 1-6)
     scope.get(
       '/api/v1/hokim/topics/:id/evidence',
       async (
@@ -275,6 +278,149 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         }
       },
     );
+
+    // 6. Search 5-lane topic board via validated POST request body (AD-09, AD-10)
+    scope.post(
+      '/api/v1/hokim/topics/board/search',
+      async (
+        req: FastifyRequest<{ Body: unknown }>,
+        reply: FastifyReply,
+      ) => {
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHENTICATED',
+              message: 'Сессия топилмади ёки муддати тугаган.',
+            },
+          });
+        }
+
+        const parseResult = HokimTopicBoardSearchBodySchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: parseResult.error.errors[0]?.message || 'Сўров параметрлари нотўғри.',
+            },
+          });
+        }
+
+        try {
+          const board = await topicService.getTodayBoard(
+            req.actor as { id: string; districtId: string; role: string },
+            parseResult.data,
+          );
+          return reply.status(200).send(board);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : 'Мавзулар бўйича қидирувда хатолик юз берди.';
+          return reply.status(400).send({
+            error: {
+              code: 'TOPIC_BOARD_SEARCH_ERROR',
+              message,
+            },
+          });
+        }
+      },
+    );
+
+    // 7. Search paginated batch for a specific lane via validated POST request body (AD-09, AD-10)
+    scope.post(
+      '/api/v1/hokim/topics/lane/search',
+      async (req: FastifyRequest<{ Body: unknown }>, reply: FastifyReply) => {
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHENTICATED',
+              message: 'Сессия топилмади ёки муддати тугаган.',
+            },
+          });
+        }
+
+        const parseResult = HokimLaneSearchBodySchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: parseResult.error.errors[0]?.message || 'Сўров параметрлари нотўғри.',
+            },
+          });
+        }
+
+        const { cursor } = parseResult.data;
+
+        if (cursor && !decodeKeysetCursor(cursor)) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Курсор нотўғри ёки муддати ўтган.',
+            },
+          });
+        }
+
+        try {
+          const laneBatch = await topicService.getLaneBatch({
+            actorContext: req.actor as { id: string; districtId: string; role: string },
+            ...parseResult.data,
+          });
+
+          return reply.status(200).send(laneBatch);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : 'Йўналиш бўйича қидирувда хатолик юз берди.';
+          return reply.status(400).send({
+            error: {
+              code: 'LANE_SEARCH_ERROR',
+              message,
+            },
+          });
+        }
+      },
+    );
+
+    // 8. Search compact neutral statistics for active scope via validated POST request body (AD-09, AD-10)
+    scope.post(
+      '/api/v1/hokim/topics/statistics/search',
+      async (
+        req: FastifyRequest<{ Body: unknown }>,
+        reply: FastifyReply,
+      ) => {
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHENTICATED',
+              message: 'Сессия топилмади ёки муддати тугаган.',
+            },
+          });
+        }
+
+        const parseResult = HokimTopicStatisticsSearchBodySchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: parseResult.error.errors[0]?.message || 'Сўров параметрлари нотўғри.',
+            },
+          });
+        }
+
+        try {
+          const statistics = await topicService.getStatistics(
+            req.actor as { id: string; districtId: string; role: string },
+            parseResult.data,
+          );
+          return reply.status(200).send(statistics);
+        } catch (err: unknown) {
+          const message =
+            err instanceof Error ? err.message : 'Статистика бўйича қидирувда хатолик юз берди.';
+          return reply.status(400).send({
+            error: {
+              code: 'STATISTICS_SEARCH_ERROR',
+              message,
+            },
+          });
+        }
+      },
+    );
   });
 }
+
 

@@ -25,7 +25,10 @@ const CANONICAL_LANES: QualifyingLane[] = [
   'WASTE',
 ];
 
-export function useHokimTopicBoard(appliedFilters?: DashboardFilterState | string) {
+export function useHokimTopicBoard(
+  appliedFilters?: DashboardFilterState | string,
+  searchQuery?: string,
+) {
   const { actor } = useAuth();
   const districtId = actor?.districtId || '';
   const liveAnnouncer = useContext(LiveAnnouncerContext);
@@ -49,8 +52,10 @@ export function useHokimTopicBoard(appliedFilters?: DashboardFilterState | strin
     );
   }, [appliedFilters]);
 
+  const trimmedSearch = searchQuery?.trim() || '';
+
   // Reset baseline and known topic tracking when scope changes
-  const currentScopeKey = `${districtId}:${filterState.dateScope}:${filterState.dateFrom || ''}:${filterState.dateTo || ''}:${filterState.mahallaName || ''}:${filterState.lanes.join(',')}`;
+  const currentScopeKey = `${districtId}:${filterState.dateScope}:${filterState.dateFrom || ''}:${filterState.dateTo || ''}:${filterState.mahallaName || ''}:${filterState.lanes.join(',')}:${trimmedSearch}`;
   const prevScopeKeyRef = useRef<string>(currentScopeKey);
   if (prevScopeKeyRef.current !== currentScopeKey) {
     prevScopeKeyRef.current = currentScopeKey;
@@ -68,12 +73,27 @@ export function useHokimTopicBoard(appliedFilters?: DashboardFilterState | strin
     filterState.dateTo ?? null,
     filterState.mahallaName ?? null,
     filterState.lanes.join(','),
+    trimmedSearch || null,
   ];
 
   const boardQuery = useQuery({
     queryKey,
-    queryFn: ({ signal }) =>
-      hokimTopicsClient.getTodayBoard(
+    queryFn: ({ signal }) => {
+      if (trimmedSearch) {
+        return hokimTopicsClient.searchBoard(
+          {
+            search: trimmedSearch,
+            dateScope: filterState.dateScope,
+            dateFrom: filterState.dateFrom,
+            dateTo: filterState.dateTo,
+            mahallaName: filterState.mahallaName,
+            lanes: filterState.lanes,
+            baselineTimestamp: baselineTimestampRef.current ?? undefined,
+          },
+          signal,
+        );
+      }
+      return hokimTopicsClient.getTodayBoard(
         {
           dateScope: filterState.dateScope,
           dateFrom: filterState.dateFrom,
@@ -83,7 +103,8 @@ export function useHokimTopicBoard(appliedFilters?: DashboardFilterState | strin
           baselineTimestamp: baselineTimestampRef.current ?? undefined,
         },
         signal,
-      ),
+      );
+    },
     enabled: Boolean(districtId && actor?.role === 'DISTRICT_HOKIM'),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
@@ -350,16 +371,28 @@ export function useHokimTopicBoard(appliedFilters?: DashboardFilterState | strin
       }));
 
       try {
-        const response = await hokimTopicsClient.getLaneBatch({
-          lane,
-          limit: 20,
-          dateScope: filterState.dateScope,
-          dateFrom: filterState.dateFrom,
-          dateTo: filterState.dateTo,
-          mahallaName: filterState.mahallaName,
-          cursor: currentLane.nextCursor,
-          baselineTimestamp: baselineTimestampRef.current ?? undefined,
-        });
+        const response = trimmedSearch
+          ? await hokimTopicsClient.searchLane({
+              lane,
+              search: trimmedSearch,
+              limit: 20,
+              dateScope: filterState.dateScope,
+              dateFrom: filterState.dateFrom,
+              dateTo: filterState.dateTo,
+              mahallaName: filterState.mahallaName,
+              cursor: currentLane.nextCursor,
+              baselineTimestamp: baselineTimestampRef.current ?? undefined,
+            })
+          : await hokimTopicsClient.getLaneBatch({
+              lane,
+              limit: 20,
+              dateScope: filterState.dateScope,
+              dateFrom: filterState.dateFrom,
+              dateTo: filterState.dateTo,
+              mahallaName: filterState.mahallaName,
+              cursor: currentLane.nextCursor,
+              baselineTimestamp: baselineTimestampRef.current ?? undefined,
+            });
 
         setLanesState((prev) => {
           const prevLane = prev[lane];
@@ -400,7 +433,7 @@ export function useHokimTopicBoard(appliedFilters?: DashboardFilterState | strin
         }));
       }
     },
-    [lanesState, filterState],
+    [lanesState, filterState, trimmedSearch, boardQuery.isFetching, boardQuery.isPlaceholderData],
   );
 
   const manualRefresh = useCallback(async () => {

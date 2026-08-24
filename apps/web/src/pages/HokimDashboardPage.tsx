@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, Alert, Typography } from 'antd';
 import { ReloadOutlined, DisconnectOutlined, WarningOutlined } from '@ant-design/icons';
@@ -16,6 +16,7 @@ import { useTopicEvidence } from '../topics/useTopicEvidence.js';
 import { useDashboardFilterParams } from '../hooks/useDashboardFilterParams.js';
 import { useFocusFallback } from '../hooks/useFocusFallback.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
+import { LiveAnnouncerContext, formatSearchAnnouncement } from '../hooks/useLiveAnnouncer.js';
 import { FullPageLoader } from '../components/FullPageLoader.js';
 import { formatTashkentTime } from '../lib/formatters.js';
 
@@ -26,12 +27,16 @@ export const HokimDashboardPage: React.FC = () => {
   const location = useLocation();
   const { returnFocus } = useFocusFallback();
   const isOffline = useOnlineStatus();
+  const liveAnnouncer = useContext(LiveAnnouncerContext);
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [originatingLane, setOriginatingLane] = useState<string | undefined>(undefined);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const mobileFilterButtonRef = useRef<HTMLButtonElement | null>(null);
   const [helpDrawerOpen, setHelpDrawerOpen] = useState(false);
   const helpButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  // In-Memory Search Query (AD-09: Never serialized to URL/Storage)
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const {
     filters,
@@ -57,13 +62,33 @@ export const HokimDashboardPage: React.FC = () => {
     manualRefresh,
     refetch,
     retryFilter,
-  } = useHokimTopicBoard(filters);
+  } = useHokimTopicBoard(filters, searchQuery);
 
   const {
     statistics,
     isLoading: isStatsLoading,
     refetch: refetchStats,
-  } = useTopicStatistics(filters);
+  } = useTopicStatistics(filters, searchQuery);
+
+  // Announce search result count when search query settles (AC 7)
+  const prevSearchAnnouncedRef = useRef<string>('');
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (trimmed && !isFilterTransitioning && statistics !== undefined) {
+      const searchScopeSignature = `${trimmed}:${statistics.totalUniqueTopics}`;
+      if (prevSearchAnnouncedRef.current !== searchScopeSignature) {
+        prevSearchAnnouncedRef.current = searchScopeSignature;
+        liveAnnouncer?.announce(formatSearchAnnouncement(statistics.totalUniqueTopics));
+      }
+    } else if (!trimmed) {
+      prevSearchAnnouncedRef.current = '';
+    }
+  }, [searchQuery, isFilterTransitioning, statistics, liveAnnouncer]);
+
+  const handleResetAll = useCallback(() => {
+    resetFilters();
+    setSearchQuery('');
+  }, [resetFilters]);
 
   const handleManualRefresh = useCallback(() => {
     manualRefresh();
@@ -253,9 +278,11 @@ export const HokimDashboardPage: React.FC = () => {
       <FilterBar
         filters={filters}
         onFilterChange={setFilters}
-        onResetFilters={resetFilters}
+        onResetFilters={handleResetAll}
         isDefaultFilters={isDefaultFilters}
         isLoading={isFilterTransitioning}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
       />
 
       {/* Mobile Responsive Filter Modal Sheet */}
@@ -264,8 +291,10 @@ export const HokimDashboardPage: React.FC = () => {
         onClose={() => setFilterModalOpen(false)}
         filters={filters}
         onApplyFilters={setFilters}
-        onResetFilters={resetFilters}
+        onResetFilters={handleResetAll}
         openerRef={mobileFilterButtonRef}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
       />
 
       {/* 5-Card Statistics Strip (AC 1, AC 14) */}
@@ -310,7 +339,9 @@ export const HokimDashboardPage: React.FC = () => {
               }}
             >
               <span style={{ fontSize: 13, color: '#991B1B' }}>
-                {isDefaultFilters
+                {searchQuery.trim()
+                  ? `Қидирув бўйича маълумотларни юклаб бўлмади${formattedRefreshTime ? ` (охирги муваффақиятли янгиланиш: ${formattedRefreshTime})` : ''}.`
+                  : isDefaultFilters
                   ? `Янги маълумотларни юклаб бўлмади${formattedRefreshTime ? ` (охирги муваффақиятли янгиланиш: ${formattedRefreshTime})` : ''}.`
                   : `Танланган фильтрлар бўйича маълумотларни юклаб бўлмади${formattedRefreshTime ? ` (охирги муваффақиятли янгиланиш: ${formattedRefreshTime})` : ''}.`}
               </span>
@@ -346,9 +377,10 @@ export const HokimDashboardPage: React.FC = () => {
       <FiveLaneBoard
         lanes={lanes}
         activeLanes={activeLanes}
-        isFiltered={!isDefaultFilters}
-        onResetFilters={resetFilters}
+        isFiltered={!isDefaultFilters || Boolean(searchQuery.trim())}
+        onResetFilters={handleResetAll}
         selectedTopicId={selectedTopicId}
+        searchQuery={searchQuery}
         onLoadMore={loadMore}
         onSelectTopic={handleSelectTopic}
         onRevealNewTopics={revealNewTopics}

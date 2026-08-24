@@ -16,6 +16,7 @@ export interface LaneColumnProps {
   isLoadingMore: boolean;
   loadMoreError: string | null;
   selectedTopicId?: string | null;
+  searchQuery?: string;
   onLoadMore: () => void;
   onSelectTopic?: (topic: TopicCardItem) => void;
   onRevealNewItems?: () => void;
@@ -30,6 +31,7 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
   isLoadingMore,
   loadMoreError,
   selectedTopicId,
+  searchQuery,
   onLoadMore,
   onSelectTopic,
   onRevealNewItems,
@@ -184,6 +186,7 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
               topic={topic}
               currentLane={lane}
               isSelected={topic.id === selectedTopicId}
+              searchQuery={searchQuery}
               onClick={onSelectTopic ? () => onSelectTopic(topic) : undefined}
             />
           ))

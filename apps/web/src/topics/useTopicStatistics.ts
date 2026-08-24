@@ -27,6 +27,7 @@ export interface UseTopicStatisticsResult {
 
 export function useTopicStatistics(
   appliedFilters?: DashboardFilterState | string,
+  searchQuery?: string,
 ): UseTopicStatisticsResult {
   const { actor } = useAuth();
   const districtId = actor?.districtId || '';
@@ -48,6 +49,8 @@ export function useTopicStatistics(
     };
   }, [appliedFilters]);
 
+  const trimmedSearch = searchQuery?.trim() || '';
+
   const queryKey = [
     'hokim-statistics',
     districtId,
@@ -56,12 +59,26 @@ export function useTopicStatistics(
     filterState.dateTo ?? null,
     filterState.mahallaName ?? null,
     filterState.lanes.join(','),
+    trimmedSearch || null,
   ];
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey,
-    queryFn: ({ signal }) =>
-      hokimTopicsClient.getStatistics(
+    queryFn: ({ signal }) => {
+      if (trimmedSearch) {
+        return hokimTopicsClient.searchStatistics(
+          {
+            search: trimmedSearch,
+            dateScope: filterState.dateScope,
+            dateFrom: filterState.dateFrom,
+            dateTo: filterState.dateTo,
+            mahallaName: filterState.mahallaName,
+            lanes: filterState.lanes,
+          },
+          signal,
+        );
+      }
+      return hokimTopicsClient.getStatistics(
         {
           dateScope: filterState.dateScope,
           dateFrom: filterState.dateFrom,
@@ -70,7 +87,8 @@ export function useTopicStatistics(
           lanes: filterState.lanes,
         },
         signal,
-      ),
+      );
+    },
     enabled: Boolean(districtId && actor?.role === 'DISTRICT_HOKIM'),
     placeholderData: (previousData, previousQuery) => {
       if (!previousData || !previousQuery) return undefined;

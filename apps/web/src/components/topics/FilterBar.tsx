@@ -4,6 +4,7 @@ import { ClearOutlined, LoadingOutlined } from '@ant-design/icons';
 import { DateScopeSelect } from './DateScopeSelect.js';
 import { MahallaSelect } from './MahallaSelect.js';
 import { LaneMultiSelect } from './LaneMultiSelect.js';
+import { DashboardSearchInput } from './DashboardSearchInput.js';
 import { DashboardFilterState } from '../../hooks/useDashboardFilterParams.js';
 
 const { Text } = Typography;
@@ -14,6 +15,8 @@ export interface FilterBarProps {
   onResetFilters: () => void;
   isDefaultFilters: boolean;
   isLoading?: boolean;
+  searchQuery?: string;
+  onSearchChange?: (val: string) => void;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -22,7 +25,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onResetFilters,
   isDefaultFilters,
   isLoading = false,
+  searchQuery = '',
+  onSearchChange,
 }) => {
+  const isSearchActive = Boolean(searchQuery.trim());
+  const canReset = !isDefaultFilters || isSearchActive;
+
   return (
     <nav
       aria-label="Фильтрлар панели"
@@ -39,6 +47,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        {/* Lexical Search Input (AC 1, AC 4) */}
+        <DashboardSearchInput
+          value={searchQuery}
+          onChange={(val) => onSearchChange?.(val)}
+          disabled={isLoading}
+        />
+
+        <div style={{ width: 1, height: 24, backgroundColor: '#E2E8F0' }} />
+
         {/* Date Scope Filter */}
         <DateScopeSelect
           dateScope={filters.dateScope}
@@ -82,7 +99,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       </div>
 
       {/* Clear Filters Action */}
-      {!isDefaultFilters && (
+      {canReset && (
         <Button
           type="link"
           icon={<ClearOutlined />}
@@ -105,3 +122,4 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     </nav>
   );
 };
+
