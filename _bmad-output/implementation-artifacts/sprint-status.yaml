@@ -80,7 +80,7 @@ development_status:
   3-6-use-dashboard-help-and-profile-controls: done
   3-7-search-current-and-retained-topics-privately: done
   3-8-continue-large-filtered-and-search-results-safely: done
-  3-9-compare-topic-volume-with-equivalent-prior-periods: backlog
+  3-9-compare-topic-volume-with-equivalent-prior-periods: ready-for-dev
   3-10-keep-board-and-statistics-consistent-during-updates: backlog
   epic-3-retrospective: optional
 
