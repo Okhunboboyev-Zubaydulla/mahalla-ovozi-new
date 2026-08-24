@@ -1,5 +1,5 @@
-import React from 'react';
-import { Button, Space, Typography, Alert, Grid } from 'antd';
+import React, { useState } from 'react';
+import { Button, Space, Typography, Alert, Grid, Popover, Tag, Divider } from 'antd';
 import {
   LogoutOutlined,
   CalendarOutlined,
@@ -8,6 +8,8 @@ import {
   ClockCircleOutlined,
   WarningOutlined,
   FilterOutlined,
+  QuestionCircleOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../auth/auth-context.js';
 import { formatTashkentCalendarDate, formatTashkentTime } from '../../lib/formatters.js';
@@ -27,6 +29,8 @@ export interface BoardToolbarProps {
   onOpenFilters?: () => void;
   activeFilterCount?: number;
   mobileFilterButtonRef?: React.RefObject<HTMLButtonElement | null>;
+  onOpenHelp?: () => void;
+  helpButtonRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 export const BoardToolbar: React.FC<BoardToolbarProps> = ({
@@ -40,8 +44,11 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
   onOpenFilters,
   activeFilterCount = 0,
   mobileFilterButtonRef,
+  onOpenHelp,
+  helpButtonRef,
 }) => {
-  const { signOut, isSigningOut } = useAuth();
+  const { actor, signOut, isSigningOut } = useAuth();
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const prefersReducedMotion = usePrefersReducedMotion();
   const screens = useBreakpoint();
   const isMobile = screens.lg === false;
@@ -123,7 +130,7 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
           </Space>
         </div>
 
-        {/* Right Section: Freshness indicator, Refresh button, Sign out */}
+        {/* Right Section: Freshness indicator, Refresh, Help, Profile Popover */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {formattedRefreshTime && (
             <Text
@@ -191,23 +198,139 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
             Янгилаш
           </Button>
 
-          <div style={{ width: 1, height: 20, backgroundColor: '#E2E8F0' }} />
-
           <Button
-            type="text"
-            icon={<LogoutOutlined />}
-            loading={isSigningOut}
-            onClick={() => signOut()}
+            id="dashboard-help-button"
+            ref={helpButtonRef}
+            type="default"
+            icon={<QuestionCircleOutlined style={{ color: '#0284C7' }} />}
+            onClick={onOpenHelp}
             style={{
               fontSize: 14,
               fontWeight: 500,
-              color: '#64748B',
+              color: '#334155',
+              borderColor: '#CBD5E1',
               boxShadow: 'none',
             }}
-            aria-label="Тизимдан чиқиш"
+            aria-label="Тизим ёрдами"
           >
-            Чиқиш
+            Ёрдам
           </Button>
+
+          <div style={{ width: 1, height: 20, backgroundColor: '#E2E8F0' }} />
+
+          <Popover
+            content={
+              <div
+                role="dialog"
+                aria-label="Ҳоким профили"
+                style={{
+                  minWidth: 220,
+                  padding: '4px 0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}
+              >
+                <div>
+                  <Text strong style={{ fontSize: 15, color: '#0F172A', display: 'block' }}>
+                    {actor?.username || 'Ҳоким'}
+                  </Text>
+                  <Text
+                    type="secondary"
+                    style={{
+                      fontSize: 13,
+                      color: '#64748B',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      marginTop: 2,
+                    }}
+                  >
+                    <EnvironmentOutlined style={{ color: '#0284C7' }} />
+                    {districtName}
+                  </Text>
+                </div>
+
+                <div>
+                  <Tag
+                    color="cyan"
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      margin: 0,
+                    }}
+                  >
+                    Туман ҳокими
+                  </Tag>
+                </div>
+
+                <Divider style={{ margin: '6px 0', borderColor: '#E2E8F0' }} />
+
+                <Button
+                  type="text"
+                  danger
+                  icon={<LogoutOutlined />}
+                  loading={isSigningOut}
+                  onClick={() => {
+                    setPopoverOpen(false);
+                    signOut();
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#DC2626',
+                    padding: '4px 8px',
+                    height: 36,
+                    width: '100%',
+                    justifyContent: 'flex-start',
+                    boxShadow: 'none',
+                  }}
+                  aria-label="Тизимдан чиқиш"
+                >
+                  Чиқиш
+                </Button>
+              </div>
+            }
+            trigger="click"
+            open={popoverOpen}
+            onOpenChange={setPopoverOpen}
+            placement="bottomRight"
+            styles={{
+              body: {
+                boxShadow: 'none',
+                border: '1px solid #E2E8F0',
+                backgroundColor: '#FFFFFF',
+                borderRadius: 8,
+                padding: '12px 16px',
+              },
+            }}
+          >
+            <Button
+              id="dashboard-profile-button"
+              type="text"
+              icon={<UserOutlined style={{ color: '#0284C7' }} />}
+              aria-label="Ҳоким профили ва сессия созламалари"
+              aria-haspopup="dialog"
+              aria-expanded={popoverOpen}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 14,
+                fontWeight: 500,
+                color: '#0F172A',
+                boxShadow: 'none',
+                height: 36,
+              }}
+            >
+              {actor?.username || 'Ҳоким'}
+            </Button>
+          </Popover>
         </div>
       </div>
 

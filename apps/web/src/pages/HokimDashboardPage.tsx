@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, Alert, Typography } from 'antd';
 import { ReloadOutlined, DisconnectOutlined, WarningOutlined } from '@ant-design/icons';
 import { TopicCardItem } from '@mahalla-ovozi/api-contracts';
@@ -9,6 +9,7 @@ import { FilterModalSheet } from '../components/topics/FilterModalSheet.js';
 import { TopicStatisticsStrip } from '../components/topics/TopicStatisticsStrip.js';
 import { FiveLaneBoard } from '../components/topics/FiveLaneBoard.js';
 import { TopicEvidenceDrawer } from '../components/topics/TopicEvidenceDrawer.js';
+import { DashboardHelpDrawer } from '../components/topics/DashboardHelpDrawer.js';
 import { useHokimTopicBoard } from '../topics/useHokimTopicBoard.js';
 import { useTopicStatistics } from '../topics/useTopicStatistics.js';
 import { useTopicEvidence } from '../topics/useTopicEvidence.js';
@@ -22,12 +23,15 @@ const { Title, Paragraph } = Typography;
 
 export const HokimDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { returnFocus } = useFocusFallback();
   const isOffline = useOnlineStatus();
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [originatingLane, setOriginatingLane] = useState<string | undefined>(undefined);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const mobileFilterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [helpDrawerOpen, setHelpDrawerOpen] = useState(false);
+  const helpButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const {
     filters,
@@ -95,8 +99,34 @@ export const HokimDashboardPage: React.FC = () => {
     }
   }, [lastRefreshedAt, selectedTopicId, refetchEvidence]);
 
+  const handleOpenHelp = useCallback(() => {
+    if (window.innerWidth < 1024) {
+      navigate({ pathname: '/help', search: location.search });
+    } else {
+      setSelectedTopicId(null);
+      setHelpDrawerOpen(true);
+    }
+  }, [navigate, location.search]);
+
+  const handleCloseHelp = useCallback(() => {
+    setHelpDrawerOpen(false);
+    setTimeout(() => {
+      if (helpButtonRef.current) {
+        helpButtonRef.current.focus();
+      } else {
+        const btn = document.getElementById('dashboard-help-button');
+        if (btn) {
+          btn.focus();
+        } else {
+          returnFocus();
+        }
+      }
+    }, 50);
+  }, [returnFocus]);
+
   const handleSelectTopic = (topic: TopicCardItem) => {
     setOriginatingLane(topic.primaryLane);
+    setHelpDrawerOpen(false);
     if (window.innerWidth < 1024) {
       navigate(`/topics/${topic.id}/evidence`);
     } else {
@@ -215,6 +245,8 @@ export const HokimDashboardPage: React.FC = () => {
         onOpenFilters={() => setFilterModalOpen(true)}
         activeFilterCount={activeFilterCount}
         mobileFilterButtonRef={mobileFilterButtonRef}
+        onOpenHelp={handleOpenHelp}
+        helpButtonRef={helpButtonRef}
       />
 
       {/* Desktop Sticky Filter Bar */}
@@ -325,6 +357,11 @@ export const HokimDashboardPage: React.FC = () => {
       <TopicEvidenceDrawer
         topicId={selectedTopicId}
         onClose={handleCloseDrawer}
+      />
+
+      <DashboardHelpDrawer
+        open={helpDrawerOpen}
+        onClose={handleCloseHelp}
       />
     </div>
   );

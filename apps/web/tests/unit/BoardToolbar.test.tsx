@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { ConfigProvider } from 'antd';
 import { mahallaTheme } from '../../src/theme/antd-theme.js';
@@ -8,7 +8,7 @@ import { AuthProvider } from '../../src/auth/auth-context.js';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { authClient } from '../../src/auth/auth-client.js';
 
-describe('Story 3.3: BoardToolbar Component Tests', () => {
+describe('Story 3.3 & 3.6: BoardToolbar Component Tests', () => {
   let queryClient: QueryClient;
 
   beforeAll(() => {
@@ -131,5 +131,88 @@ describe('Story 3.3: BoardToolbar Component Tests', () => {
     expect(
       screen.getByText(/Янгиланиш давом этмоқда — айрим сўнгги хабарлар ҳали кўринмаслиги мумкин/),
     ).toBeTruthy();
+  });
+
+  it('Test 5: Renders Help button with proper id and triggers onOpenHelp (Story 3.6 AC 1, AC 3)', () => {
+    const handleOpenHelp = vi.fn();
+    renderWithProviders(
+      <BoardToolbar
+        districtName="Яккасарой тумани"
+        calendarDay="2026-08-24"
+        onOpenHelp={handleOpenHelp}
+      />,
+    );
+
+    const helpButton = screen.getByRole('button', { name: 'Тизим ёрдами' });
+    expect(helpButton).toBeTruthy();
+    expect(helpButton.id).toBe('dashboard-help-button');
+    fireEvent.click(helpButton);
+    expect(handleOpenHelp).toHaveBeenCalledTimes(1);
+  });
+
+  it('Test 6: Renders Profile popover trigger button with aria-haspopup and username (Story 3.6 AC 6)', async () => {
+    renderWithProviders(
+      <BoardToolbar
+        districtName="Яккасарой тумани"
+        calendarDay="2026-08-24"
+      />,
+    );
+
+    await waitFor(() => {
+      const profileButton = screen.getByRole('button', { name: 'Ҳоким профили ва сессия созламалари' });
+      expect(profileButton).toBeTruthy();
+      expect(profileButton.id).toBe('dashboard-profile-button');
+      expect(profileButton.getAttribute('aria-haspopup')).toBe('dialog');
+      expect(profileButton.textContent).toContain('hokim_user');
+    });
+  });
+
+  it('Test 7: Opens Profile popover displaying username, district, role badge, and sign out button (Story 3.6 AC 6)', async () => {
+    renderWithProviders(
+      <BoardToolbar
+        districtName="Яккасарой тумани"
+        calendarDay="2026-08-24"
+      />,
+    );
+
+    const profileButton = await screen.findByRole('button', { name: 'Ҳоким профили ва сессия созламалари' });
+    fireEvent.click(profileButton);
+
+    // Popover content checks
+    expect(await screen.findByText('Туман ҳокими')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Тизимдан чиқиш' })).toBeTruthy();
+  });
+
+  it('Test 8: Activating Чиқиш executes signOut and cancels/clears queries (Story 3.6 AC 7)', async () => {
+    const signOutSpy = vi.spyOn(authClient, 'signOut').mockResolvedValue({ success: true });
+    renderWithProviders(
+      <BoardToolbar
+        districtName="Яккасарой тумани"
+        calendarDay="2026-08-24"
+      />,
+    );
+
+    const profileButton = await screen.findByRole('button', { name: 'Ҳоким профили ва сессия созламалари' });
+    fireEvent.click(profileButton);
+
+    const signOutButton = await screen.findByRole('button', { name: 'Тизимдан чиқиш' });
+    fireEvent.click(signOutButton);
+
+    await waitFor(() => {
+      expect(signOutSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('Test 9: Negative guardrail - does NOT render sidebar, tabs, or district switcher (Story 3.6 AC 1)', () => {
+    renderWithProviders(
+      <BoardToolbar
+        districtName="Яккасарой тумани"
+        calendarDay="2026-08-24"
+      />,
+    );
+
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.queryByRole('navigation')).toBeNull();
+    expect(screen.queryByLabelText(/туманни ўзгартириш/i)).toBeNull();
   });
 });

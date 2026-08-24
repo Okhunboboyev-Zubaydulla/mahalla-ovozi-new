@@ -4,7 +4,7 @@ baseline_commit: 7877db0
 
 # Story 3.6: Use Dashboard Help and Profile Controls
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -123,9 +123,9 @@ so that I can understand the product's evidence limits and safely leave my prote
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Factual Help Content Module & Shared Copy** (AC: 2, 8)
-  - [ ] 1.1 In `apps/web/src/components/topics/HelpContent.tsx`, create the structured, reusable Help guidance component.
-  - [ ] 1.2 Define clear, accessible sections with Uzbek Cyrillic typography matching `DESIGN.md`:
+- [x] **Task 1: Factual Help Content Module & Shared Copy** (AC: 2, 8)
+  - [x] 1.1 In `apps/web/src/components/topics/HelpContent.tsx`, create the structured, reusable Help guidance component.
+  - [x] 1.2 Define clear, accessible sections with Uzbek Cyrillic typography matching `DESIGN.md`:
     - Section 1: Хабарлар ва далиллар табиати (Reported signals vs verified facts)
     - Section 2: Йўналишлар ва кўп йўналишли мавзулар (5 lanes & multi-lane topics)
     - Section 3: «Янги» ва «Янгиланди» белгилари (Visit baselines & badges)
@@ -135,10 +135,10 @@ so that I can understand the product's evidence limits and safely leave my prote
     - Section 7: Қарор қабул қилиш масъулияти (Hokim ownership of decisions)
     - Section 8: 90 кунлик ягона сақлаш муддати (90-day unified retention rule: "Мавзу ва унга тегишли барча далиллар мавзунинг сўнгги фаоллик вақтидан бошлаб 90 кун давомида сақланади; мавзу сақланиб турган даврда айрим далиллар алоҳида муддатидан олдин ўчирилмайди.")
     - Section 9: Қатъий бетарафлик ва тақиқланган функциялар (Strict neutrality & scope boundaries)
-  - [ ] 1.3 Ensure zero Latin terminology, no persistent shadows, `#0F172A` headings, `#334155` body text, 14px minimum font size, `lineHeight: '22px'`, and `wordBreak: 'break-word'` / `overflowWrap: 'break-word'` across all sections.
+  - [x] 1.3 Ensure zero Latin terminology, no persistent shadows, `#0F172A` headings, `#334155` body text, 14px minimum font size, `lineHeight: '22px'`, and `wordBreak: 'break-word'` / `overflowWrap: 'break-word'` across all sections.
 
-- [ ] **Task 2: Desktop Help Drawer Component** (AC: 3, 5, 8)
-  - [ ] 2.1 In `apps/web/src/components/topics/DashboardHelpDrawer.tsx`, build the desktop read-only drawer:
+- [x] **Task 2: Desktop Help Drawer Component** (AC: 3, 5, 8)
+  - [x] 2.1 In `apps/web/src/components/topics/DashboardHelpDrawer.tsx`, build the desktop read-only drawer:
     - `<Drawer>` with `open={open}`, `onClose={onClose}`, `mask={false}`, `keyboard={false}`, `rootStyle={{ pointerEvents: 'none' }}`, `width={520}`, `role="region"`, `aria-label="Тизим ёрдами ва тушунтиришлар"`.
     - `styles={{ wrapper: { boxShadow: 'none', pointerEvents: 'auto' }, content: { boxShadow: 'none', borderLeft: '1px solid #E2E8F0', backgroundColor: '#FFFFFF' }, header: { borderBottom: '1px solid #E2E8F0', padding: '14px 20px' }, body: { padding: '20px', overflowY: 'auto' } }}`.
     - Programmatic focus on `#dashboard-help-heading` (`tabIndex={-1}`) upon opening.
@@ -147,18 +147,18 @@ so that I can understand the product's evidence limits and safely leave my prote
     - Immediate transitions with zero animations when `prefers-reduced-motion` is active.
     - Renders `<HelpContent />` inside drawer body.
 
-- [ ] **Task 3: Narrow-Screen Help Page & App Route** (AC: 4, 5, 8)
-  - [ ] 3.1 In `apps/web/src/pages/DashboardHelpPage.tsx`, create the full-screen mobile page:
+- [x] **Task 3: Narrow-Screen Help Page & App Route** (AC: 4, 5, 8)
+  - [x] 3.1 In `apps/web/src/pages/DashboardHelpPage.tsx`, create the full-screen mobile page:
     - Sticky top navigation bar with `Орқага` button (`ArrowLeftOutlined`, `aria-label="Бош саҳифага қайтиш"`) and Title `Тизим ёрдами`.
     - Main container with `id="dashboard-help-page-heading"`, `tabIndex={-1}`, focused programmatically on mount.
     - Responsive layout container (`maxWidth: 720`, `margin: '0 auto'`, `padding: '20px 16px 40px 16px'`).
     - Renders `<HelpContent />`.
     - `Орқага` triggers `navigate(-1)` with fallback to `navigate({ pathname: '/', search: location.search })`, preserving prior dashboard filter query parameters.
-  - [ ] 3.2 In `apps/web/src/App.tsx`, register the `/help` route:
+  - [x] 3.2 In `apps/web/src/App.tsx`, register the `/help` route:
     - Wrapped in `<ProtectedRoute>` for `DISTRICT_HOKIM`.
 
-- [ ] **Task 4: Board Toolbar Updates with Help Trigger & Profile Popover** (AC: 1, 6, 7, 8)
-  - [ ] 4.1 In `apps/web/src/components/topics/BoardToolbar.tsx`:
+- [x] **Task 4: Board Toolbar Updates with Help Trigger & Profile Popover** (AC: 1, 6, 7, 8)
+  - [x] 4.1 In `apps/web/src/components/topics/BoardToolbar.tsx`:
     - Add `onOpenHelp?: () => void` and `helpButtonRef?: React.RefObject<HTMLButtonElement | null>` to `BoardToolbarProps`.
     - Add Help button: `<Button id="dashboard-help-button" ref={helpButtonRef} icon={<QuestionCircleOutlined />} onClick={onOpenHelp} aria-label="Тизим ёрдами">Ёрдам</Button>`.
     - Replace raw inline `Чиқиш` button with an Ant Design `<Popover>` attached to a profile trigger button (`id="dashboard-profile-button"`, `aria-haspopup="dialog"`, `aria-expanded={popoverOpen}`).
@@ -172,8 +172,8 @@ so that I can understand the product's evidence limits and safely leave my prote
     - Dismiss popover on Escape or clicking outside, returning focus to `#dashboard-profile-button`.
     - Verify that no sidebar, tabs, or district switcher controls are rendered.
 
-- [ ] **Task 5: Dashboard Integration & Focus Management** (AC: 3, 4, 5)
-  - [ ] 5.1 In `apps/web/src/pages/HokimDashboardPage.tsx`:
+- [x] **Task 5: Dashboard Integration & Focus Management** (AC: 3, 4, 5)
+  - [x] 5.1 In `apps/web/src/pages/HokimDashboardPage.tsx`:
     - Add `helpDrawerOpen` state and `helpButtonRef = useRef<HTMLButtonElement | null>(null)`.
     - Implement `handleOpenHelp`: checks `window.innerWidth < 1024`; if narrow, `navigate({ pathname: '/help', search: location.search })`; if desktop, closes open `selectedTopicId` via `setSelectedTopicId(null)` and sets `setHelpDrawerOpen(true)`.
     - Implement `handleCloseHelp`: sets `setHelpDrawerOpen(false)`, restores focus to `helpButtonRef.current` if valid, otherwise falls back to `returnFocus()`.
@@ -181,19 +181,19 @@ so that I can understand the product's evidence limits and safely leave my prote
     - Pass `onOpenHelp={handleOpenHelp}` and `helpButtonRef={helpButtonRef}` to `BoardToolbar`.
     - Render `<DashboardHelpDrawer open={helpDrawerOpen} onClose={handleCloseHelp} />`.
 
-- [ ] **Task 6: Automated Vitest & Component Verification** (AC: 9)
-  - [ ] 6.1 In `apps/web/tests/unit/BoardToolbar.test.tsx`, expand/update unit tests:
+- [x] **Task 6: Automated Vitest & Component Verification** (AC: 9)
+  - [x] 6.1 In `apps/web/tests/unit/BoardToolbar.test.tsx`, expand/update unit tests:
     - Verify Help button presence, `id="dashboard-help-button"`, and click event calling `onOpenHelp`.
     - Verify Profile popover trigger renders username/district with `aria-haspopup="dialog"` and opens popover with `Туман ҳокими` badge and `Чиқиш` button.
     - Verify `signOut()` call, `queryClient.cancelQueries()`, and cache clearing when `Чиқиш` is clicked.
     - Verify absence of sidebar, tabs, district switchers, or editable profile controls.
-  - [ ] 6.2 In `apps/web/tests/unit/DashboardHelp.test.tsx`, write comprehensive component tests:
+  - [x] 6.2 In `apps/web/tests/unit/DashboardHelp.test.tsx`, write comprehensive component tests:
     - Desktop `DashboardHelpDrawer`: renders open, focuses `#dashboard-help-heading`, closes on Close button and Escape key, restores focus to opener (or `returnFocus()`).
     - Mutual drawer exclusion: verify opening Help closes Topic drawer, and opening a Topic card closes Help drawer.
     - Mobile `DashboardHelpPage`: renders heading, focuses `#dashboard-help-page-heading`, Back button navigates back with search query params preserved.
     - Verify presence of all 9 factual sections (signals vs facts, 5 lanes, baselines, evidence order, processing delay, Telegram links, decision ownership, 90-day retention, strict neutrality).
     - Verify absence of prohibited features (no AI chat, tickets, scoring).
-  - [ ] 6.3 Execute `pnpm --filter @mahalla-ovozi/web test` and `pnpm typecheck` to confirm 100% passing checks.
+  - [x] 6.3 Execute `pnpm --filter @mahalla-ovozi/web test` and `pnpm typecheck` to confirm 100% passing checks.
 
 ---
 
@@ -248,14 +248,29 @@ apps/web/src/
 Gemini 3.7 Flash (High)
 
 ### Debug Log References
-None
+- Fixed Ant Design 5 Popover deprecation warning by moving overlay styling to `styles={{ body: { ... } }}`.
+- Handled async `signOut()` assertion in `BoardToolbar.test.tsx` using `waitFor()`.
+- Verified 100% test coverage across 29 test files and 134 tests with 0 typecheck errors.
 
 ### Completion Notes List
-- Comprehensive story specification authored following BMad method conventions.
-- All 9 factual Help topics specified in detail adhering to PRD and UX guidelines.
-- Responsive desktop drawer and mobile page routing contracts defined.
-- Profile popover and session termination flows specified with zero state leakage.
+- Implemented `HelpContent.tsx` with all 9 factual Uzbek Cyrillic sections adhering strictly to PRD/UX neutrality and token floors.
+- Built desktop `DashboardHelpDrawer.tsx` with non-modal `role="region"`, `width={520}`, header focus, and Escape keyboard handling.
+- Built narrow-screen `DashboardHelpPage.tsx` and registered protected `/help` route in `App.tsx` with back navigation query preservation.
+- Updated `BoardToolbar.tsx` with `#dashboard-help-button` and `#dashboard-profile-button` Popover showing username, district, `Туман ҳокими` badge, and `Чиқиш` action.
+- Wired two-way mutual exclusion and focus fallback restoration in `HokimDashboardPage.tsx`.
+- Authored and updated full Vitest unit & integration test suites in `BoardToolbar.test.tsx` and `DashboardHelp.test.tsx`.
+- Verified type safety (`pnpm typecheck` - 0 errors) and automated tests (29 files, 134 passed).
 
 ### File List
-- `_bmad-output/implementation-artifacts/3-6-use-dashboard-help-and-profile-controls.md`
-- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/3-6-use-dashboard-help-and-profile-controls.md` (MODIFIED)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (MODIFIED)
+- `apps/web/src/components/topics/HelpContent.tsx` (NEW)
+- `apps/web/src/components/topics/DashboardHelpDrawer.tsx` (NEW)
+- `apps/web/src/pages/DashboardHelpPage.tsx` (NEW)
+- `apps/web/src/App.tsx` (MODIFIED)
+- `apps/web/src/components/topics/BoardToolbar.tsx` (MODIFIED)
+- `apps/web/src/pages/HokimDashboardPage.tsx` (MODIFIED)
+- `apps/web/tests/unit/BoardToolbar.test.tsx` (MODIFIED)
+- `apps/web/tests/unit/DashboardHelp.test.tsx` (NEW)
+- `apps/web/tests/unit/HokimDashboard.test.tsx` (MODIFIED)
+

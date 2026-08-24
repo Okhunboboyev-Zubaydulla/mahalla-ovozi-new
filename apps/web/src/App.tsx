@@ -18,6 +18,7 @@ import { AiOperationsPage } from './pages/placeholders/AiOperationsPage.js';
 import { AuditHistoryPage } from './pages/placeholders/AuditHistoryPage.js';
 import { HokimDashboardPage } from './pages/HokimDashboardPage.js';
 import { TopicEvidencePage } from './pages/TopicEvidencePage.js';
+import { DashboardHelpPage } from './pages/DashboardHelpPage.js';
 import { LiveAnnouncerProvider } from './components/topics/LiveRegionAnnouncer.js';
 import { AppErrorBoundary } from './components/AppErrorBoundary.js';
 import { useAuth } from './auth/auth-context.js';
@@ -66,6 +67,16 @@ export function App() {
                     element={
                       <ProtectedRoute>
                         <TopicEvidencePage />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Narrow-screen routed Help Page for Hokim (AC 4) */}
+                  <Route
+                    path="/help"
+                    element={
+                      <ProtectedRoute>
+                        <DashboardHelpPage />
                       </ProtectedRoute>
                     }
                   />
