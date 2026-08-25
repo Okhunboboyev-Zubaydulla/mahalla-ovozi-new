@@ -136,7 +136,11 @@ interface RawEvidenceRow extends Record<string, unknown> {
 }
 
 export class TopicEvidenceService {
-  constructor(private readonly db: DbClient) {}
+  private readonly db: DbClient;
+
+  constructor(db: DbClient) {
+    this.db = db;
+  }
 
   /**
    * Retrieves complete retained Accepted Evidence for a specific Topic (AC 1-6).

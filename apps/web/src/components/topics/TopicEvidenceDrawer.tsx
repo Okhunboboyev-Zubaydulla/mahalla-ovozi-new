@@ -42,13 +42,14 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
 
   // Programmatic focus on drawer heading when topicId opens or changes (AC 7)
   useEffect(() => {
-    if (topicId) {
-      // Small timeout allows DOM to mount drawer contents before focusing
-      const timer = setTimeout(() => {
-        headingRef.current?.focus();
-      }, 50);
-      return () => clearTimeout(timer);
+    if (!topicId) {
+      return;
     }
+    // Small timeout allows DOM to mount drawer contents before focusing
+    const timer = setTimeout(() => {
+      headingRef.current?.focus();
+    }, 50);
+    return () => clearTimeout(timer);
   }, [topicId]);
 
   // Keyboard Escape listener to close drawer and restore focus (AC 7)

@@ -107,6 +107,22 @@ describe('Auth API Contracts', () => {
       expect(result.success).toBe(true);
     });
 
+    it('validates error envelopes with statusCode and structured validationErrors', () => {
+      const errorPayload = {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Киритилган маълумотларда хатолик бор.',
+          statusCode: 400,
+          validationErrors: [
+            { path: ['username'], message: 'Фойдаланувчи номи камида 3 та белги бўлиши керак.', code: 'too_small' },
+            { path: ['password'], message: 'Парол камида 15 та белги бўлиши керак.' },
+          ],
+        },
+      };
+      const result = ApiErrorEnvelopeSchema.safeParse(errorPayload);
+      expect(result.success).toBe(true);
+    });
+
     it('rejects error envelopes missing code or message', () => {
       expect(ApiErrorEnvelopeSchema.safeParse({ error: { message: 'Failed' } }).success).toBe(false);
       expect(ApiErrorEnvelopeSchema.safeParse({ error: { code: 'FAIL' } }).success).toBe(false);

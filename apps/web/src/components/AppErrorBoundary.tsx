@@ -27,6 +27,10 @@ export class AppErrorBoundary extends Component<Props, State> {
     console.error('[AppErrorBoundary] Unhandled render error:', error);
   }
 
+  resetErrorBoundary = () => {
+    this.setState({ hasError: false });
+  };
+
   render() {
     if (this.state.hasError) {
       return (
@@ -41,12 +45,15 @@ export class AppErrorBoundary extends Component<Props, State> {
           <Result
             status="error"
             title="Хатолик юз берди"
-            subTitle="Илтимос, sahifani yangilang yoki keyinroq urinib ko'ring."
-            extra={
-              <Button type="primary" onClick={() => window.location.reload()}>
+            subTitle="Илтимос, қайта уриниб кўринг ёки саҳифани янгиланг."
+            extra={[
+              <Button type="primary" key="retry" onClick={this.resetErrorBoundary}>
+                Қайта уриниш
+              </Button>,
+              <Button key="reload" onClick={() => window.location.reload()}>
                 Янгилаш
-              </Button>
-            }
+              </Button>,
+            ]}
           />
         </div>
       );

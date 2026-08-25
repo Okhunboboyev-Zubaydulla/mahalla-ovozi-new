@@ -11,7 +11,7 @@
     "db:migrate": "pnpm --filter @mahalla-ovozi/backend db:migrate"
   },
   "devDependencies": {
-    "typescript": "^5.8.2"
+    "typescript": "catalog:"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

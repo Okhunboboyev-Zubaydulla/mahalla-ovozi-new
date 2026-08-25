@@ -38,9 +38,12 @@ export class DistrictAlreadyActiveError extends Error {
 export class DistrictNotReadyForActivationError extends Error {
   readonly code = 'DISTRICT_NOT_READY' as const;
   readonly statusCode = 409;
-  constructor(readonly blockers: PrerequisiteItem[]) {
+  readonly blockers: PrerequisiteItem[];
+
+  constructor(blockers: PrerequisiteItem[]) {
     super('Туманни фаоллаштириш учун барча талаблар бажарилмаган.');
     this.name = 'DistrictNotReadyForActivationError';
+    this.blockers = blockers;
   }
 }
 

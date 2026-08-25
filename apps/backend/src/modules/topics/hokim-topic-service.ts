@@ -175,7 +175,11 @@ interface RawTopicRow extends Record<string, unknown> {
 }
 
 export class HokimTopicService {
-  constructor(private readonly db: DbClient) {}
+  private readonly db: DbClient;
+
+  constructor(db: DbClient) {
+    this.db = db;
+  }
 
   /**
    * Retrieves today's or filtered multi-lane unified board for the authenticated Hokim's district,

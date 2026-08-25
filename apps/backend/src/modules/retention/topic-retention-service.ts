@@ -64,11 +64,19 @@ export function validateTopicId(topicId: string): void {
  * Governed by FR-12, AD-3, AD-4, AD-5, AD-6, AD-7, AD-9, AD-11.
  */
 export class TopicRetentionService {
+  private readonly pool: pg.Pool;
+  private readonly boss: PgBoss;
+  private readonly db: DbClient;
+
   constructor(
-    private readonly pool: pg.Pool,
-    private readonly boss: PgBoss,
-    private readonly db: DbClient,
-  ) {}
+    pool: pg.Pool,
+    boss: PgBoss,
+    db: DbClient,
+  ) {
+    this.pool = pool;
+    this.boss = boss;
+    this.db = db;
+  }
 
   /**
    * Purges a single expired Topic and its associated evidence and projections atomically.

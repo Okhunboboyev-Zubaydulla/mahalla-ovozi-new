@@ -20,12 +20,13 @@ export const DashboardHelpDrawer: React.FC<DashboardHelpDrawerProps> = ({
 
   // Programmatic focus on drawer heading when opened (AC 3)
   useEffect(() => {
-    if (open) {
-      const timer = setTimeout(() => {
-        headingRef.current?.focus();
-      }, 50);
-      return () => clearTimeout(timer);
+    if (!open) {
+      return;
     }
+    const timer = setTimeout(() => {
+      headingRef.current?.focus();
+    }, 50);
+    return () => clearTimeout(timer);
   }, [open]);
 
   // Keyboard Escape listener to close drawer and restore focus (AC 3)

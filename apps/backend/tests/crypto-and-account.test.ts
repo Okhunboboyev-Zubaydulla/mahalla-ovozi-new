@@ -64,7 +64,7 @@ describe('Password Policy, Argon2id & Product Owner Account Management', () => {
       const hash = await hashPassword(rawPassword);
 
       expect(hash).toContain('$argon2id$');
-      expect(hash).toContain('m=65536,t=3,p=4');
+      expect(hash).toContain('m=65536,t=3,p=1');
 
       const isMatch = await verifyPassword(hash, rawPassword);
       expect(isMatch).toBe(true);

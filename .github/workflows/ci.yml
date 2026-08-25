@@ -60,8 +60,20 @@ jobs:
       - name: Run integration & unit tests
         run: pnpm test
 
+      - name: Cache Playwright browser binaries
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
+
       - name: Install Playwright browsers & dependencies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm --filter @mahalla-ovozi/web exec playwright install --with-deps
+
+      - name: Install Playwright OS dependencies only (on cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @mahalla-ovozi/web exec playwright install-deps
 
       - name: Run Playwright browser tests
         run: pnpm test:e2e

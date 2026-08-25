@@ -75,10 +75,10 @@ describe('AI Gateway & Portable Schema Compiler Unit Tests', () => {
     });
 
     it('compiles z.literal and z.nativeEnum correctly', () => {
-      enum StatusEnum {
-        ACTIVE = 'active',
-        INACTIVE = 'inactive',
-      }
+      const StatusEnum = {
+        ACTIVE: 'active',
+        INACTIVE: 'inactive',
+      } as const;
       const EnumSchema = z.object({
         mode: z.literal('DIRECT'),
         status: z.nativeEnum(StatusEnum),

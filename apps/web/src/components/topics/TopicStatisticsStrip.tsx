@@ -225,7 +225,7 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
             }}
             aria-live="polite"
           >
-            Кўрсаткич {currentIndex + 1} / 5: {cards[currentIndex].title}
+            Кўрсаткич {currentIndex + 1} / 5: {cards[currentIndex]?.title ?? ''}
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <Button

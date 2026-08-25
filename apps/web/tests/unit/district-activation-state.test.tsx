@@ -51,7 +51,7 @@ describe('District Activation & First Login Password State Integration (Phase 5)
     expect(error.code).toBe('DISTRICT_NOT_READY');
     expect(error.statusCode).toBe(409);
     expect(error.blockers).toEqual(blockers);
-    expect(error.blockers?.[0].key).toBe('telegram_bot');
+    expect(error.blockers?.[0]?.key).toBe('telegram_bot');
   });
 
   describe('useDistrictActivation Hook (Task 6.5)', () => {
@@ -167,7 +167,7 @@ describe('District Activation & First Login Password State Integration (Phase 5)
       expect(err).toBeDefined();
       expect(err.code).toBe('DISTRICT_NOT_READY');
       expect(err.blockers).toHaveLength(1);
-      expect(err.blockers?.[0].key).toBe('hokim_account');
+      expect(err.blockers?.[0]?.key).toBe('hokim_account');
     });
   });
 

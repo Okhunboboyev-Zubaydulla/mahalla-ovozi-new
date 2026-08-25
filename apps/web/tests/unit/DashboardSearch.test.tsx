@@ -56,9 +56,9 @@ describe('Story 3.7: Private Lexical Search Frontend Unit Tests', () => {
       );
       const marks = container.querySelectorAll('mark');
       expect(marks.length).toBe(2);
-      expect(marks[0].textContent).toBe('Сув');
-      expect(marks[1].textContent).toBe('сув');
-      expect(marks[0].style.backgroundColor).toBe('rgb(245, 221, 119)'); // #F5DD77
+      expect(marks[0]?.textContent).toBe('Сув');
+      expect(marks[1]?.textContent).toBe('сув');
+      expect(marks[0]?.style.backgroundColor).toBe('rgb(245, 221, 119)'); // #F5DD77
     });
 
     it('handles regex special characters safely without crashing or regex errors', () => {
@@ -67,7 +67,7 @@ describe('Story 3.7: Private Lexical Search Frontend Unit Tests', () => {
       );
       const marks = container.querySelectorAll('mark');
       expect(marks.length).toBe(1);
-      expect(marks[0].textContent).toBe('[100%]');
+      expect(marks[0]?.textContent).toBe('[100%]');
     });
 
     it('preserves entire text content with multiple words and punctuation', () => {

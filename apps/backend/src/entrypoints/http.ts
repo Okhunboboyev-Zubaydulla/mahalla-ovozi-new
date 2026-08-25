@@ -80,6 +80,31 @@ export async function buildHttpServer(options?: {
       'Unhandled request error',
     );
 
+    // Zod validation error handling
+    if (
+      error &&
+      typeof error === 'object' &&
+      (('name' in error && error.name === 'ZodError') ||
+        ('issues' in error && Array.isArray((error as { issues: unknown[] }).issues)))
+    ) {
+      const zodErr = error as {
+        issues: Array<{ path: (string | number)[]; message: string; code?: string }>;
+      };
+      reply.status(400).send({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: zodErr.issues[0]?.message || 'Киритилган маълумотларда хатолик бор.',
+          statusCode: 400,
+          validationErrors: zodErr.issues.map((issue) => ({
+            path: issue.path,
+            message: issue.message,
+            code: issue.code,
+          })),
+        },
+      });
+      return;
+    }
+
     const statusCode =
       typeof error === 'object' && error && 'statusCode' in error && typeof (error as { statusCode: number }).statusCode === 'number'
         ? (error as { statusCode: number }).statusCode
@@ -95,11 +120,26 @@ export async function buildHttpServer(options?: {
       errorMessage = error.message;
     }
 
+    const errorPayload: Record<string, unknown> = {
+      code: errorCode,
+      message: errorMessage,
+      statusCode,
+    };
+
+    if (typeof error === 'object' && error) {
+      if ('blockers' in error && Array.isArray((error as { blockers: unknown[] }).blockers)) {
+        errorPayload.blockers = (error as { blockers: unknown[] }).blockers;
+      }
+      if ('details' in error && (error as { details: unknown }).details !== undefined) {
+        errorPayload.details = (error as { details: unknown }).details;
+      }
+      if ('validationErrors' in error && Array.isArray((error as { validationErrors: unknown[] }).validationErrors)) {
+        errorPayload.validationErrors = (error as { validationErrors: unknown[] }).validationErrors;
+      }
+    }
+
     reply.status(statusCode).send({
-      error: {
-        code: errorCode,
-        message: errorMessage,
-      },
+      error: errorPayload,
     });
   });
 

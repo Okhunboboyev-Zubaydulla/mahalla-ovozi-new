@@ -25,7 +25,7 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 30000,
       env: {
-        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://mahalla_user:mahalla_dev_password@localhost:5433/mahalla_ovozi',
+        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://mahalla_user:mahalla_dev_password@localhost:5433/mahalla_ovozi_test',
         PORT: '3000',
         TELEGRAM_API_BASE_URL: process.env.TELEGRAM_API_BASE_URL || 'http://127.0.0.1:3099',
       },

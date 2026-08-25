@@ -1,11 +1,16 @@
 export class TelegramIntegrationError extends Error {
+  public readonly code: string;
+  public readonly httpStatus: number;
+
   constructor(
     message: string,
-    public readonly code: string,
-    public readonly httpStatus: number,
+    code: string,
+    httpStatus: number,
   ) {
     super(message);
     this.name = 'TelegramIntegrationError';
+    this.code = code;
+    this.httpStatus = httpStatus;
   }
 }
 
