@@ -144,7 +144,7 @@ export const OverviewMetricCards: React.FC<OverviewMetricCardsProps> = ({
                 background: token.colorBgContainer,
                 border: `1px solid ${token.colorBorderSecondary || '#E2EAE7'}`,
               }}
-              bodyStyle={{ padding: '20px 24px' }}
+              styles={{ body: { padding: '20px 24px' } }}
             >
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <Space direction="vertical" size={4} style={{ flex: 1 }}>

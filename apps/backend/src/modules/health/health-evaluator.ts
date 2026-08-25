@@ -84,12 +84,14 @@ export function aggregateComponentStatuses(
     };
   }
 
-  const firstItem = applicable[0];
-  const initialTimestamp = firstItem ? new Date(firstItem.lastCheckAt).getTime() : evaluatedAt.getTime();
-  const oldestCheckTimestamp = applicable.reduce((oldest, c) => {
-    const time = new Date(c.lastCheckAt).getTime();
-    return Number.isNaN(time) ? oldest : Math.min(oldest, time);
-  }, initialTimestamp);
+  const validTimestamps = applicable
+    .map((c) => new Date(c.lastCheckAt).getTime())
+    .filter((t) => !Number.isNaN(t));
+
+  const oldestCheckTimestamp =
+    validTimestamps.length > 0
+      ? Math.min(...validTimestamps)
+      : evaluatedAt.getTime();
 
   const oldestCheckIso = new Date(oldestCheckTimestamp).toISOString();
 

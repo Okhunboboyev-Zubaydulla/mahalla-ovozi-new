@@ -33,9 +33,11 @@ export interface HealthConfig {
  */
 export function assertPrivacyBoundary(obs: ComponentHealthObservation): ComponentHealthObservation {
   let sanitizedError = obs.errorMessage;
+  let sanitizedCode = obs.errorCode;
+
   if (sanitizedError) {
-    // Strip potential Telegram Bot Tokens (\d{8,10}:[A-Za-z0-9_-]{35})
-    sanitizedError = sanitizedError.replace(/\b\d{8,10}:[A-Za-z0-9_-]{35}\b/g, '[REDACTED_BOT_TOKEN]');
+    // Strip potential Telegram Bot Tokens (\d{8,12}:[A-Za-z0-9_-]{30,45})
+    sanitizedError = sanitizedError.replace(/\b\d{8,12}:[A-Za-z0-9_-]{30,45}\b/g, '[REDACTED_BOT_TOKEN]');
     // Strip potential database connection strings or passwords
     sanitizedError = sanitizedError.replace(/:\/\/[^:]+:[^@]+@/g, '://[REDACTED_AUTH]@');
     // Strip stack traces (e.g. at Object... or at process...)
@@ -44,8 +46,13 @@ export function assertPrivacyBoundary(obs: ComponentHealthObservation): Componen
     }
   }
 
+  if (sanitizedCode) {
+    sanitizedCode = sanitizedCode.replace(/\b\d{8,12}:[A-Za-z0-9_-]{30,45}\b/g, '[REDACTED_BOT_TOKEN]');
+  }
+
   return {
     ...obs,
+    errorCode: sanitizedCode,
     errorMessage: sanitizedError,
   };
 }
@@ -192,14 +199,20 @@ export async function checkProcessingQueueHealth(
       return null;
     })();
 
+    let timer: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         reject(new Error('Queue health probe timeout'));
       }, 2000);
       if (typeof timer.unref === 'function') timer.unref();
     });
 
-    const states = await Promise.race([countStatesPromise, timeoutPromise]);
+    let states;
+    try {
+      states = await Promise.race([countStatesPromise, timeoutPromise]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
     const latencyMs = Math.round(performance.now() - startTime);
 
     if (!states) {

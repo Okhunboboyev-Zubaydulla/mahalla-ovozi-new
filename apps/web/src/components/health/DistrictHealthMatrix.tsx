@@ -22,7 +22,7 @@ function getComponentStatus(
   district: DistrictHealthSummary,
   type: ComponentType,
 ): { status: HealthStatus | null; isApplicable: boolean } {
-  const comp = district.components.find((c) => c.component === type);
+  const comp = district.components?.find((c) => c.component === type);
   if (!comp || !comp.isApplicable) {
     return { status: null, isApplicable: false };
   }
@@ -179,6 +179,7 @@ export const DistrictHealthMatrix: React.FC<DistrictHealthMatrixProps> = ({
           loading={loading}
           pagination={false}
           size="middle"
+          scroll={{ x: 900 }}
           rowClassName={(record) =>
             activeDistrictId === record.districtId ? 'ant-table-row-selected' : ''
           }

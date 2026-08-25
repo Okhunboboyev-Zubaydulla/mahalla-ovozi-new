@@ -35,9 +35,10 @@ export async function checkDbHealth(
   timeoutMs: number = 3000,
 ): Promise<DbHealthResult> {
   const startTime = performance.now();
+  let timer: NodeJS.Timeout | undefined;
   try {
     const timeoutPromise = new Promise<never>((_, reject) => {
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         reject(new Error(`Database health check timed out after ${timeoutMs}ms`));
       }, timeoutMs);
       if (typeof timer.unref === 'function') {
@@ -61,6 +62,10 @@ export async function checkDbHealth(
       latencyMs,
       error: errorMsg,
     };
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
   }
 }
 
