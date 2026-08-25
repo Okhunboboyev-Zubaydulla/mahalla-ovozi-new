@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DistrictProvider, useDistrict } from '../../src/district/district-context.js';
 import { useDirtyState } from '../../src/district/useDirtyState.js';
 import { UnsavedChangesModal } from '../../src/components/UnsavedChangesModal.js';
+import { EditDistrictDrawer } from '../../src/components/EditDistrictDrawer.js';
+import { District } from '@mahalla-ovozi/api-contracts';
 import { ApiError } from '../../src/lib/api-client.js';
 
 describe('District State & Switching Engine', () => {
@@ -127,5 +129,35 @@ describe('District State & Switching Engine', () => {
     const normalErr = new ApiError('Not found', 'NOT_FOUND', 404, false);
     expect(normalErr.isNetworkError).toBe(false);
     expect(normalErr.statusCode).toBe(404);
+  });
+
+  it('does not register dirty state when EditDistrictDrawer is closed with non-null district', () => {
+    const mockDistrict: District = {
+      id: 'dist_test',
+      name: 'Sharof Rashidov',
+      region: 'Jizzax viloyati',
+      status: 'SETUP_INCOMPLETE',
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+
+    const TestComponent: React.FC = () => {
+      const { hasDirtyForms } = useDistrict();
+      return (
+        <div>
+          <span data-testid="dirty-status">{hasDirtyForms ? 'dirty' : 'clean'}</span>
+          <EditDistrictDrawer open={false} district={mockDistrict} onClose={() => {}} />
+        </div>
+      );
+    };
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DistrictProvider>
+          <TestComponent />
+        </DistrictProvider>
+      </QueryClientProvider>
+    );
+
+    expect(screen.getByTestId('dirty-status').textContent).toBe('clean');
   });
 });

@@ -57,10 +57,11 @@ export const EditDistrictDrawer: React.FC<EditDistrictDrawerProps> = ({
   }, [district, open, form]);
 
   // Form dirty state management
-  const isDirty = district
-    ? formValues.name.trim() !== district.name.trim() ||
-      formValues.region.trim() !== (district.region || '').trim()
-    : false;
+  const isDirty =
+    open && district
+      ? formValues.name.trim() !== (district.name || '').trim() ||
+        formValues.region.trim() !== (district.region || '').trim()
+      : false;
   useDirtyState('edit-district-drawer', isDirty);
 
   const mutation = useMutation({

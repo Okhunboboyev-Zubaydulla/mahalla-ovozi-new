@@ -36,7 +36,8 @@ export const CreateDistrictDrawer: React.FC<CreateDistrictDrawerProps> = ({ open
   const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   // Form dirty state management (FR-20)
-  const isDirty = formValues.name.trim() !== '' || formValues.region.trim() !== '';
+  const isDirty =
+    open && (formValues.name.trim() !== '' || formValues.region.trim() !== '');
   useDirtyState('create-district-drawer', isDirty);
 
   const mutation = useMutation({
