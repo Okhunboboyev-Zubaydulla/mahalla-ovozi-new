@@ -4,7 +4,7 @@ baseline_commit: 3cecce0
 
 # Story 4.2: Investigate Active Operational Issues and Verified Recovery
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -151,8 +151,8 @@ So that I can address real problems without manual ticket tracking, false alarms
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Shared API Contracts & Enums (`packages/api-contracts`)** (AC: 2, 3, 5, 11)
-  - [ ] 1.1 In `packages/api-contracts/src/issues.ts`:
+- [x] **Task 1: Shared API Contracts & Enums (`packages/api-contracts`)** (AC: 2, 3, 5, 11)
+  - [x] 1.1 In `packages/api-contracts/src/issues.ts`:
     - Define `IssueSeverityEnumSchema`: `z.enum(['Critical', 'Warning', 'Information'])`.
     - Define `IssueStatusEnumSchema`: `z.enum(['ACTIVE', 'RESOLVED'])`.
     - Define `IssueCategoryEnumSchema`: `z.enum(['DATABASE_CONNECTION_ERROR', 'QUEUE_UNAVAILABLE', 'QUEUE_BACKLOG_DELAY', 'STORAGE_UNAVAILABLE', 'WEB_APP_UNAVAILABLE', 'BOT_TOKEN_INVALID', 'BOT_DISCONNECTED', 'TELEGRAM_GROUP_DISCONNECTED', 'MESSAGE_INTAKE_DELAY', 'TOPIC_PROCESSING_DELAY', 'AI_SERVICE_DEGRADED', 'RETENTION_JOB_DELAY', 'DISTRICT_RETENTION_DELAY', 'SUBSCRIPTION_PAUSED_NOTICE', 'OPERATIONAL_MAINTENANCE_NOTICE'])`.
@@ -186,11 +186,11 @@ So that I can address real problems without manual ticket tracking, false alarms
     - Define `OperationalIssueDetailResponseSchema`:
       - `issue`: `OperationalIssueSchema`
       - `auditEvents`: `z.array(z.object({ id: z.string(), action: z.string(), actorId: z.string().nullable(), actorRole: z.string().nullable(), createdAt: z.string().datetime(), metadata: z.record(z.unknown()).nullable() }))`
-  - [ ] 1.2 In `packages/api-contracts/src/index.ts`:
+  - [x] 1.2 In `packages/api-contracts/src/index.ts`:
     - Re-export all schemas and types from `./issues.js`.
 
-- [ ] **Task 2: Database Schema & Migration for Operational Issues (`apps/backend`)** (AC: 1, 6, 8, 9, 10, 11, 12, 13)
-  - [ ] 2.1 In `apps/backend/src/adapters/db/schema/operational-issues.ts`:
+- [x] **Task 2: Database Schema & Migration for Operational Issues (`apps/backend`)** (AC: 1, 6, 8, 9, 10, 11, 12, 13)
+  - [x] 2.1 In `apps/backend/src/adapters/db/schema/operational-issues.ts`:
     - Define table `operational_issues` using Drizzle ORM:
       - `id`: `text('id').primaryKey()`
       - `logicalKey`: `text('logical_key').notNull()`
@@ -218,12 +218,12 @@ So that I can address real problems without manual ticket tracking, false alarms
       - `check('operational_issues_scope_district_check', sql\`(${table.scope} = 'GLOBAL' AND ${table.districtId} IS NULL) OR (${table.scope} = 'DISTRICT' AND ${table.districtId} IS NOT NULL)\`)`
     - Add partial unique index: `uniqueIndex('operational_issues_active_logical_key_uidx').on(table.logicalKey).where(sql\`\${table.status} = 'ACTIVE'\`)`.
     - Add indexes on `(status, severity)`, `(districtId, status)`, and `startedAt`.
-  - [ ] 2.2 In `apps/backend/src/adapters/db/schema/index.ts`:
+  - [x] 2.2 In `apps/backend/src/adapters/db/schema/index.ts`:
     - Export all symbols from `./operational-issues.js`.
-  - [ ] 2.3 Generate and apply Drizzle migration for `operational_issues`.
+  - [x] 2.3 Generate and apply Drizzle migration for `operational_issues`.
 
-- [ ] **Task 3: Backend Pure Issue Evaluator & Deduplication Engine (`apps/backend`)** (AC: 1, 2, 4, 6, 7, 8, 12, 14, 15)
-  - [ ] 3.1 In `apps/backend/src/modules/issues/issue-evaluator.ts`:
+- [x] **Task 3: Backend Pure Issue Evaluator & Deduplication Engine (`apps/backend`)** (AC: 1, 2, 4, 6, 7, 8, 12, 14, 15)
+  - [x] 3.1 In `apps/backend/src/modules/issues/issue-evaluator.ts`:
     - Implement `generateLogicalKey(scope: ComponentScope, districtId: string | null, component: ComponentType, issueCategory: string): string`.
     - Implement `classifyIssueSeverity(observation: ComponentHealthObservation): IssueSeverity | null`:
       - `Unavailable` on required component -> `Critical`.
@@ -246,8 +246,8 @@ So that I can address real problems without manual ticket tracking, false alarms
       - Secondary sort: `new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()` (newest first).
       - Deterministic tiebreaker: `a.id.localeCompare(b.id)`.
 
-- [ ] **Task 4: Backend Issue Manager with Transactional Audit Boundary (`apps/backend`)** (AC: 1, 6, 8, 9, 10, 11, 13)
-  - [ ] 4.1 In `apps/backend/src/modules/issues/issue-manager.ts`:
+- [x] **Task 4: Backend Issue Manager with Transactional Audit Boundary (`apps/backend`)** (AC: 1, 6, 8, 9, 10, 11, 13)
+  - [x] 4.1 In `apps/backend/src/modules/issues/issue-manager.ts`:
     - Implement `synchronizeOperationalIssues(db: DbClient, observations: ComponentHealthObservation[], options: { districtMap: Map<string, string>; evaluationScope?: { type: 'GLOBAL' } | { type: 'DISTRICT'; districtId: string } | { type: 'SYSTEM' } }): Promise<{ created: number; updated: number; resolved: number }>`:
       - Runs within a single PostgreSQL transaction (`db.transaction(async (tx) => { ... })`).
       - Fetch all currently active issues matching the `evaluationScope` from `operational_issues` with row locking (`FOR UPDATE`).
@@ -282,30 +282,30 @@ So that I can address real problems without manual ticket tracking, false alarms
         - If matching observation is still failed: already updated in Step 1.
       - Ensure atomic rollback if any audit write or issue write fails.
 
-- [ ] **Task 5: Backend Fastify HTTP Routes & Service (`apps/backend`)** (AC: 1, 4, 5, 11)
-  - [ ] 5.1 In `apps/backend/src/modules/issues/issue-service.ts`:
+- [x] **Task 5: Backend Fastify HTTP Routes & Service (`apps/backend`)** (AC: 1, 4, 5, 11)
+  - [x] 5.1 In `apps/backend/src/modules/issues/issue-service.ts`:
     - Implement `getOperationalIssues(db: DbClient, options?: { districtId?: string; status?: 'ACTIVE' | 'RESOLVED'; severity?: IssueSeverity }): Promise<OperationalIssuesListResponse>`.
     - Implement `getOperationalIssueDetail(db: DbClient, issueId: string): Promise<OperationalIssueDetailResponse>`:
       - Fetches issue from `operational_issues`.
       - Fetches related audit events from `audit_events` matching `metadata->>'issueId' = issueId` ordered by `createdAt ASC`.
       - Throws typed `NotFoundError` if issue does not exist.
-  - [ ] 5.2 In `apps/backend/src/modules/issues/issue-routes.ts`:
+  - [x] 5.2 In `apps/backend/src/modules/issues/issue-routes.ts`:
     - Create `registerIssueRoutes(fastify: FastifyInstance, deps: { db: DbClient; pool: pg.Pool; boss?: PgBoss })`:
       - Encapsulate in Fastify plugin scope with hooks `verifyStateChangingOrigin` and `createRequireProductOwner(deps.db)`.
       - `GET /api/v1/issues` -> validates `OperationalIssuesQuerySchema`, calls `issueService.getOperationalIssues`.
       - `GET /api/v1/issues/:issueId` -> calls `issueService.getOperationalIssueDetail`.
       - `GET /api/v1/districts/:districtId/issues` -> calls `issueService.getOperationalIssues` with explicit `districtId`.
-  - [ ] 5.3 In `apps/backend/src/modules/health/health-service.ts`:
+  - [x] 5.3 In `apps/backend/src/modules/health/health-service.ts`:
     - Integrate `issueManager.synchronizeOperationalIssues(db, allObservations, { districtMap, evaluationScope: { type: 'SYSTEM' } })` into `getOverallSystemHealth`.
     - Integrate `issueManager.synchronizeOperationalIssues(db, districtComponents, { districtMap, evaluationScope: { type: 'DISTRICT', districtId } })` into `getDistrictHealth` so district checks safely update only that district's scope.
-  - [ ] 5.4 In `apps/backend/src/entrypoints/http.ts`:
+  - [x] 5.4 In `apps/backend/src/entrypoints/http.ts`:
     - Register `registerIssueRoutes(server, { db, pool, boss: options?.boss })`.
 
-- [ ] **Task 6: Frontend API Client & TanStack Query Hooks (`apps/web`)** (AC: 3, 4, 15, 16)
-  - [ ] 6.1 In `apps/web/src/issues/issues-client.ts`:
+- [x] **Task 6: Frontend API Client & TanStack Query Hooks (`apps/web`)** (AC: 3, 4, 15, 16)
+  - [x] 6.1 In `apps/web/src/issues/issues-client.ts`:
     - Implement `getOperationalIssues(params?: { districtId?: string | null; status?: string; severity?: string }): Promise<OperationalIssuesListResponse>`.
     - Implement `getOperationalIssueDetail(issueId: string): Promise<OperationalIssueDetailResponse>` (`GET /api/v1/issues/:issueId`).
-  - [ ] 6.2 In `apps/web/src/issues/useOperationalIssues.ts`:
+  - [x] 6.2 In `apps/web/src/issues/useOperationalIssues.ts`:
     - Define hierarchical query keys:
       ```ts
       export const issueKeys = {
@@ -323,34 +323,34 @@ So that I can address real problems without manual ticket tracking, false alarms
     - Implement `useOperationalIssueDetail(issueId: string | null)`:
       - Enabled when `issueId` is non-null.
 
-- [ ] **Task 7: Accessible Frontend UI Components & Drawer (`apps/web`)** (AC: 3, 4, 5, 14, 16)
-  - [ ] 7.1 In `apps/web/src/components/issues/IssueSeverityBadge.tsx`:
+- [x] **Task 7: Accessible Frontend UI Components & Drawer (`apps/web`)** (AC: 3, 4, 5, 14, 16)
+  - [x] 7.1 In `apps/web/src/components/issues/IssueSeverityBadge.tsx`:
     - Maps canonical severities to Uzbek Cyrillic and Ant Design Tag tokens:
       - `Critical`: `Муҳим`, color: `error`, icon: `<CloseCircleOutlined />`
       - `Warning`: `Огоҳлантириш`, color: `warning`, icon: `<ExclamationCircleOutlined />`
       - `Information`: `Маълумот`, color: `processing`, icon: `<InfoCircleOutlined />`
     - Accessible attributes: `role="status"`, `aria-label={`Муаммо даражаси: ${label}`}`.
-  - [ ] 7.2 In `apps/web/src/components/issues/ActiveIssuesList.tsx`:
+  - [x] 7.2 In `apps/web/src/components/issues/ActiveIssuesList.tsx`:
     - Displays active operational issues in priority order (`Critical > Warning > Information`).
     - Format relative duration using shared helper `formatIssueDuration(startedAt)` (`X дақиқа олдин`, `X соат олдин`, `X кун олдин`).
     - Each issue card/row shows: Severity Badge, Uzbek Cyrillic Title, Affected Scope/District, Component, duration, Recommended Action, and "Батафсил" button.
     - Zero active issues state: Ant Design Result / Empty state `Фаол техник муаммолар мавжуд эмас`.
-  - [ ] 7.3 In `apps/web/src/components/issues/IssueDetailDrawer.tsx`:
+  - [x] 7.3 In `apps/web/src/components/issues/IssueDetailDrawer.tsx`:
     - Complies with `EXPERIENCE.md` `detail-panel` contract:
       - Desktop: non-modal read-only Drawer beside page (`mask={false}`, `destroyOnClose={true}`, `keyboard={true}`).
       - Focus management: utilize `afterOpenChange(open: boolean)` to programmatically move focus to Drawer title heading (`headingRef.current?.focus()`, `tabIndex={-1}`, `id="issue-detail-drawer-title"`) on open, labelled Close button is first operable element, Escape key dismissal restores focus to originating opener trigger button (`openerRef.current?.focus()`).
       - Mobile (< 768px): full-screen layout with Back/Close button.
       - Content: Full diagnostic metadata (affected component, scope, district, start time, latest check time, safe error category, duration), Recommended next step with primary navigation button (`Бот созламаларига ўтиш`, `Обуна саҳифасига ўтиш`), and Audit Event timeline.
-  - [ ] 7.4 In `apps/web/src/pages/SystemHealthPage.tsx`:
+  - [x] 7.4 In `apps/web/src/pages/SystemHealthPage.tsx`:
     - Embed `ActiveIssuesList` between `OverallHealthCard` and `GlobalComponentsTable`.
     - Handle drawer state and focus restoration.
-  - [ ] 7.5 In `apps/web/src/components/OverviewMetricCards.tsx`:
+  - [x] 7.5 In `apps/web/src/components/OverviewMetricCards.tsx`:
     - Connect active issues count into the System Health overview card subText:
       - When active issues exist: `${activeCount} та фаол муаммо (${criticalCount} муҳим)`
       - When 0 issues exist: `Фаол техник муаммолар йўқ`
 
-- [ ] **Task 8: Automated Integration & Frontend Tests (`apps/backend`, `apps/web`)** (AC: 1–16)
-  - [ ] 8.1 Backend pure unit tests (`apps/backend/tests/operational-issues-evaluator.test.ts`):
+- [x] **Task 8: Automated Integration & Frontend Tests (`apps/backend`, `apps/web`)** (AC: 1–16)
+  - [x] 8.1 Backend pure unit tests (`apps/backend/tests/operational-issues-evaluator.test.ts`):
     - Test stable logical key generation (`scope:districtId:component:category`).
     - Test severity classification (`Unavailable` -> `Critical`, `Delayed`/`Degraded` -> `Warning`, `Healthy`/`Quiet` -> `null`).
     - Test deterministic sorting (`Critical > Warning > Information`, secondary `startedAt DESC`, tiebreaker `id`).
@@ -359,7 +359,7 @@ So that I can address real problems without manual ticket tracking, false alarms
     - Test matching-scope requirement for verified recovery.
     - Test `evaluationScope` isolation (district evaluation does not resolve global/other-district issues).
     - Test `Unknown` state does not falsely resolve active issue.
-  - [ ] 8.2 Backend database integration tests against `mahalla_ovozi_test` on port 5433 (`apps/backend/tests/operational-issues.test.ts`):
+  - [x] 8.2 Backend database integration tests against `mahalla_ovozi_test` on port 5433 (`apps/backend/tests/operational-issues.test.ts`):
     - Test failure-start state and single audit event commit atomically in same transaction.
     - Test continuing health checks update `latestCheckAt` without duplicate audit events.
     - Test matching recovery check automatically transitions issue to `RESOLVED` and inserts recovery audit event atomically.
@@ -370,7 +370,7 @@ So that I can address real problems without manual ticket tracking, false alarms
     - Test `GET /api/v1/issues/:issueId` returns issue detail with related audit history.
     - Test tenant isolation: district endpoint only returns that district's issues.
     - Test privacy boundary: response payloads contain zero bot tokens, credentials, resident text, or raw stack traces.
-  - [ ] 8.3 Frontend unit & component tests (`apps/web/tests/unit/`):
+  - [x] 8.3 Frontend unit & component tests (`apps/web/tests/unit/`):
     - In `apps/web/tests/unit/IssueSeverityBadge.test.tsx`: test rendering all 3 severities with Uzbek Cyrillic text and accessible ARIA attributes.
     - In `apps/web/tests/unit/ActiveIssuesList.test.tsx`: test priority ordering, empty state, duration formatting, and drawer triggering.
     - In `apps/web/tests/unit/IssueDetailDrawer.test.tsx`: test focus management, keyboard Escape dismissal, and management route navigation.
@@ -474,11 +474,39 @@ Gemini 3.7 Flash (High)
 - Reviewed and validated against routing (`App.tsx`), multi-scope isolation, PostgreSQL check constraints, and Drizzle partial unique index concurrency handling.
 
 ### Completion Notes List
-- Comprehensive story implementation specification for Story 4.2 authored with 16 Acceptance Criteria and 8 structured Tasks with 26 Subtasks.
-- Complete specification of stable logical identity, deterministic severity mapping (`Critical` > `Warning` > `Information`), automated verified recovery, atomic transactional state+audit persistence with canonical system actor, privacy boundary enforcement, and accessible drawer UX contract.
-- Validated and refined: management routes aligned to `/telegram-setup`, `evaluationScope` parameter added for safe multi-scope synchronization, partial unique index concurrency handling specified, and `DISTRICT_RETENTION_DELAY` enum added.
-- Status set to `ready-for-dev`.
+- Comprehensive story implementation for Story 4.2 executed with full TDD red-green-refactor cycles across backend and frontend.
+- **API Contracts (`packages/api-contracts`)**: Authored and exported `IssueSeverityEnumSchema` (`Critical`, `Warning`, `Information`), `IssueStatusEnumSchema`, `IssueCategoryEnumSchema` (15 canonical categories), `OperationalIssuesQuerySchema`, `OperationalIssueSchema`, `OperationalIssuesListResponseSchema`, `IssueAuditEventSchema`, and `OperationalIssueDetailResponseSchema`.
+- **Database Architecture & Migration (`apps/backend`)**: Authored `operational_issues` schema table with PostgreSQL check constraints, foreign key to `districts(id)` with cascade deletion, and partial unique index on `logicalKey` for `status = 'ACTIVE'`. Applied migration `0013_shocking_omega_flight.sql` to test DB (port 5433).
+- **Pure Evaluator & Issue Manager (`apps/backend`)**: Implemented pure `generateLogicalKey`, `classifyIssueSeverity`, `deriveIssueMetadata` with Uzbek Cyrillic diagnostics and management routing, and `sortOperationalIssues`. Implemented `synchronizeOperationalIssues` running inside atomic transactions with row locks (`FOR UPDATE`), duplicate audit event prevention on continuing checks, race condition handling on partial unique index collisions, and matching-scope automatic verified recovery with zero false recovery on `Unknown` checks.
+- **Fastify HTTP Routes & System Health Integration (`apps/backend`)**: Registered `GET /api/v1/issues`, `GET /api/v1/issues/:issueId`, and `GET /api/v1/districts/:districtId/issues` protected by `verifyStateChangingOrigin` and `createRequireProductOwner`. Integrated multi-scope issue synchronization into `getOverallSystemHealth` and `getDistrictHealth`.
+- **Frontend State & UI (`apps/web`)**: Authored `issues-client.ts`, `useOperationalIssues.ts` with 30s background polling and `keepPreviousData`, `formatIssueDuration` for Uzbek Cyrillic relative duration, `IssueSeverityBadge` with ARIA status role, `ActiveIssuesList` with priority sorting and empty state, `IssueDetailDrawer` complying with `EXPERIENCE.md` desktop/mobile accessibility specifications, integrated into `SystemHealthPage.tsx`, and connected issue count into `OverviewMetricCards.tsx`.
+- **Automated Verification & DoD**: 18 evaluator unit tests (`apps/backend/tests/operational-issues-evaluator.test.ts`), 12 database/HTTP integration tests (`apps/backend/tests/operational-issues.test.ts`), and 12 frontend component tests (`apps/web/tests/unit/`) all passing cleanly. Zero privacy leakage of tokens or stack traces verified. Full monorepo typecheck passed with 0 errors.
 
 ### File List
-- `_bmad-output/implementation-artifacts/4-2-investigate-active-operational-issues-and-verified-recovery.md`
-- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `packages/api-contracts/src/issues.ts` [NEW]
+- `packages/api-contracts/src/index.ts` [MODIFY]
+- `apps/backend/src/adapters/db/schema/operational-issues.ts` [NEW]
+- `apps/backend/src/adapters/db/schema/index.ts` [MODIFY]
+- `apps/backend/drizzle/0013_shocking_omega_flight.sql` [NEW]
+- `apps/backend/src/modules/issues/issue-evaluator.ts` [NEW]
+- `apps/backend/src/modules/issues/issue-manager.ts` [NEW]
+- `apps/backend/src/modules/issues/issue-service.ts` [NEW]
+- `apps/backend/src/modules/issues/issue-routes.ts` [NEW]
+- `apps/backend/src/modules/health/health-service.ts` [MODIFY]
+- `apps/backend/src/entrypoints/http.ts` [MODIFY]
+- `apps/backend/tests/operational-issues-evaluator.test.ts` [NEW]
+- `apps/backend/tests/operational-issues.test.ts` [NEW]
+- `apps/web/src/utils/duration-format.ts` [NEW]
+- `apps/web/src/issues/issues-client.ts` [NEW]
+- `apps/web/src/issues/useOperationalIssues.ts` [NEW]
+- `apps/web/src/components/issues/IssueSeverityBadge.tsx` [NEW]
+- `apps/web/src/components/issues/ActiveIssuesList.tsx` [NEW]
+- `apps/web/src/components/issues/IssueDetailDrawer.tsx` [NEW]
+- `apps/web/src/pages/SystemHealthPage.tsx` [MODIFY]
+- `apps/web/src/components/OverviewMetricCards.tsx` [MODIFY]
+- `apps/web/tests/unit/IssueSeverityBadge.test.tsx` [NEW]
+- `apps/web/tests/unit/ActiveIssuesList.test.tsx` [NEW]
+- `apps/web/tests/unit/IssueDetailDrawer.test.tsx` [NEW]
+- `apps/web/tests/unit/SystemHealthPage.test.tsx` [MODIFY]
+- `_bmad-output/implementation-artifacts/4-2-investigate-active-operational-issues-and-verified-recovery.md` [MODIFY]
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` [MODIFY]

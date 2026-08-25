@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { Typography, Alert, Button, Skeleton, Space } from 'antd';
 import { RedoOutlined } from '@ant-design/icons';
 import {
   OverallSystemHealthResponse,
   DistrictHealthResponse,
+  OperationalIssue,
 } from '@mahalla-ovozi/api-contracts';
 import { useDistrict } from '../district/district-context.js';
 import { useSystemHealth } from '../health/useSystemHealth.js';
+import { useOperationalIssues } from '../issues/useOperationalIssues.js';
 import { OverallHealthCard } from '../components/health/OverallHealthCard.js';
+import { ActiveIssuesList } from '../components/issues/ActiveIssuesList.js';
+import { IssueDetailDrawer } from '../components/issues/IssueDetailDrawer.js';
 import { GlobalComponentsTable } from '../components/health/GlobalComponentsTable.js';
 import { DistrictHealthMatrix } from '../components/health/DistrictHealthMatrix.js';
 
@@ -24,6 +28,15 @@ export const SystemHealthPage: React.FC = () => {
     isFetching,
   } = useSystemHealth();
 
+  const {
+    data: issuesData,
+    isFetching: isIssuesFetching,
+  } = useOperationalIssues();
+
+  const [selectedIssue, setSelectedIssue] = useState<OperationalIssue | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const openerRef = useRef<HTMLElement | null>(null);
+
   const isSystemData = (
     d: OverallSystemHealthResponse | DistrictHealthResponse | undefined,
   ): d is OverallSystemHealthResponse => {
@@ -31,6 +44,16 @@ export const SystemHealthPage: React.FC = () => {
   };
 
   const systemData = isSystemData(data) ? data : undefined;
+
+  const handleSelectIssue = (issue: OperationalIssue, triggerEl: HTMLElement | null) => {
+    setSelectedIssue(issue);
+    openerRef.current = triggerEl;
+    setIsDrawerOpen(true);
+  };
+
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+  };
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', minHeight: 600 }}>
@@ -114,6 +137,12 @@ export const SystemHealthPage: React.FC = () => {
             onRefresh={() => refetch()}
           />
 
+          <ActiveIssuesList
+            issues={issuesData?.issues || []}
+            loading={isIssuesFetching}
+            onSelectIssue={handleSelectIssue}
+          />
+
           <GlobalComponentsTable
             components={systemData.globalComponents}
             loading={isFetching}
@@ -123,6 +152,13 @@ export const SystemHealthPage: React.FC = () => {
             districts={systemData.districts}
             loading={isFetching}
             activeDistrictId={activeDistrictId}
+          />
+
+          <IssueDetailDrawer
+            issue={selectedIssue}
+            open={isDrawerOpen}
+            onClose={handleCloseDrawer}
+            openerRef={openerRef}
           />
         </>
       )}

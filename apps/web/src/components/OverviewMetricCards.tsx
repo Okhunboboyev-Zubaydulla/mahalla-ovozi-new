@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons';
 import { District, HealthStatus } from '@mahalla-ovozi/api-contracts';
 import { useSystemHealth } from '../health/useSystemHealth.js';
+import { useOperationalIssues } from '../issues/useOperationalIssues.js';
 
 const { Text } = Typography;
 
@@ -33,6 +34,7 @@ export const OverviewMetricCards: React.FC<OverviewMetricCardsProps> = ({
 }) => {
   const { token } = theme.useToken();
   const { data: healthData, isLoading: isHealthLoading } = useSystemHealth();
+  const { data: issuesData, isLoading: isIssuesLoading } = useOperationalIssues();
 
   const totalDistricts = districts.length;
   const activeDistricts = districts.filter((d) => d.status === 'ACTIVE').length;
@@ -93,6 +95,13 @@ export const OverviewMetricCards: React.FC<OverviewMetricCardsProps> = ({
   };
 
   const healthConfig = getHealthCardConfig(healthData?.status);
+  const activeIssuesCount = issuesData?.totalActive ?? 0;
+  const criticalIssuesCount = issuesData?.criticalCount ?? 0;
+
+  const healthSubText =
+    activeIssuesCount > 0
+      ? `${activeIssuesCount} та фаол муаммо (${criticalIssuesCount} муҳим)`
+      : healthConfig.subText;
 
   const cardItems = [
     {
@@ -123,10 +132,10 @@ export const OverviewMetricCards: React.FC<OverviewMetricCardsProps> = ({
       id: 'metric-system-health',
       title: 'Тизим ҳолати',
       value: healthConfig.value,
-      subText: healthConfig.subText,
+      subText: healthSubText,
       icon: healthConfig.icon,
       iconBg: healthConfig.iconBg,
-      loading: isHealthLoading,
+      loading: isHealthLoading || isIssuesLoading,
     },
   ];
 

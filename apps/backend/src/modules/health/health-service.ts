@@ -26,6 +26,7 @@ import {
   checkDistrictRetentionHealth,
   HealthConfig,
 } from './health-checker.js';
+import { synchronizeOperationalIssues } from '../issues/issue-manager.js';
 
 export class DistrictNotFoundError extends Error {
   statusCode = 404;
@@ -117,7 +118,17 @@ export const healthService = {
       }),
     );
 
-    // 4. Hierarchical aggregation into OverallSystemHealthResponse
+    // 4. Synchronize operational issues across global and all district scopes
+    const allDistrictComponents = districtSummaries.flatMap((d) => d.components);
+    const allObservations = [...globalComponents, ...allDistrictComponents];
+    const districtMap = new Map(allDistricts.map((d) => [d.id, d.name]));
+
+    await synchronizeOperationalIssues(db, allObservations, {
+      districtMap,
+      evaluationScope: { type: 'SYSTEM' },
+    });
+
+    // 5. Hierarchical aggregation into OverallSystemHealthResponse
     return aggregateOverallSystemHealth(globalComponents, districtSummaries, evaluatedAt);
   },
 
@@ -164,6 +175,13 @@ export const healthService = {
       ...c,
       lifecycleStatus: district.status,
     }));
+
+    // Synchronize operational issues strictly scoped to this district
+    const districtMap = new Map<string, string>([[district.id, district.name]]);
+    await synchronizeOperationalIssues(db, districtComponents, {
+      districtMap,
+      evaluationScope: { type: 'DISTRICT', districtId: district.id },
+    });
 
     const aggregateResult = aggregateComponentStatuses(districtComponents, {
       isQuietAllowed: true,

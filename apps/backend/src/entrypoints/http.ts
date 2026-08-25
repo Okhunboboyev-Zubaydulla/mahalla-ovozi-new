@@ -13,6 +13,7 @@ import { registerTelegramIntakeRoutes } from '../modules/telegram-intake/telegra
 import { registerAiOperationsRoutes } from '../modules/ai/ai-operations-routes.js';
 import { registerHokimTopicsRoutes } from '../modules/topics/hokim-topics-routes.js';
 import { registerHealthRoutes } from '../modules/health/health-routes.js';
+import { registerIssueRoutes } from '../modules/issues/issue-routes.js';
 import { createBossClient, initBossQueues } from '../adapters/jobs/boss-client.js';
 import type PgBoss from 'pg-boss';
 import pg from 'pg';
@@ -175,6 +176,7 @@ export async function buildHttpServer(options?: {
   registerAiOperationsRoutes(server, db);
   registerHokimTopicsRoutes(server, db);
   registerHealthRoutes(server, { db, pool, boss });
+  registerIssueRoutes(server, { db, pool, boss });
 
   return server;
 }

@@ -86,7 +86,7 @@ development_status:
   # ── Epic 4: Operational Health & Auditable Investigation ──
   epic-4: in-progress
   4-1-inspect-truthful-system-and-district-health: done
-  4-2-investigate-active-operational-issues-and-verified-recovery: ready-for-dev
+  4-2-investigate-active-operational-issues-and-verified-recovery: review
   4-3-safely-retry-eligible-incomplete-work: backlog
   4-4-inspect-immutable-searchable-audit-history: backlog
   4-5-browse-retained-district-topics-and-evidence-for-troubleshooting: backlog

@@ -3,10 +3,14 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { OverallSystemHealthResponse } from '@mahalla-ovozi/api-contracts';
+import {
+  OverallSystemHealthResponse,
+  OperationalIssuesListResponse,
+} from '@mahalla-ovozi/api-contracts';
 import { SystemHealthPage } from '../../src/pages/SystemHealthPage.js';
 import { DistrictProvider } from '../../src/district/district-context.js';
 import { healthClient } from '../../src/health/health-client.js';
+import { issuesClient } from '../../src/issues/issues-client.js';
 import { mahallaTheme } from '../../src/theme/antd-theme.js';
 
 function setupMatchMedia() {
@@ -30,7 +34,7 @@ beforeAll(() => {
   setupMatchMedia();
 });
 
-describe('Story 4.1: SystemHealthPage Component Tests (AC 1, AC 4, AC 11, AC 15)', () => {
+describe('Story 4.1 & 4.2: SystemHealthPage Component Tests (AC 1, AC 4, AC 11, AC 15, AC 16)', () => {
   let queryClient: QueryClient;
 
   const mockSystemHealthData: OverallSystemHealthResponse = {
@@ -96,11 +100,21 @@ describe('Story 4.1: SystemHealthPage Component Tests (AC 1, AC 4, AC 11, AC 15)
     activeDistricts: 1,
   };
 
+  const mockIssuesData: OperationalIssuesListResponse = {
+    issues: [],
+    totalActive: 0,
+    criticalCount: 0,
+    warningCount: 0,
+    infoCount: 0,
+    evaluatedAt: '2026-08-25T12:00:00.000Z',
+  };
+
   beforeEach(() => {
     setupMatchMedia();
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
+    vi.spyOn(issuesClient, 'getOperationalIssues').mockResolvedValue(mockIssuesData);
   });
 
   function renderPage() {
@@ -117,7 +131,7 @@ describe('Story 4.1: SystemHealthPage Component Tests (AC 1, AC 4, AC 11, AC 15)
     );
   }
 
-  it('renders overall health card, global components table, and district matrix when data loads (AC 1)', async () => {
+  it('renders overall health card, active issues list, global components table, and district matrix when data loads (AC 1, AC 4)', async () => {
     vi.spyOn(healthClient, 'getSystemHealth').mockResolvedValue(mockSystemHealthData);
 
     renderPage();
@@ -125,6 +139,7 @@ describe('Story 4.1: SystemHealthPage Component Tests (AC 1, AC 4, AC 11, AC 15)
     await waitFor(() => {
       expect(screen.getByText('Тизим ва туманлар ҳолати')).toBeTruthy();
       expect(screen.getByText('Умумий тизим ҳолати')).toBeTruthy();
+      expect(screen.getByText('Фаол техник муаммолар')).toBeTruthy();
       expect(screen.getByText('Глобал платформа компонентлари')).toBeTruthy();
       expect(screen.getByText('Туманлар ҳолати матрицаси')).toBeTruthy();
       expect(screen.getByText('Чилонзор тумани')).toBeTruthy();
