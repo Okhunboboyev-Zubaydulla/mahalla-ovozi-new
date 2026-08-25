@@ -4,9 +4,14 @@ import {
   ApartmentOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  ExclamationCircleOutlined,
+  CloseCircleOutlined,
+  PauseCircleOutlined,
+  QuestionCircleOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
-import { District } from '@mahalla-ovozi/api-contracts';
+import { District, HealthStatus } from '@mahalla-ovozi/api-contracts';
+import { useSystemHealth } from '../health/useSystemHealth.js';
 
 const { Text } = Typography;
 
@@ -15,15 +20,79 @@ interface OverviewMetricCardsProps {
   loading?: boolean;
 }
 
+interface HealthCardConfig {
+  value: string;
+  subText: string;
+  icon: React.ReactNode;
+  iconBg: string;
+}
+
 export const OverviewMetricCards: React.FC<OverviewMetricCardsProps> = ({
   districts,
   loading = false,
 }) => {
   const { token } = theme.useToken();
+  const { data: healthData, isLoading: isHealthLoading } = useSystemHealth();
 
   const totalDistricts = districts.length;
   const activeDistricts = districts.filter((d) => d.status === 'ACTIVE').length;
   const incompleteDistricts = districts.filter((d) => d.status === 'SETUP_INCOMPLETE').length;
+
+  const getHealthCardConfig = (status?: HealthStatus): HealthCardConfig => {
+    switch (status) {
+      case 'Healthy':
+        return {
+          value: 'Соғлом',
+          subText: 'Барча хизматлар тўлиқ ишламоқда',
+          icon: <CheckCircleOutlined style={{ fontSize: 20, color: token.colorSuccess || '#059669' }} />,
+          iconBg: token.colorSuccessBg || '#D1FAE5',
+        };
+      case 'Delayed':
+        return {
+          value: 'Кечиккан',
+          subText: 'Айрим хизматларда кечикиш кузатилмоқда',
+          icon: <ClockCircleOutlined style={{ fontSize: 20, color: token.colorWarning }} />,
+          iconBg: token.colorWarningBg || '#FEF3C7',
+        };
+      case 'Degraded':
+        return {
+          value: 'Қисман ишламоқда',
+          subText: 'Техник муаммолар мавжуд',
+          icon: <ExclamationCircleOutlined style={{ fontSize: 20, color: '#FA8C16' }} />,
+          iconBg: '#FFF7E6',
+        };
+      case 'Unavailable':
+        return {
+          value: 'Ишламаяпти',
+          subText: 'Шошилинч чора кўриш зарур',
+          icon: <CloseCircleOutlined style={{ fontSize: 20, color: token.colorError || '#DC2626' }} />,
+          iconBg: '#FEE2E2',
+        };
+      case 'Quiet':
+        return {
+          value: 'Фаолиятсиз',
+          subText: 'Сигналлар ҳозирча йўқ',
+          icon: <PauseCircleOutlined style={{ fontSize: 20, color: token.colorTextSecondary }} />,
+          iconBg: '#F3F4F6',
+        };
+      case 'Unknown':
+        return {
+          value: 'Номаълум',
+          subText: 'Текширув маълумотлари етарли эмас',
+          icon: <QuestionCircleOutlined style={{ fontSize: 20, color: token.colorTextSecondary }} />,
+          iconBg: '#F3F4F6',
+        };
+      default:
+        return {
+          value: 'Барқарор',
+          subText: 'Хизматлар ҳолати текширилмоқда',
+          icon: <SafetyCertificateOutlined style={{ fontSize: 20, color: token.colorPrimary }} />,
+          iconBg: '#E0F2FE',
+        };
+    }
+  };
+
+  const healthConfig = getHealthCardConfig(healthData?.status);
 
   const cardItems = [
     {
@@ -53,10 +122,11 @@ export const OverviewMetricCards: React.FC<OverviewMetricCardsProps> = ({
     {
       id: 'metric-system-health',
       title: 'Тизим ҳолати',
-      value: 'Барқарор',
-      subText: 'Хизматлар тўлиқ ишламоқда',
-      icon: <SafetyCertificateOutlined style={{ fontSize: 20, color: token.colorPrimary }} />,
-      iconBg: '#E0F2FE',
+      value: healthConfig.value,
+      subText: healthConfig.subText,
+      icon: healthConfig.icon,
+      iconBg: healthConfig.iconBg,
+      loading: isHealthLoading,
     },
   ];
 
@@ -66,7 +136,7 @@ export const OverviewMetricCards: React.FC<OverviewMetricCardsProps> = ({
         {cardItems.map((item) => (
           <Col xs={24} sm={12} lg={6} key={item.id}>
             <Card
-              loading={loading}
+              loading={loading || item.loading}
               variant="borderless"
               style={{
                 borderRadius: 12,
@@ -83,7 +153,7 @@ export const OverviewMetricCards: React.FC<OverviewMetricCardsProps> = ({
                   </Text>
                   <div
                     style={{
-                      fontSize: typeof item.value === 'number' ? 28 : 22,
+                      fontSize: typeof item.value === 'number' ? 28 : 20,
                       fontWeight: 600,
                       color: token.colorText,
                       lineHeight: '34px',

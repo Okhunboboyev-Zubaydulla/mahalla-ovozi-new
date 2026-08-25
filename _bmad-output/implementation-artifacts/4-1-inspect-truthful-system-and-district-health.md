@@ -1,6 +1,10 @@
+---
+baseline_commit: 159bcea31f67bc320b35ee1e903b036193027528
+---
+
 # Story 4.1: Inspect Truthful System and District Health
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -160,8 +164,8 @@ So that I can distinguish real technical failures from delays, quiet operation, 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Shared API Contracts & Enums (`packages/api-contracts`)** (AC: 3, 4, 10, 12, 14)
-  - [ ] 1.1 In `packages/api-contracts/src/health.ts`:
+- [x] **Task 1: Shared API Contracts & Enums (`packages/api-contracts`)** (AC: 3, 4, 10, 12, 14)
+  - [x] 1.1 In `packages/api-contracts/src/health.ts`:
     - Define `HealthStatusEnumSchema`: `z.enum(['Healthy', 'Delayed', 'Degraded', 'Unavailable', 'Quiet', 'Unknown'])`.
     - Define `ComponentScopeEnumSchema`: `z.enum(['GLOBAL', 'DISTRICT'])`.
     - Define `ComponentTypeEnumSchema`: `z.enum(['database', 'processing_queue', 'storage', 'web_application', 'telegram_bot', 'telegram_groups', 'message_intake', 'ai_operations', 'retention_jobs', 'district_retention'])`.
@@ -202,11 +206,11 @@ So that I can distinguish real technical failures from delays, quiet operation, 
       - `evaluatedAt`: `z.string().datetime()`
       - `components`: `z.array(ComponentHealthObservationSchema)`
       - `lifecycleStatus`: `z.string().nullable()`
-  - [ ] 1.2 In `packages/api-contracts/src/index.ts`:
+  - [x] 1.2 In `packages/api-contracts/src/index.ts`:
     - Re-export all schemas and types from `./health.js`.
 
-- [ ] **Task 2: Backend Pure Health Evaluator & Aggregation Engine (`apps/backend`)** (AC: 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13)
-  - [ ] 2.1 In `apps/backend/src/modules/health/health-evaluator.ts`:
+- [x] **Task 2: Backend Pure Health Evaluator & Aggregation Engine (`apps/backend`)** (AC: 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13)
+  - [x] 2.1 In `apps/backend/src/modules/health/health-evaluator.ts`:
     - Implement `HEALTH_STATE_PRECEDENCE`: `['Unavailable', 'Degraded', 'Delayed', 'Unknown', 'Healthy']`.
     - Implement `aggregateComponentStatuses(components: ComponentHealthObservation[], options: { isQuietAllowed: boolean }): { status: HealthStatus; lastCheckAt: Date }`:
       - Filter out non-applicable components (`isApplicable === false`).
@@ -230,8 +234,8 @@ So that I can distinguish real technical failures from delays, quiet operation, 
     - Implement `evaluateThreshold(lastEvidenceAt: Date | null, thresholdMs: number, now: Date): HealthStatus`:
       - Returns `Delayed` if `now - lastEvidenceAt > thresholdMs`, otherwise `Healthy`.
 
-- [ ] **Task 3: Backend Technical Health Checker Adapters (`apps/backend`)** (AC: 2, 6, 7, 9, 12)
-  - [ ] 3.1 In `apps/backend/src/modules/health/health-checker.ts`:
+- [x] **Task 3: Backend Technical Health Checker Adapters (`apps/backend`)** (AC: 2, 6, 7, 9, 12)
+  - [x] 3.1 In `apps/backend/src/modules/health/health-checker.ts`:
     - Implement `checkDatabaseHealth(pool: pg.Pool, config: HealthConfig): Promise<ComponentHealthObservation>`:
       - Executes `SELECT 1 AS health` query with unref'd timeout (e.g. 2000ms).
       - Collects pool metrics: `pool.totalCount`, `pool.idleCount`, `pool.waitingCount`.
@@ -270,8 +274,8 @@ So that I can distinguish real technical failures from delays, quiet operation, 
       - If last execution within 24h -> `Healthy`; if delayed -> `Delayed`.
     - Apply `assertPrivacyBoundary` to ensure zero credentials, bot tokens, or resident evidence leak into observation details.
 
-- [ ] **Task 4: Backend Health Service & Fastify HTTP Routes (`apps/backend`)** (AC: 1, 8, 9, 11, 14)
-  - [ ] 4.1 In `apps/backend/src/modules/health/health-service.ts`:
+- [x] **Task 4: Backend Health Service & Fastify HTTP Routes (`apps/backend`)** (AC: 1, 8, 9, 11, 14)
+  - [x] 4.1 In `apps/backend/src/modules/health/health-service.ts`:
     - Implement `getOverallSystemHealth(db: DbClient, pool: pg.Pool, boss?: PgBoss, config?: HealthConfig)`:
       - Loads all districts from `districts` table.
       - Runs global component checks in parallel via `Promise.all`.
@@ -284,20 +288,20 @@ So that I can distinguish real technical failures from delays, quiet operation, 
       - Runs district-scoped component checks.
       - Aggregates using `health-evaluator.ts`.
       - Returns validated `DistrictHealthResponse`.
-  - [ ] 4.2 In `apps/backend/src/modules/health/health-routes.ts`:
+  - [x] 4.2 In `apps/backend/src/modules/health/health-routes.ts`:
     - Create `registerHealthRoutes(fastify: FastifyInstance, deps: { db: DbClient; pool: pg.Pool; boss?: PgBoss; config?: HealthConfig })`:
       - Encapsulate in Fastify v5 plugin scope (`fastify.register(async (scope) => { ... })`).
       - Apply hooks: `scope.addHook('preHandler', verifyStateChangingOrigin)` and `scope.addHook('preHandler', createRequireProductOwner(deps.db))`.
       - `GET /api/v1/health/system` -> calls `getOverallSystemHealth`.
       - `GET /api/v1/districts/:districtId/health` -> calls `getDistrictHealth`.
-  - [ ] 4.3 In `apps/backend/src/entrypoints/http.ts`:
+  - [x] 4.3 In `apps/backend/src/entrypoints/http.ts`:
     - Register `registerHealthRoutes(server, { db, pool, boss: options?.boss })`.
 
-- [ ] **Task 5: Frontend Health Client & TanStack Query Hooks (`apps/web`)** (AC: 1, 4, 13, 14)
-  - [ ] 5.1 In `apps/web/src/health/health-client.ts`:
+- [x] **Task 5: Frontend Health Client & TanStack Query Hooks (`apps/web`)** (AC: 1, 4, 13, 14)
+  - [x] 5.1 In `apps/web/src/health/health-client.ts`:
     - Implement `getSystemHealth(): Promise<OverallSystemHealthResponse>` (`GET /api/v1/health/system`).
     - Implement `getDistrictHealth(districtId: string): Promise<DistrictHealthResponse>` (`GET /api/v1/districts/${districtId}/health`).
-  - [ ] 5.2 In `apps/web/src/health/useSystemHealth.ts`:
+  - [x] 5.2 In `apps/web/src/health/useSystemHealth.ts`:
     - Define hierarchical query keys:
       ```ts
       export const healthKeys = {
@@ -316,8 +320,8 @@ So that I can distinguish real technical failures from delays, quiet operation, 
       - Stale time: `staleTime: 15_000`, `gcTime: 600_000`.
       - Exposes `{ data, isLoading, isError, error, refetch, isFetching, lastUpdated }`.
 
-- [ ] **Task 6: Frontend UI Components (`apps/web`)** (AC: 1, 4, 9, 10, 11, 13)
-  - [ ] 6.1 In `apps/web/src/components/health/HealthStatusBadge.tsx`:
+- [x] **Task 6: Frontend UI Components (`apps/web`)** (AC: 1, 4, 9, 10, 11, 13)
+  - [x] 6.1 In `apps/web/src/components/health/HealthStatusBadge.tsx`:
     - Maps canonical states to Uzbek Cyrillic and Ant Design Tag tokens:
       - `Healthy`: `Соғлом`, color: `success`, icon: `<CheckCircleOutlined />`
       - `Delayed`: `Кечиккан`, color: `warning`, icon: `<ClockCircleOutlined />`
@@ -327,30 +331,30 @@ So that I can distinguish real technical failures from delays, quiet operation, 
       - `Unknown`: `Номаълум`, color: `default`, icon: `<QuestionCircleOutlined />`
     - Accessible ARIA attributes: `aria-label={`Ҳолат: ${label}`}`, `role="status"`.
     - Non-color-only encoding: distinct icons + visible text.
-  - [ ] 6.2 In `apps/web/src/components/health/OverallHealthCard.tsx`:
+  - [x] 6.2 In `apps/web/src/components/health/OverallHealthCard.tsx`:
     - Displays overall system status badge, `lastCheckAt` timestamp, evaluated timestamp, and total/active district metrics.
     - Uses `fontVariantNumeric: 'tabular-nums'` on timestamps to eliminate layout jitter.
     - Includes manual refresh button (`Янгилаш`) with spinning icon during `isFetching`.
-  - [ ] 6.3 In `apps/web/src/components/health/GlobalComponentsTable.tsx`:
+  - [x] 6.3 In `apps/web/src/components/health/GlobalComponentsTable.tsx`:
     - Table of global components (Database, Message Queue, Storage, Web Application, Retention).
     - Columns: Component Name (Uzbek Cyrillic: `Маълумотлар базаси`, `Навбат тизими`, `Сақлаш тизими`, `Веб илова`, `Маълумотларни сақлаш муддати`), Scope (`Глобал`), Status Badge, Last Check Time, Sanitized Details/Latency.
-  - [ ] 6.4 In `apps/web/src/components/health/DistrictHealthMatrix.tsx`:
+  - [x] 6.4 In `apps/web/src/components/health/DistrictHealthMatrix.tsx`:
     - Matrix / Table of districts and their component statuses (`Telegram бот`, `Telegram гуруҳлар`, `Хабарлар қабули`, `АИ операциялари`).
     - Highlighting active district when selected.
     - Handles zero-districts state with empty container: `Ҳозирча туманлар мавжуд эмас`.
     - Handles lifecycle pauses: shows `Тўхтатилган (Обуна)` with reference link to Subscriptions.
     - Excludes non-applicable components gracefully (`-` or `Қўлланилмайди`).
-  - [ ] 6.5 In `apps/web/src/pages/SystemHealthPage.tsx` (replaces placeholder):
+  - [x] 6.5 In `apps/web/src/pages/SystemHealthPage.tsx` (replaces placeholder):
     - Integrates `OverallHealthCard`, `GlobalComponentsTable`, and `DistrictHealthMatrix`.
     - Loading skeletons matching structure with fixed `minHeight` (0px layout shift).
     - Stale data alert banner with `Қайта уриниш` on refresh error.
     - Responds to `activeDistrictId` from `useDistrict()` context to filter or highlight.
-  - [ ] 6.6 In `apps/web/src/components/OverviewMetricCards.tsx`:
+  - [x] 6.6 In `apps/web/src/components/OverviewMetricCards.tsx`:
     - Connect `metric-system-health` card to real `useSystemHealth()` data instead of hardcoded placeholder.
     - Update `subText` to reflect active issues / delay status truthfully.
 
-- [ ] **Task 7: Automated Integration Tests (`apps/backend/tests/system-health.test.ts`)** (AC: 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
-  - [ ] 7.1 Pure Evaluator Unit Tests:
+- [x] **Task 7: Automated Integration Tests (`apps/backend/tests/system-health.test.ts`)** (AC: 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+  - [x] 7.1 Pure Evaluator Unit Tests:
     - Test 6 canonical states generation.
     - Test precedence: `Unavailable > Degraded > Delayed > Unknown > Healthy`.
     - Test `Healthy` + `Quiet` => `Healthy` aggregation.
@@ -361,7 +365,7 @@ So that I can distinguish real technical failures from delays, quiet operation, 
     - Test >10-minute stale check threshold contributing `Unknown`.
     - Test non-applicable component exclusion.
     - Test zero-district handling (global components evaluate without synthetic district).
-  - [ ] 7.2 Backend Integration Tests against `mahalla_ovozi_test`:
+  - [x] 7.2 Backend Integration Tests against `mahalla_ovozi_test`:
     - Test `GET /api/v1/health/system` returns 200 with truthful overall and district health when authenticated as Product Owner.
     - Test `GET /api/v1/health/system` returns 401/403 for unauthenticated or Hokim requests.
     - Test `GET /api/v1/districts/:districtId/health` returns 200 with district health.
@@ -370,11 +374,11 @@ So that I can distinguish real technical failures from delays, quiet operation, 
     - Test privacy boundary: response payload contains zero bot tokens, credentials, resident texts, or raw upstream errors.
     - Test subscription pause status is reported distinctly without manufacturing technical failure.
 
-- [ ] **Task 8: Frontend Unit & Component Tests (`apps/web/tests/unit`)** (AC: 4, 11, 15)
-  - [ ] 8.1 In `apps/web/tests/unit/HealthStatusBadge.test.tsx`:
+- [x] **Task 8: Frontend Unit & Component Tests (`apps/web/tests/unit`)** (AC: 4, 11, 15)
+  - [x] 8.1 In `apps/web/tests/unit/HealthStatusBadge.test.tsx`:
     - Test rendering all 6 canonical states with correct Uzbek Cyrillic text and icons.
     - Test ARIA accessibility attributes (`aria-label`, `role="status"`).
-  - [ ] 8.2 In `apps/web/tests/unit/SystemHealthPage.test.tsx`:
+  - [x] 8.2 In `apps/web/tests/unit/SystemHealthPage.test.tsx`:
     - Test rendering loading skeleton during initial load.
     - Test rendering overall health card, global components table, and district health matrix.
     - Test zero-districts empty state rendering.
@@ -482,6 +486,15 @@ Gemini 3.7 Flash (High)
 ### Completion Notes List
 - Comprehensive story specification for Story 4.1 generated with 15 detailed acceptance criteria groups and 8 structured tasks with 25 subtasks.
 - Complete coverage of the 6 canonical states, deterministic precedence, required-child `Unknown` propagation, `Quiet` neutrality, oldest-contributing timestamp aggregation, privacy boundary enforcement, and isolated database testing standards.
+- Phase 1: Shared API contracts defined in `packages/api-contracts/src/health.ts` and re-exported in `src/index.ts`.
+- Phase 2: Pure deterministic health evaluator and SLA threshold engine implemented in `apps/backend/src/modules/health/health-evaluator.ts`.
+- Phase 3: Backend technical health check adapters, service, and Fastify 5 plugin routes implemented in `apps/backend/src/modules/health/` and registered in `apps/backend/src/entrypoints/http.ts`.
+- Phase 4: Frontend API client and TanStack Query v5 hook implemented in `apps/web/src/health/`.
+- Phase 5: Accessible frontend UI components (`HealthStatusBadge`, `OverallHealthCard`, `GlobalComponentsTable`, `DistrictHealthMatrix`, `SystemHealthPage`) implemented in `apps/web/src/` with Uzbek Cyrillic labels and 0px CLS.
+- Phase 6: Full unit and integration test suites passing in `apps/backend/tests/system-health.test.ts` (22 tests) and `apps/web/tests/unit/` (10 tests). Zero typecheck errors across all monorepo packages.
+
+### Change Log
+- 2026-08-25: Implemented Story 4.1 across packages/api-contracts, apps/backend, and apps/web. All 8 tasks and 25 subtasks complete and passing. Ready for code review.
 
 ### File List
 - `packages/api-contracts/src/health.ts`

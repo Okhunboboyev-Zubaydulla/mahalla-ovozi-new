@@ -10,7 +10,7 @@ import { FirstSignInPasswordChangePage } from './pages/FirstSignInPasswordChange
 import { ConsoleLayout } from './components/ConsoleLayout.js';
 import { OverviewPage } from './pages/OverviewPage.js';
 import { DistrictsPage } from './pages/DistrictsPage.js';
-import { SystemHealthPage } from './pages/placeholders/SystemHealthPage.js';
+import { SystemHealthPage } from './pages/SystemHealthPage.js';
 import { TelegramSetupPage } from './pages/TelegramSetupPage.js';
 import { SubscriptionsPage } from './pages/placeholders/SubscriptionsPage.js';
 import { HokimAccountsPage } from './pages/HokimAccountsPage.js';
