@@ -164,12 +164,12 @@ So that I can distinguish real technical failures from delays, quiet operation, 
   - [ ] 1.1 In `packages/api-contracts/src/health.ts`:
     - Define `HealthStatusEnumSchema`: `z.enum(['Healthy', 'Delayed', 'Degraded', 'Unavailable', 'Quiet', 'Unknown'])`.
     - Define `ComponentScopeEnumSchema`: `z.enum(['GLOBAL', 'DISTRICT'])`.
-    - Define `ComponentTypeEnumSchema`: `z.enum(['database', 'processing_queue', 'storage', 'web_application', 'telegram_bot', 'telegram_groups', 'message_intake', 'ai_operations', 'retention_jobs'])`.
+    - Define `ComponentTypeEnumSchema`: `z.enum(['database', 'processing_queue', 'storage', 'web_application', 'telegram_bot', 'telegram_groups', 'message_intake', 'ai_operations', 'retention_jobs', 'district_retention'])`.
     - Define `TechnicalOutcomeSchema`: `z.enum(['success', 'failure', 'insufficient_evidence'])`.
     - Define `ComponentHealthObservationSchema`:
       - `component`: `ComponentTypeEnumSchema`
       - `scope`: `ComponentScopeEnumSchema`
-      - `districtId`: `z.string().uuid().nullable()`
+      - `districtId`: `z.string().min(1).nullable()`
       - `status`: `HealthStatusEnumSchema`
       - `lastCheckAt`: `z.string().datetime()`
       - `checkedAt`: `z.string().datetime()`
@@ -180,7 +180,7 @@ So that I can distinguish real technical failures from delays, quiet operation, 
       - `isApplicable`: `z.boolean()`
       - `lifecycleStatus`: `z.string().nullable()` (e.g. `'ACTIVE' | 'SUSPENDED' | 'CANCELLED' | null`)
     - Define `DistrictHealthSummarySchema`:
-      - `districtId`: `z.string().uuid()`
+      - `districtId`: `z.string().min(1)`
       - `districtName`: `z.string()`
       - `status`: `HealthStatusEnumSchema`
       - `lastCheckAt`: `z.string().datetime()`
@@ -195,7 +195,7 @@ So that I can distinguish real technical failures from delays, quiet operation, 
       - `totalDistricts`: `z.number().int().nonnegative()`
       - `activeDistricts`: `z.number().int().nonnegative()`
     - Define `DistrictHealthResponseSchema`:
-      - `districtId`: `z.string().uuid()`
+      - `districtId`: `z.string().min(1)`
       - `districtName`: `z.string()`
       - `status`: `HealthStatusEnumSchema`
       - `lastCheckAt`: `z.string().datetime()`
@@ -225,7 +225,12 @@ So that I can distinguish real technical failures from delays, quiet operation, 
         - If a mix of `Healthy` and `Quiet` districts exists with `Healthy` global components, overall health is `Healthy`.
         - Abnormal states from either global components or districts propagate per precedence: `Unavailable > Degraded > Delayed > Unknown`.
         - `lastCheckAt` is the oldest `lastCheckAt` among all contributing required global components and active districts.
-    - Implement `evaluateThreshold(lastE- [ ] **Task 3: Backend Technical Health Checker Adapters (`apps/backend`)** (AC: 2, 6, 7, 9, 12)
+    - Implement `evaluateFreshness(lastCheckAt: Date | null, staleThresholdMs: number): boolean`:
+      - Returns `true` if `lastCheckAt` is within `staleThresholdMs` (10 minutes), otherwise `false`.
+    - Implement `evaluateThreshold(lastEvidenceAt: Date | null, thresholdMs: number, now: Date): HealthStatus`:
+      - Returns `Delayed` if `now - lastEvidenceAt > thresholdMs`, otherwise `Healthy`.
+
+- [ ] **Task 3: Backend Technical Health Checker Adapters (`apps/backend`)** (AC: 2, 6, 7, 9, 12)
   - [ ] 3.1 In `apps/backend/src/modules/health/health-checker.ts`:
     - Implement `checkDatabaseHealth(pool: pg.Pool, config: HealthConfig): Promise<ComponentHealthObservation>`:
       - Executes `SELECT 1 AS health` query with unref'd timeout (e.g. 2000ms).
@@ -243,15 +248,15 @@ So that I can distinguish real technical failures from delays, quiet operation, 
     - Implement `checkDistrictBotHealth(db: DbClient, districtId: string, config: HealthConfig): Promise<ComponentHealthObservation>`:
       - Queries `district_telegram_bots` table.
       - If no bot exists: `isApplicable: false`.
-      - If bot is `ACTIVE` and `lastTestedAt` fresh -> `Healthy`.
-      - If bot is disconnected/failed -> `Unavailable` or `Degraded`.
+      - If bot `status === 'VALID'` and `lastValidatedAt` is fresh (< 10m) -> `Healthy`.
+      - If bot is disconnected/failed (`status === 'INVALID'`) -> `Unavailable` or `Degraded`.
       - If stale > 10m without activity -> `Unknown`.
     - Implement `checkDistrictGroupsHealth(db: DbClient, districtId: string, config: HealthConfig): Promise<ComponentHealthObservation>`:
       - Queries `district_telegram_groups` table.
       - If no groups configured -> `isApplicable: false`.
       - If groups exist, checks for recent intake or error flags. If silence -> `Quiet`.
     - Implement `checkDistrictIntakeHealth(db: DbClient, districtId: string, config: HealthConfig): Promise<ComponentHealthObservation>`:
-      - Queries `telegram_intakes` for latest message.
+      - Queries `telegram_intake_records` for latest message.
       - If unprocessed message > 5 min old -> `Delayed`.
       - If latest processed message within 5 min -> `Healthy`.
       - If no messages -> `Quiet`.
@@ -267,26 +272,26 @@ So that I can distinguish real technical failures from delays, quiet operation, 
 
 - [ ] **Task 4: Backend Health Service & Fastify HTTP Routes (`apps/backend`)** (AC: 1, 8, 9, 11, 14)
   - [ ] 4.1 In `apps/backend/src/modules/health/health-service.ts`:
-    - Implement `getOverallSystemHealth(db: DbClient, boss?: PgBoss, config?: HealthConfig)`:
+    - Implement `getOverallSystemHealth(db: DbClient, pool: pg.Pool, boss?: PgBoss, config?: HealthConfig)`:
       - Loads all districts from `districts` table.
       - Runs global component checks in parallel via `Promise.all`.
       - Runs per-district component checks in parallel.
       - Aggregates using `health-evaluator.ts`.
       - Returns validated `OverallSystemHealthResponse`.
-    - Implement `getDistrictHealth(db: DbClient, districtId: string, boss?: PgBoss, config?: HealthConfig)`:
+    - Implement `getDistrictHealth(db: DbClient, districtId: string, pool: pg.Pool, boss?: PgBoss, config?: HealthConfig)`:
       - Validates district existence (throws `DistrictNotFoundError` if missing).
       - Checks district lifecycle status (`ACTIVE`, `SETUP_INCOMPLETE`, `SUSPENDED`, `CANCELLED`).
       - Runs district-scoped component checks.
       - Aggregates using `health-evaluator.ts`.
       - Returns validated `DistrictHealthResponse`.
   - [ ] 4.2 In `apps/backend/src/modules/health/health-routes.ts`:
-    - Create `registerHealthRoutes(fastify: FastifyInstance, deps: { db: DbClient; boss?: PgBoss })`:
+    - Create `registerHealthRoutes(fastify: FastifyInstance, deps: { db: DbClient; pool: pg.Pool; boss?: PgBoss; config?: HealthConfig })`:
       - Encapsulate in Fastify v5 plugin scope (`fastify.register(async (scope) => { ... })`).
       - Apply hooks: `scope.addHook('preHandler', verifyStateChangingOrigin)` and `scope.addHook('preHandler', createRequireProductOwner(deps.db))`.
       - `GET /api/v1/health/system` -> calls `getOverallSystemHealth`.
       - `GET /api/v1/districts/:districtId/health` -> calls `getDistrictHealth`.
   - [ ] 4.3 In `apps/backend/src/entrypoints/http.ts`:
-    - Register `registerHealthRoutes(server, { db, boss: options?.boss })`.
+    - Register `registerHealthRoutes(server, { db, pool, boss: options?.boss })`.
 
 - [ ] **Task 5: Frontend Health Client & TanStack Query Hooks (`apps/web`)** (AC: 1, 4, 13, 14)
   - [ ] 5.1 In `apps/web/src/health/health-client.ts`:
@@ -428,7 +433,7 @@ So that I can distinguish real technical failures from delays, quiet operation, 
    - *Preserve:* All existing exports.
 2. `apps/backend/src/entrypoints/http.ts`:
    - *Current state:* Registers auth, districts, telegram, hokim, ai, topics routes.
-   - *Changes:* Register `registerHealthRoutes(server, db, options?.boss)`.
+   - *Changes:* Register `registerHealthRoutes(server, { db, pool, boss: options?.boss })`.
    - *Preserve:* All existing routes, CORS, cookie, and error handling.
 3. `apps/web/src/pages/placeholders/SystemHealthPage.tsx` -> `apps/web/src/pages/SystemHealthPage.tsx`:
    - *Current state:* Simple placeholder card.
