@@ -41,9 +41,8 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-16
-last_updated: 2026-08-24
+last_updated: 2026-08-25
 project: Mahalla-Ovozi
-project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
@@ -85,8 +84,8 @@ development_status:
   epic-3-retrospective: optional
 
   # ── Epic 4: Operational Health & Auditable Investigation ──
-  epic-4: backlog
-  4-1-inspect-truthful-system-and-district-health: backlog
+  epic-4: in-progress
+  4-1-inspect-truthful-system-and-district-health: ready-for-dev
   4-2-investigate-active-operational-issues-and-verified-recovery: backlog
   4-3-safely-retry-eligible-incomplete-work: backlog
   4-4-inspect-immutable-searchable-audit-history: backlog
