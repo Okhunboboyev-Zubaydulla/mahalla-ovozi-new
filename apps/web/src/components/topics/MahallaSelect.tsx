@@ -41,8 +41,9 @@ export const MahallaSelect: React.FC<MahallaSelectProps> = ({
         (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
       }
       style={{
-        minWidth: 200,
-        height: 44,
+        width: 180,
+        height: 36,
+        flexShrink: 0,
         ...style,
       }}
       aria-label="Маҳалла бўйича фильтр"

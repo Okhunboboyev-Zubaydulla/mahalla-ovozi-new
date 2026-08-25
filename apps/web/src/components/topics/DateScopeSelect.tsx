@@ -74,12 +74,13 @@ export const DateScopeSelect: React.FC<DateScopeSelectProps> = ({
         ]}
         style={{
           backgroundColor: '#F1F5F9',
-          padding: 3,
-          borderRadius: 8,
-          height: 44,
+          padding: 2,
+          borderRadius: 6,
+          height: 36,
           display: 'flex',
           alignItems: 'center',
           fontWeight: 500,
+          flexShrink: 0,
         }}
       />
 
@@ -97,11 +98,12 @@ export const DateScopeSelect: React.FC<DateScopeSelectProps> = ({
             return currentYmd > todayYmd || currentYmd < ninetyDaysAgoYmd;
           }}
           style={{
-            height: 44,
-            borderRadius: 8,
+            height: 36,
+            borderRadius: 6,
             borderColor: '#CBD5E1',
             boxShadow: 'none',
-            fontSize: 14,
+            fontSize: 13,
+            flexShrink: 0,
           }}
           aria-label="Сана оралиғини танлаш"
         />

@@ -137,7 +137,7 @@ describe('useTopicStatistics Hook Unit Tests', () => {
     );
   });
 
-  it('immediately clears statistics to undefined on filter scope transition to prevent cross-scope leakage (AC 4, AC 5)', async () => {
+  it('preserves previous statistics as placeholder data during filter transitions to prevent flickering (AC 4, AC 5)', async () => {
     vi.spyOn(hokimTopicsClient, 'getStatistics').mockResolvedValue(mockStatisticsResponse);
 
     let currentFilters: DashboardFilterState = {
@@ -159,21 +159,23 @@ describe('useTopicStatistics Hook Unit Tests', () => {
 
     expect(result.current.statistics?.totalUniqueTopics).toBe(12);
 
-    // Switch date scope
+    // Switch date scope / lanes
     currentFilters = {
       dateScope: 'yesterday',
       lanes: ['WATER', 'GAS'],
     };
 
-    // Slow down next fetch to inspect immediate transition state
+    // Slow down next fetch to inspect in-flight transition state
     vi.spyOn(hokimTopicsClient, 'getStatistics').mockImplementation(
       () => new Promise(() => {}), // never resolving in-flight promise
     );
 
     rerender({ filters: currentFilters });
 
-    // On filter scope transition, previous statistics must NOT leak into the new scope
-    expect(result.current.statistics).toBeUndefined();
+    // On filter transition, previous statistics remain available to prevent skeleton flicker
+    expect(result.current.statistics).toBeDefined();
+    expect(result.current.statistics?.totalUniqueTopics).toBe(12);
+    expect(result.current.isFetching).toBe(true);
   });
 
   it('exposes evaluationId from statistics response (AC 1, AC 3)', async () => {

@@ -91,12 +91,12 @@ export const DashboardSearchInput: React.FC<DashboardSearchInputProps> = ({
       disabled={disabled}
       aria-label="Мавзулар ва далиллар бўйича қидирув"
       style={{
-        width: '100%',
-        maxWidth: 320,
+        width: 240,
         borderRadius: 6,
         borderColor: '#CBD5E1',
         height: 36,
         backgroundColor: '#FFFFFF',
+        flexShrink: 0,
         ...style,
       }}
     />

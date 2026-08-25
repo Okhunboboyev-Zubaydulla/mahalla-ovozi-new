@@ -1,12 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Button, Empty, Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { QualifyingLane, TopicCardItem } from '@mahalla-ovozi/api-contracts';
 import { LaneColumn } from './LaneColumn.js';
 import { LaneLocalState } from '../../topics/useHokimTopicBoard.js';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const CANONICAL_LANE_ORDER: QualifyingLane[] = [
   'HOKIM_RELATED',
@@ -32,7 +32,6 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
   lanes,
   activeLanes,
   isFiltered = false,
-  onResetFilters,
   selectedTopicId,
   searchQuery,
   onLoadMore,
@@ -90,50 +89,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
     });
   };
 
-  if (!isFiltered && totalVisibleCount === 0 && totalBufferedCount === 0) {
-    return (
-      <main
-        role="region"
-        aria-label="Йўналишлар тахтаси"
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: 'calc(100vh - 120px)',
-          padding: '32px',
-          backgroundColor: '#F4F6F8',
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderRadius: 12,
-            padding: '48px 32px',
-            textAlign: 'center',
-            maxWidth: 480,
-            width: '100%',
-            boxShadow: 'none',
-          }}
-        >
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={
-              <div>
-                <Title level={4} style={{ color: '#0F172A', marginBottom: 8, fontSize: 18 }}>
-                  Бугун ҳозирча мавзулар йўқ
-                </Title>
-                <Text style={{ color: '#64748B', fontSize: 14 }}>
-                  Туман маҳаллалари гуруҳларидан янги хабарлар келиб тушганда бу ерда мавзулар шаклланади.
-                </Text>
-              </div>
-            }
-          />
-        </div>
-      </main>
-    );
-  }
+  const isBoardEmpty = totalVisibleCount === 0 && totalBufferedCount === 0;
 
   return (
     <main
@@ -147,8 +103,8 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
         flexDirection: 'column',
       }}
     >
-      {/* Filtered Empty State Banner (AC 12) */}
-      {isFiltered && totalVisibleCount === 0 && totalBufferedCount === 0 && (
+      {/* Informative Empty State Banner (AC 12 & UX Design Spec) */}
+      {isBoardEmpty && (
         <div
           role="status"
           style={{
@@ -165,27 +121,16 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
         >
           <div>
             <Text strong style={{ color: '#0F172A', fontSize: 14 }}>
-              Танланган шартлар бўйича мавзулар топилмади
+              {isFiltered
+                ? 'Танланган шартлар бўйича мавзулар топилмади'
+                : 'Бугун ҳозирча мавзулар йўқ'}
             </Text>
             <span style={{ color: '#64748B', fontSize: 13, marginLeft: 8 }}>
-              Бошқа сана оралиғи, маҳалла ёки йўналишларни танлаб кўринг.
+              {isFiltered
+                ? 'Бошқа сана оралиғи, маҳалла ёки йўналишларни танлаб кўринг.'
+                : 'Туман маҳаллалари гуруҳларидан янги хабарлар келиб тушганда бу ерда мавзулар шаклланади.'}
             </span>
           </div>
-          {onResetFilters && (
-            <Button
-              type="primary"
-              onClick={onResetFilters}
-              style={{
-                backgroundColor: '#0284C7',
-                borderRadius: 6,
-                fontWeight: 600,
-                height: 36,
-                boxShadow: 'none',
-              }}
-            >
-              Фильтрларни тозалаш
-            </Button>
-          )}
         </div>
       )}
       {/* Scroll Navigation Controls (Mobile / Narrow screens < 1200px) */}

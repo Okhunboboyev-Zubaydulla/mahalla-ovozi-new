@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Button, Space, Typography, Alert, Grid, Popover, Tag, Divider } from 'antd';
+import { Button, Space, Typography, Grid, Popover, Tag, Divider, Tooltip } from 'antd';
 import {
   LogoutOutlined,
   CalendarOutlined,
@@ -147,6 +147,35 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
               <ClockCircleOutlined style={{ color: '#94A3B8' }} />
               Охирги янгиланиш: <strong style={{ color: '#334155' }}>{formattedRefreshTime}</strong>
             </Text>
+          )}
+
+          {hasProcessingDelay && (
+            <Tooltip
+              title={`Янгиланиш давом этмоқда — айрим сўнгги хабарлар ҳали кўринмаслиги мумкин${formattedRefreshTime ? ` (охирги муваффақиятли янгиланиш: ${formattedRefreshTime})` : ''}.`}
+              placement="bottom"
+            >
+              <Tag
+                color="warning"
+                icon={<WarningOutlined style={{ color: '#D97706' }} />}
+                aria-label={`Янгиланиш давом этмоқда — айрим сўнгги хабарлар ҳали кўринмаслиги мумкин${formattedRefreshTime ? ` (охирги муваффақиятли янгиланиш: ${formattedRefreshTime})` : ''}.`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  margin: 0,
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'help',
+                  backgroundColor: '#FFFBEB',
+                  borderColor: '#FDE68A',
+                  color: '#92400E',
+                }}
+              >
+                Янгиланиш давом этмоқда
+              </Tag>
+            </Tooltip>
           )}
 
           {onOpenFilters && (
@@ -348,28 +377,6 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
           </Popover>
         </div>
       </div>
-
-      {/* Processing Delay Warning Banner (AC 6) */}
-      {hasProcessingDelay && (
-        <Alert
-          message={
-            <span style={{ fontSize: 13, color: '#92400E' }}>
-              Янгиланиш давом этмоқда — айрим сўнгги хабарлар ҳали кўринмаслиги мумкин
-              {formattedRefreshTime ? ` (охирги муваффақиятли янгиланиш: ${formattedRefreshTime})` : ''}.
-            </span>
-          }
-          type="warning"
-          showIcon
-          icon={<WarningOutlined style={{ color: '#D97706' }} />}
-          banner
-          style={{
-            backgroundColor: '#FFFBEB',
-            borderTop: '1px solid #FDE68A',
-            borderBottom: '1px solid #FDE68A',
-            padding: '6px 24px',
-          }}
-        />
-      )}
     </header>
   );
 };

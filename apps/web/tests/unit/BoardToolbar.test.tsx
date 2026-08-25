@@ -118,7 +118,7 @@ describe('Story 3.3 & 3.6: BoardToolbar Component Tests', () => {
     expect(refreshButton.hasAttribute('disabled')).toBe(true);
   });
 
-  it('Test 4: Displays processing delay warning banner when hasProcessingDelay is true (AC 6)', () => {
+  it('Test 4: Displays processing delay warning indicator when hasProcessingDelay is true (AC 6)', () => {
     renderWithProviders(
       <BoardToolbar
         districtName="Яккасарой тумани"
@@ -128,8 +128,9 @@ describe('Story 3.3 & 3.6: BoardToolbar Component Tests', () => {
       />,
     );
 
+    expect(screen.getByText(/Янгиланиш давом этмоқда/)).toBeTruthy();
     expect(
-      screen.getByText(/Янгиланиш давом этмоқда — айрим сўнгги хабарлар ҳали кўринмаслиги мумкин/),
+      screen.getByLabelText(/Янгиланиш давом этмоқда — айрим сўнгги хабарлар ҳали кўринмаслиги мумкин/),
     ).toBeTruthy();
   });
 

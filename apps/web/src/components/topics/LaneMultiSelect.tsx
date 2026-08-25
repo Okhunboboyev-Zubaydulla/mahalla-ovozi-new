@@ -137,8 +137,8 @@ export const LaneMultiSelect: React.FC<LaneMultiSelectProps> = ({
         disabled={disabled}
         icon={<AppstoreOutlined style={{ color: '#0284C7' }} />}
         style={{
-          height: 44,
-          borderRadius: 8,
+          height: 36,
+          borderRadius: 6,
           borderColor: '#CBD5E1',
           boxShadow: 'none',
           display: 'flex',
@@ -146,6 +146,7 @@ export const LaneMultiSelect: React.FC<LaneMultiSelectProps> = ({
           gap: 6,
           fontWeight: 500,
           color: '#0F172A',
+          flexShrink: 0,
           ...style,
         }}
         aria-label={`Йўналишлар фильтри: ${selectedLanes.length} та йўналиш танланган`}

@@ -41,12 +41,21 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        flexWrap: 'wrap',
+        flexWrap: 'nowrap',
+        overflowX: 'auto',
         gap: 12,
         boxShadow: 'none',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          flexWrap: 'nowrap',
+          flexShrink: 0,
+        }}
+      >
         {/* Lexical Search Input (AC 1, AC 4) */}
         <DashboardSearchInput
           value={searchQuery}
@@ -54,7 +63,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           disabled={isLoading}
         />
 
-        <div style={{ width: 1, height: 24, backgroundColor: '#E2E8F0' }} />
+        <div style={{ width: 1, height: 24, backgroundColor: '#E2E8F0', flexShrink: 0 }} />
 
         {/* Date Scope Filter */}
         <DateScopeSelect
@@ -71,7 +80,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           disabled={isLoading}
         />
 
-        <div style={{ width: 1, height: 24, backgroundColor: '#E2E8F0' }} />
+        <div style={{ width: 1, height: 24, backgroundColor: '#E2E8F0', flexShrink: 0 }} />
 
         {/* Mahalla Filter */}
         <MahallaSelect
@@ -89,7 +98,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
         {/* Loading / Transition Spinner */}
         {isLoading && (
-          <Space size={6} style={{ marginLeft: 4 }}>
+          <Space size={6} style={{ marginLeft: 4, flexShrink: 0 }}>
             <Spin indicator={<LoadingOutlined style={{ fontSize: 16, color: '#0284C7' }} spin />} />
             <Text type="secondary" style={{ fontSize: 13, color: '#64748B' }}>
               Юкланмоқда...
@@ -110,9 +119,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             fontWeight: 500,
             fontSize: 13,
             padding: '0 8px',
-            height: 44,
+            height: 36,
             display: 'inline-flex',
             alignItems: 'center',
+            flexShrink: 0,
           }}
           aria-label="Барча фильтрларни тозалаш"
         >
