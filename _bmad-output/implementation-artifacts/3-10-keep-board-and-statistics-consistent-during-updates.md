@@ -1,8 +1,8 @@
 # Story 3.10: Keep Board and Statistics Consistent During Updates
 
-Status: ready-for-dev
+Status: done
 
-<!-- Note: Comprehensive Adversarial Spec Review & Edge-Case Validation completed. Ready for dev-story. -->
+<!-- Note: Implementation completed with full unit, integration, and typecheck verification. -->
 
 ## Story
 
@@ -107,36 +107,36 @@ so that I am never shown statistics that silently describe a different result se
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Shared API Contracts & Zod Schemas for Evaluation Identity** (AC: 1, 2, 3)
-  - [ ] 1.1 In `packages/api-contracts/src/topics.ts`:
+- [x] **Task 1: Shared API Contracts & Zod Schemas for Evaluation Identity** (AC: 1, 2, 3)
+  - [x] 1.1 In `packages/api-contracts/src/topics.ts`:
     - Add `evaluationId: z.string().uuid()` to `HokimTopicBoardResponseSchema`.
     - Add `evaluationId: z.string().uuid()` to `HokimTopicStatisticsResponseSchema`.
     - Export updated `HokimTopicBoardResponse` and `HokimTopicStatisticsResponse` types.
     - Verify schema backward/forward compatibility and ensure strict UUIDv4 validation.
 
-- [ ] **Task 2: Backend Coordinated Evaluation & Isolation in `HokimTopicService` & Routes** (AC: 1, 2, 3, 8, 9)
-  - [ ] 2.1 In `apps/backend/src/modules/topics/hokim-topic-service.ts`:
+- [x] **Task 2: Backend Coordinated Evaluation & Isolation in `HokimTopicService` & Routes** (AC: 1, 2, 3, 8, 9)
+  - [x] 2.1 In `apps/backend/src/modules/topics/hokim-topic-service.ts`:
     - In `getTodayBoard`: generate fresh UUIDv4 `evaluationId = crypto.randomUUID()` and authoritative `serverEvaluatedAt = currentVisitDate.toISOString()`.
     - In `getStatistics`: generate fresh UUIDv4 `evaluationId = crypto.randomUUID()` and authoritative `serverEvaluatedAt = asOfDate.toISOString()`.
     - Ensure `evaluationId` generation is strictly high-entropy random and independent of search text or sensitive parameters.
     - Review single-pass CTE query execution to ensure consistent read behavior without retaining snapshot tables.
-  - [ ] 2.2 In `apps/backend/src/modules/topics/hokim-topics-routes.ts`:
+  - [x] 2.2 In `apps/backend/src/modules/topics/hokim-topics-routes.ts`:
     - Verify all GET and POST search route handlers for board and statistics properly return `evaluationId` and `serverEvaluatedAt`.
     - Ensure error handling and log messages do NOT echo raw search text or leak parameters.
 
-- [ ] **Task 3: Web Client Evaluation Coordination & Hook Synchronization** (AC: 3, 4, 5, 6)
-  - [ ] 3.1 In `apps/web/src/topics/useTopicStatistics.ts`:
+- [x] **Task 3: Web Client Evaluation Coordination & Hook Synchronization** (AC: 3, 4, 5, 6)
+  - [x] 3.1 In `apps/web/src/topics/useTopicStatistics.ts`:
     - Support receiving and returning `evaluationId` in `UseTopicStatisticsResult`.
     - Fix `placeholderData`: update logic to only preserve previous data when `queryKey` filter parameters match identically (same scope). On filter or search scope transition, immediately return `undefined` so prior-scope statistics are cleared without cross-scope statistic leakage.
     - Pass through `signal` (AbortSignal) to `hokimTopicsClient` to abort in-flight requests on rapid filter switching.
     - Expose `isError`, `error`, `refetch`, `isFetching`, and `evaluationId`.
-  - [ ] 3.2 In `apps/web/src/topics/useHokimTopicBoard.ts`:
+  - [x] 3.2 In `apps/web/src/topics/useHokimTopicBoard.ts`:
     - Expose `evaluationId` and `serverEvaluatedAt` from board data.
     - Ensure `manualRefresh` and `refetch` return promises to allow coordinated re-evaluation triggering from dashboard page.
     - Verify existing board data is preserved in state during in-flight background refresh/retry without full-screen layout flashing.
 
-- [ ] **Task 4: Scoped Statistics Failure & Coordinated Retry UI** (AC: 4, 5, 6, 7)
-  - [ ] 4.1 In `apps/web/src/components/topics/TopicStatisticsStrip.tsx`:
+- [x] **Task 4: Scoped Statistics Failure & Coordinated Retry UI** (AC: 4, 5, 6, 7)
+  - [x] 4.1 In `apps/web/src/components/topics/TopicStatisticsStrip.tsx`:
     - Update `TopicStatisticsStripProps`:
       ```ts
       export interface TopicStatisticsStripProps {
@@ -158,7 +158,7 @@ so that I am never shown statistics that silently describe a different result se
       - Render 5 structure-matching skeleton cards (`minHeight: 116px`) with pulse animation and fixed heights (0px CLS).
     - When `isError` is true but `statistics` is present (background refresh partial failure):
       - Render existing 5 cards with stale qualification rather than replacing with an error card.
-  - [ ] 4.2 In `apps/web/src/pages/HokimDashboardPage.tsx`:
+  - [x] 4.2 In `apps/web/src/pages/HokimDashboardPage.tsx`:
     - Connect `TopicStatisticsStrip` props:
       ```tsx
       <TopicStatisticsStrip
@@ -174,27 +174,27 @@ so that I am never shown statistics that silently describe a different result se
     - Ensure toolbar freshness timestamp continues to reflect the board's successful `serverEvaluatedAt` when statistics fail.
     - Verify global error banner is only shown when the board itself fails, and is NOT triggered by statistics failure.
 
-- [ ] **Task 5: Backend Integration Tests on Isolated Test DB (`mahalla_ovozi_test`, port 5433)** (AC: 1, 2, 3, 10)
-  - [ ] 5.1 In `apps/backend/tests/hokim-topics-statistics.test.ts` (or `hokim-topics-coordination.test.ts`):
+- [x] **Task 5: Backend Integration Tests on Isolated Test DB (`mahalla_ovozi_test`, port 5433)** (AC: 1, 2, 3, 10)
+  - [x] 5.1 In `apps/backend/tests/hokim-topics-statistics.test.ts` (or `hokim-topics-coordination.test.ts`):
     - Verify database connection runs strictly on isolated test database `mahalla_ovozi_test` (port 5433).
     - Test board and statistics endpoints return valid UUIDv4 `evaluationId` and ISO `serverEvaluatedAt`.
     - Test sequential requests produce distinct `evaluationId` values.
     - Test search POST endpoints return `evaluationId` without search text in the identifier.
     - Test tenant isolation by `districtId`.
 
-- [ ] **Task 6: Frontend Component & Hook Tests (Vitest)** (AC: 4, 5, 6, 7, 10)
-  - [ ] 6.1 In `apps/web/tests/unit/TopicStatisticsStrip.test.tsx`:
+- [x] **Task 6: Frontend Component & Hook Tests (Vitest)** (AC: 4, 5, 6, 7, 10)
+  - [x] 6.1 In `apps/web/tests/unit/TopicStatisticsStrip.test.tsx`:
     - Test scoped error state rendering with `Қайта уриниш` button when `isError=true` and `statistics=undefined`.
     - Test clicking `Қайта уриниш` calls `onRetry`.
     - Test mobile view (< 1024px) error rendering without counter header.
     - Test loading skeleton rendering (5 skeleton cards, 0px CLS, `minHeight: 116px`).
     - Test stale data preservation: when `isError=true` and `statistics` is present, renders 5 cards without error card.
     - Test normal 5-card rendering when `statistics` are provided.
-  - [ ] 6.2 In `apps/web/tests/unit/useTopicStatistics.test.tsx`:
+  - [x] 6.2 In `apps/web/tests/unit/useTopicStatistics.test.tsx`:
     - Test scope change (filter/search) clears old statistics immediately (`statistics: undefined`).
     - Test error handling state (`isError=true`).
     - Test query key generation for all filter and search combinations.
-  - [ ] 6.3 In `apps/web/tests/unit/HokimDashboard.test.tsx`:
+  - [x] 6.3 In `apps/web/tests/unit/HokimDashboard.test.tsx`:
     - Test partial failure scenario: board loads successfully, statistics fails -> board is interactive, statistics strip shows scoped error, toolbar shows board freshness, global error banner is NOT displayed.
     - Test statistics retry triggers coordinated refresh while preserving selected topic and drawer state.
 

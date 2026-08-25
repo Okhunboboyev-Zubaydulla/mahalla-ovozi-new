@@ -21,6 +21,7 @@ const mockStatisticsResponse: HokimTopicStatisticsResponse = {
   districtId: 'dist_test_1',
   districtName: 'Яккасарой тумани',
   calendarDay: '2026-08-24',
+  evaluationId: '11111111-2222-4333-8444-555555555555',
   serverEvaluatedAt: '2026-08-24T10:00:00.000Z',
   totalUniqueTopics: 12,
   card1Comparison: {
@@ -136,7 +137,7 @@ describe('useTopicStatistics Hook Unit Tests', () => {
     );
   });
 
-  it('preserves existing data as placeholder while filters are changing', async () => {
+  it('immediately clears statistics to undefined on filter scope transition to prevent cross-scope leakage (AC 4, AC 5)', async () => {
     vi.spyOn(hokimTopicsClient, 'getStatistics').mockResolvedValue(mockStatisticsResponse);
 
     let currentFilters: DashboardFilterState = {
@@ -158,19 +159,42 @@ describe('useTopicStatistics Hook Unit Tests', () => {
 
     expect(result.current.statistics?.totalUniqueTopics).toBe(12);
 
-    // Switch filters
+    // Switch date scope
     currentFilters = {
       dateScope: 'yesterday',
       lanes: ['WATER', 'GAS'],
     };
 
+    // Slow down next fetch to inspect immediate transition state
+    vi.spyOn(hokimTopicsClient, 'getStatistics').mockImplementation(
+      () => new Promise(() => {}), // never resolving in-flight promise
+    );
+
     rerender({ filters: currentFilters });
 
-    // While re-fetching, existing statistics should remain available without resetting to undefined
-    expect(result.current.statistics?.totalUniqueTopics).toBe(12);
+    // On filter scope transition, previous statistics must NOT leak into the new scope
+    expect(result.current.statistics).toBeUndefined();
   });
 
-  it('handles query errors cleanly', async () => {
+  it('exposes evaluationId from statistics response (AC 1, AC 3)', async () => {
+    const statsWithEvaluation: HokimTopicStatisticsResponse = {
+      ...mockStatisticsResponse,
+      evaluationId: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d',
+    };
+    vi.spyOn(hokimTopicsClient, 'getStatistics').mockResolvedValue(statsWithEvaluation);
+
+    const { result } = renderHook(() => useTopicStatistics(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.evaluationId).toBe('a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d');
+  });
+
+  it('handles query errors cleanly (AC 4)', async () => {
     vi.spyOn(hokimTopicsClient, 'getStatistics').mockRejectedValue(
       new Error('Статистикани юклаб бўлмади'),
     );

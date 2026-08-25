@@ -508,8 +508,8 @@ export function useHokimTopicBoard(
     [lanesState, filterState, trimmedSearch, boardQuery.isFetching, boardQuery.isPlaceholderData, boardQuery.refetch],
   );
 
-  const manualRefresh = useCallback(async () => {
-    await boardQuery.refetch();
+  const manualRefresh = useCallback(() => {
+    return boardQuery.refetch();
   }, [boardQuery]);
 
   const newTopicsPerLane: Record<QualifyingLane, number> = {
@@ -528,6 +528,8 @@ export function useHokimTopicBoard(
 
   return {
     board: boardQuery.data,
+    evaluationId: boardQuery.data?.evaluationId ?? null,
+    serverEvaluatedAt: boardQuery.data?.serverEvaluatedAt ?? null,
     isLoading: boardQuery.isLoading,
     isRefreshing,
     isFilterTransitioning,

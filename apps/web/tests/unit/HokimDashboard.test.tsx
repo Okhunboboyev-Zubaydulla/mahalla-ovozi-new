@@ -55,6 +55,7 @@ const mockBoardResponse: HokimTopicBoardResponse = {
   districtId: 'dist_1',
   districtName: 'Яккасарой тумани',
   calendarDay: '2026-08-23',
+  evaluationId: '11111111-2222-4333-8444-555555555555',
   visitBaselineTimestamp: '2026-08-23T08:00:00.000Z',
   currentVisitTimestamp: '2026-08-23T10:30:00.000Z',
   serverEvaluatedAt: '2026-08-23T10:30:00.000Z',
@@ -334,6 +335,104 @@ describe('Hokim Dashboard Component & Integration Tests (Story 3.1)', () => {
 
       // Board remains mounted and visible
       expect(screen.getAllByText('Сув босими пасайиши кузатилмоқда.').length).toBe(2);
+    });
+
+    it('isolates statistics failure to statistics strip without displaying global error banner (AC 4)', async () => {
+      vi.spyOn(hokimTopicsClient, 'getTodayBoard').mockResolvedValue(mockBoardResponse);
+      vi.spyOn(hokimTopicsClient, 'getStatistics').mockRejectedValue(
+        new Error('Statistics service temporary failure'),
+      );
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Яккасарой тумани')).toBeTruthy();
+      });
+
+      // Board is rendered and functional
+      const summaries = screen.getAllByText('Сув босими пасайиши кузатилмоқда.');
+      expect(summaries.length).toBe(2);
+
+      // Scoped error container is rendered inside statistics region
+      await waitFor(() => {
+        expect(screen.getByText('Статистика маълумотларини юклаб бўлмади')).toBeTruthy();
+      });
+
+      // Global board error banners must NOT be rendered
+      expect(screen.queryByText(/Янги маълумотларни юклаб бўлмади/)).toBeNull();
+      expect(screen.queryByText(/Юклашда хатолик/)).toBeNull();
+    });
+
+    it('coordinated statistics retry triggers both board and statistics refresh (AC 6)', async () => {
+      const getBoardSpy = vi.spyOn(hokimTopicsClient, 'getTodayBoard').mockResolvedValue(mockBoardResponse);
+      let statsFailed = true;
+      const getStatsSpy = vi.spyOn(hokimTopicsClient, 'getStatistics').mockImplementation(async () => {
+        if (statsFailed) {
+          throw new Error('Initial statistics error');
+        }
+        return {
+          districtId: 'dist_1',
+          districtName: 'Яккасарой тумани',
+          calendarDay: '2026-08-23',
+          evaluationId: '22222222-3333-4444-8555-666666666666',
+          serverEvaluatedAt: '2026-08-23T10:35:00.000Z',
+          totalUniqueTopics: 1,
+          hokimRelatedTopics: 1,
+          hokimEvidenceCount: 4,
+          activeMahallasCount: 1,
+          totalAcceptedEvidenceCount: 4,
+          card1Comparison: {
+            isAvailable: true,
+            previousValue: 0,
+            delta: 1,
+            comparisonPeriodType: 'equivalent_same_time_yesterday',
+            comparisonPeriodLabel: 'кечаги шу вақтга нисбатан',
+          },
+          card4: {
+            mode: 'most_active_service_lane',
+            leaderLane: 'WATER',
+            leaderTopicCount: 1,
+            isTie: false,
+            tiedCount: 0,
+            isZero: false,
+          },
+          card5: {
+            mode: 'most_active_mahalla',
+            leaderMahalla: 'Боғсарой маҳалласи',
+            leaderTopicCount: 1,
+            isTie: false,
+            tiedCount: 0,
+            isZero: false,
+          },
+        };
+      });
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Статистика маълумотларини юклаб бўлмади')).toBeTruthy();
+      });
+
+      // Clear call counts from initial mount
+      getBoardSpy.mockClear();
+      getStatsSpy.mockClear();
+
+      // Next retry attempt will succeed
+      statsFailed = false;
+
+      const retryBtn = screen.getByRole('button', { name: /статистикани қайта юклаш/i });
+      fireEvent.click(retryBtn);
+
+      await waitFor(() => {
+        // Coordinated retry refetches both board and statistics
+        expect(getBoardSpy).toHaveBeenCalled();
+        expect(getStatsSpy).toHaveBeenCalled();
+        // Statistics strip recovers and renders 5 cards
+        expect(screen.getByText('Жами мавзулар')).toBeTruthy();
+      });
+
+      // Error alert is removed
+      expect(screen.queryByText('Статистика маълумотларини юклаб бўлмади')).toBeNull();
     });
   });
 });

@@ -68,6 +68,7 @@ export const HokimDashboardPage: React.FC = () => {
     statistics,
     isLoading: isStatsLoading,
     isFetching: isStatsFetching,
+    isError: isStatsError,
     refetch: refetchStats,
   } = useTopicStatistics(filters, searchQuery);
 
@@ -100,6 +101,10 @@ export const HokimDashboardPage: React.FC = () => {
     retryFilter();
     refetchStats();
   }, [retryFilter, refetchStats]);
+
+  const handleStatisticsRetry = useCallback(async () => {
+    await Promise.allSettled([manualRefresh(), refetchStats()]);
+  }, [manualRefresh, refetchStats]);
 
   const handleInvalidatedTopic = useCallback(() => {
     const prevLane = originatingLane;
@@ -302,6 +307,10 @@ export const HokimDashboardPage: React.FC = () => {
       <TopicStatisticsStrip
         statistics={statistics}
         isLoading={isStatsLoading && !statistics}
+        isError={isStatsError && !statistics}
+        onRetry={handleStatisticsRetry}
+        isRetrying={isStatsFetching}
+        isStale={Boolean(isStatsError && statistics)}
       />
 
       {/* Offline Warning Banner (AC 8) */}

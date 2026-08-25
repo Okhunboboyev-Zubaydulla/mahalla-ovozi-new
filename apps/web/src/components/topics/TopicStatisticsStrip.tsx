@@ -8,6 +8,8 @@ import {
   HomeOutlined,
   AppstoreOutlined,
   EnvironmentOutlined,
+  ReloadOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import { HokimTopicStatisticsResponse, TopicStatisticCard1Comparison } from '@mahalla-ovozi/api-contracts';
 import { TopicStatisticCard } from './TopicStatisticCard.js';
@@ -32,11 +34,19 @@ interface CardDescriptor {
 export interface TopicStatisticsStripProps {
   statistics?: HokimTopicStatisticsResponse;
   isLoading?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
+  isRetrying?: boolean;
+  isStale?: boolean;
 }
 
 export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
   statistics,
   isLoading = false,
+  isError = false,
+  onRetry,
+  isRetrying = false,
+  isStale = false,
 }) => {
   const screens = useBreakpoint();
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -190,6 +200,7 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
     <section
       role="region"
       aria-label="Муҳим кўрсаткичлар"
+      data-stale={isStale ? 'true' : undefined}
       style={{
         backgroundColor: '#F4F6F8',
         padding: isDesktop ? '12px 24px' : '10px 16px',
@@ -197,7 +208,7 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
       }}
     >
       {/* Mobile Overflow Navigation Header (< 1024px) */}
-      {!isDesktop && (
+      {!isDesktop && (!isError || Boolean(statistics)) && (
         <div
           style={{
             display: 'flex',
@@ -261,47 +272,96 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
         </div>
       )}
 
-      {/* Cards Layout: 5-column grid on desktop, smooth horizontal snap on mobile */}
-      <div
-        style={{
-          display: isDesktop ? 'grid' : 'flex',
-          gridTemplateColumns: isDesktop ? 'repeat(5, minmax(0, 1fr))' : undefined,
-          gap: 12,
-          overflowX: isDesktop ? 'visible' : 'auto',
-          scrollSnapType: isDesktop ? undefined : 'x mandatory',
-          scrollbarWidth: 'none',
-          WebkitOverflowScrolling: 'touch',
-          paddingBottom: isDesktop ? 0 : 4,
-        }}
-      >
-        {cards.map((card, index) => (
-          <div
-            key={card.id}
-            ref={(el) => {
-              cardRefs.current[index] = el;
-            }}
+      {/* Scoped Cold Error Alert Container (AC 4, AC 7) */}
+      {isError && !statistics ? (
+        <div
+          role="alert"
+          aria-live="polite"
+          style={{
+            backgroundColor: '#FEF2F2',
+            border: '1px solid #FECACA',
+            borderRadius: 8,
+            padding: isDesktop ? '16px 24px' : '16px',
+            minHeight: 116,
+            display: 'flex',
+            flexDirection: isDesktop ? 'row' : 'column',
+            alignItems: isDesktop ? 'center' : 'flex-start',
+            justifyContent: 'space-between',
+            gap: 12,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <WarningOutlined style={{ color: '#EF4444', fontSize: 20 }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#991B1B' }}>
+              Статистика маълумотларини юклаб бўлмади
+            </span>
+          </div>
+          <Button
+            type="default"
+            icon={<ReloadOutlined />}
+            onClick={onRetry}
+            loading={isRetrying}
+            aria-label="Статистикани қайта юклаш"
             style={{
-              flex: isDesktop ? undefined : '0 0 85%',
-              minWidth: isDesktop ? 0 : 260,
-              maxWidth: isDesktop ? undefined : 320,
-              scrollSnapAlign: isDesktop ? undefined : 'center',
+              borderColor: '#FCA5A5',
+              color: '#991B1B',
+              fontWeight: 600,
+              minHeight: isDesktop ? 36 : 44,
+              height: isDesktop ? 36 : 44,
+              borderRadius: 8,
+              boxShadow: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            <TopicStatisticCard
-              id={card.id}
-              title={card.title}
-              value={card.value}
-              subtitle={card.subtitle}
-              icon={card.icon}
-              iconBgColor={card.iconBgColor}
-              iconColor={card.iconColor}
-              isLoading={isLoading}
-              comparison={card.comparison}
-              hasComparisonSlot={card.hasComparisonSlot}
-            />
-          </div>
-        ))}
-      </div>
+            Қайта уриниш
+          </Button>
+        </div>
+      ) : (
+        /* Cards Layout: 5-column grid on desktop, smooth horizontal snap on mobile */
+        <div
+          style={{
+            display: isDesktop ? 'grid' : 'flex',
+            gridTemplateColumns: isDesktop ? 'repeat(5, minmax(0, 1fr))' : undefined,
+            gap: 12,
+            overflowX: isDesktop ? 'visible' : 'auto',
+            scrollSnapType: isDesktop ? undefined : 'x mandatory',
+            scrollbarWidth: 'none',
+            WebkitOverflowScrolling: 'touch',
+            paddingBottom: isDesktop ? 0 : 4,
+          }}
+        >
+          {cards.map((card, index) => (
+            <div
+              key={card.id}
+              ref={(el) => {
+                cardRefs.current[index] = el;
+              }}
+              style={{
+                flex: isDesktop ? undefined : '0 0 85%',
+                minWidth: isDesktop ? 0 : 260,
+                maxWidth: isDesktop ? undefined : 320,
+                scrollSnapAlign: isDesktop ? undefined : 'center',
+              }}
+            >
+              <TopicStatisticCard
+                id={card.id}
+                title={card.title}
+                value={card.value}
+                subtitle={card.subtitle}
+                icon={card.icon}
+                iconBgColor={card.iconBgColor}
+                iconColor={card.iconColor}
+                isLoading={isLoading}
+                comparison={card.comparison}
+                hasComparisonSlot={card.hasComparisonSlot}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 };

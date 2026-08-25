@@ -237,6 +237,7 @@ describe('Story 3.7: Private Lexical Search Frontend Unit Tests', () => {
       districtId: 'dist_search_1',
       districtName: 'Тест тумани',
       calendarDay: '2026-08-24',
+      evaluationId: '11111111-2222-4333-8444-555555555555',
       visitBaselineTimestamp: '2026-08-24T07:00:00.000Z',
       currentVisitTimestamp: '2026-08-24T08:30:00.000Z',
       serverEvaluatedAt: '2026-08-24T08:30:00.000Z',
@@ -254,6 +255,7 @@ describe('Story 3.7: Private Lexical Search Frontend Unit Tests', () => {
       districtId: 'dist_search_1',
       districtName: 'Тест тумани',
       calendarDay: '2026-08-24',
+      evaluationId: '11111111-2222-4333-8444-555555555555',
       serverEvaluatedAt: '2026-08-24T08:30:00.000Z',
       totalUniqueTopics: 0,
       card1Comparison: {

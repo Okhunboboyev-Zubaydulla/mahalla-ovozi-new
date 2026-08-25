@@ -993,4 +993,110 @@ describe('Story 3.5: Neutral Statistics Aggregation Integration Tests', () => {
       }
     });
   });
+
+  describe('Story 3.10: Coordinated Evaluation Identity & Read Isolation (AC 1, 2, 3, 8)', () => {
+    const UUIDV4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    it('returns high-entropy UUIDv4 evaluationId and ISO serverEvaluatedAt on board endpoint (AC 1, 2)', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: '/api/v1/hokim/topics/board',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.body);
+      expect(data.evaluationId).toBeDefined();
+      expect(data.evaluationId).toMatch(UUIDV4_REGEX);
+      expect(data.serverEvaluatedAt).toBeDefined();
+      expect(new Date(data.serverEvaluatedAt).toISOString()).toBe(data.serverEvaluatedAt);
+    });
+
+    it('returns high-entropy UUIDv4 evaluationId and ISO serverEvaluatedAt on statistics endpoint (AC 1, 2)', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: '/api/v1/hokim/topics/statistics',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.body);
+      expect(data.evaluationId).toBeDefined();
+      expect(data.evaluationId).toMatch(UUIDV4_REGEX);
+      expect(data.serverEvaluatedAt).toBeDefined();
+      expect(new Date(data.serverEvaluatedAt).toISOString()).toBe(data.serverEvaluatedAt);
+    });
+
+    it('generates unique evaluationId on sequential requests even for identical filters (AC 2)', async () => {
+      const res1 = await server.inject({
+        method: 'GET',
+        url: '/api/v1/hokim/topics/board',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+      const res2 = await server.inject({
+        method: 'GET',
+        url: '/api/v1/hokim/topics/board',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+
+      const data1 = JSON.parse(res1.body);
+      const data2 = JSON.parse(res2.body);
+
+      expect(data1.evaluationId).toMatch(UUIDV4_REGEX);
+      expect(data2.evaluationId).toMatch(UUIDV4_REGEX);
+      expect(data1.evaluationId).not.toBe(data2.evaluationId);
+    });
+
+    it('returns opaque evaluationId for search POST endpoints without leaking search queries (AC 2, 8)', async () => {
+      const sensitiveQuery = 'maxfiy_qidiruv_text_123';
+
+      const boardSearchRes = await server.inject({
+        method: 'POST',
+        url: '/api/v1/hokim/topics/board/search',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+        payload: {
+          search: sensitiveQuery,
+          dateScope: 'today',
+        },
+      });
+
+      expect(boardSearchRes.statusCode).toBe(200);
+      const boardData = JSON.parse(boardSearchRes.body);
+      expect(boardData.evaluationId).toMatch(UUIDV4_REGEX);
+      expect(boardData.evaluationId).not.toContain(sensitiveQuery);
+
+      const statsSearchRes = await server.inject({
+        method: 'POST',
+        url: '/api/v1/hokim/topics/statistics/search',
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+        payload: {
+          search: sensitiveQuery,
+          dateScope: 'today',
+        },
+      });
+
+      expect(statsSearchRes.statusCode).toBe(200);
+      const statsData = JSON.parse(statsSearchRes.body);
+      expect(statsData.evaluationId).toMatch(UUIDV4_REGEX);
+      expect(statsData.evaluationId).not.toContain(sensitiveQuery);
+    });
+  });
 });

@@ -11,6 +11,7 @@ const mockDefaultStats: HokimTopicStatisticsResponse = {
   districtId: 'dist_1',
   districtName: 'Яккасарой',
   calendarDay: '2026-08-24',
+  evaluationId: '11111111-2222-4333-8444-555555555555',
   serverEvaluatedAt: '2026-08-24T10:00:00.000Z',
   totalUniqueTopics: 15,
   hokimRelatedTopics: 4,
@@ -409,6 +410,105 @@ describe('TopicStatisticsStrip Component Tests', () => {
 
       const subblock = card1?.querySelector('[data-testid="card-comparison-subblock"]');
       expect(subblock).toBeTruthy();
+    });
+  });
+
+  describe('Story 3.10: Scoped Statistics Failure & Coordinated Retry UI (AC 4, 5, 6, 7)', () => {
+    it('renders scoped error alert container with 0px CLS when statistics fail cold (AC 4, 7)', () => {
+      renderWithProviders(
+        <TopicStatisticsStrip
+          isError={true}
+          statistics={undefined}
+          onRetry={vi.fn()}
+        />,
+      );
+
+      const alert = screen.getByRole('alert');
+      expect(alert).toBeTruthy();
+      expect(screen.getByText('Статистика маълумотларини юклаб бўлмади')).toBeTruthy();
+
+      const retryBtn = screen.getByRole('button', { name: /статистикани қайта юклаш/i });
+      expect(retryBtn).toBeTruthy();
+      expect(retryBtn.textContent).toContain('Қайта уриниш');
+
+      // None of the 5 cards should exist
+      expect(document.getElementById('statistic-card-1')).toBeNull();
+    });
+
+    it('invokes onRetry handler when clicking Қайта уриниш button in error container (AC 4, 6)', () => {
+      const handleRetry = vi.fn();
+      renderWithProviders(
+        <TopicStatisticsStrip
+          isError={true}
+          statistics={undefined}
+          onRetry={handleRetry}
+        />,
+      );
+
+      const retryBtn = screen.getByRole('button', { name: /статистикани қайта юклаш/i });
+      fireEvent.click(retryBtn);
+
+      expect(handleRetry).toHaveBeenCalledTimes(1);
+    });
+
+    it('suppresses mobile carousel counter header during cold error state (AC 4, 7)', () => {
+      vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
+        if (query.includes('1024px') || query.includes('lg')) {
+          return {
+            matches: false,
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+          } as unknown as MediaQueryList;
+        }
+        return {
+          matches: true,
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        } as unknown as MediaQueryList;
+      });
+
+      renderWithProviders(
+        <TopicStatisticsStrip
+          isError={true}
+          statistics={undefined}
+          onRetry={vi.fn()}
+        />,
+      );
+
+      // Carousel counter should NOT be rendered
+      expect(screen.queryByText(/Кўрсаткич \d+ \/ 5/)).toBeNull();
+      // Error alert is rendered
+      expect(screen.getByText('Статистика маълумотларини юклаб бўлмади')).toBeTruthy();
+    });
+
+    it('preserves existing 5 cards without showing error container when isError=true but statistics is present (AC 5)', () => {
+      renderWithProviders(
+        <TopicStatisticsStrip
+          isError={true}
+          statistics={mockDefaultStats}
+          onRetry={vi.fn()}
+          isStale={true}
+        />,
+      );
+
+      // All 5 cards should remain visible
+      expect(document.getElementById('statistic-card-1')).toBeTruthy();
+      expect(screen.getByText('Жами мавзулар')).toBeTruthy();
+      expect(screen.getByText('15')).toBeTruthy();
+
+      // Scoped error container should NOT be displayed
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.queryByText('Статистика маълумотларини юклаб бўлмади')).toBeNull();
     });
   });
 });

@@ -39,6 +39,7 @@ const initialBoardResponse: HokimTopicBoardResponse = {
   districtId: 'dist_yakka_1',
   districtName: 'Яккасарой тумани',
   calendarDay: '2026-08-24',
+  evaluationId: '11111111-2222-4333-8444-555555555555',
   visitBaselineTimestamp: '2026-08-24T07:00:00.000Z',
   currentVisitTimestamp: '2026-08-24T08:30:00.000Z',
   serverEvaluatedAt: '2026-08-24T08:30:00.000Z',

@@ -81,7 +81,7 @@ development_status:
   3-7-search-current-and-retained-topics-privately: done
   3-8-continue-large-filtered-and-search-results-safely: done
   3-9-compare-topic-volume-with-equivalent-prior-periods: done
-  3-10-keep-board-and-statistics-consistent-during-updates: ready-for-dev
+  3-10-keep-board-and-statistics-consistent-during-updates: done
   epic-3-retrospective: optional
 
   # ── Epic 4: Operational Health & Auditable Investigation ──

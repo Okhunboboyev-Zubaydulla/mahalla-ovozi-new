@@ -23,6 +23,7 @@ export interface UseTopicStatisticsResult {
   isError: boolean;
   error: unknown;
   refetch: () => Promise<unknown>;
+  evaluationId?: string;
 }
 
 export function useTopicStatistics(
@@ -92,8 +93,12 @@ export function useTopicStatistics(
     enabled: Boolean(districtId && actor?.role === 'DISTRICT_HOKIM'),
     placeholderData: (previousData, previousQuery) => {
       if (!previousData || !previousQuery) return undefined;
-      const prevDistrictId = previousQuery.queryKey[1];
-      if (prevDistrictId !== districtId) {
+      const prevKey = previousQuery.queryKey;
+      const currentKey = queryKey;
+      const isSameScope =
+        prevKey.length === currentKey.length &&
+        prevKey.every((val, idx) => val === currentKey[idx]);
+      if (!isSameScope) {
         return undefined;
       }
       return previousData;
@@ -110,5 +115,6 @@ export function useTopicStatistics(
     isError,
     error,
     refetch,
+    evaluationId: data?.evaluationId,
   };
 }
