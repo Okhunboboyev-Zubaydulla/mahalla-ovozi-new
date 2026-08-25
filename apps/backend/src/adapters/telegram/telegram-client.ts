@@ -9,6 +9,13 @@ export class TelegramIntegrationError extends Error {
   }
 }
 
+/**
+ * Type-guard predicate to check if an error is a TelegramIntegrationError
+ */
+export function isTelegramIntegrationError(err: unknown): err is TelegramIntegrationError {
+  return err instanceof TelegramIntegrationError;
+}
+
 export class TelegramInvalidTokenError extends TelegramIntegrationError {
   constructor(message = 'Telegram бот токени ҳақиқий эмас ёки бот топилмади.') {
     super(message, 'TELEGRAM_INVALID_TOKEN', 400);

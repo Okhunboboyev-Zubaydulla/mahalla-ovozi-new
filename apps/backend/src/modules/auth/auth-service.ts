@@ -1,8 +1,7 @@
 import { eq, and, ne, isNull } from 'drizzle-orm';
 import { DbClient } from '../../adapters/db/client.js';
 import { accounts, districts, sessions, Account, Session } from '../../adapters/db/schema/index.js';
-import { hashPassword, verifyPassword } from '../../adapters/crypto/argon2.js';
-import { validatePassword } from '../../adapters/crypto/password-policy.js';
+import { cryptoService } from '../../adapters/crypto/index.js';
 import {
   checkRateLimit,
   recordFailedAttempt,
@@ -60,7 +59,7 @@ export class InvalidPasswordPolicyError extends Error {
 
 // B1: Equalise timing when account is not found to prevent user enumeration
 // via response-time measurement. Computed once at module load.
-const DUMMY_HASH = await hashPassword('dummy-timing-equaliser-password-2026');
+const DUMMY_HASH = await cryptoService.passwords.hash('dummy-timing-equaliser-password-2026');
 
 // ─── Sign-in result type ──────────────────────────────────────────────────────
 
@@ -118,7 +117,7 @@ export async function signIn(
   if (!account) {
     // B1: Run dummy Argon2id verification to equalise response time and prevent
     // user enumeration via timing differences between found/not-found paths.
-    await verifyPassword(DUMMY_HASH, password);
+    await cryptoService.passwords.verify(DUMMY_HASH, password);
     await recordFailedAttempt(db, rateLimitKey);
     await recordAuditEvent(db, {
       action: 'AUTH_SIGN_IN_FAILURE',
@@ -130,12 +129,13 @@ export async function signIn(
   }
 
   // Verify password with Argon2id
-  const isPasswordValid = await verifyPassword(account.passwordHash, password);
+  const isPasswordValid = await cryptoService.passwords.verify(account.passwordHash, password);
   if (!isPasswordValid) {
     await recordFailedAttempt(db, rateLimitKey);
     await recordAuditEvent(db, {
       actorId: account.id,
       actorRole: account.role,
+      districtId: account.districtId || undefined,
       action: 'AUTH_SIGN_IN_FAILURE',
       ipAddress: ip,
       userAgent,
@@ -151,6 +151,7 @@ export async function signIn(
     await recordAuditEvent(db, {
       actorId: account.id,
       actorRole: account.role,
+      districtId: account.districtId || undefined,
       action: 'AUTH_SIGN_IN_FAILURE',
       ipAddress: ip,
       userAgent,
@@ -175,6 +176,7 @@ export async function signIn(
       await recordAuditEvent(db, {
         actorId: account.id,
         actorRole: account.role,
+        districtId: account.districtId || undefined,
         action: 'AUTH_SIGN_IN_FAILURE',
         ipAddress: ip,
         userAgent,
@@ -212,6 +214,7 @@ export async function signIn(
   await recordAuditEvent(db, {
     actorId: account.id,
     actorRole: account.role,
+    districtId: account.districtId || undefined,
     action: 'AUTH_SIGN_IN_SUCCESS',
     ipAddress: ip,
     userAgent,
@@ -233,8 +236,8 @@ export async function signIn(
 
 /**
  * Validates the current temporary password and replaces it with a permanent one.
- * Atomically updates the account, syncs the current session, revokes all other sessions.
- * Throws typed errors for all failure modes.
+ * Atomic: updates passwordHash + mustChangePassword=false + bumps credentialVersion,
+ * syncs the caller's session, revokes all other sessions, and logs an audit event.
  */
 export async function changeFirstLoginPassword(
   db: DbClient,
@@ -250,11 +253,12 @@ export async function changeFirstLoginPassword(
   const { account, session, currentPassword, newPassword, ip, userAgent } = input;
 
   // Verify current temporary password against stored hash
-  const isCurrentValid = await verifyPassword(account.passwordHash, currentPassword);
+  const isCurrentValid = await cryptoService.passwords.verify(account.passwordHash, currentPassword);
   if (!isCurrentValid) {
     await recordAuditEvent(db, {
       actorId: account.id,
       actorRole: account.role,
+      districtId: account.districtId || undefined,
       action: 'AUTH_FIRST_LOGIN_PASSWORD_CHANGE_FAILED',
       ipAddress: ip,
       userAgent,
@@ -269,13 +273,13 @@ export async function changeFirstLoginPassword(
   }
 
   // Validate new password against policy (>=15 chars, <=128 code points, not on blocklist)
-  const policyResult = validatePassword(newPassword);
+  const policyResult = cryptoService.passwords.validate(newPassword);
   if (!policyResult.isValid) {
     throw new InvalidPasswordPolicyError(policyResult.message || 'Янги парол талабларга жавоб бермайди.');
   }
 
   // Hash new password with Argon2id
-  const newPasswordHash = await hashPassword(newPassword);
+  const newPasswordHash = await cryptoService.passwords.hash(newPassword);
   const now = new Date();
   const newCredentialVersion = account.credentialVersion + 1;
 
@@ -327,6 +331,7 @@ export async function changeFirstLoginPassword(
       await recordAuditEvent(tx, {
         actorId: account.id,
         actorRole: account.role,
+        districtId: account.districtId || undefined,
         action: 'ACCOUNT_HOKIM_FIRST_LOGIN_PASSWORD_CHANGED',
         ipAddress: ip,
         userAgent,

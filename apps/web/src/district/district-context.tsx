@@ -61,8 +61,16 @@ export function DistrictProvider({ children }: { children: ReactNode }) {
       if (prevId && prevId !== nextId) {
         // 1. Signal abort to in-flight prior-district queries (async — await settlement)
         await queryClient.cancelQueries({ queryKey: ['district', prevId] });
+        await queryClient.cancelQueries({
+          predicate: (query) =>
+            query.queryKey.some((part) => typeof part === 'string' && part === prevId),
+        });
         // 2. Purge prior-district cache (sync — must fire AFTER cancelQueries resolves)
         queryClient.removeQueries({ queryKey: ['district', prevId] });
+        queryClient.removeQueries({
+          predicate: (query) =>
+            query.queryKey.some((part) => typeof part === 'string' && part === prevId),
+        });
       }
       // Drop late execution if a newer switch was initiated
       if (seq !== switchSeqRef.current) return;

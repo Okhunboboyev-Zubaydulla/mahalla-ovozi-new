@@ -1,49 +1,22 @@
-export interface TelegramChatSummary {
-  id: number | string;
-  type: string;
-  title?: string;
-  username?: string;
-}
+import type {
+  TelegramMessage,
+  TelegramUser,
+  TelegramChat,
+  TelegramMessageOrigin,
+  TelegramMessageEntity,
+} from '../../modules/telegram-intake/telegram-content-qualification.js';
 
-export interface TelegramUserSummary {
-  id: number | string;
-  is_bot?: boolean;
-  first_name?: string;
-  last_name?: string;
-  username?: string;
-}
+export type {
+  TelegramMessage,
+  TelegramUser,
+  TelegramChat,
+  TelegramMessageOrigin,
+  TelegramMessageEntity,
+};
 
-export interface TelegramMessageOrigin {
-  type: string;
-  date?: number;
-  sender_user?: TelegramUserSummary;
-  sender_user_name?: string;
-  sender_chat?: TelegramChatSummary;
-  chat?: TelegramChatSummary;
-  message_id?: number;
-}
-
-export interface TelegramMessageEntity {
-  type: string;
-  offset: number;
-  length: number;
-}
-
-export interface TelegramIncomingMessage {
-  message_id: number;
-  date: number;
-  chat: TelegramChatSummary;
-  from?: TelegramUserSummary;
-  sender_chat?: TelegramChatSummary;
-  forward_origin?: TelegramMessageOrigin;
-  forward_date?: number;
-  forward_from?: TelegramUserSummary;
-  forward_from_chat?: TelegramChatSummary;
-  text?: string;
-  caption?: string;
-  entities?: TelegramMessageEntity[];
-  caption_entities?: TelegramMessageEntity[];
-}
+export type TelegramChatSummary = TelegramChat;
+export type TelegramUserSummary = Partial<TelegramUser> & { id: number | string };
+export type TelegramIncomingMessage = TelegramMessage;
 
 export interface MessageFilterResult {
   accepted: boolean;

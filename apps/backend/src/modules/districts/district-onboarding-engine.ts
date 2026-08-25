@@ -310,6 +310,7 @@ export async function confirmStandingDisclosure(
 
     // AD-9 privacy-safe audit metadata
     await recordAuditEvent(tx, {
+      districtId,
       actorId: actor.id,
       actorRole: actor.role,
       action: 'DISTRICT_DISCLOSURE_CONFIRMED',
@@ -403,6 +404,7 @@ export async function activateDistrict(
 
       // Insert DISTRICT_ACTIVATED audit event inside transaction
       await recordAuditEvent(tx, {
+        districtId,
         actorId: actor.id,
         actorRole: actor.role,
         action: 'DISTRICT_ACTIVATED',
@@ -427,6 +429,7 @@ export async function activateDistrict(
   } catch (err) {
     if (err instanceof DistrictNotReadyForActivationError) {
       await recordAuditEvent(db, {
+        districtId,
         actorId: actor.id,
         actorRole: actor.role,
         action: 'DISTRICT_ACTIVATION_FAILED',

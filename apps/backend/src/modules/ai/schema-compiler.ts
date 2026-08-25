@@ -176,7 +176,7 @@ export function compileProviderSchema(
   schema: ZodType<any>,
   schemaName: string,
 ): Record<string, unknown> {
-  const portable = compilePortableJsonSchema(schema);
+  const portable = structuredClone(compilePortableJsonSchema(schema));
 
   switch (provider) {
     case 'OPENAI':

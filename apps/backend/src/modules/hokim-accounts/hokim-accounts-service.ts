@@ -7,8 +7,7 @@ import {
   HokimAccountStateEnum,
   HokimAccountStatus,
 } from '@mahalla-ovozi/api-contracts';
-import { generateTemporaryPassword } from '../../adapters/crypto/temporary-password.js';
-import { hashPassword } from '../../adapters/crypto/argon2.js';
+import { cryptoService } from '../../adapters/crypto/index.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
 import { DistrictNotFoundError } from '../districts/districts-service.js';
 
@@ -184,8 +183,8 @@ export async function createDistrictHokimAccount(
   }
 
   // 3. Generate cryptographic temporary password & Argon2id hash
-  const temporaryPassword = generateTemporaryPassword(18);
-  const passwordHash = await hashPassword(temporaryPassword);
+  const temporaryPassword = cryptoService.passwords.generateTemporary(18);
+  const passwordHash = await cryptoService.passwords.hash(temporaryPassword);
   const accountId = `acc_${crypto.randomUUID()}`;
   const now = new Date();
 
@@ -215,6 +214,7 @@ export async function createDistrictHokimAccount(
       await recordAuditEvent(tx, {
         actorId: actor.id,
         actorRole: actor.role,
+        districtId,
         action: 'ACCOUNT_HOKIM_CREATED',
         ipAddress: clientInfo?.ipAddress ?? null,
         userAgent: clientInfo?.userAgent ?? null,
@@ -285,8 +285,8 @@ export async function resetDistrictHokimPassword(
   }
 
   // 3. Generate new temporary password & hash
-  const temporaryPassword = generateTemporaryPassword(18);
-  const passwordHash = await hashPassword(temporaryPassword);
+  const temporaryPassword = cryptoService.passwords.generateTemporary(18);
+  const passwordHash = await cryptoService.passwords.hash(temporaryPassword);
   const now = new Date();
 
   // 4. Atomic update + session revocation + audit event
@@ -315,6 +315,7 @@ export async function resetDistrictHokimPassword(
     await recordAuditEvent(tx, {
       actorId: actor.id,
       actorRole: actor.role,
+      districtId,
       action: 'ACCOUNT_HOKIM_PASSWORD_RESET',
       ipAddress: clientInfo?.ipAddress ?? null,
       userAgent: clientInfo?.userAgent ?? null,
@@ -397,6 +398,7 @@ export async function disableDistrictHokimAccount(
     await recordAuditEvent(tx, {
       actorId: actor.id,
       actorRole: actor.role,
+      districtId,
       action: 'ACCOUNT_HOKIM_DISABLED',
       ipAddress: clientInfo?.ipAddress ?? null,
       userAgent: clientInfo?.userAgent ?? null,
@@ -452,8 +454,8 @@ export async function replaceDistrictHokimAccount(
   }
 
   // Generate credentials for the new account
-  const temporaryPassword = generateTemporaryPassword(18);
-  const passwordHash = await hashPassword(temporaryPassword);
+  const temporaryPassword = cryptoService.passwords.generateTemporary(18);
+  const passwordHash = await cryptoService.passwords.hash(temporaryPassword);
   const newAccountId = `acc_${crypto.randomUUID()}`;
   const now = new Date();
 
@@ -533,6 +535,7 @@ export async function replaceDistrictHokimAccount(
       await recordAuditEvent(tx, {
         actorId: actor.id,
         actorRole: actor.role,
+        districtId,
         action: 'ACCOUNT_HOKIM_REPLACED',
         ipAddress: clientInfo?.ipAddress ?? null,
         userAgent: clientInfo?.userAgent ?? null,

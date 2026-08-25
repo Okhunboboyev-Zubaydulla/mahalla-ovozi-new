@@ -11,37 +11,35 @@ import {
   TopicEvidenceItem,
   TopicEvidenceResponse,
   TopicEvidenceQueryOutput,
+  encodeKeysetCursor,
+  decodeKeysetCursor,
+  KeysetCursorPayload,
 } from '@mahalla-ovozi/api-contracts';
 
-export interface EvidenceKeysetCursorPayload {
+export interface EvidenceKeysetCursorPayload extends KeysetCursorPayload {
   t: string; // ISO datetime string of originalTimestamp
   msgId: string; // telegramMessageId
   id: string; // evidence id
 }
 
 export function encodeEvidenceKeysetCursor(timestamp: string, msgId: string, id: string): string {
-  return Buffer.from(JSON.stringify({ t: timestamp, msgId, id })).toString('base64url');
+  return encodeKeysetCursor<EvidenceKeysetCursorPayload>({ t: timestamp, msgId, id });
 }
 
 export function decodeEvidenceKeysetCursor(cursor: string): EvidenceKeysetCursorPayload | null {
-  try {
-    const raw = Buffer.from(cursor, 'base64url').toString('utf8');
-    const parsed = JSON.parse(raw);
-    if (
-      parsed &&
-      typeof parsed.t === 'string' &&
-      !Number.isNaN(new Date(parsed.t).getTime()) &&
-      typeof parsed.msgId === 'string' &&
-      parsed.msgId.length > 0 &&
-      typeof parsed.id === 'string' &&
-      parsed.id.length > 0
-    ) {
-      return { t: parsed.t, msgId: parsed.msgId, id: parsed.id };
-    }
-    return null;
-  } catch {
-    return null;
+  const parsed = decodeKeysetCursor<EvidenceKeysetCursorPayload>(cursor);
+  if (
+    parsed &&
+    typeof parsed.t === 'string' &&
+    !Number.isNaN(new Date(parsed.t).getTime()) &&
+    typeof parsed.msgId === 'string' &&
+    parsed.msgId.length > 0 &&
+    typeof parsed.id === 'string' &&
+    parsed.id.length > 0
+  ) {
+    return { t: parsed.t, msgId: parsed.msgId, id: parsed.id };
   }
+  return null;
 }
 
 /**

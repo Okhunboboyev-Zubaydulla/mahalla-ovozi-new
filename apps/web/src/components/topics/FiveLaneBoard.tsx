@@ -206,6 +206,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
           disabled={!canScrollLeft}
           onClick={() => scrollByLane('left')}
           aria-label="Олдинги йўналиш"
+          className="focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-none"
           style={{
             backgroundColor: '#FFFFFF',
             borderColor: '#CBD5E1',
@@ -219,6 +220,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
           disabled={!canScrollRight}
           onClick={() => scrollByLane('right')}
           aria-label="Кейинги йўналиш"
+          className="focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-none"
           style={{
             backgroundColor: '#FFFFFF',
             borderColor: '#CBD5E1',

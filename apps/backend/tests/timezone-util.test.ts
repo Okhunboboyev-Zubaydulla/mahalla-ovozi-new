@@ -1,11 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { getTashkentCalendarDay } from '../src/modules/telegram-intake/timezone-util.js';
+import { getTashkentCalendarDay, getTashkentDayBounds } from '../src/modules/telegram-intake/timezone-util.js';
 
 describe('getTashkentCalendarDay Utility', () => {
   it('correctly maps UTC midday timestamp to Tashkent calendar day', () => {
     // 2026-08-21 12:00:00 UTC -> 2026-08-21 17:00:00 Tashkent
     const unixSeconds = Math.floor(new Date('2026-08-21T12:00:00Z').getTime() / 1000);
     const day = getTashkentCalendarDay(unixSeconds);
+    expect(day).toBe('2026-08-21');
+  });
+
+  it('accepts Date objects directly without manual conversion', () => {
+    const date = new Date('2026-08-21T12:00:00Z');
+    const day = getTashkentCalendarDay(date);
     expect(day).toBe('2026-08-21');
   });
 
@@ -47,5 +53,15 @@ describe('getTashkentCalendarDay Utility', () => {
     expect(getTashkentCalendarDay(-500)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(getTashkentCalendarDay(null as any)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(getTashkentCalendarDay(undefined as any)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('derives exact UTC start and end bounds for Tashkent calendar day via getTashkentDayBounds', () => {
+    const bounds = getTashkentDayBounds('2026-08-25');
+    // Start of 2026-08-25 in Tashkent (UTC+5) is 2026-08-24 19:00:00.000Z
+    expect(bounds.startUtc.toISOString()).toBe('2026-08-24T19:00:00.000Z');
+    // End of 2026-08-25 in Tashkent (UTC+5) is 2026-08-25 18:59:59.999Z
+    expect(bounds.endUtc.toISOString()).toBe('2026-08-25T18:59:59.999Z');
+
+    expect(() => getTashkentDayBounds('invalid-day')).toThrow('Invalid calendar day format');
   });
 });

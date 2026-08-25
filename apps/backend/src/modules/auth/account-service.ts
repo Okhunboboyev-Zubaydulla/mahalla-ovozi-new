@@ -1,9 +1,8 @@
-import crypto from 'node:crypto';
 import { eq, and, isNull } from 'drizzle-orm';
 import { DbClient } from '../../adapters/db/client.js';
-import { accounts, sessions, auditEvents } from '../../adapters/db/schema/index.js';
-import { validatePassword } from '../../adapters/crypto/password-policy.js';
-import { hashPassword } from '../../adapters/crypto/argon2.js';
+import { accounts, sessions } from '../../adapters/db/schema/index.js';
+import { cryptoService } from '../../adapters/crypto/index.js';
+import { recordAuditEvent } from '../audit/audit-service.js';
 
 export interface ManageProductOwnerResult {
   isNew: boolean;
@@ -21,12 +20,12 @@ export async function createOrResetProductOwner(
     throw new Error('Фойдаланувчи номи 3 дан 64 белгигача бўлиши керак.');
   }
 
-  const validation = validatePassword(input.password);
+  const validation = cryptoService.passwords.validate(input.password);
   if (!validation.isValid) {
     throw new Error(validation.message || 'Парол талабга жавоб бермайди.');
   }
 
-  const hashedPassword = await hashPassword(input.password);
+  const hashedPassword = await cryptoService.passwords.hash(input.password);
 
   const [existing] = await db
     .select()
@@ -57,8 +56,7 @@ export async function createOrResetProductOwner(
         .where(and(eq(sessions.accountId, existing.id), isNull(sessions.revokedAt)));
 
       // Record privacy-safe audit event
-      await tx.insert(auditEvents).values({
-        id: `aud_${crypto.randomUUID()}`,
+      await recordAuditEvent(tx, {
         actorId: existing.id,
         actorRole: 'PRODUCT_OWNER',
         action: 'ACCOUNT_PO_PASSWORD_RESET',
@@ -66,7 +64,6 @@ export async function createOrResetProductOwner(
           username,
           credential_version: newVersion,
         },
-        createdAt: now,
       });
     });
 
@@ -92,8 +89,7 @@ export async function createOrResetProductOwner(
   });
 
   // Record privacy-safe audit event
-  await db.insert(auditEvents).values({
-    id: `aud_${crypto.randomUUID()}`,
+  await recordAuditEvent(db, {
     actorId: accountId,
     actorRole: 'PRODUCT_OWNER',
     action: 'ACCOUNT_PO_CREATED',
@@ -101,7 +97,6 @@ export async function createOrResetProductOwner(
       username,
       credential_version: 1,
     },
-    createdAt: now,
   });
 
   return {

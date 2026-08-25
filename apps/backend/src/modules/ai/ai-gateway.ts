@@ -294,6 +294,13 @@ export class AiGateway implements AiGatewayPort {
             ? 'REFUSAL'
             : 'ERROR';
 
+        const rawErrorMessage = err instanceof Error ? err.message : String(err);
+        const scrubbedMessage = rawErrorMessage
+          .replace(/sk-[A-Za-z0-9_-]{10,}/gi, 'sk-[REDACTED]')
+          .replace(/AIza[A-Za-z0-9_-]{10,}/gi, 'AIza[REDACTED]')
+          .replace(/bearer\s+[A-Za-z0-9_.-]+/gi, 'Bearer [REDACTED]')
+          .slice(0, 200);
+
         recordedAttempts.push({
           attemptNumber: attempt,
           provider: profile.provider,
@@ -301,7 +308,7 @@ export class AiGateway implements AiGatewayPort {
           durationMs: attemptDurationMs,
           status,
           errorCode,
-          sanitizedErrorMessage: (err?.message || String(err)).slice(0, 200),
+          sanitizedErrorMessage: scrubbedMessage,
         });
 
         const isRetryable =

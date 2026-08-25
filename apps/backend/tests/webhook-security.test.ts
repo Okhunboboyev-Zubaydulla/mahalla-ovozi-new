@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { deriveWebhookSecret, verifyTelegramSecretToken } from '../src/modules/telegram-intake/webhook-security.js';
+import {
+  deriveWebhookSecret,
+  verifyTelegramSecretToken,
+  sanitizeDriverError,
+} from '../src/modules/telegram-intake/webhook-security.js';
 
 describe('Telegram Webhook Security Utilities', () => {
   const botId = '123456789';
@@ -61,5 +65,26 @@ describe('Telegram Webhook Security Utilities', () => {
     expect(verifyTelegramSecretToken('some-token', undefined as any)).toBe(false);
     expect(verifyTelegramSecretToken('some-token', null as any)).toBe(false);
     expect(verifyTelegramSecretToken('some-token', '' as any)).toBe(false);
+  });
+
+  it('sanitizes sensitive driver errors and strips SQL VALUES and bot tokens (AD-11)', () => {
+    const rawSqlError = new Error(
+      "error: insert into telegram_intakes VALUES ('intake_1', 'sensitive citizen text') failed",
+    );
+    const sanitizedSql = sanitizeDriverError(rawSqlError);
+    expect(sanitizedSql.errorName).toBe('Error');
+    expect(sanitizedSql.errorMessage).not.toContain('sensitive citizen text');
+    expect(sanitizedSql.errorMessage).toContain('VALUES (...)');
+
+    const rawTokenError = new Error(
+      'FetchError: request to https://api.telegram.org/bot123456789:ABCdefGHIjklMNO_secret/getWebhookInfo failed',
+    );
+    const sanitizedToken = sanitizeDriverError(rawTokenError);
+    expect(sanitizedToken.errorMessage).not.toContain('ABCdefGHIjklMNO_secret');
+    expect(sanitizedToken.errorMessage).toContain('bot[REDACTED]/getWebhookInfo');
+
+    const nonError = sanitizeDriverError('plain string error');
+    expect(nonError.errorName).toBe('UnknownError');
+    expect(nonError.errorMessage).toBe('Internal persistence error');
   });
 });

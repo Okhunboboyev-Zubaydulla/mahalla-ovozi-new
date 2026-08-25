@@ -1,0 +1,86 @@
+import { aiProfiles, NewAiProfile } from './schema/ai.js';
+import type { DbOrTx } from './client.js';
+
+export const defaultSemanticRelevanceProfile: NewAiProfile = {
+  id: 'prof_rel_2026_08_v1',
+  version: 1,
+  operationType: 'SEMANTIC_RELEVANCE',
+  provider: 'OPENAI',
+  modelId: 'gpt-4o-mini-2024-07-18',
+  promptVersion: 'prom_rel_v1',
+  schemaVersion: 'sch_rel_v1',
+  temperature: 0.0,
+  maxOutputTokens: 500,
+  timeoutMs: 10000,
+  retryPolicy: {
+    maxAttempts: 3,
+    backoffFactor: 2,
+    initialDelayMs: 1000,
+  },
+  capabilities: {
+    structuredOutputs: true,
+    jsonSchemaMode: 'strict',
+  },
+  isActive: true,
+};
+
+export const defaultTopicMatchingProfile: NewAiProfile = {
+  id: 'prof_match_2026_08_v1',
+  version: 1,
+  operationType: 'TOPIC_MATCHING',
+  provider: 'OPENAI',
+  modelId: 'gpt-4o-mini-2024-07-18',
+  promptVersion: 'prom_match_v1',
+  schemaVersion: 'sch_match_v1',
+  temperature: 0.0,
+  maxOutputTokens: 500,
+  timeoutMs: 10000,
+  retryPolicy: {
+    maxAttempts: 3,
+    backoffFactor: 2,
+    initialDelayMs: 1000,
+  },
+  capabilities: {
+    structuredOutputs: true,
+    jsonSchemaMode: 'strict',
+  },
+  isActive: true,
+};
+
+export const defaultTopicProjectionProfile: NewAiProfile = {
+  id: 'prof_proj_2026_08_v1',
+  version: 1,
+  operationType: 'TOPIC_DERIVED_PROJECTION',
+  provider: 'OPENAI',
+  modelId: 'gpt-4o-mini-2024-07-18',
+  promptVersion: 'prom_proj_v1',
+  schemaVersion: 'sch_proj_v1',
+  temperature: 0.0,
+  maxOutputTokens: 600,
+  timeoutMs: 10000,
+  retryPolicy: {
+    maxAttempts: 3,
+    backoffFactor: 2,
+    initialDelayMs: 1000,
+  },
+  capabilities: {
+    structuredOutputs: true,
+    jsonSchemaMode: 'strict',
+  },
+  isActive: true,
+};
+
+export async function ensureDefaultAiProfiles(db: DbOrTx): Promise<void> {
+  await db
+    .insert(aiProfiles)
+    .values(defaultSemanticRelevanceProfile)
+    .onConflictDoNothing({ target: aiProfiles.id });
+  await db
+    .insert(aiProfiles)
+    .values(defaultTopicMatchingProfile)
+    .onConflictDoNothing({ target: aiProfiles.id });
+  await db
+    .insert(aiProfiles)
+    .values(defaultTopicProjectionProfile)
+    .onConflictDoNothing({ target: aiProfiles.id });
+}

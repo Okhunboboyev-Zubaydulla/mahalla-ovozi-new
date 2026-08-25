@@ -13,6 +13,7 @@ import {
   TELEGRAM_SEMANTIC_RELEVANCE_QUEUE,
   TELEGRAM_TOPIC_ASSIGNMENT_QUEUE,
   withTransactionalIntake,
+  JobSingletonKeys,
   type TelegramSemanticRelevanceJobData,
   type TelegramTopicAssignmentJobData,
 } from '../../../adapters/jobs/boss-client.js';
@@ -299,7 +300,7 @@ export async function processSemanticRelevanceJobs(
                 reasoning: aiResult.data.reasoning,
               };
 
-              const singletonKey = `topic:${districtId}:${telegramChatId}:${telegramMessageId}`;
+              const singletonKey = JobSingletonKeys.forTopicAssignment(districtId, telegramChatId, telegramMessageId);
               await enqueueJob(TELEGRAM_TOPIC_ASSIGNMENT_QUEUE, topicJobData, {
                 singletonKey,
                 retryLimit: 3,

@@ -112,3 +112,40 @@ export async function getMahallaDailySnapshot(
     evidence,
   };
 }
+
+export class StaleSnapshotRevisionError extends Error {
+  readonly code = 'STALE_SNAPSHOT' as const;
+  readonly status = 409;
+  constructor(currentRevision: number, expectedRevision: number) {
+    super(
+      `Context snapshot revision mismatch: expected revision ${expectedRevision}, but current revision is ${currentRevision}.`,
+    );
+    this.name = 'StaleSnapshotRevisionError';
+  }
+}
+
+/**
+ * Cryptographically verifies the internal integrity of a MahallaDailySnapshot (AD-5).
+ * Validates that contextRevision matches evidence count and SHA-256 fingerprint matches evidence content.
+ */
+export function verifySnapshotIntegrity(snapshot: MahallaDailySnapshot): boolean {
+  if (!snapshot || !Array.isArray(snapshot.evidence)) {
+    return false;
+  }
+  if (snapshot.contextRevision !== snapshot.evidence.length) {
+    return false;
+  }
+  const expectedFingerprint = computeSnapshotFingerprint(snapshot.evidence);
+  return snapshot.snapshotFingerprint === expectedFingerprint;
+}
+
+/**
+ * Enforces Compare-And-Swap (CAS) optimistic concurrency control on snapshot revisions (AD-6).
+ * Throws StaleSnapshotRevisionError if the current revision has diverged from expected.
+ */
+export function assertSnapshotRevision(currentRevision: number, expectedRevision: number): void {
+  if (currentRevision !== expectedRevision) {
+    throw new StaleSnapshotRevisionError(currentRevision, expectedRevision);
+  }
+}
+

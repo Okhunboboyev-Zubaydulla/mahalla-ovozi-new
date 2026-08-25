@@ -6,7 +6,7 @@ import {
   TelegramBotInfo,
   TelegramBotStatusSchema,
 } from '@mahalla-ovozi/api-contracts';
-import { encryptToken } from '../../adapters/crypto/token-cipher.js';
+import { cryptoService } from '../../adapters/crypto/index.js';
 import { validateTelegramBot } from '../../adapters/telegram/telegram-client.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
 import { DistrictNotFoundError, DistrictAlreadyActiveError } from '../districts/districts-service.js';
@@ -122,7 +122,7 @@ export async function connectDistrictTelegramBot(
   const validatedBot = await validateFn(rawToken);
 
   // Authenticated ciphertext encryption at rest (AD-6, AD-9)
-  const encryptedPayload = encryptToken(rawToken);
+  const encryptedPayload = cryptoService.tokens.encrypt(rawToken, 'v1');
 
   const now = new Date();
   const botRowId = `dtb_${crypto.randomUUID()}`;
@@ -208,8 +208,9 @@ export async function connectDistrictTelegramBot(
         savedRow = inserted;
       }
 
-      // Privacy-safe audit log (AD-9: Zero secrets/ciphertexts)
+      // Privacy-safe audit log (AD-9: Explicit districtId & Zero secrets/ciphertexts)
       await recordAuditEvent(tx, {
+        districtId,
         actorId: actor?.id || null,
         actorRole: actor?.role || null,
         action: 'DISTRICT_TELEGRAM_BOT_CONNECTED',
@@ -329,6 +330,7 @@ export async function disconnectDistrictTelegramBot(
       .where(eq(districtTelegramGroups.districtId, districtId));
 
     await recordAuditEvent(tx, {
+      districtId,
       actorId: actor?.id || null,
       actorRole: actor?.role || null,
       action: 'DISTRICT_TELEGRAM_BOT_DISCONNECTED',

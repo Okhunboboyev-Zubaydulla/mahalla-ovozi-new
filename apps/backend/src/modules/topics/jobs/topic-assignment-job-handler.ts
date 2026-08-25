@@ -15,6 +15,7 @@ import {
   TELEGRAM_TOPIC_ASSIGNMENT_QUEUE,
   TELEGRAM_TOPIC_PROJECTION_QUEUE,
   withTransactionalIntake,
+  JobSingletonKeys,
   type TelegramTopicAssignmentJobData,
   type TelegramTopicProjectionJobData,
 } from '../../../adapters/jobs/boss-client.js';
@@ -25,6 +26,9 @@ import {
 import type { TopicMatchingResult } from '../../ai/topic-matching-contracts.js';
 import {
   getMahallaDailySnapshot,
+  verifySnapshotIntegrity,
+  assertSnapshotRevision,
+  StaleSnapshotRevisionError,
   type AcceptedEvidenceItem,
 } from '../../ai/context-snapshot.js';
 import { calculateRetentionDeadline } from '../../retention/index.js';
@@ -243,10 +247,19 @@ export async function processTopicAssignmentJobs(
                   : undefined,
               );
 
-              if (
-                latestSnapshot.contextRevision !== initialRevision ||
-                latestSnapshot.snapshotFingerprint !== initialFingerprint
-              ) {
+              // AD-5: Verify snapshot cryptographic integrity
+              verifySnapshotIntegrity(latestSnapshot);
+
+              // AD-6: CAS optimistic concurrency assertion
+              try {
+                assertSnapshotRevision(latestSnapshot.contextRevision, initialRevision);
+                if (latestSnapshot.snapshotFingerprint !== initialFingerprint) {
+                  throw new StaleSnapshotRevisionError(
+                    latestSnapshot.contextRevision,
+                    initialRevision,
+                  );
+                }
+              } catch (casErr) {
                 const durationMs = Math.round(performance.now() - startTime);
                 console.warn(
                   JSON.stringify({
@@ -426,7 +439,7 @@ export async function processTopicAssignmentJobs(
                   calendarDay,
                   generation: nextGeneration,
                 };
-                const singletonKey = `proj:${targetTopicId}:${nextGeneration}`;
+                const singletonKey = JobSingletonKeys.forTopicProjection(targetTopicId, nextGeneration);
                 await enqueueJob(TELEGRAM_TOPIC_PROJECTION_QUEUE, projectionJobData, {
                   singletonKey,
                   retryLimit: 3,
@@ -479,7 +492,7 @@ export async function processTopicAssignmentJobs(
                   calendarDay,
                   generation: 1,
                 };
-                const singletonKey = `proj:${newTopicId}:1`;
+                const singletonKey = JobSingletonKeys.forTopicProjection(newTopicId, 1);
                 await enqueueJob(TELEGRAM_TOPIC_PROJECTION_QUEUE, projectionJobData, {
                   singletonKey,
                   retryLimit: 3,

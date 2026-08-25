@@ -13,6 +13,7 @@ import {
 import {
   withTransactionalIntake,
   TELEGRAM_CONTENT_QUALIFICATION_QUEUE,
+  JobSingletonKeys,
 } from '../../adapters/jobs/boss-client.js';
 import { getTashkentCalendarDay } from './timezone-util.js';
 
@@ -253,7 +254,7 @@ export async function processTelegramWebhookUpdate(
     }
 
     // Enqueue downstream content qualification job with scoped deduplication singleton key
-    const singletonKey = `msg:${auth.districtId}:${chatId}:${messageId}`;
+    const singletonKey = JobSingletonKeys.forContentQualification(auth.districtId, chatId, messageId);
     const jobId = await enqueueJob(
       TELEGRAM_CONTENT_QUALIFICATION_QUEUE,
       {

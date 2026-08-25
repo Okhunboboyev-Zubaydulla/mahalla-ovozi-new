@@ -4,7 +4,7 @@ import {
   defaultSemanticRelevanceProfile,
   defaultTopicMatchingProfile,
   defaultTopicProjectionProfile,
-} from '../../src/adapters/db/schema/ai.js';
+} from '../../src/adapters/db/seeds.js';
 import type { AiProfile } from '../../src/adapters/db/schema/ai.js';
 
 export interface MockAiGatewayController {

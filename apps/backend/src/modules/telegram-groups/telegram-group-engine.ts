@@ -128,6 +128,7 @@ export async function getGroupTestStatus(
         .where(eq(districtTelegramGroups.id, groupId));
 
       await recordAuditEvent(tx, {
+        districtId,
         actorId: actor?.id || null,
         actorRole: actor?.role || null,
         action: 'DISTRICT_GROUP_VALIDATED',
@@ -228,6 +229,7 @@ export async function handleIncomingWebhookMessage(
       .where(eq(districtTelegramGroups.id, activeSession.groupId));
 
     await recordAuditEvent(tx, {
+      districtId: activeSession.districtId,
       actorId: 'system:telegram-webhook',
       actorRole: 'system',
       action: 'DISTRICT_GROUP_VALIDATED',
@@ -298,6 +300,7 @@ export async function simulateGroupTestMessage(
       .where(eq(districtTelegramGroups.id, groupId));
 
     await recordAuditEvent(tx, {
+      districtId,
       actorId: actor?.id || 'system:simulator',
       actorRole: actor?.role || 'system',
       action: 'DISTRICT_GROUP_VALIDATED',

@@ -46,12 +46,14 @@ export const FilterModalSheet: React.FC<FilterModalSheetProps> = ({
   const handleClose = () => {
     onClose();
     setTimeout(() => {
-      if (openerRef?.current) {
-        openerRef.current.focus();
-      } else {
-        const btn = document.getElementById('mobile-filter-button');
-        if (btn) {
-          btn.focus();
+      if (typeof document !== 'undefined') {
+        if (openerRef?.current) {
+          openerRef.current.focus();
+        } else {
+          const btn = document.getElementById('mobile-filter-button');
+          if (btn) {
+            btn.focus();
+          }
         }
       }
     }, 50);

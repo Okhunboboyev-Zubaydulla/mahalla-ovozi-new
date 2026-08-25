@@ -8,6 +8,7 @@ import {
 import {
   TELEGRAM_CONTENT_QUALIFICATION_QUEUE,
   TELEGRAM_SEMANTIC_RELEVANCE_QUEUE,
+  JobSingletonKeys,
   type TelegramContentQualificationJobData,
   type TelegramSemanticRelevanceJobData,
 } from '../../../adapters/jobs/boss-client.js';
@@ -85,7 +86,7 @@ export async function processQualificationJobs(
           if (qualification.status === 'SUPPORTED') {
             // 4. Enqueue downstream semantic relevance job with deduplicating singleton key (AC 6, 8)
             const candidateData: TelegramSemanticRelevanceJobData = qualification.candidate;
-            const singletonKey = `rel:${districtId}:${telegramChatId}:${telegramMessageId}`;
+            const singletonKey = JobSingletonKeys.forSemanticRelevance(districtId, telegramChatId, telegramMessageId);
 
             await boss.send(TELEGRAM_SEMANTIC_RELEVANCE_QUEUE, candidateData, {
               singletonKey,

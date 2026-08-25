@@ -95,6 +95,46 @@ export async function initBossQueues(boss: PgBoss): Promise<void> {
   await boss.createQueue(TELEGRAM_TOPIC_RETENTION_QUEUE);
 }
 
+/**
+ * Standard singleton key generators for pg-boss deduplication and ordering.
+ */
+export const JobSingletonKeys = {
+  /**
+   * Deduplication key for Telegram message intake qualification.
+   */
+  forContentQualification(districtId: string, chatId: string, messageId: string): string {
+    return `msg:${districtId}:${chatId}:${messageId}`;
+  },
+
+  /**
+   * Deduplication key for Semantic Relevance AI evaluation.
+   */
+  forSemanticRelevance(districtId: string, chatId: string, messageId: string): string {
+    return `rel:${districtId}:${chatId}:${messageId}`;
+  },
+
+  /**
+   * Deduplication key for Topic Assignment AI evaluation.
+   */
+  forTopicAssignment(districtId: string, chatId: string, messageId: string): string {
+    return `topic:${districtId}:${chatId}:${messageId}`;
+  },
+
+  /**
+   * Coalescing key for Topic Projection AI recalculation (AD-7).
+   */
+  forTopicProjection(topicId: string, generation: number): string {
+    return `proj:${topicId}:${generation}`;
+  },
+
+  /**
+   * Ordering serialization key for same-day Mahalla civic signal ordering (AD-3).
+   */
+  forDistrictMahallaDay(districtId: string, mahallaName: string, calendarDay: string): string {
+    return `scope:${districtId}:${mahallaName.trim().toLowerCase()}:${calendarDay}`;
+  },
+};
+
 export interface TransactionScope {
   tx: NodePgDatabase<typeof schema>;
   client: pg.PoolClient;
@@ -129,8 +169,8 @@ export async function withTransactionalIntake<T>(
       return boss.send(queueName, data, {
         ...options,
         db: {
-          executeSql: async (text: string, values?: any[]) => {
-            const res = await client.query(text, values);
+          executeSql: async (text: string, values?: unknown[]) => {
+            const res = await client.query(text, values as any[]);
             return {
               rows: res.rows,
               rowCount: res.rowCount ?? 0,

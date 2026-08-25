@@ -21,6 +21,7 @@ import { getTashkentCalendarDay } from '../src/modules/telegram-intake/timezone-
 import { escapeLikePattern } from '../src/modules/topics/hokim-topic-service.js';
 
 const SAME_ORIGIN_HEADERS = {
+  'sec-fetch-site': 'same-origin',
   origin: 'http://localhost:5173',
   host: 'localhost:3000',
 };

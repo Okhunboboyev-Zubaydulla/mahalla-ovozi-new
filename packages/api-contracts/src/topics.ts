@@ -72,47 +72,71 @@ export const LanesQueryParamSchema = z.preprocess((val) => {
 }, z.array(QualifyingLaneSchema).min(1, 'Камида 1 та йўналиш танланиши керак').max(5, 'Кўпи билан 5 та йўналиш танланиши мумкин').optional());
 export type LanesQueryParam = z.infer<typeof LanesQueryParamSchema>;
 
+export const TopicDateFilterFields = {
+  dateScope: DateFilterScopeSchema.default('today'),
+  dateFrom: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
+    .optional(),
+  dateTo: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
+    .optional(),
+};
+
+export const TopicBaseFilterFields = {
+  ...TopicDateFilterFields,
+  mahallaName: z.string().trim().min(1).optional(),
+  lanes: LanesQueryParamSchema,
+  calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+};
+
+export function refineDateScopeRange<
+  T extends { dateScope?: string; dateFrom?: string; dateTo?: string },
+>(data: T, ctx: z.RefinementCtx): void {
+  if (data.dateScope === 'custom') {
+    if (!data.dateFrom) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Бошланиш санаси (dateFrom) киритилиши шарт.',
+        path: ['dateFrom'],
+      });
+    }
+    if (!data.dateTo) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Тугаш санаси (dateTo) киритилиши шарт.',
+        path: ['dateTo'],
+      });
+    }
+    if (data.dateFrom && data.dateTo && data.dateFrom > data.dateTo) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.',
+        path: ['dateFrom'],
+      });
+    }
+  }
+}
+
+export const TopicDateFilterSchema = z
+  .object(TopicDateFilterFields)
+  .superRefine(refineDateScopeRange);
+export type TopicDateFilter = z.input<typeof TopicDateFilterSchema>;
+export type TopicDateFilterOutput = z.output<typeof TopicDateFilterSchema>;
+
+export const TopicBaseFilterSchema = z
+  .object(TopicBaseFilterFields)
+  .superRefine(refineDateScopeRange);
+export type TopicBaseFilter = z.input<typeof TopicBaseFilterSchema>;
+export type TopicBaseFilterOutput = z.output<typeof TopicBaseFilterSchema>;
+
 export const HokimTopicBoardQuerySchema = z
   .object({
-    dateScope: DateFilterScopeSchema.default('today'),
-    dateFrom: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
-      .optional(),
-    dateTo: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
-      .optional(),
-    mahallaName: z.string().trim().min(1).optional(),
-    lanes: LanesQueryParamSchema,
-    calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    ...TopicBaseFilterFields,
     baselineTimestamp: z.string().datetime().optional(),
   })
-  .superRefine((data, ctx) => {
-    if (data.dateScope === 'custom') {
-      if (!data.dateFrom) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Бошланиш санаси (dateFrom) киритилиши шарт.',
-          path: ['dateFrom'],
-        });
-      }
-      if (!data.dateTo) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Тугаш санаси (dateTo) киритилиши шарт.',
-          path: ['dateTo'],
-        });
-      }
-      if (data.dateFrom && data.dateTo && data.dateFrom > data.dateTo) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.',
-          path: ['dateFrom'],
-        });
-      }
-    }
-  });
+  .superRefine(refineDateScopeRange);
 export type HokimTopicBoardQuery = z.input<typeof HokimTopicBoardQuerySchema>;
 export type HokimTopicBoardQueryOutput = z.output<typeof HokimTopicBoardQuerySchema>;
 
@@ -132,46 +156,12 @@ export type HokimTopicBoardResponse = z.infer<typeof HokimTopicBoardResponseSche
 export const HokimLaneQuerySchema = z
   .object({
     lane: QualifyingLaneSchema,
-    dateScope: DateFilterScopeSchema.default('today'),
-    dateFrom: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
-      .optional(),
-    dateTo: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
-      .optional(),
-    mahallaName: z.string().trim().min(1).optional(),
-    calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    ...TopicBaseFilterFields,
     cursor: z.string().optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),
     baselineTimestamp: z.string().datetime().optional(),
   })
-  .superRefine((data, ctx) => {
-    if (data.dateScope === 'custom') {
-      if (!data.dateFrom) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Бошланиш санаси (dateFrom) киритилиши шарт.',
-          path: ['dateFrom'],
-        });
-      }
-      if (!data.dateTo) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Тугаш санаси (dateTo) киритилиши шарт.',
-          path: ['dateTo'],
-        });
-      }
-      if (data.dateFrom && data.dateTo && data.dateFrom > data.dateTo) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.',
-          path: ['dateFrom'],
-        });
-      }
-    }
-  });
+  .superRefine(refineDateScopeRange);
 export type HokimLaneQuery = z.input<typeof HokimLaneQuerySchema>;
 export type HokimLaneQueryOutput = z.output<typeof HokimLaneQuerySchema>;
 
@@ -275,46 +265,7 @@ export const TopicStatisticCard5Schema = z.discriminatedUnion('mode', [
 ]);
 export type TopicStatisticCard5 = z.infer<typeof TopicStatisticCard5Schema>;
 
-export const HokimTopicStatisticsQuerySchema = z
-  .object({
-    dateScope: DateFilterScopeSchema.default('today'),
-    dateFrom: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
-      .optional(),
-    dateTo: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
-      .optional(),
-    mahallaName: z.string().trim().min(1).optional(),
-    lanes: LanesQueryParamSchema,
-    calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.dateScope === 'custom') {
-      if (!data.dateFrom) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Бошланиш санаси (dateFrom) киритилиши шарт.',
-          path: ['dateFrom'],
-        });
-      }
-      if (!data.dateTo) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Тугаш санаси (dateTo) киритилиши шарт.',
-          path: ['dateTo'],
-        });
-      }
-      if (data.dateFrom && data.dateTo && data.dateFrom > data.dateTo) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.',
-          path: ['dateFrom'],
-        });
-      }
-    }
-  });
+export const HokimTopicStatisticsQuerySchema = TopicBaseFilterSchema;
 export type HokimTopicStatisticsQuery = z.input<typeof HokimTopicStatisticsQuerySchema>;
 export type HokimTopicStatisticsQueryOutput = z.output<typeof HokimTopicStatisticsQuerySchema>;
 
@@ -342,45 +293,10 @@ export const HokimTopicBoardSearchBodySchema = z
       .trim()
       .max(200, 'Қидирув сўзи 200 та белгидан ошмаслиги керак')
       .optional(),
-    dateScope: DateFilterScopeSchema.default('today'),
-    dateFrom: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
-      .optional(),
-    dateTo: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
-      .optional(),
-    mahallaName: z.string().trim().min(1).optional(),
-    lanes: LanesQueryParamSchema,
-    calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    ...TopicBaseFilterFields,
     baselineTimestamp: z.string().datetime().optional(),
   })
-  .superRefine((data, ctx) => {
-    if (data.dateScope === 'custom') {
-      if (!data.dateFrom) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Бошланиш санаси (dateFrom) киритилиши шарт.',
-          path: ['dateFrom'],
-        });
-      }
-      if (!data.dateTo) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Тугаш санаси (dateTo) киритилиши шарт.',
-          path: ['dateTo'],
-        });
-      }
-      if (data.dateFrom && data.dateTo && data.dateFrom > data.dateTo) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.',
-          path: ['dateFrom'],
-        });
-      }
-    }
-  });
+  .superRefine(refineDateScopeRange);
 export type HokimTopicBoardSearchBody = z.input<typeof HokimTopicBoardSearchBodySchema>;
 export type HokimTopicBoardSearchBodyOutput = z.output<typeof HokimTopicBoardSearchBodySchema>;
 
@@ -392,46 +308,12 @@ export const HokimLaneSearchBodySchema = z
       .trim()
       .max(200, 'Қидирув сўзи 200 та белгидан ошмаслиги керак')
       .optional(),
-    dateScope: DateFilterScopeSchema.default('today'),
-    dateFrom: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
-      .optional(),
-    dateTo: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
-      .optional(),
-    mahallaName: z.string().trim().min(1).optional(),
-    calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    ...TopicBaseFilterFields,
     cursor: z.string().optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),
     baselineTimestamp: z.string().datetime().optional(),
   })
-  .superRefine((data, ctx) => {
-    if (data.dateScope === 'custom') {
-      if (!data.dateFrom) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Бошланиш санаси (dateFrom) киритилиши шарт.',
-          path: ['dateFrom'],
-        });
-      }
-      if (!data.dateTo) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Тугаш санаси (dateTo) киритилиши шарт.',
-          path: ['dateTo'],
-        });
-      }
-      if (data.dateFrom && data.dateTo && data.dateFrom > data.dateTo) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.',
-          path: ['dateFrom'],
-        });
-      }
-    }
-  });
+  .superRefine(refineDateScopeRange);
 export type HokimLaneSearchBody = z.input<typeof HokimLaneSearchBodySchema>;
 export type HokimLaneSearchBodyOutput = z.output<typeof HokimLaneSearchBodySchema>;
 
@@ -442,44 +324,9 @@ export const HokimTopicStatisticsSearchBodySchema = z
       .trim()
       .max(200, 'Қидирув сўзи 200 та белгидан ошмаслиги керак')
       .optional(),
-    dateScope: DateFilterScopeSchema.default('today'),
-    dateFrom: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
-      .optional(),
-    dateTo: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
-      .optional(),
-    mahallaName: z.string().trim().min(1).optional(),
-    lanes: LanesQueryParamSchema,
-    calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    ...TopicBaseFilterFields,
   })
-  .superRefine((data, ctx) => {
-    if (data.dateScope === 'custom') {
-      if (!data.dateFrom) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Бошланиш санаси (dateFrom) киритилиши шарт.',
-          path: ['dateFrom'],
-        });
-      }
-      if (!data.dateTo) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Тугаш санаси (dateTo) киритилиши шарт.',
-          path: ['dateTo'],
-        });
-      }
-      if (data.dateFrom && data.dateTo && data.dateFrom > data.dateTo) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.',
-          path: ['dateFrom'],
-        });
-      }
-    }
-  });
+  .superRefine(refineDateScopeRange);
 export type HokimTopicStatisticsSearchBody = z.input<typeof HokimTopicStatisticsSearchBodySchema>;
 export type HokimTopicStatisticsSearchBodyOutput = z.output<typeof HokimTopicStatisticsSearchBodySchema>;
 

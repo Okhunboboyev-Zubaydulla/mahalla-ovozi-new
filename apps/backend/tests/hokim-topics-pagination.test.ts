@@ -21,6 +21,7 @@ import { getTashkentCalendarDay } from '../src/modules/telegram-intake/timezone-
 import { encodeKeysetCursor } from '../src/modules/topics/hokim-topic-service.js';
 
 const SAME_ORIGIN_HEADERS = {
+  'sec-fetch-site': 'same-origin',
   origin: 'http://localhost:5173',
   host: 'localhost:3000',
 };
@@ -47,10 +48,7 @@ describe('Story 3.8: Keyset Pagination & Safe Continuation Integration Tests', (
   const createdEvidenceIds: string[] = [];
 
   beforeAll(async () => {
-    const testDbUrl =
-      process.env.DATABASE_URL ||
-      'postgresql://mahalla_user:mahalla_dev_password@localhost:5433/mahalla_ovozi_test';
-    pool = createDbPool(testDbUrl);
+    pool = createDbPool();
     db = createDbClient(pool);
     server = await buildHttpServer({ db, pool });
     await server.ready();

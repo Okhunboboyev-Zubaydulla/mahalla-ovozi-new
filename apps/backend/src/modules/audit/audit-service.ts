@@ -5,25 +5,48 @@ import { auditEvents, NewAuditEvent } from '../../adapters/db/schema/index.js';
 const SENSITIVE_KEYS = new Set([
   'password',
   'passwordhash',
-  'password_hash',
   'token',
   'tokenhash',
-  'token_hash',
   'cookie',
   'cookies',
   'secret',
   'authorization',
+  'apikey',
+  'bottoken',
+  'sessiontoken',
+  'accesstoken',
+  'bearer',
+  'temporarypassword',
 ]);
+
+export function redactStringValue(val: string): string {
+  return val
+    .replace(/\b\d{8,10}:[A-Za-z0-9_-]{35}\b/g, '[BOT_TOKEN_REDACTED]')
+    .replace(/sk-[A-Za-z0-9_-]{10,}/gi, 'sk-[REDACTED]')
+    .replace(/AIza[A-Za-z0-9_-]{10,}/gi, 'AIza[REDACTED]')
+    .replace(/bearer\s+[A-Za-z0-9_.-]+/gi, 'Bearer [REDACTED]');
+}
 
 export function sanitizeMetadata(metadata?: Record<string, unknown>): Record<string, unknown> | undefined {
   if (!metadata) return undefined;
 
   const sanitized: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(metadata)) {
-    if (SENSITIVE_KEYS.has(key.toLowerCase())) {
+    const normalizedKey = key.toLowerCase().replace(/[_-]/g, '');
+    if (SENSITIVE_KEYS.has(normalizedKey)) {
       continue; // Scrub sensitive fields completely
     }
-    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    if (typeof value === 'string') {
+      sanitized[key] = redactStringValue(value);
+    } else if (Array.isArray(value)) {
+      sanitized[key] = value.map((item) =>
+        typeof item === 'string'
+          ? redactStringValue(item)
+          : typeof item === 'object' && item !== null
+            ? sanitizeMetadata(item as Record<string, unknown>)
+            : item,
+      );
+    } else if (typeof value === 'object' && value !== null) {
       sanitized[key] = sanitizeMetadata(value as Record<string, unknown>);
     } else {
       sanitized[key] = value;
@@ -37,6 +60,7 @@ export type DbOrTx = DbClient | Parameters<Parameters<DbClient['transaction']>[0
 export async function recordAuditEvent(
   db: DbOrTx,
   params: {
+    districtId?: string | null;
     actorId?: string | null;
     actorRole?: string | null;
     action: string;
@@ -47,6 +71,7 @@ export async function recordAuditEvent(
 ): Promise<void> {
   const event: NewAuditEvent = {
     id: `aud_${crypto.randomUUID()}`,
+    districtId: params.districtId || null,
     actorId: params.actorId || null,
     actorRole: params.actorRole || null,
     action: params.action,

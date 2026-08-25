@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { getEncryptionKey } from '../../adapters/crypto/token-cipher.js';
+import { cryptoService } from '../../adapters/crypto/index.js';
 
 /**
  * Derives a deterministic webhook secret token for a specific botId using HMAC-SHA256
@@ -9,7 +9,7 @@ export function deriveWebhookSecret(botId: string): string {
   if (!botId || typeof botId !== 'string') {
     return '';
   }
-  const key = getEncryptionKey();
+  const key = cryptoService.tokens.getKey();
   return crypto.createHmac('sha256', key).update(botId).digest('hex');
 }
 
@@ -36,3 +36,30 @@ export function verifyTelegramSecretToken(
 
   return crypto.timingSafeEqual(expectedHash, receivedHash);
 }
+
+/**
+ * Sanitizes database and driver error objects for telemetry logging (AD-11).
+ * Completely strips SQL query parameters, VALUES(...) blocks, raw messages, and token strings.
+ */
+export function sanitizeDriverError(err: unknown): { errorName: string; errorMessage: string } {
+  const errorName = err instanceof Error ? err.name : 'UnknownError';
+  if (!(err instanceof Error)) {
+    return {
+      errorName,
+      errorMessage: 'Internal persistence error',
+    };
+  }
+
+  const rawMessage = err.message;
+  // Scrub SQL parameter blocks, values clauses, and potential token strings
+  const sanitized = rawMessage
+    .replace(/VALUES\s*\([\s\S]*?\)/gi, 'VALUES (...)')
+    .replace(/bot[0-9]{6,16}:[A-Za-z0-9_-]+/gi, 'bot[REDACTED]')
+    .replace(/password\s*=\s*'[^']*'/gi, 'password=[REDACTED]');
+
+  return {
+    errorName,
+    errorMessage: sanitized,
+  };
+}
+

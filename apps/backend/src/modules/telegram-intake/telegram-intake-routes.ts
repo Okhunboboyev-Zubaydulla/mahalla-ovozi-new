@@ -1,7 +1,11 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { deriveWebhookSecret, verifyTelegramSecretToken } from './webhook-security.js';
+import {
+  deriveWebhookSecret,
+  verifyTelegramSecretToken,
+  sanitizeDriverError,
+} from './webhook-security.js';
 import {
   processTelegramWebhookUpdate,
   TelegramUpdate,
@@ -116,18 +120,13 @@ export function registerTelegramIntakeRoutes(
         });
       } catch (err: unknown) {
         const durationMs = Math.round(performance.now() - startTime);
-        // AD-11: Sanitize driver error logging without dumping query parameters or raw messages
-        const errorName = err instanceof Error ? err.name : 'UnknownError';
-        const sanitizedMessage =
-          err instanceof Error
-            ? err.message.replace(/VALUES\s*\([\s\S]*?\)/gi, 'VALUES (...)')
-            : 'Internal persistence error';
+        const { errorName, errorMessage } = sanitizeDriverError(err);
 
         console.error('[telemetry:telegram-intake-error]', {
           event: 'TELEGRAM_INTAKE_ERROR',
           botId,
           errorName,
-          errorMessage: sanitizedMessage,
+          errorMessage,
           durationMs,
           latencyMs: durationMs,
         });
