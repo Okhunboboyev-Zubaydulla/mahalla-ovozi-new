@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-16
-last_updated: 2026-08-26
+last_updated: 2026-08-27
 project: Mahalla-Ovozi
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
@@ -70,7 +70,7 @@ development_status:
   epic-2-retrospective: done
 
   # ── Epic 3: Hokim Situational Awareness & Retained History ──
-  epic-3: in-progress
+  epic-3: done
   3-1-scan-todays-unified-five-lane-topic-board: done
   3-2-inspect-complete-topic-evidence: done
   3-3-refresh-dashboard-without-disrupting-review: done
@@ -91,7 +91,7 @@ development_status:
   4-4-inspect-immutable-searchable-audit-history: done
   4-5-browse-retained-district-topics-and-evidence-for-troubleshooting: done
   4-6-review-complete-and-resilient-system-health-coverage: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: done
 
   # ── Epic 5: Controlled Future Analysis Configuration ──
   epic-5: backlog
@@ -132,17 +132,30 @@ action_items:
   - epic: 2
     action: "Frontend Foundation & 5-Lane Board Shell: Scaffold Ant Design 5 Hokim dashboard shell in apps/web with 5 fixed columns and light tokens"
     owner: "Sally / Amelia"
-    status: open
+    status: done
   - epic: 2
     action: "Deterministic Keyset / Cursor Pagination: Standardize opaque keyset cursor contracts (before/after base64) in @mahalla-ovozi/api-contracts"
     owner: "Winston"
-    status: open
+    status: done
   - epic: 2
     action: "Visit Baseline & Session State Management: Implement server-side Hokim visit boundary tracker for immutable 'Янги' / 'Янгиланди' badges"
     owner: "Amelia"
-    status: open
+    status: done
   - epic: 2
     action: "Evidence Inspection Modal & Privacy Boundary: Build Topic Evidence Inspection Drawer in apps/web with verbatim quotes and zero unapproved metadata leaks"
     owner: "Sally / Paige"
+    status: done
+  - epic: 4
+    action: "Enforce strict future-only application of AI settings versions; guarantee zero retroactive recalculation of historical topics"
+    owner: "Amelia / Winston"
     status: open
+  - epic: 4
+    action: "Route all configuration draft saves, activations, and rollbacks through Story 4.4 immutable audit service with change reason capture"
+    owner: "Amelia"
+    status: open
+  - epic: 4
+    action: "Ensure AI prompt templates and model hyperparameters adhere strictly to project-owned vendor-neutral contracts in @mahalla-ovozi/api-contracts"
+    owner: "Winston / Paige"
+    status: open
+
 
