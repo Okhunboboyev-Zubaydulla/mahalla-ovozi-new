@@ -90,7 +90,7 @@ development_status:
   4-3-safely-retry-eligible-incomplete-work: done
   4-4-inspect-immutable-searchable-audit-history: done
   4-5-browse-retained-district-topics-and-evidence-for-troubleshooting: done
-  4-6-review-complete-and-resilient-system-health-coverage: backlog
+  4-6-review-complete-and-resilient-system-health-coverage: ready-for-dev
   epic-4-retrospective: optional
 
   # ── Epic 5: Controlled Future Analysis Configuration ──
