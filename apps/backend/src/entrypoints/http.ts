@@ -35,6 +35,9 @@ export async function buildHttpServer(options?: {
     trustProxy: true,
   });
 
+  // Fastify 5 V8 monomorphic shape optimization: decorate request prototype
+  server.decorateRequest('actor', undefined);
+
   // Robust JSON parser that handles empty bodies gracefully
   server.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => {
     if (!body || (typeof body === 'string' && body.trim() === '')) {

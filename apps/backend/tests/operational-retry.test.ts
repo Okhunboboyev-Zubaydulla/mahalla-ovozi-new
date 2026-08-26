@@ -32,6 +32,7 @@ describe('Story 4.3: Operational Retry Database & HTTP Integration Tests (AC 1-1
   let server: FastifyInstance;
 
   let poCookie = '';
+  let poAccountId = '';
   let hokimCookieDistrictA = '';
   let districtAId: string;
   let districtBId: string;
@@ -54,10 +55,11 @@ describe('Story 4.3: Operational Retry Database & HTTP Integration Tests (AC 1-1
     // 1. Seed Product Owner
     const poUsername = `po_retry_test_${Date.now()}`;
     const poPassword = 'SecurePOPassword2026!';
-    await createOrResetProductOwner(db, {
+    const poAccount = await createOrResetProductOwner(db, {
       username: poUsername,
       password: poPassword,
     });
+    poAccountId = poAccount.accountId;
 
     const poSignInRes = await server.inject({
       method: 'POST',
@@ -388,6 +390,7 @@ describe('Story 4.3: Operational Retry Database & HTTP Integration Tests (AC 1-1
 
       expect(auditLog).toBeDefined();
       expect(auditLog?.actorRole).toBe('PRODUCT_OWNER');
+      expect(auditLog?.actorId).toBe(poAccountId);
       const auditMeta = auditLog?.metadata as Record<string, unknown>;
       expect(auditMeta?.issueId).toBe(issueId);
       expect(auditMeta?.reason).toBe('Оператор томонидан қайта ишга туширилди');
@@ -530,6 +533,93 @@ describe('Story 4.3: Operational Retry Database & HTTP Integration Tests (AC 1-1
       expect(res2.statusCode).toBe(409);
       const body2 = JSON.parse(res2.payload);
       expect(body2.error.code).toBe('DUPLICATE_RETRY_IN_PROGRESS');
+    });
+
+    it('handles targetId: global for retention jobs cleanly without FK violations', async () => {
+      const res = await server.inject({
+        method: 'POST',
+        url: '/api/v1/retry/jobs',
+        headers: {
+          'content-type': 'application/json',
+          cookie: poCookie,
+          ...SAME_ORIGIN_HEADERS,
+        },
+        payload: {
+          operationType: 'TELEGRAM_TOPIC_RETENTION',
+          targetId: 'global',
+        },
+      });
+
+      expect(res.statusCode).toBe(202);
+      const body: RetryOperationResponse = JSON.parse(res.payload);
+      expect(body.accepted).toBe(true);
+      expect(body.targetId).toBe('global');
+    });
+
+    it('returns 404 for direct job retry with non-existent district ID', async () => {
+      const res = await server.inject({
+        method: 'POST',
+        url: '/api/v1/retry/jobs',
+        headers: {
+          'content-type': 'application/json',
+          cookie: poCookie,
+          ...SAME_ORIGIN_HEADERS,
+        },
+        payload: {
+          operationType: 'TELEGRAM_TOPIC_RETENTION',
+          targetId: 'non_existent_district_123',
+        },
+      });
+
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('rejects retry with 422 DISTRICT_ACCESS_REVOKED when district is suspended', async () => {
+      const suspendedDistId = `dist_suspended_${Date.now()}`;
+      await db.insert(districts).values({
+        id: suspendedDistId,
+        name: `Тўхтатилган туман ${suspendedDistId}`,
+        status: 'SUSPENDED',
+        accessEligible: false,
+      });
+
+      const issueId = `issue_suspended_${Date.now()}`;
+      await db.insert(operationalIssues).values({
+        id: issueId,
+        logicalKey: `DISTRICT:${suspendedDistId}:telegram_intake:MESSAGE_INTAKE_DELAY:${Date.now()}`,
+        scope: 'DISTRICT',
+        districtId: suspendedDistId,
+        component: 'telegram_intake',
+        issueCategory: 'MESSAGE_INTAKE_DELAY',
+        severity: 'Warning',
+        status: 'ACTIVE',
+        healthStatus: 'Degraded',
+        sanitizedTitle: 'Хабарлар кечикмоқда',
+        sanitizedDescription: 'Тавсиф',
+        recommendedAction: 'Қайта уриниш',
+        startedAt: new Date(),
+        latestCheckAt: new Date(),
+        metadata: {
+          intakeId: 'intake-susp-1',
+          telegramChatId: '-100333',
+          telegramMessageId: '44',
+          operationType: 'TELEGRAM_CONTENT_QUALIFICATION',
+        },
+      });
+
+      const res = await server.inject({
+        method: 'POST',
+        url: `/api/v1/issues/${issueId}/retry`,
+        headers: {
+          'content-type': 'application/json',
+          cookie: poCookie,
+          ...SAME_ORIGIN_HEADERS,
+        },
+      });
+
+      expect(res.statusCode).toBe(422);
+      const json = JSON.parse(res.payload);
+      expect(json.error.code).toBe('DISTRICT_ACCESS_REVOKED');
     });
   });
 });

@@ -120,6 +120,11 @@ export async function synchronizeOperationalIssues(
 
       if (existingIssue) {
         // Continuing issue: update latest check metadata without duplicate failure audit event (AC 1, AC 6)
+        const mergedMetadata = {
+          ...(existingIssue.metadata || {}),
+          ...safeMetadata,
+        };
+
         await tx
           .update(operationalIssues)
           .set({
@@ -130,7 +135,7 @@ export async function synchronizeOperationalIssues(
             sanitizedDescription: meta.sanitizedDescription,
             recommendedAction: meta.recommendedAction,
             targetRoute: meta.targetRoute,
-            metadata: safeMetadata,
+            metadata: mergedMetadata,
             updatedAt: now,
           })
           .where(eq(operationalIssues.id, existingIssue.id));
@@ -174,7 +179,7 @@ export async function synchronizeOperationalIssues(
               sanitizedDescription: meta.sanitizedDescription,
               recommendedAction: meta.recommendedAction,
               targetRoute: meta.targetRoute,
-              metadata: safeMetadata,
+              metadata: sql`COALESCE(${operationalIssues.metadata}, '{}'::jsonb) || ${JSON.stringify(safeMetadata)}::jsonb`,
               updatedAt: now,
             },
           })

@@ -32,6 +32,7 @@ import {
   type AcceptedEvidenceItem,
 } from '../../ai/context-snapshot.js';
 import { calculateRetentionDeadline } from '../../retention/index.js';
+import { clearPendingRetryFlag } from '../../issues/retry-service.js';
 
 export interface TopicAssignmentJobDeps {
   db: DbClient;
@@ -568,6 +569,10 @@ export async function processTopicAssignmentJobs(
               }),
             );
             throw err; // Trigger pg-boss retry policy
+          } finally {
+            if (job.data?.issueId) {
+              await clearPendingRetryFlag(db, job.data.issueId);
+            }
           }
         }
       }

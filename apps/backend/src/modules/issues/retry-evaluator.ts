@@ -14,7 +14,6 @@ export const RETRY_ELIGIBLE_CATEGORIES: ReadonlySet<IssueCategory> = new Set([
   'AI_SERVICE_DEGRADED',
   'RETENTION_JOB_DELAY',
   'DISTRICT_RETENTION_DELAY',
-  'QUEUE_BACKLOG_DELAY',
 ]);
 
 export interface RetryJobSpec {
@@ -172,7 +171,8 @@ export function deriveRetryJobSpec(issue: IssueSpecInput): RetryJobSpec | null {
     const topicId = issue.metadata?.topicId
       ? String(issue.metadata.topicId)
       : null;
-    const generation = Number(issue.metadata?.generation || 1);
+    const rawGen = Number(issue.metadata?.generation);
+    const generation = Number.isInteger(rawGen) && rawGen > 0 ? rawGen : 1;
 
     if (topicId) {
       return {

@@ -210,10 +210,9 @@ export function registerIssueRoutes(
           });
         }
 
-        const sessionAccount = (req as any).session?.account;
         const actor = {
-          id: sessionAccount?.id || 'system:product-owner',
-          role: sessionAccount?.role || 'PRODUCT_OWNER',
+          id: req.actor?.id || 'system:product-owner',
+          role: req.actor?.role || 'PRODUCT_OWNER',
         };
 
         const boss = deps.boss || createBossClient();
@@ -283,10 +282,9 @@ export function registerIssueRoutes(
           });
         }
 
-        const sessionAccount = (req as any).session?.account;
         const actor = {
-          id: sessionAccount?.id || 'system:product-owner',
-          role: sessionAccount?.role || 'PRODUCT_OWNER',
+          id: req.actor?.id || 'system:product-owner',
+          role: req.actor?.role || 'PRODUCT_OWNER',
         };
 
         const boss = deps.boss || createBossClient();

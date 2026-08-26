@@ -21,6 +21,7 @@ import {
   getMahallaDailySnapshot,
   type AcceptedEvidenceItem,
 } from '../../ai/context-snapshot.js';
+import { clearPendingRetryFlag } from '../../issues/retry-service.js';
 
 export interface TopicProjectionJobDeps {
   db: DbClient;
@@ -363,6 +364,10 @@ export async function processTopicProjectionJobs(
               }),
             );
             throw err;
+          } finally {
+            if (job.data?.issueId) {
+              await clearPendingRetryFlag(db, job.data.issueId);
+            }
           }
         }
       }

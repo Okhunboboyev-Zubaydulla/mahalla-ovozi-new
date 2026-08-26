@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import {
   IssueCategory,
   RetryOperationRequest,
@@ -11,6 +11,7 @@ import {
 import { DbClient } from '../../adapters/db/client.js';
 import {
   operationalIssues,
+  districts,
   auditEvents,
 } from '../../adapters/db/schema/index.js';
 import {
@@ -114,6 +115,30 @@ export const retryService = {
             'Ушбу муаммо тоифаси қайта уриниш орқали ҳал қилинмайди.',
             'OPERATION_INELIGIBLE',
           );
+        }
+
+        // 3.1. Validate district lifecycle and access eligibility (AC 8 / DISTRICT_ACCESS_REVOKED)
+        if (issue.districtId) {
+          const [district] = await tx
+            .select({
+              id: districts.id,
+              status: districts.status,
+              accessEligible: districts.accessEligible,
+            })
+            .from(districts)
+            .where(eq(districts.id, issue.districtId))
+            .limit(1);
+
+          if (
+            !district ||
+            district.status !== 'ACTIVE' ||
+            district.accessEligible === false
+          ) {
+            throw new OperationIneligibleError(
+              'Ушбу туман учун хизмат кўрсатиш фаол эмас.',
+              'DISTRICT_ACCESS_REVOKED',
+            );
+          }
         }
 
         // 4. Validate no active pending retry
@@ -227,16 +252,45 @@ export const retryService = {
         let queueName = '';
         let singletonKey = '';
         let payload: Record<string, unknown> = {};
-        const targetId = request.targetId || 'global';
+        const isGlobal = !request.targetId || request.targetId === 'global';
+        let districtIdForAudit: string | null = null;
+        let effectiveDistrictId: string | undefined = undefined;
+
+        if (!isGlobal) {
+          const [district] = await tx
+            .select({
+              id: districts.id,
+              status: districts.status,
+              accessEligible: districts.accessEligible,
+            })
+            .from(districts)
+            .where(eq(districts.id, request.targetId!))
+            .limit(1);
+
+          if (!district) {
+            throw new OperationalIssueNotFoundError(
+              'Кўрсатилган туман топилмади.',
+            );
+          }
+          if (
+            district.status !== 'ACTIVE' ||
+            district.accessEligible === false
+          ) {
+            throw new OperationIneligibleError(
+              'Ушбу туман учун хизмат кўрсатиш фаол эмас.',
+              'DISTRICT_ACCESS_REVOKED',
+            );
+          }
+          districtIdForAudit = district.id;
+          effectiveDistrictId = district.id;
+        }
 
         switch (request.operationType) {
           case 'TELEGRAM_TOPIC_RETENTION':
             queueName = TELEGRAM_TOPIC_RETENTION_QUEUE;
-            singletonKey = JobSingletonKeys.forRetention(
-              request.targetId || undefined,
-            );
+            singletonKey = JobSingletonKeys.forRetention(effectiveDistrictId);
             payload = {
-              districtId: request.targetId || undefined,
+              districtId: effectiveDistrictId,
               issueId: request.issueId,
             };
             break;
@@ -265,7 +319,7 @@ export const retryService = {
         const auditId = crypto.randomUUID();
         await tx.insert(auditEvents).values({
           id: auditId,
-          districtId: request.targetId !== 'global' ? request.targetId : null,
+          districtId: districtIdForAudit,
           actorId: actor.id,
           actorRole: actor.role,
           action: 'OPERATIONAL_RETRY_TRIGGERED',
@@ -283,7 +337,7 @@ export const retryService = {
           accepted: true,
           retryTrackingId: jobId,
           operationType: request.operationType,
-          targetId,
+          targetId: isGlobal ? 'global' : request.targetId!,
           queuedAt: now.toISOString(),
           message: 'Қайта ижро этиш навбатга муваффақиятли қўшилди.',
         };
@@ -301,22 +355,13 @@ export async function clearPendingRetryFlag(
 ): Promise<void> {
   if (!issueId) return;
   try {
-    const [issue] = await db
-      .select({ id: operationalIssues.id, metadata: operationalIssues.metadata })
-      .from(operationalIssues)
-      .where(eq(operationalIssues.id, issueId))
-      .limit(1);
-
-    if (issue && issue.metadata?.pendingRetry === true) {
-      const updatedMeta = { ...issue.metadata, pendingRetry: false };
-      await db
-        .update(operationalIssues)
-        .set({
-          metadata: updatedMeta,
-          updatedAt: new Date(),
-        })
-        .where(eq(operationalIssues.id, issueId));
-    }
+    await db
+      .update(operationalIssues)
+      .set({
+        metadata: sql`COALESCE(${operationalIssues.metadata}, '{}'::jsonb) || '{"pendingRetry": false}'::jsonb`,
+        updatedAt: new Date(),
+      })
+      .where(eq(operationalIssues.id, issueId));
   } catch (err) {
     console.error('[worker] Error clearing pendingRetry flag:', err);
   }

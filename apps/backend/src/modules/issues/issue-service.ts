@@ -18,7 +18,10 @@ import {
   auditEvents,
 } from '../../adapters/db/schema/index.js';
 import { sortOperationalIssues } from './issue-evaluator.js';
-import { isIssueRetryEligible } from './retry-evaluator.js';
+import {
+  isIssueRetryEligible,
+  deriveRetryJobSpec,
+} from './retry-evaluator.js';
 
 export class OperationalIssueNotFoundError extends Error {
   statusCode = 404;
@@ -41,7 +44,15 @@ function formatOperationalIssue(
 ): OperationalIssue {
   const isRetryEligible =
     row.status === 'ACTIVE' &&
-    isIssueRetryEligible(row.issueCategory as IssueCategory, row.metadata);
+    isIssueRetryEligible(row.issueCategory as IssueCategory, row.metadata) &&
+    deriveRetryJobSpec({
+      id: row.id,
+      scope: row.scope,
+      districtId: row.districtId,
+      component: row.component,
+      issueCategory: row.issueCategory,
+      metadata: row.metadata,
+    }) !== null;
   const pendingRetry = Boolean(row.metadata?.pendingRetry);
   const retryCount =
     typeof row.metadata?.retryCount === 'number'

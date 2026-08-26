@@ -38,18 +38,17 @@ describe('Story 4.3: Pure Retry Evaluator Unit Tests (AC 1, AC 2, AC 8)', () => 
       expect(allCategories.length).toBe(15);
       const eligible = allCategories.filter((c) => isIssueRetryEligible(c));
       const nonEligible = allCategories.filter((c) => !isIssueRetryEligible(c));
-      expect(eligible.length).toBe(6);
-      expect(nonEligible.length).toBe(9);
+      expect(eligible.length).toBe(5);
+      expect(nonEligible.length).toBe(10);
     });
 
-    it('returns true for all 6 retry-eligible issue categories', () => {
+    it('returns true for all 5 retry-eligible issue categories', () => {
       const eligibleList: IssueCategory[] = [
         'MESSAGE_INTAKE_DELAY',
         'TOPIC_PROCESSING_DELAY',
         'AI_SERVICE_DEGRADED',
         'RETENTION_JOB_DELAY',
         'DISTRICT_RETENTION_DELAY',
-        'QUEUE_BACKLOG_DELAY',
       ];
 
       for (const cat of eligibleList) {
@@ -62,6 +61,7 @@ describe('Story 4.3: Pure Retry Evaluator Unit Tests (AC 1, AC 2, AC 8)', () => 
       const nonRetryable: IssueCategory[] = [
         'DATABASE_CONNECTION_ERROR',
         'QUEUE_UNAVAILABLE',
+        'QUEUE_BACKLOG_DELAY',
         'STORAGE_UNAVAILABLE',
         'WEB_APP_UNAVAILABLE',
         'BOT_TOKEN_INVALID',
@@ -221,6 +221,24 @@ describe('Story 4.3: Pure Retry Evaluator Unit Tests (AC 1, AC 2, AC 8)', () => 
         generation: 3,
         issueId: 'issue-proj-1',
       });
+    });
+
+    it('safely defaults corrupt non-numeric generation to 1 in topic projection spec', () => {
+      const spec = deriveRetryJobSpec({
+        id: 'issue-proj-corrupt',
+        scope: 'DISTRICT',
+        districtId: 'dist-chilonzor-1',
+        component: 'topic_projection',
+        issueCategory: 'TOPIC_PROCESSING_DELAY',
+        metadata: {
+          topicId: 'topic-infra-789',
+          generation: 'invalid_generation_string',
+        },
+      });
+
+      expect(spec).not.toBeNull();
+      expect(spec?.singletonKey).toBe('proj:topic-infra-789:1');
+      expect((spec?.payload as any).generation).toBe(1);
     });
 
     it('derives correct job spec for AI_SERVICE_DEGRADED semantic relevance job', () => {

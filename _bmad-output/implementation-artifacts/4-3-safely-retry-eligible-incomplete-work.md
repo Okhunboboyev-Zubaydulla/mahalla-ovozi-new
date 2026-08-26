@@ -4,7 +4,7 @@ baseline_commit: a6e22ea
 
 # Story 4.3: Safely Retry Eligible Incomplete Work
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -253,6 +253,16 @@ So that I can safely resume stuck or failed work without creating duplicates, re
   - [x] 8.3 Frontend unit & component tests (`apps/web/tests/unit/`):
     - In `apps/web/tests/unit/ActiveIssuesList.test.tsx`: test retry button rendering only for retry-eligible issues, disabled state when pending, and Popconfirm interaction.
     - In `apps/web/tests/unit/IssueDetailDrawer.test.tsx`: test retry button in drawer, Popconfirm confirmation, timeline rendering of retry audit event, and focus preservation.
+
+### Review Findings
+- [x] [Review][Patch] Add `clearPendingRetryFlag` in topic-projection, semantic-relevance, and topic-assignment worker handlers [`apps/backend/src/modules/topics/jobs/topic-projection-job-handler.ts:367`]
+- [x] [Review][Patch] Correct Product Owner actor attribution to use `req.actor` instead of `req.session.account` [`apps/backend/src/modules/issues/issue-routes.ts:213`]
+- [x] [Review][Patch] Merge existing issue metadata with safeMetadata in synchronizeOperationalIssues to prevent erasing retry state [`apps/backend/src/modules/issues/issue-manager.ts:133`]
+- [x] [Review][Patch] Align `isIssueRetryEligible` with `deriveRetryJobSpec` and remove unsupported `QUEUE_BACKLOG_DELAY` [`apps/backend/src/modules/issues/retry-evaluator.ts:17`]
+- [x] [Review][Patch] Normalize targetId `'global'` to `undefined` in `retryBackgroundJob` to prevent retention scan drops [`apps/backend/src/modules/issues/retry-service.ts:237`]
+- [x] [Review][Patch] Validate district existence for non-global targetId in `retryBackgroundJob` to prevent foreign key errors [`apps/backend/src/modules/issues/retry-service.ts:268`]
+- [x] [Review][Patch] Enforce integer parsing for `generation` in `deriveRetryJobSpec` [`apps/backend/src/modules/issues/retry-evaluator.ts:175`]
+- [x] [Review][Patch] Validate district active status and access eligibility before enqueuing retry with `DISTRICT_ACCESS_REVOKED` [`apps/backend/src/modules/issues/retry-service.ts:107`]
 
 ---
 

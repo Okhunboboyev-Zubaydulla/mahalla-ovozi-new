@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { message } from 'antd';
+import { App, message as staticMessage } from 'antd';
 import {
   OperationalIssuesListResponse,
   OperationalIssueDetailResponse,
@@ -35,23 +35,14 @@ export function useOperationalIssues(params?: GetIssuesParams) {
 }
 
 /**
- * Custom TanStack Query hook for fetching operational issue detail by ID.
+ * Custom TanStack Query hook for fetching single operational issue diagnostic details.
  */
 export function useOperationalIssueDetail(issueId: string | null) {
-  const isEnabled = Boolean(issueId && issueId.trim().length > 0);
-
   return useQuery<OperationalIssueDetailResponse>({
-    queryKey: issueId ? issueKeys.detail(issueId) : ['issues', 'detail', 'null'],
-    queryFn: () => {
-      if (!issueId) {
-        throw new Error('Муаммо ID кўрсатилмади.');
-      }
-      return issuesClient.getOperationalIssueDetail(issueId);
-    },
-    enabled: isEnabled,
-    networkMode: 'online',
-    staleTime: 15_000,
-    gcTime: 600_000,
+    queryKey: issueKeys.detail(issueId || ''),
+    queryFn: () => issuesClient.getOperationalIssueDetail(issueId!),
+    enabled: Boolean(issueId),
+    staleTime: 10_000,
     retry: false,
   });
 }
@@ -61,6 +52,11 @@ export function useOperationalIssueDetail(issueId: string | null) {
  */
 export function useRetryOperationalIssue() {
   const queryClient = useQueryClient();
+  const antdApp = App.useApp();
+  const messageApi =
+    typeof antdApp?.message?.error === 'function'
+      ? antdApp.message
+      : staticMessage;
 
   return useMutation<
     RetryOperationResponse,
@@ -78,13 +74,12 @@ export function useRetryOperationalIssue() {
           queryKey: issueKeys.detail(variables.issueId),
         });
       }
-      message.success(
+      messageApi.success(
         data.message || 'Қайта ижро этиш навбатга муваффақиятли қўшилди.',
       );
     },
     onError: (err) => {
-      message.error(err.message || 'Қайта ижро этишда хатолик юз берди.');
+      messageApi.error(err.message || 'Қайта ижро этишда хатолик юз берди.');
     },
   });
 }
-

@@ -22,6 +22,7 @@ import {
   type AcceptedEvidenceItem,
 } from '../context-snapshot.js';
 import type { SemanticRelevanceEvaluator } from '../semantic-relevance-evaluator.js';
+import { clearPendingRetryFlag } from '../../issues/retry-service.js';
 
 export interface SemanticRelevanceJobDeps {
   db: DbClient;
@@ -370,6 +371,10 @@ export async function processSemanticRelevanceJobs(
             }),
           );
           throw err; // Trigger pg-boss retry policy
+        } finally {
+          if (job.data?.issueId) {
+            await clearPendingRetryFlag(db, job.data.issueId);
+          }
         }
       }
     }
