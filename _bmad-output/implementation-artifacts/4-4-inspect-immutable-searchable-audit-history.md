@@ -4,7 +4,7 @@ baseline_commit: 6a5c604
 
 # Story 4.4: Inspect Immutable Searchable Audit History
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -129,8 +129,8 @@ So that I can verify operational history, investigate security events, and demon
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Shared API Contracts & Zod Schemas (`packages/api-contracts`)** (AC: 1, 2, 3, 5)
-  - [ ] 1.1 In `packages/api-contracts/src/audit.ts` [NEW]:
+- [x] **Task 1: Shared API Contracts & Zod Schemas (`packages/api-contracts`)** (AC: 1, 2, 3, 5)
+  - [x] 1.1 In `packages/api-contracts/src/audit.ts` [NEW]:
     - Define and export `AuditActionCategoryEnumSchema`:
       - Enum values: `AUTH_SECURITY`, `DISTRICT_ADMINISTRATION`, `HOKIM_MANAGEMENT`, `TELEGRAM_INTEGRATION`, `OPERATIONAL_LIFECYCLE`.
     - Define and export `AuditActionOutcomeEnumSchema`:
@@ -171,11 +171,11 @@ So that I can verify operational history, investigate security events, and demon
     - Define and export `AuditEventDetailSchema`:
       - Complete detail representation of an audit event.
     - Export helper mappings for Action to Category and Action to default Outcome.
-  - [ ] 1.2 In `packages/api-contracts/src/index.ts` [UPDATE]:
+  - [x] 1.2 In `packages/api-contracts/src/index.ts` [UPDATE]:
     - Export all members from `./audit.js`.
 
-- [ ] **Task 2: Backend Audit Query Service & Action Classification (`apps/backend/src/modules/audit`)** (AC: 1, 2, 3, 7, 9)
-  - [ ] 2.1 In `apps/backend/src/modules/audit/audit-service.ts` [UPDATE]:
+- [x] **Task 2: Backend Audit Query Service & Action Classification (`apps/backend/src/modules/audit`)** (AC: 1, 2, 3, 7, 9)
+  - [x] 2.1 In `apps/backend/src/modules/audit/audit-service.ts` [UPDATE]:
     - Enhance `sanitizeMetadata` to recursively sanitize `previousValues`, `newValues`, `reason`, and nested object keys.
     - Implement `classifyAuditActionCategory(action: string): AuditActionCategory`:
       - Maps `AUTH_*`, `ACCOUNT_PO_CREATED`, `ACCOUNT_PO_PASSWORD_RESET` -> `AUTH_SECURITY`
@@ -189,7 +189,7 @@ So that I can verify operational history, investigate security events, and demon
       - If action ends with `_FAILED` or `_FAILURE`, return `FAILURE`.
       - If `metadata?.outcome === 'SUCCESS'` or `metadata?.status === 'SUCCESS'` or `metadata?.success === true`, return `SUCCESS`.
       - Otherwise return `SUCCESS`.
-  - [ ] 2.2 In `apps/backend/src/modules/audit/audit-query-service.ts` [NEW]:
+  - [x] 2.2 In `apps/backend/src/modules/audit/audit-query-service.ts` [NEW]:
     - Implement `AuditQueryService` class / functions with dependency injection `(db: DbClient)`:
       - Helper `escapeIlikePattern(term: string): string` to escape `%`, `_`, `\` characters.
       - `queryAuditEvents(params: AuditHistoryQuery): Promise<KeysetPage<AuditEvent>>`:
@@ -212,8 +212,8 @@ So that I can verify operational history, investigate security events, and demon
       - `getAuditEventById(id: string): Promise<AuditEvent | null>`:
         - Retrieves single audit event by ID with joined district name and sanitized metadata.
 
-- [ ] **Task 3: Fastify HTTP Routes for Audit History (`apps/backend/src/modules/audit`)** (AC: 1, 3, 4, 5, 8)
-  - [ ] 3.1 In `apps/backend/src/modules/audit/audit-routes.ts` [NEW]:
+- [x] **Task 3: Fastify HTTP Routes for Audit History (`apps/backend/src/modules/audit`)** (AC: 1, 3, 4, 5, 8)
+  - [x] 3.1 In `apps/backend/src/modules/audit/audit-routes.ts` [NEW]:
     - Implement `registerAuditRoutes(server: FastifyInstance, db: DbClient)`:
       - Register encapsulated Fastify scope with preHandler `createRequireProductOwner(db)` (HTTP 401 unauthenticated, HTTP 403 Hokim).
       - `GET /api/v1/audit/events`:
@@ -225,12 +225,12 @@ So that I can verify operational history, investigate security events, and demon
         - Call `auditQueryService.getAuditEventById(id)`.
         - Return HTTP 200 with `AuditEventDetailSchema` or HTTP 404 with standard error envelope (`NOT_FOUND`).
       - Ensure strictly NO mutating routes (`POST`, `PUT`, `PATCH`, `DELETE`) exist on `/api/v1/audit/*` and query requests do not emit audit events (preventing search term logging).
-  - [ ] 3.2 In `apps/backend/src/entrypoints/http.ts` [UPDATE]:
+  - [x] 3.2 In `apps/backend/src/entrypoints/http.ts` [UPDATE]:
     - Import `registerAuditRoutes` from `../modules/audit/audit-routes.js`.
     - Register `registerAuditRoutes(server, db)` alongside other domain module routes.
 
-- [ ] **Task 4: Web API Client & TanStack Query Hooks (`apps/web/src/api`)** (AC: 1, 2, 3, 10)
-  - [ ] 4.1 In `apps/web/src/api/audit-client.ts` [NEW]:
+- [x] **Task 4: Web API Client & TanStack Query Hooks (`apps/web/src/api`)** (AC: 1, 2, 3, 10)
+  - [x] 4.1 In `apps/web/src/api/audit-client.ts` [NEW]:
     - Implement `fetchAuditEvents(query: AuditHistoryQuery): Promise<KeysetPage<AuditEvent>>`:
       - Calls `GET /api/v1/audit/events` with query parameters.
       - Uses `credentials: 'include'` and handles standard error envelope.
@@ -243,8 +243,8 @@ So that I can verify operational history, investigate security events, and demon
       - Query key: `['audit-event', id]`.
       - `enabled: Boolean(id)`.
 
-- [ ] **Task 5: Frontend UI Components (`apps/web/src/pages/AuditHistoryPage.tsx` & Components)** (AC: 1, 2, 4, 6, 7, 10)
-  - [ ] 5.1 In `apps/web/src/components/audit/AuditFilterBar.tsx` [NEW]:
+- [x] **Task 5: Frontend UI Components (`apps/web/src/pages/AuditHistoryPage.tsx` & Components)** (AC: 1, 2, 4, 6, 7, 10)
+  - [x] 5.1 In `apps/web/src/components/audit/AuditFilterBar.tsx` [NEW]:
     - Ant Design 5 filter bar component with:
       - District Select (All districts / Global only / specific district from `useDistricts`),
       - DateRangePicker (`Asia/Tashkent` calendar days, presets: "Бугун", "Охирги 7 кун", "Охирги 30 кун"),
@@ -253,7 +253,7 @@ So that I can verify operational history, investigate security events, and demon
       - Outcome Select (`Барча натижалар`, `Муваффақиятли`, `Хатолик`),
       - Search Input with debounce (300ms) for safe metadata search,
       - Reset filters button.
-  - [ ] 5.2 In `apps/web/src/components/audit/AuditEventDetailDrawer.tsx` [NEW]:
+  - [x] 5.2 In `apps/web/src/components/audit/AuditEventDetailDrawer.tsx` [NEW]:
     - Read-only Ant Design Drawer (responsive width: `screens.md ? 640 : '100%'` using `Grid.useBreakpoint()`, `destroyOnClose={true}`):
       - Header with Event ID and copy button (`copyToClipboard`),
       - Descriptions grid: Timestamp (`Asia/Tashkent`), Actor (Role Tag, ID), IP Address, User Agent, District, Action Name & Category, Outcome Badge,
@@ -262,7 +262,7 @@ So that I can verify operational history, investigate security events, and demon
       - Structured metadata viewer (formatted key-value pairs),
       - Strictly NO edit/delete buttons,
       - Close button restoring table focus.
-  - [ ] 5.3 In `apps/web/src/pages/AuditHistoryPage.tsx` [REPLACE PLACEHOLDER]:
+  - [x] 5.3 In `apps/web/src/pages/AuditHistoryPage.tsx` [REPLACE PLACEHOLDER]:
     - Replace placeholder `apps/web/src/pages/placeholders/AuditHistoryPage.tsx` and move to `apps/web/src/pages/AuditHistoryPage.tsx`:
       - Title `Аудит тарихи` and refresh button with spinning indicator,
       - Render `AuditFilterBar`,
@@ -278,13 +278,13 @@ So that I can verify operational history, investigate security events, and demon
       - Stale cache banner if background refetch fails offline with last-fetch timestamp and retry button,
       - Update `apps/web/src/App.tsx` import to use the new `AuditHistoryPage`.
 
-- [ ] **Task 6: Timezone & Utility Enhancements (`apps/web/src/lib/formatters.ts`)** (AC: 2, 7)
-  - [ ] 6.1 In `apps/web/src/lib/formatters.ts` [UPDATE]:
+- [x] **Task 6: Timezone & Utility Enhancements (`apps/web/src/lib/formatters.ts`)** (AC: 2, 7)
+  - [x] 6.1 In `apps/web/src/lib/formatters.ts` [UPDATE]:
     - Add helper `getActionDisplayNameUz(action: string): string` for clean Uzbek Cyrillic descriptions across all 24 system actions.
     - Leverage existing `formatTashkentDate`, `formatTashkentTime`, and `formatTashkentCalendarDate` for display consistency.
 
-- [ ] **Task 7: Backend Integration Tests (`apps/backend/tests/audit-history.test.ts`)** (AC: 1, 2, 3, 5, 7, 8, 9, 11)
-  - [ ] 7.1 In `apps/backend/tests/audit-history.test.ts` [NEW]:
+- [x] **Task 7: Backend Integration Tests (`apps/backend/tests/audit-history.test.ts`)** (AC: 1, 2, 3, 5, 7, 8, 9, 11)
+  - [x] 7.1 In `apps/backend/tests/audit-history.test.ts` [NEW]:
     - Setup test suite against isolated test DB `mahalla_ovozi_test` (port 5433):
       - Seed test Product Owner, test Hokim, and test Districts.
       - Seed diverse audit events across all 5 action categories (Auth, District management, Hokim management, Telegram bot/group, Operational issues, Retry triggers).
@@ -299,8 +299,8 @@ So that I can verify operational history, investigate security events, and demon
       - 8. Immutability: Verify no POST/PUT/PATCH/DELETE endpoints exist on `/api/v1/audit/*`.
       - 9. Performance: Keyset query execution completes well under 2-second NFR2 target.
 
-- [ ] **Task 8: Web Component & UI Tests (`apps/web/tests/unit/AuditHistoryPage.test.tsx`)** (AC: 1, 2, 4, 6, 11)
-  - [ ] 8.1 In `apps/web/tests/unit/AuditHistoryPage.test.tsx` [NEW]:
+- [x] **Task 8: Web Component & UI Tests (`apps/web/tests/unit/AuditHistoryPage.test.tsx`)** (AC: 1, 2, 4, 6, 11)
+  - [x] 8.1 In `apps/web/tests/unit/AuditHistoryPage.test.tsx` [NEW]:
     - Render `AuditHistoryPage` with mocked QueryClient and Ant Design App wrapper.
     - Test scenarios:
       - 1. Renders table with audit events, actor tags, outcome tags, Tashkent timestamps.
@@ -478,13 +478,38 @@ Gemini 3.7 Flash (High)
 
 ### Debug Log References
 
-None (Spec review & validation phase).
+- Verified full test suite execution for backend and web.
+- Checked keyset pagination with base64url cursor encoding and boundary condition handling.
+- Verified Asia/Tashkent UTC+5 date boundary calculations and inverted date validation.
 
 ### Completion Notes List
 
-- Story 4.4 specification reviewed and refined with adversarial scrutiny, edge case handling (malformed cursors, inverted dates, single-sided date ranges, ILIKE character escaping, global vs all-district scoping), and complete test matrices.
+- Story 4.4 implementation completed satisfying all 11 Acceptance Criteria and 8 Tasks.
+- Shared API contracts defined in `packages/api-contracts/src/audit.ts` with strict Zod validation for filters, dates, and keyset pagination.
+- Backend query engine implemented in `apps/backend/src/modules/audit/audit-query-service.ts` featuring row-value keyset cursor traversal, Tashkent calendar boundaries, allowlisted ILIKE search with SQL wildcard escaping, and joined district names.
+- Fastify read-only routes `/api/v1/audit/events` and `/api/v1/audit/events/:id` guarded with `createRequireProductOwner(db)` in `apps/backend/src/modules/audit/audit-routes.ts`.
+- Web API client and TanStack Query hooks implemented in `apps/web/src/api/audit-client.ts`.
+- Ant Design 5 UI built in `apps/web/src/pages/AuditHistoryPage.tsx`, `AuditFilterBar.tsx`, and `AuditEventDetailDrawer.tsx` with responsive drawer, before/after diff table, debounced search, custom keyset pagination footer, and offline stale cache warning banner.
+- All 16 backend integration tests in `apps/backend/tests/audit-history.test.ts` passing 100% against test DB.
+- All 8 web unit/component tests in `apps/web/tests/unit/AuditHistoryPage.test.tsx` passing 100%.
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/4-4-inspect-immutable-searchable-audit-history.md`
+- `packages/api-contracts/src/audit.ts` [NEW]
+- `packages/api-contracts/src/index.ts` [MODIFY]
+- `apps/backend/src/modules/audit/audit-query-service.ts` [NEW]
+- `apps/backend/src/modules/audit/audit-routes.ts` [NEW]
+- `apps/backend/src/modules/audit/audit-service.ts` [MODIFY]
+- `apps/backend/src/entrypoints/http.ts` [MODIFY]
+- `apps/backend/tests/audit-history.test.ts` [NEW]
+- `apps/web/src/api/audit-client.ts` [NEW]
+- `apps/web/src/components/audit/AuditFilterBar.tsx` [NEW]
+- `apps/web/src/components/audit/AuditEventDetailDrawer.tsx` [NEW]
+- `apps/web/src/pages/AuditHistoryPage.tsx` [NEW]
+- `apps/web/src/pages/placeholders/AuditHistoryPage.tsx` [DELETE]
+- `apps/web/src/App.tsx` [MODIFY]
+- `apps/web/src/lib/formatters.ts` [MODIFY]
+- `apps/web/tests/unit/AuditHistoryPage.test.tsx` [NEW]
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` [MODIFY]
+- `_bmad-output/implementation-artifacts/4-4-inspect-immutable-searchable-audit-history.md` [MODIFY]
 

@@ -113,3 +113,37 @@ export function getTashkentToday(referenceDate?: Date): string {
     return `${year}-${month}-${day}`;
   }
 }
+
+const ACTION_DISPLAY_NAMES_UZ: Record<string, string> = {
+  AUTH_SIGN_IN_SUCCESS: 'Тизимга муваффақиятли кириш',
+  AUTH_SIGN_IN_FAILURE: 'Тизимга киришда хатолик',
+  ACCOUNT_PO_CREATED: 'Маҳсулот эгаси ҳисоби яратилди',
+  ACCOUNT_PO_PASSWORD_RESET: 'Маҳсулот эгаси пароли янгиланди',
+  AUTH_FIRST_LOGIN_PASSWORD_CHANGE_FAILED: 'Биринчи кириш паролини ўзгартиришда хатолик',
+  ACCOUNT_HOKIM_CREATED: 'Туман ҳокими ҳисоби яратилди',
+  ACCOUNT_HOKIM_FIRST_LOGIN_PASSWORD_CHANGED: 'Ҳокимнинг бошланғич пароли ўзгартирилди',
+  ACCOUNT_HOKIM_PASSWORD_RESET: 'Ҳоким пароли вақтинчалик янгиланди',
+  ACCOUNT_HOKIM_DISABLED: 'Ҳоким ҳисоби тўхтатилди',
+  ACCOUNT_HOKIM_REPLACED: 'Ҳоким янгисига алмаштирилди',
+  DISTRICT_CREATED: 'Янги туман яратилди',
+  DISTRICT_UPDATED: 'Туман маълумотлари янгиланди',
+  DISTRICT_DISCLOSURE_CONFIRMED: 'Маълумотларни ошкор қилиш тасдиқланди',
+  DISTRICT_ACTIVATED: 'Туман муваффақиятли фаоллаштирилди',
+  DISTRICT_ACTIVATION_FAILED: 'Туманни фаоллаштиришда хатолик',
+  DISTRICT_TELEGRAM_BOT_CONNECTED: 'Телеграм бот муваффақиятли уланди',
+  DISTRICT_TELEGRAM_BOT_DISCONNECTED: 'Телеграм бот уланиши узилди',
+  DISTRICT_GROUP_VALIDATED: 'Телеграм гуруҳ текширилди',
+  DISTRICT_GROUP_MAPPED: 'Телеграм гуруҳ маҳаллага бириктирилди',
+  DISTRICT_GROUP_REMAPPED: 'Телеграм гуруҳ маҳаллага қайта бириктирилди',
+  DISTRICT_GROUP_UNMAPPED: 'Телеграм гуруҳ бириктируви бекор қилинди',
+  OPERATIONAL_ISSUE_DETECTED: 'Операцион муаммо аниқланди',
+  OPERATIONAL_ISSUE_RESOLVED: 'Операцион муаммо бартараф этилди',
+  OPERATIONAL_RETRY_TRIGGERED: 'Қайта уриниш амали ишга туширилди',
+};
+
+export function getActionDisplayNameUz(action: string): string {
+  if (ACTION_DISPLAY_NAMES_UZ[action]) {
+    return ACTION_DISPLAY_NAMES_UZ[action];
+  }
+  return action.replace(/_/g, ' ');
+}

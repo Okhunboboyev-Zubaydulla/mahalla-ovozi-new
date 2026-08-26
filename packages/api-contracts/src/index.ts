@@ -11,3 +11,4 @@ export * from './topics.js';
 export * from './health.js';
 export * from './issues.js';
 export * from './retry.js';
+export * from './audit.js';

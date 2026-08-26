@@ -1,3 +1,4 @@
+import { AuditActionCategory, AuditActionOutcome } from '@mahalla-ovozi/api-contracts';
 import crypto from 'node:crypto';
 import { DbClient } from '../../adapters/db/client.js';
 import { auditEvents, NewAuditEvent } from '../../adapters/db/schema/index.js';
@@ -53,6 +54,69 @@ export function sanitizeMetadata(metadata?: Record<string, unknown>): Record<str
     }
   }
   return sanitized;
+}
+
+export function classifyAuditActionCategory(action: string): AuditActionCategory {
+  if (
+    action.startsWith('AUTH_') ||
+    action === 'ACCOUNT_PO_CREATED' ||
+    action === 'ACCOUNT_PO_PASSWORD_RESET' ||
+    action === 'ACCOUNT_HOKIM_FIRST_LOGIN_PASSWORD_CHANGED'
+  ) {
+    return 'AUTH_SECURITY';
+  }
+
+  if (
+    action.startsWith('ACCOUNT_HOKIM_')
+  ) {
+    return 'HOKIM_MANAGEMENT';
+  }
+
+  if (
+    action.startsWith('DISTRICT_TELEGRAM_BOT_') ||
+    action.startsWith('DISTRICT_GROUP_')
+  ) {
+    return 'TELEGRAM_INTEGRATION';
+  }
+
+  if (
+    action.startsWith('DISTRICT_')
+  ) {
+    return 'DISTRICT_ADMINISTRATION';
+  }
+
+  if (
+    action.startsWith('OPERATIONAL_ISSUE_') ||
+    action.startsWith('OPERATIONAL_RETRY_')
+  ) {
+    return 'OPERATIONAL_LIFECYCLE';
+  }
+
+  return 'OPERATIONAL_LIFECYCLE';
+}
+
+export function determineAuditActionOutcome(
+  action: string,
+  metadata?: Record<string, unknown>,
+): AuditActionOutcome {
+  if (
+    metadata?.outcome === 'FAILURE' ||
+    metadata?.status === 'FAILED' ||
+    metadata?.success === false
+  ) {
+    return 'FAILURE';
+  }
+  if (action.endsWith('_FAILED') || action.endsWith('_FAILURE')) {
+    return 'FAILURE';
+  }
+  if (
+    metadata?.outcome === 'SUCCESS' ||
+    metadata?.status === 'SUCCESS' ||
+    metadata?.success === true
+  ) {
+    return 'SUCCESS';
+  }
+  return 'SUCCESS';
 }
 
 export type DbOrTx = DbClient | Parameters<Parameters<DbClient['transaction']>[0]>[0];

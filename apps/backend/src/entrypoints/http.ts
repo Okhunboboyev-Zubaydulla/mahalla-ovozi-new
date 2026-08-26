@@ -14,6 +14,7 @@ import { registerAiOperationsRoutes } from '../modules/ai/ai-operations-routes.j
 import { registerHokimTopicsRoutes } from '../modules/topics/hokim-topics-routes.js';
 import { registerHealthRoutes } from '../modules/health/health-routes.js';
 import { registerIssueRoutes } from '../modules/issues/issue-routes.js';
+import { registerAuditRoutes } from '../modules/audit/audit-routes.js';
 import { createBossClient, initBossQueues } from '../adapters/jobs/boss-client.js';
 import type PgBoss from 'pg-boss';
 import pg from 'pg';
@@ -180,6 +181,7 @@ export async function buildHttpServer(options?: {
   registerHokimTopicsRoutes(server, db);
   registerHealthRoutes(server, { db, pool, boss });
   registerIssueRoutes(server, { db, pool, boss });
+  registerAuditRoutes(server, db);
 
   return server;
 }

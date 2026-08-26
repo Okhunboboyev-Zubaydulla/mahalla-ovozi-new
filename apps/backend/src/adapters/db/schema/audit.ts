@@ -21,6 +21,8 @@ export const auditEvents = pgTable(
     index('audit_events_action_idx').on(table.action),
     index('audit_events_actor_id_idx').on(table.actorId),
     index('audit_events_district_created_idx').on(table.districtId, table.createdAt),
+    index('audit_events_created_at_id_idx').on(table.createdAt, table.id),
+    index('audit_events_district_created_at_id_idx').on(table.districtId, table.createdAt, table.id),
   ]
 );
 
