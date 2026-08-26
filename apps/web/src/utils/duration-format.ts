@@ -6,6 +6,10 @@ export function formatIssueDuration(
   baseDate: Date = new Date(),
 ): string {
   const start = new Date(startedAt);
+  if (Number.isNaN(start.getTime())) {
+    return 'Номаълум вақт';
+  }
+
   const diffMs = Math.max(0, baseDate.getTime() - start.getTime());
   const diffMins = Math.floor(diffMs / (60 * 1000));
   const diffHours = Math.floor(diffMs / (60 * 60 * 1000));

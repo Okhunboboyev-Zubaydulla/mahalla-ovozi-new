@@ -104,6 +104,17 @@ describe('Story 4.2: Issue Evaluator Pure Engine Tests', () => {
       expect(meta.sanitizedDescription).toContain('Самарқанд тумани');
     });
 
+    it('maps TELEGRAM_BOT_INVALID error code to BOT_TOKEN_INVALID category', () => {
+      const obs = createObservation('telegram_bot', 'Unavailable', {
+        districtId: 'dist-samarkand',
+        errorCode: 'TELEGRAM_BOT_INVALID',
+      });
+      const meta = deriveIssueMetadata(obs, 'Самарқанд тумани');
+
+      expect(meta.issueCategory).toBe('BOT_TOKEN_INVALID');
+      expect(meta.sanitizedTitle).toBe('Telegram бот токени нотўғри');
+    });
+
     it('maps Telegram bot disconnected to BOT_DISCONNECTED and /telegram-setup route', () => {
       const obs = createObservation('telegram_bot', 'Unavailable', {
         districtId: 'dist-bukhara',

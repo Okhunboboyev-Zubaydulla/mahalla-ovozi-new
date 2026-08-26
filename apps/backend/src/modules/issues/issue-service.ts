@@ -158,9 +158,7 @@ export const issueService = {
     const auditRows = await db
       .select()
       .from(auditEvents)
-      .where(
-        sql`${auditEvents.metadata}->>'issueId' = ${issueId} OR ${auditEvents.metadata}->>'logicalKey' = ${issue.logicalKey}`,
-      )
+      .where(sql`${auditEvents.metadata}->>'issueId' = ${issueId}`)
       .orderBy(asc(auditEvents.createdAt));
 
     const auditEventList: IssueAuditEvent[] = auditRows.map((a) => ({

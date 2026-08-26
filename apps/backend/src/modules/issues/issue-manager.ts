@@ -241,8 +241,10 @@ export async function synchronizeOperationalIssues(
           })
           .where(eq(operationalIssues.id, existingIssue.id));
 
-        const durationMs =
-          now.getTime() - new Date(existingIssue.startedAt).getTime();
+        const durationMs = Math.max(
+          0,
+          now.getTime() - new Date(existingIssue.startedAt).getTime(),
+        );
 
         // Atomically insert verified-recovery audit log (AC 11, AC 13)
         await tx.insert(auditEvents).values({

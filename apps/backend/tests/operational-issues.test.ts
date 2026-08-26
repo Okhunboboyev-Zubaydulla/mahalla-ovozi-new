@@ -503,5 +503,19 @@ describe('Story 4.2: Backend Operational Issues Database & HTTP Integration Test
 
       expect(body.issues.every((i) => i.districtId === districtAId)).toBe(true);
     });
+
+    it('GET /api/v1/districts/:districtId/issues returns 400 for invalid query parameters', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: `/api/v1/districts/${districtAId}/issues?status=INVALID_STATUS`,
+        headers: {
+          cookie: poCookie,
+          ...SAME_ORIGIN_HEADERS,
+        },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.code).toBe('VALIDATION_ERROR');
+    });
   });
 });

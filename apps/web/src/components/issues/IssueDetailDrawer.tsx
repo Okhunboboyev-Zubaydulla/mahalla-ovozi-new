@@ -54,7 +54,9 @@ export const IssueDetailDrawer: React.FC<IssueDetailDrawerProps> = ({
     if (isOpen) {
       headingRef.current?.focus();
     } else {
-      openerRef?.current?.focus();
+      if (openerRef?.current && typeof openerRef.current.focus === 'function' && document.body.contains(openerRef.current)) {
+        openerRef.current.focus();
+      }
     }
   };
 
@@ -76,11 +78,14 @@ export const IssueDetailDrawer: React.FC<IssueDetailDrawerProps> = ({
 
   return (
     <Drawer
+      id="issue-detail-drawer"
+      aria-labelledby="issue-detail-drawer-title"
       open={open}
       onClose={onClose}
+      closable={false}
       afterOpenChange={handleAfterOpenChange}
       placement="right"
-      width={Math.min(560, window.innerWidth)}
+      width={typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : 560}
       mask={false}
       destroyOnClose
       keyboard

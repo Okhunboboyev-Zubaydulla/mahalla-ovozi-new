@@ -59,7 +59,7 @@ export const ActiveIssuesList: React.FC<ActiveIssuesListProps> = ({
         </Space>
       </div>
 
-      {issues.length === 0 && !loading ? (
+      {issues.length === 0 ? (
         <Empty
           image={
             <CheckCircleTwoTone
@@ -159,6 +159,8 @@ export const ActiveIssuesList: React.FC<ActiveIssuesListProps> = ({
                       ghost
                       size="middle"
                       onClick={(e) => onSelectIssue(issue, e.currentTarget)}
+                      aria-haspopup="dialog"
+                      aria-controls="issue-detail-drawer"
                       aria-label={`${issue.sanitizedTitle} бўйича батафсил маълумот`}
                     >
                       Батафсил <RightOutlined />

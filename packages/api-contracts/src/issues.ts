@@ -75,7 +75,7 @@ export const OperationalIssueSchema = z.object({
   startedAt: z.string().datetime(),
   latestCheckAt: z.string().datetime(),
   resolvedAt: z.string().datetime().nullable(),
-  metadata: z.record(z.unknown()).nullable(),
+  metadata: z.record(z.unknown()).nullable().optional(),
 });
 export type OperationalIssue = z.infer<typeof OperationalIssueSchema>;
 
@@ -103,7 +103,7 @@ export const IssueAuditEventSchema = z.object({
   actorId: z.string().nullable(),
   actorRole: z.string().nullable(),
   createdAt: z.string().datetime(),
-  metadata: z.record(z.unknown()).nullable(),
+  metadata: z.record(z.unknown()).nullable().optional(),
 });
 export type IssueAuditEvent = z.infer<typeof IssueAuditEventSchema>;
 

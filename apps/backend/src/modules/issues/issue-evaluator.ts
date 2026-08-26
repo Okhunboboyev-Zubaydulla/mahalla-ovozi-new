@@ -74,7 +74,7 @@ export function deriveIssueMetadata(
 
   switch (component) {
     case 'telegram_bot': {
-      if (errorCode === 'BOT_TOKEN_INVALID') {
+      if (errorCode === 'BOT_TOKEN_INVALID' || errorCode === 'TELEGRAM_BOT_INVALID') {
         return {
           issueCategory: 'BOT_TOKEN_INVALID',
           sanitizedTitle: 'Telegram бот токени нотўғри',

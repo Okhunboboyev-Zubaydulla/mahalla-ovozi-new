@@ -48,7 +48,6 @@ export function useOperationalIssueDetail(issueId: string | null) {
     },
     enabled: isEnabled,
     networkMode: 'online',
-    placeholderData: keepPreviousData,
     staleTime: 15_000,
     gcTime: 600_000,
     retry: false,

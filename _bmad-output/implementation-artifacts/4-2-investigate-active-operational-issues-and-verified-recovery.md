@@ -4,7 +4,7 @@ baseline_commit: 3cecce0
 
 # Story 4.2: Investigate Active Operational Issues and Verified Recovery
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -374,6 +374,19 @@ So that I can address real problems without manual ticket tracking, false alarms
     - In `apps/web/tests/unit/IssueSeverityBadge.test.tsx`: test rendering all 3 severities with Uzbek Cyrillic text and accessible ARIA attributes.
     - In `apps/web/tests/unit/ActiveIssuesList.test.tsx`: test priority ordering, empty state, duration formatting, and drawer triggering.
     - In `apps/web/tests/unit/IssueDetailDrawer.test.tsx`: test focus management, keyboard Escape dismissal, and management route navigation.
+
+### Review Findings
+
+- [x] [Review][Patch] Filter issue detail audit events strictly by issueId rather than logicalKey [apps/backend/src/modules/issues/issue-service.ts:162]
+- [x] [Review][Patch] Add closable={false} to Drawer when custom close button is provided in extra [apps/web/src/components/issues/IssueDetailDrawer.tsx:78]
+- [x] [Review][Patch] Check TELEGRAM_BOT_INVALID in addition to BOT_TOKEN_INVALID in deriveIssueMetadata [apps/backend/src/modules/issues/issue-evaluator.ts:77]
+- [x] [Review][Patch] Return 400 validation error on invalid query parameters in district issues endpoint [apps/backend/src/modules/issues/issue-routes.ts:139]
+- [x] [Review][Patch] Prevent layout flicker during 30s background refetch in empty state of ActiveIssuesList [apps/web/src/components/issues/ActiveIssuesList.tsx:62]
+- [x] [Review][Patch] Remove keepPreviousData from useOperationalIssueDetail to prevent stale detail flashing [apps/web/src/issues/useOperationalIssues.ts:51]
+- [x] [Review][Patch] Guard against NaN timestamps returning malformed duration strings in formatIssueDuration [apps/web/src/utils/duration-format.ts:8]
+- [x] [Review][Patch] Apply Math.max(0, ...) to durationMs in resolution audit event against clock skew [apps/backend/src/modules/issues/issue-manager.ts:244]
+- [x] [Review][Patch] Add .optional() to metadata field in IssueAuditEventSchema for undefined safety [packages/api-contracts/src/issues.ts:106]
+- [x] [Review][Patch] Add aria-haspopup="dialog" and aria-controls attributes to issue detail trigger buttons [apps/web/src/components/issues/ActiveIssuesList.tsx:157]
 
 ---
 

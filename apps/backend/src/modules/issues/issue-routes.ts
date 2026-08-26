@@ -137,10 +137,20 @@ export function registerIssueRoutes(
         }
 
         const queryResult = OperationalIssuesQuerySchema.safeParse(req.query);
-        const queryParams = queryResult.success ? queryResult.data : {};
+        if (!queryResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message:
+                queryResult.error.issues[0]?.message ||
+                'Нотўғри қидирув параметрлари киритилди.',
+              statusCode: 400,
+            },
+          });
+        }
 
         const result = await issueService.getOperationalIssues(deps.db, {
-          ...queryParams,
+          ...queryResult.data,
           districtId: paramResult.data.districtId,
         });
         return reply.status(200).send(result);
