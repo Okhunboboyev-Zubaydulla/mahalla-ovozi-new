@@ -70,6 +70,20 @@ describe('Story 4.1 & 4.2: SystemHealthPage Component Tests (AC 1, AC 4, AC 11, 
         isApplicable: true,
         lifecycleStatus: null,
       },
+      {
+        component: 'scheduled_deletion',
+        scope: 'GLOBAL',
+        districtId: null,
+        status: 'Healthy',
+        lastCheckAt: '2026-08-25T11:55:00.000Z',
+        checkedAt: '2026-08-25T11:55:00.000Z',
+        outcome: 'success',
+        errorCode: null,
+        errorMessage: null,
+        latencyMs: 5,
+        isApplicable: true,
+        lifecycleStatus: null,
+      },
     ],
     districts: [
       {
@@ -143,6 +157,7 @@ describe('Story 4.1 & 4.2: SystemHealthPage Component Tests (AC 1, AC 4, AC 11, 
       expect(screen.getByText('Глобал платформа компонентлари')).toBeTruthy();
       expect(screen.getByText('Туманлар ҳолати матрицаси')).toBeTruthy();
       expect(screen.getByText('Чилонзор тумани')).toBeTruthy();
+      expect(screen.getByText('Режалаштирилган ўчириш тизими')).toBeTruthy();
     });
   });
 

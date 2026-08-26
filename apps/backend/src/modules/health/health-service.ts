@@ -6,6 +6,8 @@ import {
   DistrictHealthResponse,
   DistrictHealthSummary,
   ComponentHealthObservation,
+  ComponentType,
+  ComponentScope,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import { districts } from '../../adapters/db/schema/index.js';
@@ -19,6 +21,7 @@ import {
   checkStorageHealth,
   checkWebApplicationHealth,
   checkRetentionJobHealth,
+  checkScheduledDeletionHealth,
   checkDistrictBotHealth,
   checkDistrictGroupsHealth,
   checkDistrictIntakeHealth,
@@ -37,6 +40,33 @@ export class DistrictNotFoundError extends Error {
   }
 }
 
+function handleSettledObservation(
+  res: PromiseSettledResult<ComponentHealthObservation>,
+  fallbackComponent: ComponentType,
+  fallbackScope: ComponentScope,
+  fallbackDistrictId: string | null,
+  evaluatedAt: Date,
+): ComponentHealthObservation {
+  if (res.status === 'fulfilled') {
+    return res.value;
+  }
+  return {
+    component: fallbackComponent,
+    scope: fallbackScope,
+    districtId: fallbackDistrictId,
+    status: 'Unavailable',
+    lastCheckAt: evaluatedAt.toISOString(),
+    checkedAt: evaluatedAt.toISOString(),
+    outcome: 'failure',
+    errorCode: 'COMPONENT_PROBE_ERROR',
+    errorMessage: 'Компонент текширувида кутилмаган хатолик юз берди.',
+    latencyMs: null,
+    isApplicable: true,
+    lifecycleStatus: null,
+    diagnostics: null,
+  };
+}
+
 /**
  * High-level health query service for system and district scopes.
  */
@@ -52,22 +82,23 @@ export const healthService = {
   ): Promise<OverallSystemHealthResponse> {
     const evaluatedAt = new Date();
 
-    // 1. Run global infrastructure checks in parallel
-    const [dbHealth, queueHealth, storageHealth, webAppHealth, retentionHealth] =
-      await Promise.all([
-        checkDatabaseHealth(pool, config),
-        checkProcessingQueueHealth(boss, config),
-        checkStorageHealth(db, config),
-        checkWebApplicationHealth(config),
-        checkRetentionJobHealth(db, config),
-      ]);
+    // 1. Run all 6 global platform checks in parallel with error isolation (AC 1, AC 6)
+    const globalSettled = await Promise.allSettled([
+      checkDatabaseHealth(pool, config),
+      checkProcessingQueueHealth(boss, config),
+      checkStorageHealth(db, config),
+      checkWebApplicationHealth(config),
+      checkRetentionJobHealth(db, config),
+      checkScheduledDeletionHealth(boss, config),
+    ]);
 
     const globalComponents: ComponentHealthObservation[] = [
-      dbHealth,
-      queueHealth,
-      storageHealth,
-      webAppHealth,
-      retentionHealth,
+      handleSettledObservation(globalSettled[0]!, 'database', 'GLOBAL', null, evaluatedAt),
+      handleSettledObservation(globalSettled[1]!, 'processing_queue', 'GLOBAL', null, evaluatedAt),
+      handleSettledObservation(globalSettled[2]!, 'storage', 'GLOBAL', null, evaluatedAt),
+      handleSettledObservation(globalSettled[3]!, 'web_application', 'GLOBAL', null, evaluatedAt),
+      handleSettledObservation(globalSettled[4]!, 'retention_jobs', 'GLOBAL', null, evaluatedAt),
+      handleSettledObservation(globalSettled[5]!, 'scheduled_deletion', 'GLOBAL', null, evaluatedAt),
     ];
 
     // 2. Fetch all registered districts
@@ -76,24 +107,23 @@ export const healthService = {
       .from(districts)
       .orderBy(districts.createdAt);
 
-    // 3. Run per-district component checks in parallel
+    // 3. Run per-district component checks in parallel with error isolation (AC 6)
     const districtSummaries: DistrictHealthSummary[] = await Promise.all(
       allDistricts.map(async (district) => {
-        const [botHealth, groupsHealth, intakeHealth, aiHealth, retentionDistrictHealth] =
-          await Promise.all([
-            checkDistrictBotHealth(db, district.id, config),
-            checkDistrictGroupsHealth(db, district.id, config),
-            checkDistrictIntakeHealth(db, district.id, config),
-            checkDistrictAiHealth(db, district.id, config),
-            checkDistrictRetentionHealth(db, district.id, config),
-          ]);
+        const districtSettled = await Promise.allSettled([
+          checkDistrictBotHealth(db, district.id, config),
+          checkDistrictGroupsHealth(db, district.id, config),
+          checkDistrictIntakeHealth(db, district.id, config),
+          checkDistrictAiHealth(db, district.id, config),
+          checkDistrictRetentionHealth(db, district.id, config),
+        ]);
 
         const districtComponents: ComponentHealthObservation[] = [
-          botHealth,
-          groupsHealth,
-          intakeHealth,
-          aiHealth,
-          retentionDistrictHealth,
+          handleSettledObservation(districtSettled[0]!, 'telegram_bot', 'DISTRICT', district.id, evaluatedAt),
+          handleSettledObservation(districtSettled[1]!, 'telegram_groups', 'DISTRICT', district.id, evaluatedAt),
+          handleSettledObservation(districtSettled[2]!, 'message_intake', 'DISTRICT', district.id, evaluatedAt),
+          handleSettledObservation(districtSettled[3]!, 'ai_operations', 'DISTRICT', district.id, evaluatedAt),
+          handleSettledObservation(districtSettled[4]!, 'district_retention', 'DISTRICT', district.id, evaluatedAt),
         ];
 
         // Attach district lifecycleStatus to observations
@@ -156,21 +186,20 @@ export const healthService = {
 
     const district = districtList[0];
 
-    const [botHealth, groupsHealth, intakeHealth, aiHealth, retentionDistrictHealth] =
-      await Promise.all([
-        checkDistrictBotHealth(db, district.id, config),
-        checkDistrictGroupsHealth(db, district.id, config),
-        checkDistrictIntakeHealth(db, district.id, config),
-        checkDistrictAiHealth(db, district.id, config),
-        checkDistrictRetentionHealth(db, district.id, config),
-      ]);
+    const districtSettled = await Promise.allSettled([
+      checkDistrictBotHealth(db, district.id, config),
+      checkDistrictGroupsHealth(db, district.id, config),
+      checkDistrictIntakeHealth(db, district.id, config),
+      checkDistrictAiHealth(db, district.id, config),
+      checkDistrictRetentionHealth(db, district.id, config),
+    ]);
 
     const districtComponents: ComponentHealthObservation[] = [
-      botHealth,
-      groupsHealth,
-      intakeHealth,
-      aiHealth,
-      retentionDistrictHealth,
+      handleSettledObservation(districtSettled[0]!, 'telegram_bot', 'DISTRICT', district.id, evaluatedAt),
+      handleSettledObservation(districtSettled[1]!, 'telegram_groups', 'DISTRICT', district.id, evaluatedAt),
+      handleSettledObservation(districtSettled[2]!, 'message_intake', 'DISTRICT', district.id, evaluatedAt),
+      handleSettledObservation(districtSettled[3]!, 'ai_operations', 'DISTRICT', district.id, evaluatedAt),
+      handleSettledObservation(districtSettled[4]!, 'district_retention', 'DISTRICT', district.id, evaluatedAt),
     ].map((c) => ({
       ...c,
       lifecycleStatus: district.status,

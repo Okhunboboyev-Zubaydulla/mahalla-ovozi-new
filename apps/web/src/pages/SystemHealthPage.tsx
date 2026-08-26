@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Typography, Alert, Button, Skeleton, Space } from 'antd';
-import { RedoOutlined } from '@ant-design/icons';
+import { RedoOutlined, WifiOutlined } from '@ant-design/icons';
 import {
   OverallSystemHealthResponse,
   DistrictHealthResponse,
@@ -14,6 +14,7 @@ import { ActiveIssuesList } from '../components/issues/ActiveIssuesList.js';
 import { IssueDetailDrawer } from '../components/issues/IssueDetailDrawer.js';
 import { GlobalComponentsTable } from '../components/health/GlobalComponentsTable.js';
 import { DistrictHealthMatrix } from '../components/health/DistrictHealthMatrix.js';
+import { formatTashkentDate } from '../lib/formatters.js';
 
 const { Title, Paragraph } = Typography;
 
@@ -26,12 +27,30 @@ export const SystemHealthPage: React.FC = () => {
     error,
     refetch,
     isFetching,
+    dataUpdatedAt,
   } = useSystemHealth();
 
   const {
     data: issuesData,
     isFetching: isIssuesFetching,
   } = useOperationalIssues();
+
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true,
+  );
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const [selectedIssue, setSelectedIssue] = useState<OperationalIssue | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
@@ -55,6 +74,8 @@ export const SystemHealthPage: React.FC = () => {
     setIsDrawerOpen(false);
   };
 
+  const lastUpdatedIso = dataUpdatedAt ? new Date(dataUpdatedAt).toISOString() : (systemData?.evaluatedAt || null);
+
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', minHeight: 600 }}>
       {/* Page Header */}
@@ -67,8 +88,45 @@ export const SystemHealthPage: React.FC = () => {
         </Paragraph>
       </div>
 
-      {/* Error Alert */}
-      {isError && (
+      {/* Offline Alert */}
+      {!isOnline && (
+        <Alert
+          message="Интернет алоқаси мавжуд эмас"
+          description="Браузер офлайн ҳолатда. Кўрсатилаётган маълумотлар сўнгги муваффақиятли сақланган нусхадан олинган."
+          type="warning"
+          showIcon
+          icon={<WifiOutlined />}
+          style={{ marginBottom: 24, borderRadius: 8 }}
+        />
+      )}
+
+      {/* Persistent Stale Warning Banner (when query failed but cached data exists) */}
+      {isError && systemData && (
+        <Alert
+          message="Маълумотлар эскирган бўлиши мумкин"
+          description={
+            lastUpdatedIso
+              ? `Сўнгги муваффақиятли янгиланиш: ${formatTashkentDate(lastUpdatedIso)}. Янги маълумотларни юклашда хатолик юз берди.`
+              : 'Янги маълумотларни юклашда хатолик юз берди. Сўнгги маълумотлар сақланмоқда.'
+          }
+          type="warning"
+          showIcon
+          action={
+            <Button
+              size="small"
+              icon={<RedoOutlined />}
+              onClick={() => refetch()}
+              loading={isFetching}
+            >
+              Қайта уриниш
+            </Button>
+          }
+          style={{ marginBottom: 24, borderRadius: 8 }}
+        />
+      )}
+
+      {/* Initial Load Error Alert (when no data in cache) */}
+      {isError && !systemData && (
         <Alert
           message="Тизим ҳолати маълумотларини юклашда хатолик юз берди"
           description={

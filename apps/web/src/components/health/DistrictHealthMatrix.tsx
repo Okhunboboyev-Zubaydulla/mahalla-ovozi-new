@@ -1,11 +1,12 @@
 import React from 'react';
-import { Card, Table, Tag, Typography, Empty, Space, theme } from 'antd';
+import { Card, Table, Tag, Typography, Empty, Space, Tooltip, theme } from 'antd';
 import { Link } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import {
   DistrictHealthSummary,
   ComponentType,
   HealthStatus,
+  ComponentDiagnostics,
 } from '@mahalla-ovozi/api-contracts';
 import { HealthStatusBadge } from './HealthStatusBadge.js';
 import { formatTashkentDate } from '../../lib/formatters.js';
@@ -18,15 +19,19 @@ export interface DistrictHealthMatrixProps {
   activeDistrictId?: string | null;
 }
 
-function getComponentStatus(
+function getComponentInfo(
   district: DistrictHealthSummary,
   type: ComponentType,
-): { status: HealthStatus | null; isApplicable: boolean } {
+): {
+  status: HealthStatus | null;
+  isApplicable: boolean;
+  diagnostics?: ComponentDiagnostics | null;
+} {
   const comp = district.components?.find((c) => c.component === type);
   if (!comp || !comp.isApplicable) {
-    return { status: null, isApplicable: false };
+    return { status: null, isApplicable: false, diagnostics: null };
   }
-  return { status: comp.status, isApplicable: true };
+  return { status: comp.status, isApplicable: true, diagnostics: comp.diagnostics };
 }
 
 export const DistrictHealthMatrix: React.FC<DistrictHealthMatrixProps> = ({
@@ -40,6 +45,8 @@ export const DistrictHealthMatrix: React.FC<DistrictHealthMatrixProps> = ({
     {
       title: 'Туман',
       key: 'districtName',
+      fixed: 'left',
+      width: 220,
       render: (_, record) => {
         const isSelected = activeDistrictId === record.districtId;
         const isSuspended = record.lifecycleStatus === 'SUSPENDED';
@@ -95,7 +102,7 @@ export const DistrictHealthMatrix: React.FC<DistrictHealthMatrixProps> = ({
       key: 'telegram_bot',
       width: 140,
       render: (_, record) => {
-        const { status, isApplicable } = getComponentStatus(record, 'telegram_bot');
+        const { status, isApplicable } = getComponentInfo(record, 'telegram_bot');
         if (!isApplicable || !status) {
           return <Text type="secondary" style={{ fontSize: 12 }}>Қўлланилмайди</Text>;
         }
@@ -107,11 +114,21 @@ export const DistrictHealthMatrix: React.FC<DistrictHealthMatrixProps> = ({
       key: 'telegram_groups',
       width: 150,
       render: (_, record) => {
-        const { status, isApplicable } = getComponentStatus(record, 'telegram_groups');
+        const { status, isApplicable, diagnostics } = getComponentInfo(record, 'telegram_groups');
         if (!isApplicable || !status) {
           return <Text type="secondary" style={{ fontSize: 12 }}>Қўлланилмайди</Text>;
         }
-        return <HealthStatusBadge status={status} size="small" />;
+        const tooltip =
+          diagnostics?.connectedGroupsCount !== undefined
+            ? `Жами: ${diagnostics.connectedGroupsCount}, Фаол: ${diagnostics.activeGroupsCount || 0}, Хатолик: ${diagnostics.failedGroupsCount || 0}`
+            : undefined;
+        return (
+          <Tooltip title={tooltip}>
+            <span>
+              <HealthStatusBadge status={status} size="small" />
+            </span>
+          </Tooltip>
+        );
       },
     },
     {
@@ -119,11 +136,20 @@ export const DistrictHealthMatrix: React.FC<DistrictHealthMatrixProps> = ({
       key: 'message_intake',
       width: 150,
       render: (_, record) => {
-        const { status, isApplicable } = getComponentStatus(record, 'message_intake');
+        const { status, isApplicable, diagnostics } = getComponentInfo(record, 'message_intake');
         if (!isApplicable || !status) {
           return <Text type="secondary" style={{ fontSize: 12 }}>Қўлланилмайди</Text>;
         }
-        return <HealthStatusBadge status={status} size="small" />;
+        const tooltip = diagnostics?.lastMessageReceivedAt
+          ? `Сўнгги хабар: ${formatTashkentDate(diagnostics.lastMessageReceivedAt)}`
+          : undefined;
+        return (
+          <Tooltip title={tooltip}>
+            <span>
+              <HealthStatusBadge status={status} size="small" />
+            </span>
+          </Tooltip>
+        );
       },
     },
     {
@@ -131,11 +157,20 @@ export const DistrictHealthMatrix: React.FC<DistrictHealthMatrixProps> = ({
       key: 'ai_operations',
       width: 150,
       render: (_, record) => {
-        const { status, isApplicable } = getComponentStatus(record, 'ai_operations');
+        const { status, isApplicable, diagnostics } = getComponentInfo(record, 'ai_operations');
         if (!isApplicable || !status) {
           return <Text type="secondary" style={{ fontSize: 12 }}>Қўлланилмайди</Text>;
         }
-        return <HealthStatusBadge status={status} size="small" />;
+        const tooltip = diagnostics?.activeModelVersion
+          ? `Модель: ${diagnostics.activeModelVersion}${diagnostics.activePromptVersion ? ` (${diagnostics.activePromptVersion})` : ''}`
+          : undefined;
+        return (
+          <Tooltip title={tooltip}>
+            <span>
+              <HealthStatusBadge status={status} size="small" />
+            </span>
+          </Tooltip>
+        );
       },
     },
     {

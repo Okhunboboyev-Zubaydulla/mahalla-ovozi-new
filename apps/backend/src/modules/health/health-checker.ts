@@ -7,6 +7,7 @@ import {
   ComponentScope,
   HealthStatus,
   TechnicalOutcome,
+  ComponentDiagnostics,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient, checkDbHealth } from '../../adapters/db/client.js';
 import {
@@ -14,6 +15,7 @@ import {
   districtTelegramGroups,
   telegramIntakeRecords,
   aiOperations,
+  aiProfiles,
   auditEvents,
 } from '../../adapters/db/schema/index.js';
 import {
@@ -73,6 +75,7 @@ function createObservation(params: {
   latencyMs?: number | null;
   isApplicable?: boolean;
   lifecycleStatus?: string | null;
+  diagnostics?: ComponentDiagnostics | null;
 }): ComponentHealthObservation {
   return assertPrivacyBoundary({
     component: params.component,
@@ -87,6 +90,7 @@ function createObservation(params: {
     latencyMs: params.latencyMs ?? null,
     isApplicable: params.isApplicable ?? true,
     lifecycleStatus: params.lifecycleStatus ?? null,
+    diagnostics: params.diagnostics ?? null,
   });
 }
 
@@ -116,6 +120,7 @@ export async function checkDatabaseHealth(
         errorCode: 'DATABASE_CONNECTION_ERROR',
         errorMessage: 'Маълумотлар базаси билан алоқа ўрнатиб бўлмади.',
         latencyMs: probe.latencyMs,
+        diagnostics: { waitingConnectionCount: waitingCount },
       });
     }
 
@@ -131,6 +136,7 @@ export async function checkDatabaseHealth(
         errorCode: 'DATABASE_QUEUE_SATURATION',
         errorMessage: 'Маълумотлар базаси уланиш навбатида тўпланиш мавжуд.',
         latencyMs: probe.latencyMs,
+        diagnostics: { waitingConnectionCount: waitingCount },
       });
     }
 
@@ -143,6 +149,7 @@ export async function checkDatabaseHealth(
       checkedAt,
       outcome: 'success',
       latencyMs: probe.latencyMs,
+      diagnostics: { waitingConnectionCount: waitingCount },
     });
   } catch (_err) {
     return createObservation({
@@ -156,6 +163,7 @@ export async function checkDatabaseHealth(
       errorCode: 'DATABASE_PROBE_ERROR',
       errorMessage: 'Маълумотлар базаси текширувида кутилмаган хатолик.',
       latencyMs: null,
+      diagnostics: { waitingConnectionCount: pool.waitingCount || 0 },
     });
   }
 }
@@ -225,6 +233,10 @@ export async function checkProcessingQueueHealth(
         checkedAt,
         outcome: 'success',
         latencyMs,
+        diagnostics: {
+          queueDepth: 0,
+          failedJobCount: 0,
+        },
       });
     }
 
@@ -232,6 +244,11 @@ export async function checkProcessingQueueHealth(
     const retry = typeof states.retry === 'number' ? states.retry : 0;
     const failed = typeof states.failed === 'number' ? states.failed : 0;
     const totalBacklog = created + retry;
+
+    const diagnostics = {
+      queueDepth: totalBacklog,
+      failedJobCount: failed,
+    };
 
     if (totalBacklog > 100) {
       return createObservation({
@@ -245,6 +262,7 @@ export async function checkProcessingQueueHealth(
         errorCode: 'QUEUE_BACKLOG_EXCEEDED',
         errorMessage: `Навбатда қайта ишланиши кутилаётган вазифалар сони юқори (${totalBacklog}).`,
         latencyMs,
+        diagnostics,
       });
     }
 
@@ -260,6 +278,7 @@ export async function checkProcessingQueueHealth(
         errorCode: 'QUEUE_HIGH_FAILURE_RATE',
         errorMessage: `Навбатда муваффақиятсиз якунланган вазифалар мавжуд (${failed}).`,
         latencyMs,
+        diagnostics,
       });
     }
 
@@ -272,6 +291,7 @@ export async function checkProcessingQueueHealth(
       checkedAt,
       outcome: 'success',
       latencyMs,
+      diagnostics,
     });
   } catch (_err) {
     const latencyMs = Math.round(performance.now() - startTime);
@@ -302,8 +322,9 @@ export async function checkStorageHealth(
   const startTime = performance.now();
 
   try {
-    await db.execute(sql`SELECT pg_database_size(current_database()) AS db_size`);
+    const res = await db.execute(sql`SELECT pg_size_pretty(pg_database_size(current_database())) AS db_size`);
     const latencyMs = Math.round(performance.now() - startTime);
+    const dbSize = (res.rows[0] as { db_size?: string } | undefined)?.db_size || undefined;
 
     return createObservation({
       component: 'storage',
@@ -314,6 +335,11 @@ export async function checkStorageHealth(
       checkedAt,
       outcome: 'success',
       latencyMs,
+      diagnostics: {
+        databaseSize: dbSize,
+        storageLatencyMs: latencyMs,
+        storageStatus: 'ok',
+      },
     });
   } catch (_err) {
     const latencyMs = Math.round(performance.now() - startTime);
@@ -328,6 +354,10 @@ export async function checkStorageHealth(
       errorCode: 'STORAGE_ACCESS_ERROR',
       errorMessage: 'Сақлаш тизимига киришда хатолик юз берди.',
       latencyMs,
+      diagnostics: {
+        storageLatencyMs: latencyMs,
+        storageStatus: 'error',
+      },
     });
   }
 }
@@ -395,7 +425,89 @@ export async function checkRetentionJobHealth(
 }
 
 /**
- * 6. District Telegram Bot Health Checker
+ * 6. Global Scheduled Deletion Capability Health Checker (AC 3)
+ * Monitors strictly the pg-boss scheduler/worker capability.
+ * 0 deletion jobs coexists with Healthy scheduler capability (decoupled from Epic 6).
+ */
+export async function checkScheduledDeletionHealth(
+  boss: PgBoss | undefined,
+  _config?: HealthConfig,
+): Promise<ComponentHealthObservation> {
+  const now = new Date();
+  const checkedAt = now.toISOString();
+
+  if (!boss) {
+    return createObservation({
+      component: 'scheduled_deletion',
+      scope: 'GLOBAL',
+      districtId: null,
+      status: 'Unavailable',
+      lastCheckAt: checkedAt,
+      checkedAt,
+      outcome: 'failure',
+      errorCode: 'QUEUE_NOT_CONFIGURED',
+      errorMessage: 'Навбат бошқарув тизими (pg-boss) ишга туширилмаган.',
+    });
+  }
+
+  const startTime = performance.now();
+
+  try {
+    const schedulesPromise = (async () => {
+      const bossWithSchedules = boss as unknown as {
+        getSchedules?: () => Promise<unknown[]>;
+      };
+      if (typeof bossWithSchedules.getSchedules === 'function') {
+        return await bossWithSchedules.getSchedules();
+      }
+      return [];
+    })();
+
+    let timer: NodeJS.Timeout | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error('Scheduled deletion health probe timeout'));
+      }, 2000);
+      if (typeof timer.unref === 'function') timer.unref();
+    });
+
+    try {
+      await Promise.race([schedulesPromise, timeoutPromise]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    return createObservation({
+      component: 'scheduled_deletion',
+      scope: 'GLOBAL',
+      districtId: null,
+      status: 'Healthy',
+      lastCheckAt: checkedAt,
+      checkedAt,
+      outcome: 'success',
+      latencyMs,
+    });
+  } catch (_err) {
+    const latencyMs = Math.round(performance.now() - startTime);
+    return createObservation({
+      component: 'scheduled_deletion',
+      scope: 'GLOBAL',
+      districtId: null,
+      status: 'Unavailable',
+      lastCheckAt: checkedAt,
+      checkedAt,
+      outcome: 'failure',
+      errorCode: 'SCHEDULED_DELETION_PROBE_ERROR',
+      errorMessage: 'Режалаштирилган ўчириш тизими текширувида хатолик юз берди.',
+      latencyMs,
+    });
+  }
+}
+
+/**
+ * 7. District Telegram Bot Health Checker
  */
 export async function checkDistrictBotHealth(
   db: DbClient,
@@ -428,6 +540,10 @@ export async function checkDistrictBotHealth(
   const lastValidatedIso = bot.lastValidatedAt.toISOString();
   const isFresh = evaluateFreshness(bot.lastValidatedAt, config?.staleCheckThresholdMs || STALE_CHECK_THRESHOLD_MS, now);
 
+  const diagnostics = {
+    lastValidatedAt: lastValidatedIso,
+  };
+
   if (bot.status === 'INVALID') {
     return createObservation({
       component: 'telegram_bot',
@@ -440,6 +556,7 @@ export async function checkDistrictBotHealth(
       errorCode: 'TELEGRAM_BOT_INVALID',
       errorMessage: 'Telegram бот токени ҳақиқий эмас ёки ўчирилган.',
       isApplicable: true,
+      diagnostics,
     });
   }
 
@@ -455,6 +572,7 @@ export async function checkDistrictBotHealth(
       errorCode: 'CHECK_STALE',
       errorMessage: 'Бот текшируви натижаси эскирган (10 дақиқадан ортиқ).',
       isApplicable: true,
+      diagnostics,
     });
   }
 
@@ -467,11 +585,12 @@ export async function checkDistrictBotHealth(
     checkedAt,
     outcome: 'success',
     isApplicable: true,
+    diagnostics,
   });
 }
 
 /**
- * 7. District Telegram Groups Health Checker
+ * 8. District Telegram Groups Health Checker
  */
 export async function checkDistrictGroupsHealth(
   db: DbClient,
@@ -496,11 +615,32 @@ export async function checkDistrictGroupsHealth(
       checkedAt,
       outcome: 'success',
       isApplicable: false,
+      diagnostics: {
+        connectedGroupsCount: 0,
+        activeGroupsCount: 0,
+        failedGroupsCount: 0,
+      },
     });
   }
 
   // Check for explicit failures
   const failedGroups = groups.filter((g) => g.status === 'FAILED');
+  const activeGroups = groups.filter((g) => g.status === 'VALID');
+
+  const latestGroupCheck = groups.reduce((latest, g) => {
+    const time = g.lastValidatedAt ? g.lastValidatedAt.getTime() : g.createdAt.getTime();
+    return Math.max(latest, time);
+  }, 0);
+
+  const lastCheckAt = latestGroupCheck > 0 ? new Date(latestGroupCheck).toISOString() : checkedAt;
+
+  const diagnostics = {
+    connectedGroupsCount: groups.length,
+    activeGroupsCount: activeGroups.length,
+    failedGroupsCount: failedGroups.length,
+    lastValidatedAt: lastCheckAt,
+  };
+
   if (failedGroups.length > 0 && failedGroups[0]) {
     const latestCheck = failedGroups[0].lastValidatedAt?.toISOString() || checkedAt;
     return createObservation({
@@ -514,6 +654,7 @@ export async function checkDistrictGroupsHealth(
       errorCode: 'TELEGRAM_GROUP_FAILED',
       errorMessage: `${failedGroups.length} та Telegram гуруҳда уланиш хатолиги мавжуд.`,
       isApplicable: true,
+      diagnostics,
     });
   }
 
@@ -525,13 +666,6 @@ export async function checkDistrictGroupsHealth(
     return false;
   });
 
-  const latestGroupCheck = groups.reduce((latest, g) => {
-    const time = g.lastValidatedAt ? g.lastValidatedAt.getTime() : g.createdAt.getTime();
-    return Math.max(latest, time);
-  }, 0);
-
-  const lastCheckAt = latestGroupCheck > 0 ? new Date(latestGroupCheck).toISOString() : checkedAt;
-
   if (hasRecentActivity) {
     return createObservation({
       component: 'telegram_groups',
@@ -542,6 +676,7 @@ export async function checkDistrictGroupsHealth(
       checkedAt,
       outcome: 'success',
       isApplicable: true,
+      diagnostics,
     });
   }
 
@@ -555,11 +690,12 @@ export async function checkDistrictGroupsHealth(
     checkedAt,
     outcome: 'success',
     isApplicable: true,
+    diagnostics,
   });
 }
 
 /**
- * 8. District Message Intake Health Checker
+ * 9. District Message Intake Health Checker
  */
 export async function checkDistrictIntakeHealth(
   db: DbClient,
@@ -594,6 +730,11 @@ export async function checkDistrictIntakeHealth(
   const recordAgeMs = now.getTime() - latestRecord.createdAt.getTime();
   const recordIso = latestRecord.createdAt.toISOString();
 
+  const diagnostics = {
+    lastMessageReceivedAt: recordIso,
+    intakeLatencyMs: recordAgeMs >= 0 ? recordAgeMs : 0,
+  };
+
   // If recent message received within delay threshold (5 min) -> Healthy
   if (recordAgeMs <= intakeDelayThresholdMs) {
     return createObservation({
@@ -605,6 +746,7 @@ export async function checkDistrictIntakeHealth(
       checkedAt,
       outcome: 'success',
       isApplicable: true,
+      diagnostics,
     });
   }
 
@@ -618,11 +760,12 @@ export async function checkDistrictIntakeHealth(
     checkedAt,
     outcome: 'success',
     isApplicable: true,
+    diagnostics,
   });
 }
 
 /**
- * 9. District AI Operations Health Checker
+ * 10. District AI Operations Health Checker
  */
 export async function checkDistrictAiHealth(
   db: DbClient,
@@ -633,8 +776,16 @@ export async function checkDistrictAiHealth(
   const checkedAt = now.toISOString();
 
   const recentOps = await db
-    .select()
+    .select({
+      id: aiOperations.id,
+      finalStatus: aiOperations.finalStatus,
+      createdAt: aiOperations.createdAt,
+      pinnedProfileId: aiOperations.pinnedProfileId,
+      modelId: aiProfiles.modelId,
+      promptVersion: aiProfiles.promptVersion,
+    })
     .from(aiOperations)
+    .leftJoin(aiProfiles, eq(aiOperations.pinnedProfileId, aiProfiles.id))
     .where(eq(aiOperations.districtId, districtId))
     .orderBy(desc(aiOperations.createdAt))
     .limit(10);
@@ -653,8 +804,18 @@ export async function checkDistrictAiHealth(
   }
 
   const failedCount = recentOps.filter((op) => op.finalStatus === 'FAILED').length;
+  const successCount = recentOps.filter(
+    (op) => op.finalStatus === 'COMPLETED_RELEVANT' || op.finalStatus === 'COMPLETED_IRRELEVANT',
+  ).length;
   const latestOp = recentOps[0];
   const latestOpIso = latestOp.createdAt.toISOString();
+
+  const diagnostics = {
+    activeModelVersion: latestOp.modelId || undefined,
+    activePromptVersion: latestOp.promptVersion || undefined,
+    recentSuccessCount: successCount,
+    recentFailureCount: failedCount,
+  };
 
   // High failure rate (>30%) -> Degraded
   if (failedCount >= 3) {
@@ -669,6 +830,7 @@ export async function checkDistrictAiHealth(
       errorCode: 'AI_OPERATION_FAILURES',
       errorMessage: `Сўнгги АИ операцияларида хатоликлар кузатилди (${failedCount}/${recentOps.length}).`,
       isApplicable: true,
+      diagnostics,
     });
   }
 
@@ -684,6 +846,7 @@ export async function checkDistrictAiHealth(
       checkedAt,
       outcome: 'success',
       isApplicable: true,
+      diagnostics,
     });
   }
 
@@ -696,11 +859,12 @@ export async function checkDistrictAiHealth(
     checkedAt,
     outcome: 'success',
     isApplicable: true,
+    diagnostics,
   });
 }
 
 /**
- * 10. District Retention Health Checker
+ * 11. District Retention Health Checker
  */
 export async function checkDistrictRetentionHealth(
   _db: DbClient,

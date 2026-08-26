@@ -10,6 +10,8 @@ import {
   DistrictHealthResponse,
 } from '@mahalla-ovozi/api-contracts';
 import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/client.js';
+import { createBossClient, initBossQueues } from '../src/adapters/jobs/boss-client.js';
+import type PgBoss from 'pg-boss';
 import { buildHttpServer } from '../src/entrypoints/http.js';
 import { accounts, districts } from '../src/adapters/db/schema/index.js';
 import { createOrResetProductOwner } from '../src/modules/auth/account-service.js';
@@ -24,6 +26,7 @@ import {
   INTAKE_DELAY_THRESHOLD_MS,
   TOPIC_DELAY_THRESHOLD_MS,
 } from '../src/modules/health/health-evaluator.js';
+import { checkScheduledDeletionHealth } from '../src/modules/health/health-checker.js';
 
 const SAME_ORIGIN_HEADERS = {
   origin: 'http://localhost:5173',
@@ -311,12 +314,49 @@ describe('Story 4.1: Health Evaluator Pure Engine Tests', () => {
       expect(evaluateThreshold(over16Min, TOPIC_DELAY_THRESHOLD_MS, now)).toBe('Delayed');
     });
   });
+
+  describe('8. Scheduled Deletion Health Checker (AC 3, AC 6)', () => {
+    it('returns Unavailable when pg-boss instance is not provided', async () => {
+      const obs = await checkScheduledDeletionHealth(undefined);
+      expect(obs.component).toBe('scheduled_deletion');
+      expect(obs.scope).toBe('GLOBAL');
+      expect(obs.status).toBe('Unavailable');
+      expect(obs.errorCode).toBe('QUEUE_NOT_CONFIGURED');
+    });
+
+    it('returns Healthy when pg-boss is running with 0 scheduled deletion jobs (Epic 6 decoupled baseline)', async () => {
+      const mockBoss = {
+        getSchedules: async () => [],
+      } as unknown as PgBoss;
+
+      const obs = await checkScheduledDeletionHealth(mockBoss);
+      expect(obs.component).toBe('scheduled_deletion');
+      expect(obs.scope).toBe('GLOBAL');
+      expect(obs.status).toBe('Healthy');
+      expect(obs.outcome).toBe('success');
+    });
+
+    it('returns Unavailable with error details when getSchedules rejects or times out', async () => {
+      const mockBoss = {
+        getSchedules: async () => {
+          throw new Error('Connection refused to scheduler backend');
+        },
+      } as unknown as PgBoss;
+
+      const obs = await checkScheduledDeletionHealth(mockBoss);
+      expect(obs.component).toBe('scheduled_deletion');
+      expect(obs.status).toBe('Unavailable');
+      expect(obs.errorCode).toBe('SCHEDULED_DELETION_PROBE_ERROR');
+      expect(obs.errorMessage).toBe('Режалаштирилган ўчириш тизими текширувида хатолик юз берди.');
+    });
+  });
 });
 
 describe('Story 4.1: Backend Health HTTP Routes & Security Integration Tests', () => {
   let pool: pg.Pool;
   let db: DbClient;
   let server: FastifyInstance;
+  let boss: PgBoss;
 
   let poCookie = '';
   let hokimCookie = '';
@@ -326,7 +366,11 @@ describe('Story 4.1: Backend Health HTTP Routes & Security Integration Tests', (
   beforeAll(async () => {
     pool = createDbPool();
     db = createDbClient(pool);
-    server = await buildHttpServer({ db, pool });
+    boss = createBossClient({ schema: 'pgboss_system_health' });
+    await boss.start();
+    await initBossQueues(boss);
+
+    server = await buildHttpServer({ db, pool, boss });
     await server.ready();
 
     // 1. Seed Product Owner
@@ -400,6 +444,7 @@ describe('Story 4.1: Backend Health HTTP Routes & Security Integration Tests', (
 
   afterAll(async () => {
     await server.close();
+    await boss.stop();
     await pool.end();
   });
 
@@ -423,14 +468,21 @@ describe('Story 4.1: Backend Health HTTP Routes & Security Integration Tests', (
     expect(body).toHaveProperty('districts');
     expect(Array.isArray(body.globalComponents)).toBe(true);
     expect(Array.isArray(body.districts)).toBe(true);
-    expect(body.globalComponents.length).toBeGreaterThanOrEqual(4);
+    expect(body.globalComponents.length).toBe(6);
 
-    // Verify global component types
+    // Verify all 6 global component types (AC 1)
     const globalTypes = body.globalComponents.map((c) => c.component);
     expect(globalTypes).toContain('database');
     expect(globalTypes).toContain('processing_queue');
     expect(globalTypes).toContain('storage');
     expect(globalTypes).toContain('web_application');
+    expect(globalTypes).toContain('retention_jobs');
+    expect(globalTypes).toContain('scheduled_deletion');
+
+    // Verify scheduled_deletion operational health is Healthy (AC 3)
+    const scheduledDel = body.globalComponents.find((c) => c.component === 'scheduled_deletion');
+    expect(scheduledDel).toBeDefined();
+    expect(scheduledDel?.status).toBe('Healthy');
 
     // Verify district items exist
     const distA = body.districts.find((d) => d.districtId === districtAId);
@@ -485,6 +537,7 @@ describe('Story 4.1: Backend Health HTTP Routes & Security Integration Tests', (
     expect(componentTypes).toContain('telegram_groups');
     expect(componentTypes).toContain('message_intake');
     expect(componentTypes).toContain('ai_operations');
+    expect(componentTypes).toContain('district_retention');
   });
 
   it('4. GET /api/v1/districts/:districtId/health returns 404 for nonexistent district', async () => {
@@ -519,5 +572,45 @@ describe('Story 4.1: Backend Health HTTP Routes & Security Integration Tests', (
     expect(rawPayload).not.toContain('mahalla_dev_password');
     // Check that no raw stack traces appear
     expect(rawPayload).not.toContain('    at ');
+  });
+
+  it('6. Public Liveness Probe: GET /api/v1/health/live returns 200 without auth (AC 4)', async () => {
+    const res = await server.inject({
+      method: 'GET',
+      url: '/api/v1/health/live',
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.payload);
+    expect(body.status).toBe('ok');
+    expect(body).toHaveProperty('timestamp');
+  });
+
+  it('7. Public Readiness Probe: GET /api/v1/health/ready returns 200 with dependency status without auth (AC 4)', async () => {
+    const res = await server.inject({
+      method: 'GET',
+      url: '/api/v1/health/ready',
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.payload);
+    expect(body.status).toBe('ready');
+    expect(body.checks).toEqual({
+      database: 'ok',
+      queue: 'ok',
+    });
+    expect(body).toHaveProperty('timestamp');
+  });
+
+  it('8. Public Summary Probe: GET /api/v1/health returns 200 without auth (AC 4)', async () => {
+    const res = await server.inject({
+      method: 'GET',
+      url: '/api/v1/health',
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.payload);
+    expect(body.status).toBe('Healthy');
+    expect(body).toHaveProperty('timestamp');
   });
 });

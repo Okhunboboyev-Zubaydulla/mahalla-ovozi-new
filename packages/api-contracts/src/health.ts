@@ -27,14 +27,45 @@ export const ComponentTypeEnumSchema = z.enum([
   'processing_queue',
   'storage',
   'web_application',
+  'retention_jobs',
+  'scheduled_deletion',
   'telegram_bot',
   'telegram_groups',
   'message_intake',
   'ai_operations',
-  'retention_jobs',
   'district_retention',
 ]);
 export type ComponentType = z.infer<typeof ComponentTypeEnumSchema>;
+
+/**
+ * Granular operational diagnostic metrics for components (AC 2).
+ */
+export const ComponentDiagnosticsSchema = z.object({
+  // processing_queue
+  queueDepth: z.number().nonnegative().optional(),
+  failedJobCount: z.number().nonnegative().optional(),
+  oldestQueuedAgeMs: z.number().nonnegative().optional(),
+  // database & storage
+  waitingConnectionCount: z.number().nonnegative().optional(),
+  databaseSize: z.string().optional(),
+  storageLatencyMs: z.number().nonnegative().optional(),
+  storageStatus: z.string().optional(),
+  // telegram_bot & telegram_groups
+  connectedGroupsCount: z.number().nonnegative().optional(),
+  activeGroupsCount: z.number().nonnegative().optional(),
+  failedGroupsCount: z.number().nonnegative().optional(),
+  lastValidatedAt: z.string().datetime().optional(),
+  // message_intake
+  lastMessageReceivedAt: z.string().datetime().optional(),
+  intakeLatencyMs: z.number().nonnegative().optional(),
+  // ai_operations
+  activeModelVersion: z.string().optional(),
+  activePromptVersion: z.string().optional(),
+  recentSuccessCount: z.number().nonnegative().optional(),
+  recentFailureCount: z.number().nonnegative().optional(),
+  avgProcessingLatencyMs: z.number().nonnegative().optional(),
+}).optional();
+export type ComponentDiagnostics = z.infer<typeof ComponentDiagnosticsSchema>;
 
 /**
  * Technical outcome category distinguishing confirmation, failure, and insufficient evidence.
@@ -62,8 +93,41 @@ export const ComponentHealthObservationSchema = z.object({
   latencyMs: z.number().nonnegative().nullable(),
   isApplicable: z.boolean(),
   lifecycleStatus: z.string().nullable(),
+  diagnostics: ComponentDiagnosticsSchema.nullable().optional(),
 });
 export type ComponentHealthObservation = z.infer<typeof ComponentHealthObservationSchema>;
+
+/**
+ * Public process liveness probe response schema (`/api/v1/health/live`).
+ */
+export const LivenessProbeResponseSchema = z.object({
+  status: z.literal('ok'),
+  timestamp: z.string().datetime(),
+});
+export type LivenessProbeResponse = z.infer<typeof LivenessProbeResponseSchema>;
+
+/**
+ * Public dependency readiness probe response schema (`/api/v1/health/ready`).
+ */
+export const ReadinessProbeResponseSchema = z.object({
+  status: z.enum(['ready', 'unready']),
+  timestamp: z.string().datetime(),
+  checks: z.object({
+    database: z.enum(['ok', 'down']),
+    queue: z.enum(['ok', 'down']),
+  }),
+});
+export type ReadinessProbeResponse = z.infer<typeof ReadinessProbeResponseSchema>;
+
+/**
+ * Public health summary response schema (`/api/v1/health`).
+ */
+export const PublicHealthSummaryResponseSchema = z.object({
+  status: HealthStatusEnumSchema,
+  timestamp: z.string().datetime(),
+  version: z.string().optional(),
+});
+export type PublicHealthSummaryResponse = z.infer<typeof PublicHealthSummaryResponseSchema>;
 
 /**
  * Per-district summary item in overall health aggregation.

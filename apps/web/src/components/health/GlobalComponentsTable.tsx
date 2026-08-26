@@ -36,6 +36,10 @@ const COMPONENT_LABEL_MAP: Record<ComponentType, { name: string; description: st
     name: 'Маълумотларни сақлаш муддати',
     description: 'Автоматик тозалаш ва архивлаш вазифалари',
   },
+  scheduled_deletion: {
+    name: 'Режалаштирилган ўчириш тизими',
+    description: 'Муддати тугаган маълумотларни режали тозалаш навбати',
+  },
   telegram_bot: {
     name: 'Telegram бот',
     description: 'Туман расмий боти',
@@ -113,10 +117,24 @@ export const GlobalComponentsTable: React.FC<GlobalComponentsTableProps> = ({
             </Text>
           );
         }
+        const parts: string[] = [];
         if (record.latencyMs !== null && record.latencyMs !== undefined) {
+          parts.push(`${record.latencyMs} ms`);
+        }
+        if (record.diagnostics?.databaseSize) {
+          parts.push(`Ҳажм: ${record.diagnostics.databaseSize}`);
+        }
+        if (record.diagnostics?.queueDepth !== undefined && record.diagnostics.queueDepth > 0) {
+          parts.push(`Навбат: ${record.diagnostics.queueDepth}`);
+        }
+        if (record.diagnostics?.waitingConnectionCount !== undefined && record.diagnostics.waitingConnectionCount > 0) {
+          parts.push(`Кутаётган: ${record.diagnostics.waitingConnectionCount}`);
+        }
+
+        if (parts.length > 0) {
           return (
             <Text style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13 }}>
-              {record.latencyMs} ms
+              {parts.join(' • ')}
             </Text>
           );
         }

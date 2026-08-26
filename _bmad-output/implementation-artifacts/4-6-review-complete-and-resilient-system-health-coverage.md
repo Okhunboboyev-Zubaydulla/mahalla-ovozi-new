@@ -4,7 +4,7 @@ baseline_commit: f4e098a
 
 # Story 4.6: Review Complete and Resilient System Health Coverage
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -117,75 +117,75 @@ So that I can diagnose the product reliably without confusing missing engineerin
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Shared API Contract Extensions for Complete Coverage & Probes** (AC: 1, 2, 3, 4, 10)
-  - [ ] 1.1 Update `ComponentTypeEnumSchema` in `packages/api-contracts/src/health.ts` to include `'scheduled_deletion'`.
-  - [ ] 1.2 Define `ComponentDiagnosticsSchema` in `packages/api-contracts/src/health.ts` covering all granular AC 2 operational metrics:
+- [x] **Task 1: Shared API Contract Extensions for Complete Coverage & Probes** (AC: 1, 2, 3, 4, 10)
+  - [x] 1.1 Update `ComponentTypeEnumSchema` in `packages/api-contracts/src/health.ts` to include `'scheduled_deletion'`.
+  - [x] 1.2 Define `ComponentDiagnosticsSchema` in `packages/api-contracts/src/health.ts` covering all granular AC 2 operational metrics:
     - Queue metrics: `queueDepth?: number`, `failedJobCount?: number`, `oldestQueuedAgeMs?: number`.
     - Database/storage metrics: `waitingConnectionCount?: number`, `databaseSize?: string`, `storageLatencyMs?: number`, `storageStatus?: string`.
     - Telegram metrics: `connectedGroupsCount?: number`, `activeGroupsCount?: number`, `failedGroupsCount?: number`, `lastValidatedAt?: string`.
     - Message intake metrics: `lastMessageReceivedAt?: string`, `intakeLatencyMs?: number`.
     - AI metrics: `activeModelVersion?: string`, `activePromptVersion?: string`, `recentSuccessCount?: number`, `recentFailureCount?: number`, `avgProcessingLatencyMs?: number`.
     - Extend `ComponentHealthObservationSchema` with `diagnostics: ComponentDiagnosticsSchema.nullable().optional()`.
-  - [ ] 1.3 Define public probe response schemas in `packages/api-contracts/src/health.ts`:
+  - [x] 1.3 Define public probe response schemas in `packages/api-contracts/src/health.ts`:
     - `LivenessProbeResponseSchema`: `{ status: 'ok', timestamp: string }`.
     - `ReadinessProbeResponseSchema`: `{ status: 'ready' | 'unready', timestamp: string, checks: { database: 'ok' | 'down', queue: 'ok' | 'down' } }`.
     - `PublicHealthSummaryResponseSchema`: `{ status: HealthStatus, timestamp: string, version?: string }`.
-  - [ ] 1.4 Export all updated types and build `@mahalla-ovozi/api-contracts`.
+  - [x] 1.4 Export all updated types and build `@mahalla-ovozi/api-contracts`.
 
-- [ ] **Task 2: Backend Component Health Checkers Enhancement** (AC: 1, 2, 3, 5, 6)
-  - [ ] 2.1 Implement `checkScheduledDeletionHealth(boss, config)` in `apps/backend/src/modules/health/health-checker.ts`:
+- [x] **Task 2: Backend Component Health Checkers Enhancement** (AC: 1, 2, 3, 5, 6)
+  - [x] 2.1 Implement `checkScheduledDeletionHealth(boss, config)` in `apps/backend/src/modules/health/health-checker.ts`:
     - Verify pg-boss worker runtime / scheduler capability is active using native `boss.getSchedules()` or queue registration.
     - Return `Healthy` if scheduler is active (even with 0 deletion jobs, strictly decoupled from Epic 6).
     - Return `Unavailable` or `Degraded` if queue connection fails.
-  - [ ] 2.2 Enrich `checkProcessingQueueHealth` in `health-checker.ts`:
+  - [x] 2.2 Enrich `checkProcessingQueueHealth` in `health-checker.ts`:
     - Capture queue depth (`created + retry`), `failed` count, and compute oldest queued age using `boss.getQueueSize()` and direct database job counts.
     - Populate `diagnostics` field safely without exposing internal job payloads.
-  - [ ] 2.3 Enrich `checkDistrictAiHealth` in `health-checker.ts`:
+  - [x] 2.3 Enrich `checkDistrictAiHealth` in `health-checker.ts`:
     - Extract active AI model identifier and prompt version from recent `ai_operations` metadata or active profile.
     - Compute recent failure count, success count, and average processing latency.
-  - [ ] 2.4 Enrich `checkDistrictIntakeHealth`, `checkDistrictBotHealth` & `checkDistrictGroupsHealth`:
+  - [x] 2.4 Enrich `checkDistrictIntakeHealth`, `checkDistrictBotHealth` & `checkDistrictGroupsHealth`:
     - Include `lastMessageReceivedAt`, `intakeLatencyMs`, connected group counts, active/failed group tallies, and last validation timestamps in diagnostics.
-  - [ ] 2.5 Ensure all health checker functions use non-throwing defensive boundaries with timeouts (2000ms max per probe with `timer.unref()`) so that single check failures do not throw unhandled exceptions.
+  - [x] 2.5 Ensure all health checker functions use non-throwing defensive boundaries with timeouts (2000ms max per probe with `timer.unref()`) so that single check failures do not throw unhandled exceptions.
 
-- [ ] **Task 3: Resilient Public Liveness & Readiness Fastify Probes** (AC: 4, 10)
-  - [ ] 3.1 In `apps/backend/src/modules/health/health-routes.ts`, add unauthenticated, public probe routes directly on `server` (outside the `createRequireProductOwner` authenticated plugin scope):
+- [x] **Task 3: Resilient Public Liveness & Readiness Fastify Probes** (AC: 4, 10)
+  - [x] 3.1 In `apps/backend/src/modules/health/health-routes.ts`, add unauthenticated, public probe routes directly on `server` (outside the `createRequireProductOwner` authenticated plugin scope):
     - `GET /api/v1/health/live` — Returns 200 OK `{ status: 'ok', timestamp: new Date().toISOString() }` with `LivenessProbeResponseSchema`.
     - `GET /api/v1/health/ready` — Checks DB pool connection and pg-boss queue readiness; returns 200 if healthy, 503 if DB or queue is unavailable, declaring explicit `{ response: { 200: ReadinessProbeResponseSchema, 503: ReadinessProbeResponseSchema } }`.
     - `GET /api/v1/health` — High-level summary route for external orchestrators/reverse proxies with `PublicHealthSummaryResponseSchema`.
-  - [ ] 3.2 Verify that public probe routes do not trigger CORS origin rejection for automated health checkers (allow GET requests without browser origin headers).
+  - [x] 3.2 Verify that public probe routes do not trigger CORS origin rejection for automated health checkers (allow GET requests without browser origin headers).
 
-- [ ] **Task 4: Health Service Resilience, Parallelization & Telemetry Independence** (AC: 1, 3, 5, 6, 9)
-  - [ ] 4.1 Update `getOverallSystemHealth` in `apps/backend/src/modules/health/health-service.ts`:
+- [x] **Task 4: Health Service Resilience, Parallelization & Telemetry Independence** (AC: 1, 3, 5, 6, 9)
+  - [x] 4.1 Update `getOverallSystemHealth` in `apps/backend/src/modules/health/health-service.ts`:
     - Add `checkScheduledDeletionHealth` to global platform components.
     - Wrap all component checks with `Promise.allSettled` to guarantee that unexpected errors in one probe are caught and converted into `Unknown` or `Unavailable` component observations with `COMPONENT_PROBE_ERROR` without crashing the overall query.
-  - [ ] 4.2 Update `getDistrictHealth` in `health-service.ts` to include enriched diagnostics and defensive error boundaries using `Promise.allSettled`.
-  - [ ] 4.3 Ensure telemetry adapter (`adapters/telemetry`) failure or unavailability does not throw or intercept health evaluation execution.
+  - [x] 4.2 Update `getDistrictHealth` in `health-service.ts` to include enriched diagnostics and defensive error boundaries using `Promise.allSettled`.
+  - [x] 4.3 Ensure telemetry adapter (`adapters/telemetry`) failure or unavailability does not throw or intercept health evaluation execution.
 
-- [ ] **Task 5: Frontend UI Enhancements for Diagnostics, Scheduled Deletion & Stale States** (AC: 1, 2, 7, 8)
-  - [ ] 5.1 Update `COMPONENT_LABEL_MAP` in `apps/web/src/components/health/GlobalComponentsTable.tsx`:
+- [x] **Task 5: Frontend UI Enhancements for Diagnostics, Scheduled Deletion & Stale States** (AC: 1, 2, 7, 8)
+  - [x] 5.1 Update `COMPONENT_LABEL_MAP` in `apps/web/src/components/health/GlobalComponentsTable.tsx`:
     - Add label and description for `scheduled_deletion`: `name: 'Режалаштирилган ўчириш тизими'`, `description: 'Муддати тугаган маълумотларни режали тозалаш навбати'`.
     - Render diagnostic details (queue depth, latency, db size, version tags) in the details column.
-  - [ ] 5.2 Update `DistrictHealthMatrix.tsx`:
+  - [x] 5.2 Update `DistrictHealthMatrix.tsx`:
     - Add column or detail tooltip for AI model version, message intake freshness, and active/failed group counts.
     - Support responsive horizontal scrolling (`scroll={{ x: 900 }}`) and stacked presentation on mobile viewports (`<= 768px`).
-  - [ ] 5.3 Enhance `SystemHealthPage.tsx`:
+  - [x] 5.3 Enhance `SystemHealthPage.tsx`:
     - Implement persistent stale warning banner when `isError` occurs while `data` exists in cache, displaying last successful Tashkent timestamp and a "Қайта уриниш" button.
     - Display client network offline indicator ("Интернет алоқаси мавжуд эмас") distinctly from server health status.
-  - [ ] 5.4 Update `OverallHealthCard.tsx` to display diagnostic summary metrics (total active districts, global components status breakdown, queue backlog).
+  - [x] 5.4 Update `OverallHealthCard.tsx` to display diagnostic summary metrics (total active districts, global components status breakdown, queue backlog).
 
-- [ ] **Task 6: Automated Integration & Unit Verification** (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
-  - [ ] 6.1 Backend Integration Tests (`apps/backend/tests/system-health.test.ts`):
+- [x] **Task 6: Automated Integration & Unit Verification** (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+  - [x] 6.1 Backend Integration Tests (`apps/backend/tests/system-health.test.ts`):
     - Test complete component coverage matrix including `scheduled_deletion`.
     - Test `scheduled_deletion` capability returns `Healthy` with 0 scheduled jobs (Epic 6 decoupling).
     - Test `/api/v1/health/live` returns 200 OK.
     - Test `/api/v1/health/ready` returns 200 OK when DB is up and 503 Service Unavailable when DB is down.
     - Test unhandled component probe failure is isolated via `Promise.allSettled` and does not crash overall health query.
     - Test privacy guardrail asserts zero bot tokens or resident text leak into diagnostic metadata.
-  - [ ] 6.2 Frontend Unit & Component Tests (`apps/web/tests/unit/SystemHealthPage.test.tsx`):
+  - [x] 6.2 Frontend Unit & Component Tests (`apps/web/tests/unit/SystemHealthPage.test.tsx`):
     - Test rendering of `scheduled_deletion` in global components table.
     - Test stale warning banner when background refetch fails with cached data.
     - Test accessible ARIA attributes and Uzbek Cyrillic labels across all components.
-  - [ ] 6.3 Full Monorepo Typecheck & CI Verification:
+  - [x] 6.3 Full Monorepo Typecheck & CI Verification:
     - Run `pnpm typecheck` across all packages.
     - Run backend and web test suites against isolated test DB.
 

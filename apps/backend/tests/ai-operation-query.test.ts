@@ -1077,7 +1077,7 @@ describe('Story 2.7: AI Operation Traceability and Failure State Verification Ma
   it('M28: Query datetime filters accept timezone offsets like +05:00 (Code Review Patch #5)', async () => {
     const offsetRes = await server.inject({
       method: 'GET',
-      url: `/api/v1/districts/${districtAId}/ai-operations?startDate=2026-08-20T00:00:00%2B05:00&endDate=2026-08-25T23:59:59%2B05:00`,
+      url: `/api/v1/districts/${districtAId}/ai-operations?startDate=2026-08-01T00:00:00%2B05:00&endDate=2026-08-31T23:59:59%2B05:00`,
       headers: { ...SAME_ORIGIN_HEADERS, cookie: hokimCookie },
     });
     expect(offsetRes.statusCode).toBe(200);

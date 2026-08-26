@@ -3,6 +3,7 @@ import path from 'node:path';
 import Fastify, { FastifyInstance } from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
+import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { createDbPool, createDbClient, DbClient } from '../adapters/db/client.js';
 import { registerAuthRoutes } from '../modules/auth/auth-routes.js';
 import { registerDistrictRoutes } from '../modules/districts/districts-routes.js';
@@ -36,6 +37,9 @@ export async function buildHttpServer(options?: {
     logger: false, // Logging controlled via telemetry adapter
     trustProxy: true,
   });
+
+  server.setValidatorCompiler(validatorCompiler);
+  server.setSerializerCompiler(serializerCompiler);
 
   // Fastify 5 V8 monomorphic shape optimization: decorate request prototype
   server.decorateRequest('actor', undefined);
