@@ -50,6 +50,8 @@ function handleSettledObservation(
   if (res.status === 'fulfilled') {
     return res.value;
   }
+  const scopeLabel = fallbackDistrictId ? `${fallbackScope}:${fallbackDistrictId}` : fallbackScope;
+  console.error(`[health] Component probe error for ${fallbackComponent} (${scopeLabel}):`, res.reason);
   return {
     component: fallbackComponent,
     scope: fallbackScope,

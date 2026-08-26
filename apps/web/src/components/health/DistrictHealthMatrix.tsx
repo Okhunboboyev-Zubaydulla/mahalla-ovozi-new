@@ -102,11 +102,20 @@ export const DistrictHealthMatrix: React.FC<DistrictHealthMatrixProps> = ({
       key: 'telegram_bot',
       width: 140,
       render: (_, record) => {
-        const { status, isApplicable } = getComponentInfo(record, 'telegram_bot');
+        const { status, isApplicable, diagnostics } = getComponentInfo(record, 'telegram_bot');
         if (!isApplicable || !status) {
           return <Text type="secondary" style={{ fontSize: 12 }}>Қўлланилмайди</Text>;
         }
-        return <HealthStatusBadge status={status} size="small" />;
+        const tooltip = diagnostics?.lastValidatedAt
+          ? `Сўнгги текширув: ${formatTashkentDate(diagnostics.lastValidatedAt)}`
+          : undefined;
+        return (
+          <Tooltip title={tooltip}>
+            <span>
+              <HealthStatusBadge status={status} size="small" />
+            </span>
+          </Tooltip>
+        );
       },
     },
     {
@@ -174,6 +183,18 @@ export const DistrictHealthMatrix: React.FC<DistrictHealthMatrixProps> = ({
       },
     },
     {
+      title: 'Маълумотлар муддати',
+      key: 'district_retention',
+      width: 150,
+      render: (_, record) => {
+        const { status, isApplicable } = getComponentInfo(record, 'district_retention');
+        if (!isApplicable || !status) {
+          return <Text type="secondary" style={{ fontSize: 12 }}>Қўлланилмайди</Text>;
+        }
+        return <HealthStatusBadge status={status} size="small" />;
+      },
+    },
+    {
       title: 'Сўнгги текширув',
       dataIndex: 'lastCheckAt',
       key: 'lastCheckAt',
@@ -214,7 +235,7 @@ export const DistrictHealthMatrix: React.FC<DistrictHealthMatrixProps> = ({
           loading={loading}
           pagination={false}
           size="middle"
-          scroll={{ x: 900 }}
+          scroll={{ x: 1290 }}
           rowClassName={(record) =>
             activeDistrictId === record.districtId ? 'ant-table-row-selected' : ''
           }

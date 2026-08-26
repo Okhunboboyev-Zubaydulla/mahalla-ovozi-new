@@ -37,25 +37,48 @@ export function assertPrivacyBoundary(obs: ComponentHealthObservation): Componen
   let sanitizedError = obs.errorMessage;
   let sanitizedCode = obs.errorCode;
 
+  const sanitizeString = (str: string): string => {
+    return str
+      .replace(/\b\d{8,12}:[A-Za-z0-9_-]{30,45}\b/g, '[REDACTED_BOT_TOKEN]')
+      .replace(/:\/\/[^:]+:[^@]+@/g, '://[REDACTED_AUTH]@');
+  };
+
   if (sanitizedError) {
-    // Strip potential Telegram Bot Tokens (\d{8,12}:[A-Za-z0-9_-]{30,45})
-    sanitizedError = sanitizedError.replace(/\b\d{8,12}:[A-Za-z0-9_-]{30,45}\b/g, '[REDACTED_BOT_TOKEN]');
-    // Strip potential database connection strings or passwords
-    sanitizedError = sanitizedError.replace(/:\/\/[^:]+:[^@]+@/g, '://[REDACTED_AUTH]@');
-    // Strip stack traces (e.g. at Object... or at process...)
-    if (sanitizedError.includes('\n') || sanitizedError.includes('    at ')) {
+    sanitizedError = sanitizeString(sanitizedError);
+    // Strip stack traces (e.g. at Object... or at process... or multiline traces)
+    if (sanitizedError.includes('\n') || /\s+at\s+/.test(sanitizedError)) {
       sanitizedError = sanitizedError.split('\n')[0]?.trim() || null;
     }
   }
 
   if (sanitizedCode) {
-    sanitizedCode = sanitizedCode.replace(/\b\d{8,12}:[A-Za-z0-9_-]{30,45}\b/g, '[REDACTED_BOT_TOKEN]');
+    sanitizedCode = sanitizeString(sanitizedCode);
+  }
+
+  let sanitizedDiagnostics = obs.diagnostics;
+  if (sanitizedDiagnostics) {
+    sanitizedDiagnostics = {
+      ...sanitizedDiagnostics,
+      storageStatus: sanitizedDiagnostics.storageStatus
+        ? sanitizeString(sanitizedDiagnostics.storageStatus)
+        : undefined,
+      databaseSize: sanitizedDiagnostics.databaseSize
+        ? sanitizeString(sanitizedDiagnostics.databaseSize)
+        : undefined,
+      activeModelVersion: sanitizedDiagnostics.activeModelVersion
+        ? sanitizeString(sanitizedDiagnostics.activeModelVersion)
+        : undefined,
+      activePromptVersion: sanitizedDiagnostics.activePromptVersion
+        ? sanitizeString(sanitizedDiagnostics.activePromptVersion)
+        : undefined,
+    };
   }
 
   return {
     ...obs,
     errorCode: sanitizedCode,
     errorMessage: sanitizedError,
+    diagnostics: sanitizedDiagnostics,
   };
 }
 
@@ -240,9 +263,9 @@ export async function checkProcessingQueueHealth(
       });
     }
 
-    const created = typeof states.created === 'number' ? states.created : 0;
-    const retry = typeof states.retry === 'number' ? states.retry : 0;
-    const failed = typeof states.failed === 'number' ? states.failed : 0;
+    const created = Number.isFinite(states.created) ? Math.max(0, states.created as number) : 0;
+    const retry = Number.isFinite(states.retry) ? Math.max(0, states.retry as number) : 0;
+    const failed = Number.isFinite(states.failed) ? Math.max(0, states.failed as number) : 0;
     const totalBacklog = created + retry;
 
     const diagnostics = {
@@ -410,16 +433,18 @@ export async function checkRetentionJobHealth(
       outcome: 'success',
       latencyMs: 5,
     });
-  } catch {
+  } catch (_err) {
     return createObservation({
       component: 'retention_jobs',
       scope: 'GLOBAL',
       districtId: null,
-      status: 'Healthy',
+      status: 'Unavailable',
       lastCheckAt: checkedAt,
       checkedAt,
-      outcome: 'success',
-      latencyMs: 5,
+      outcome: 'failure',
+      errorCode: 'RETENTION_CHECK_FAILED',
+      errorMessage: 'Маълумотларни сақлаш муддати текширувида хатолик юз берди.',
+      latencyMs: null,
     });
   }
 }

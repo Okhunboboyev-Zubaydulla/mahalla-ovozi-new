@@ -4,7 +4,7 @@ baseline_commit: f4e098a
 
 # Story 4.6: Review Complete and Resilient System Health Coverage
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -188,6 +188,19 @@ So that I can diagnose the product reliably without confusing missing engineerin
   - [x] 6.3 Full Monorepo Typecheck & CI Verification:
     - Run `pnpm typecheck` across all packages.
     - Run backend and web test suites against isolated test DB.
+
+### Review Findings
+
+- [x] [Review][Patch] Revert `ensureDefaultAiProfiles` from `onConflictDoUpdate` to `onConflictDoNothing` to preserve operator custom configurations [`apps/backend/src/adapters/db/seeds.ts:77-85`]
+- [x] [Review][Patch] Fix false-positive `status: 'Healthy'` in `checkRetentionJobHealth` error catch block so DB query errors report `Unavailable` with `RETENTION_CHECK_FAILED` [`apps/backend/src/modules/health/health-checker.ts:413-424`]
+- [x] [Review][Patch] Guard against `NaN` in queue counts (`Number.isFinite(...) ? Math.max(0, val) : 0`) in `checkProcessingQueueHealth` [`apps/backend/src/modules/health/health-checker.ts:243-247`]
+- [x] [Review][Patch] Extend `assertPrivacyBoundary` to sanitize string values in `obs.diagnostics` and handle flexible stack trace regexes [`apps/backend/src/modules/health/health-checker.ts:36-60`]
+- [x] [Review][Patch] Declare explicit Fastify response schemas on authenticated PO health routes [`apps/backend/src/modules/health/health-routes.ts:155-215`]
+- [x] [Review][Patch] Check queue probe readiness before returning `Healthy` on public summary probe `/api/v1/health` [`apps/backend/src/modules/health/health-routes.ts:130-132`]
+- [x] [Review][Patch] Prevent `1970-01-01` timestamp rendering on initial render by checking `Number.isFinite(dataUpdatedAt) && dataUpdatedAt > 0` in `SystemHealthPage.tsx` [`apps/web/src/pages/SystemHealthPage.tsx:77`]
+- [x] [Review][Patch] Add `scroll={{ x: 1140 }}` to `DistrictHealthMatrix.tsx` and `scroll={{ x: 750 }}` to `GlobalComponentsTable.tsx` for smooth mobile scrolling [`DistrictHealthMatrix.tsx:217`, `GlobalComponentsTable.tsx:160`]
+- [x] [Review][Patch] Add `district_retention` column to `DistrictHealthMatrix.tsx` to represent all 5 district components in the matrix table [`apps/web/src/components/health/DistrictHealthMatrix.tsx:176`]
+- [x] [Review][Defer] Evaluate filtering suspended/cancelled districts in `aggregateOverallSystemHealth` [`apps/backend/src/modules/health/health-evaluator.ts:180-200`] — deferred, pre-existing from Story 4.1
 
 ---
 

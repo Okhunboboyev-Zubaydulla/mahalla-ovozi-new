@@ -74,13 +74,13 @@ export async function ensureDefaultAiProfiles(db: DbOrTx): Promise<void> {
   await db
     .insert(aiProfiles)
     .values(defaultSemanticRelevanceProfile)
-    .onConflictDoUpdate({ target: aiProfiles.id, set: defaultSemanticRelevanceProfile });
+    .onConflictDoNothing({ target: aiProfiles.id });
   await db
     .insert(aiProfiles)
     .values(defaultTopicMatchingProfile)
-    .onConflictDoUpdate({ target: aiProfiles.id, set: defaultTopicMatchingProfile });
+    .onConflictDoNothing({ target: aiProfiles.id });
   await db
     .insert(aiProfiles)
     .values(defaultTopicProjectionProfile)
-    .onConflictDoUpdate({ target: aiProfiles.id, set: defaultTopicProjectionProfile });
+    .onConflictDoNothing({ target: aiProfiles.id });
 }

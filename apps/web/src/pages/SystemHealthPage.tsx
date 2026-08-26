@@ -74,7 +74,10 @@ export const SystemHealthPage: React.FC = () => {
     setIsDrawerOpen(false);
   };
 
-  const lastUpdatedIso = dataUpdatedAt ? new Date(dataUpdatedAt).toISOString() : (systemData?.evaluatedAt || null);
+  const lastUpdatedIso =
+    Number.isFinite(dataUpdatedAt) && dataUpdatedAt > 0
+      ? new Date(dataUpdatedAt).toISOString()
+      : systemData?.evaluatedAt || null;
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', minHeight: 600 }}>

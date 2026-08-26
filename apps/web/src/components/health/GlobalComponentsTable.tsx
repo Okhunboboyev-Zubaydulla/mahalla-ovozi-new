@@ -175,6 +175,7 @@ export const GlobalComponentsTable: React.FC<GlobalComponentsTableProps> = ({
         loading={loading}
         pagination={false}
         size="middle"
+        scroll={{ x: 750 }}
       />
     </Card>
   );

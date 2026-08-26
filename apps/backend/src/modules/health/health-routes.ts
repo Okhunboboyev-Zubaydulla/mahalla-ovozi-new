@@ -6,6 +6,8 @@ import {
   LivenessProbeResponseSchema,
   ReadinessProbeResponseSchema,
   PublicHealthSummaryResponseSchema,
+  OverallSystemHealthResponseSchema,
+  DistrictHealthResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient, checkDbHealth } from '../../adapters/db/client.js';
 import { createRequireProductOwner } from '../auth/require-product-owner.js';
@@ -16,6 +18,32 @@ import { HealthConfig } from './health-checker.js';
 const DistrictHealthParamsSchema = z.object({
   districtId: z.string().min(1, 'Туман ID киритилиши шарт.'),
 });
+
+async function checkBossLiveness(boss?: PgBoss): Promise<boolean> {
+  if (!boss) return false;
+  try {
+    let timer: NodeJS.Timeout | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Queue probe timeout')), 2000);
+      if (typeof timer.unref === 'function') timer.unref();
+    });
+    const schedulesPromise = (async () => {
+      const bossWithSchedules = boss as unknown as { getSchedules?: () => Promise<unknown[]> };
+      if (typeof bossWithSchedules.getSchedules === 'function') {
+        return await bossWithSchedules.getSchedules();
+      }
+      return [];
+    })();
+    try {
+      await Promise.race([schedulesPromise, timeoutPromise]);
+      return true;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  } catch {
+    return false;
+  }
+}
 
 export function registerHealthRoutes(
   server: FastifyInstance,
@@ -70,32 +98,7 @@ export function registerHealthRoutes(
       const nowIso = new Date().toISOString();
       const dbProbe = await checkDbHealth(deps.pool, 2000);
       const isDbOk = dbProbe.isHealthy;
-
-      let isQueueOk = false;
-      if (deps.boss) {
-        try {
-          let timer: NodeJS.Timeout | undefined;
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            timer = setTimeout(() => reject(new Error('Queue probe timeout')), 2000);
-            if (typeof timer.unref === 'function') timer.unref();
-          });
-          const schedulesPromise = (async () => {
-            const bossWithSchedules = deps.boss as unknown as { getSchedules?: () => Promise<unknown[]> };
-            if (typeof bossWithSchedules.getSchedules === 'function') {
-              return await bossWithSchedules.getSchedules();
-            }
-            return [];
-          })();
-          try {
-            await Promise.race([schedulesPromise, timeoutPromise]);
-            isQueueOk = true;
-          } finally {
-            if (timer) clearTimeout(timer);
-          }
-        } catch {
-          isQueueOk = false;
-        }
-      }
+      const isQueueOk = await checkBossLiveness(deps.boss);
 
       const isReady = isDbOk && isQueueOk;
       const statusCode = isReady ? 200 : 503;
@@ -128,7 +131,8 @@ export function registerHealthRoutes(
     async (_req: FastifyRequest, reply: FastifyReply) => {
       const nowIso = new Date().toISOString();
       const dbProbe = await checkDbHealth(deps.pool, 2000);
-      const isHealthy = dbProbe.isHealthy && Boolean(deps.boss);
+      const isQueueOk = await checkBossLiveness(deps.boss);
+      const isHealthy = dbProbe.isHealthy && isQueueOk;
 
       if (!isHealthy) {
         return reply.status(503).send({
@@ -157,6 +161,13 @@ export function registerHealthRoutes(
      */
     scope.get(
       '/api/v1/health/system',
+      {
+        schema: {
+          response: {
+            200: OverallSystemHealthResponseSchema,
+          },
+        },
+      },
       async (_req: FastifyRequest, reply: FastifyReply) => {
         const result = await healthService.getOverallSystemHealth(
           deps.db,
@@ -174,6 +185,13 @@ export function registerHealthRoutes(
      */
     scope.get(
       '/api/v1/districts/:districtId/health',
+      {
+        schema: {
+          response: {
+            200: DistrictHealthResponseSchema,
+          },
+        },
+      },
       async (
         req: FastifyRequest<{ Params: { districtId: string } }>,
         reply: FastifyReply,

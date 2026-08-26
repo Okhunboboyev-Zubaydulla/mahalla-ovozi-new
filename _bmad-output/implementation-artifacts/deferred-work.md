@@ -10,3 +10,9 @@
 - **Evaluate GIN / pg_trgm index optimization for high-scale multi-column audit search (`apps/backend/src/adapters/db/schema/audit.ts:19-26`):**
   - *Reason:* Allowlisted ILIKE search with composite B-Tree indexes satisfies NFR2 (<2s response) under regular operations. Future enterprise scale with millions of audit events can introduce `pg_trgm` GIN indexes via an isolated database migration.
 
+## Deferred from: code review of 4-6-review-complete-and-resilient-system-health-coverage.md (2026-08-26)
+
+- **Evaluate filtering suspended and cancelled districts in `aggregateOverallSystemHealth` (`apps/backend/src/modules/health/health-evaluator.ts:180-200`):**
+  - *Reason:* Pre-existing logic established in Story 4.1. Currently, `aggregateOverallSystemHealth` includes all registered districts when evaluating overall system status. Refining status aggregation to ignore stale/quiet states of suspended districts should be handled in a dedicated health engine refinement.
+
+
