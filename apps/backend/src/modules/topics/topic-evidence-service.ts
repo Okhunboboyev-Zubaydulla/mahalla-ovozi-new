@@ -1,4 +1,4 @@
-import { sql, eq, and } from 'drizzle-orm';
+import { sql, eq, and, gt } from 'drizzle-orm';
 import { DbClient } from '../../adapters/db/client.js';
 import {
   topics,
@@ -49,7 +49,7 @@ export class TopicNotFoundError extends Error {
   readonly statusCode = 404;
   readonly code = 'NOT_FOUND';
 
-  constructor(message = 'Мавзу топилмади ёки ушбу туманга тегишли эмас.') {
+  constructor(message = 'Мавзу топилмади ёки сақлаш муддати тугаган.') {
     super(message);
     this.name = 'TopicNotFoundError';
   }
@@ -155,17 +155,18 @@ export class TopicEvidenceService {
       throw new Error('Ҳоким ҳисоби туманга бириктирилмаган.');
     }
 
-    // 1. Fixed-district topic validation
+    // 1. Fixed-district topic validation with retention deadline guardrail
     const topicRow = await this.db.query.topics.findFirst({
       where: and(
         eq(topics.id, topicId),
         eq(topics.districtId, actorContext.districtId),
         eq(topics.status, 'ACTIVE'),
+        gt(topics.retentionExpiresAt, new Date()),
       ),
     });
 
     if (!topicRow) {
-      throw new TopicNotFoundError('Мавзу топилмади ёки ушбу туманга тегишли эмас.');
+      throw new TopicNotFoundError('Мавзу топилмади ёки сақлаш муддати тугаган.');
     }
 
     // 2. Query topic projection

@@ -7,14 +7,21 @@ import {
   Button,
   Empty,
   Alert,
+  Tabs,
 } from 'antd';
-import { PlusOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined,
+  CheckCircleOutlined,
+  UnorderedListOutlined,
+  FileTextOutlined,
+} from '@ant-design/icons';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { districtClient } from '../district/district-client.js';
 import { useDistrict } from '../district/district-context.js';
 import { CreateDistrictDrawer } from '../components/CreateDistrictDrawer.js';
 import { EditDistrictDrawer } from '../components/EditDistrictDrawer.js';
+import { DistrictTopicsView } from '../components/districts/topics/DistrictTopicsView.js';
 import { District } from '@mahalla-ovozi/api-contracts';
 import { formatTashkentDate } from '../lib/formatters.js';
 
@@ -46,6 +53,27 @@ export const DistrictsPage: React.FC = () => {
   });
 
   const districts = data?.districts || [];
+
+  const activeTab = searchParams.get('tab') === 'topics' ? 'topics' : 'list';
+
+  const handleTabChange = (key: string) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (key === 'topics') {
+      nextParams.set('tab', 'topics');
+    } else {
+      nextParams.delete('tab');
+    }
+    setSearchParams(nextParams);
+  };
+
+  const handleViewTopics = async (districtId: string) => {
+    if (activeDistrictId !== districtId) {
+      await switchDistrict(districtId);
+    }
+    handleTabChange('topics');
+  };
+
+  const activeDistrict = districts.find((d) => d.id === activeDistrictId);
 
   const columns = useMemo(
     () => [
@@ -107,6 +135,16 @@ export const DistrictsPage: React.FC = () => {
                   Танлаш
                 </Button>
               )}
+              {record.status === 'ACTIVE' && (
+                <Button
+                  type="link"
+                  aria-label={`Мавзулар: ${record.name}`}
+                  onClick={() => void handleViewTopics(record.id)}
+                  style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
+                >
+                  Мавзулар
+                </Button>
+              )}
               <Button
                 type="link"
                 aria-label={record.status === 'SETUP_INCOMPLETE' ? `Созлаш: ${record.name}` : `Кўриш: ${record.name}`}
@@ -135,96 +173,133 @@ export const DistrictsPage: React.FC = () => {
         },
       },
     ],
-    [activeDistrictId, switchDistrict, attemptTransition, navigate]
+    [activeDistrictId, switchDistrict, attemptTransition, navigate, searchParams]
   );
+
+  const tabItems = [
+    {
+      key: 'list',
+      label: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <UnorderedListOutlined />
+          Туманлар рўйхати
+        </span>
+      ),
+      children: (
+        <Card
+          variant="borderless"
+          style={{ borderRadius: 12 }}
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <Title level={3} style={{ margin: 0 }}>Туманлар</Title>
+                <Paragraph type="secondary" style={{ margin: 0, fontSize: 13 }}>
+                  Тизимдаги барча туманлар рўйхати ва янги туман қўшиш
+                </Paragraph>
+              </div>
+              {districts.length > 0 && !isError && (
+                <Button
+                  id="create-district-button"
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => setDrawerOpen(true)}
+                >
+                  Туман қўшиш
+                </Button>
+              )}
+            </div>
+          }
+        >
+          {isError ? (
+            <div style={{ padding: '24px 0' }}>
+              <Alert
+                type="error"
+                showIcon
+                message="Туманлар рўйхатини юклаб бўлмади"
+                description="Сервер билан боғланишда хатолик юз берди. Илтимос, қайта уриниб кўринг."
+                action={
+                  <Button type="primary" danger onClick={() => void refetch()}>
+                    Қайта уриниш
+                  </Button>
+                }
+              />
+            </div>
+          ) : !isLoading && districts.length === 0 ? (
+            /* AC 2: Honest Empty State for Zero Districts */
+            <div style={{ padding: '48px 0', textAlign: 'center' }}>
+              <Empty
+                description={
+                  <div>
+                    <Title level={4} style={{ marginBottom: 8 }}>Ҳозирча туманлар мавжуд эмас</Title>
+                    <Paragraph type="secondary">
+                      Тизимда ишлаш учун биринчи туманни қўшинг.
+                    </Paragraph>
+                  </div>
+                }
+              >
+                <Button
+                  id="empty-create-district-button"
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => setDrawerOpen(true)}
+                >
+                  Туман қўшиш
+                </Button>
+              </Empty>
+            </div>
+          ) : (
+            /* P5-F: Table with role="region", aria-label, and horizontal scroll */
+            <div role="region" aria-label="Туманлар рўйхати">
+              <Table
+                dataSource={districts}
+                columns={columns}
+                rowKey="id"
+                loading={isLoading}
+                pagination={
+                  districts.length > 10
+                    ? {
+                        defaultPageSize: 10,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '20', '50'],
+                        showTotal: (total, range) =>
+                          `${total} та тумандан ${range[0]}–${range[1]} кўрсатилмоқда`,
+                      }
+                    : false
+                }
+                scroll={{ x: 'max-content' }}
+              />
+            </div>
+          )}
+        </Card>
+      ),
+    },
+    {
+      key: 'topics',
+      label: (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <FileTextOutlined />
+          Мавзулар ва далиллар
+        </span>
+      ),
+      children: (
+        <DistrictTopicsView
+          key={activeDistrictId || 'no-district'}
+          activeDistrictId={activeDistrictId}
+          activeDistrictName={activeDistrict?.name}
+        />
+      ),
+    },
+  ];
 
   return (
     <div>
-      <Card
-        variant="borderless"
-        style={{ borderRadius: 12 }}
-        title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <Title level={3} style={{ margin: 0 }}>Туманлар</Title>
-              <Paragraph type="secondary" style={{ margin: 0, fontSize: 13 }}>
-                Тизимдаги барча туманлар рўйхати ва янги туман қўшиш
-              </Paragraph>
-            </div>
-            {districts.length > 0 && !isError && (
-              <Button
-                id="create-district-button"
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setDrawerOpen(true)}
-              >
-                Туман қўшиш
-              </Button>
-            )}
-          </div>
-        }
-      >
-        {isError ? (
-          <div style={{ padding: '24px 0' }}>
-            <Alert
-              type="error"
-              showIcon
-              message="Туманлар рўйхатини юклаб бўлмади"
-              description="Сервер билан боғланишда хатолик юз берди. Илтимос, қайта уриниб кўринг."
-              action={
-                <Button type="primary" danger onClick={() => void refetch()}>
-                  Қайта уриниш
-                </Button>
-              }
-            />
-          </div>
-        ) : !isLoading && districts.length === 0 ? (
-          /* AC 2: Honest Empty State for Zero Districts */
-          <div style={{ padding: '48px 0', textAlign: 'center' }}>
-            <Empty
-              description={
-                <div>
-                  <Title level={4} style={{ marginBottom: 8 }}>Ҳозирча туманлар мавжуд эмас</Title>
-                  <Paragraph type="secondary">
-                    Тизимда ишлаш учун биринчи туманни қўшинг.
-                  </Paragraph>
-                </div>
-              }
-            >
-              <Button
-                id="empty-create-district-button"
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setDrawerOpen(true)}
-              >
-                Туман қўшиш
-              </Button>
-            </Empty>
-          </div>
-        ) : (
-          /* P5-F: Table with role="region", aria-label, and horizontal scroll */
-          <div role="region" aria-label="Туманлар рўйхати">
-            <Table
-              dataSource={districts}
-              columns={columns}
-              rowKey="id"
-              loading={isLoading}
-              pagination={
-                districts.length > 10
-                  ? {
-                      defaultPageSize: 10,
-                      showSizeChanger: true,
-                      pageSizeOptions: ['10', '20', '50'],
-                      showTotal: (total, range) =>
-                        `${total} та тумандан ${range[0]}–${range[1]} кўрсатилмоқда`,
-                    }
-                  : false
-              }
-              scroll={{ x: 'max-content' }}
-            />
-          </div>
-        )}
-      </Card>
+      <Tabs
+        activeKey={activeTab}
+        onChange={handleTabChange}
+        items={tabItems}
+        size="large"
+        style={{ marginBottom: 16 }}
+      />
 
       {/* P5-D: Create District Drawer */}
       <CreateDistrictDrawer

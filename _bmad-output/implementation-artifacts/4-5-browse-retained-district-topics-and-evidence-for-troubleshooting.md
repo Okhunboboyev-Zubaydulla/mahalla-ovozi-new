@@ -4,7 +4,7 @@ baseline_commit: caa67cb
 
 # Story 4.5: Browse Retained District Topics and Evidence for Troubleshooting
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -146,8 +146,8 @@ So that I can investigate operational questions without mixing resident-bearing 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Shared API Contracts & Zod Schemas (`packages/api-contracts`)** (AC: 1, 2, 3, 4, 5)
-  - [ ] 1.1 In `packages/api-contracts/src/district-topics.ts` [NEW]:
+- [x] **Task 1: Shared API Contracts & Zod Schemas (`packages/api-contracts`)** (AC: 1, 2, 3, 4, 10)
+  - [x] 1.1 In `packages/api-contracts/src/district-topics.ts` [NEW]:
     - Define and export `DistrictTopicsQuerySchema`:
       - `dateScope`: `DateFilterScopeSchema.default('today')`
       - `dateFrom`: `z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак').optional()`
@@ -173,11 +173,11 @@ So that I can investigate operational questions without mixing resident-bearing 
     - Define and export `DistrictMahallasResponseSchema`:
       - `mahallas`: `z.array(z.string())`
     - Re-export types: `DistrictTopicsQuery`, `DistrictTopicsQueryOutput`, `DistrictTopicsSearchBody`, `DistrictTopicsSearchBodyOutput`, `DistrictTopicsPageResponse`, `DistrictMahallasResponse`.
-  - [ ] 1.2 In `packages/api-contracts/src/index.ts` [UPDATE]:
+  - [x] 1.2 In `packages/api-contracts/src/index.ts` [UPDATE]:
     - Re-export all district topics schemas and types from `./district-topics.js`.
 
-- [ ] **Task 2: Backend District Topics Query Engine (`apps/backend/src/modules/topics`)** (AC: 1, 2, 3, 4, 5, 6, 10)
-  - [ ] 2.1 In `apps/backend/src/modules/topics/district-topics-service.ts` [NEW]:
+- [x] **Task 2: Backend District Topics Query Engine (`apps/backend/src/modules/topics`)** (AC: 1, 2, 3, 4, 5, 6, 10)
+  - [x] 2.1 In `apps/backend/src/modules/topics/district-topics-service.ts` [NEW]:
     - Implement `DistrictTopicsService` class with dependency injection `(db: DbClient)`:
       - Helper `escapeLikePattern(input: string): string` -> `input.replace(/[%_\\]/g, '\\$&')`.
       - Keyset cursor encoding/decoding helpers: `encodeDistrictTopicKeysetCursor(timestamp, id)` and `decodeDistrictTopicKeysetCursor(cursor)`.
@@ -212,8 +212,8 @@ So that I can investigate operational questions without mixing resident-bearing 
         - Validate `districtId` exists in `districts` table; throw 404 `DistrictNotFoundError` if missing.
         - Query distinct mahalla names from active topics or telegram group mappings for this district, sorted alphabetically in Uzbek Cyrillic (`Intl.Collator('uz-Cyrl')`).
 
-- [ ] **Task 3: Fastify HTTP Routes for District Topics (`apps/backend/src/modules/districts`)** (AC: 1, 2, 3, 5, 6)
-  - [ ] 3.1 In `apps/backend/src/modules/districts/district-topics-routes.ts` [NEW]:
+- [x] **Task 3: Fastify HTTP Routes for District Topics (`apps/backend/src/modules/districts`)** (AC: 1, 2, 3, 5, 6)
+  - [x] 3.1 In `apps/backend/src/modules/districts/district-topics-routes.ts` [NEW]:
     - Register encapsulated Fastify route plugin with:
       - `preHandler`: `verifyStateChangingOrigin` and `createRequireProductOwner(db)` (HTTP 401 unauthenticated, HTTP 403 Hokim).
       - `GET /api/v1/districts/:districtId/topics`:
@@ -233,11 +233,11 @@ So that I can investigate operational questions without mixing resident-bearing 
         - Validate `:districtId` param.
         - Return distinct mahallas for the selected district (`{ mahallas: string[] }`).
       - Ensure strictly NO mutating endpoints exist on `/api/v1/districts/:districtId/topics/*`.
-  - [ ] 3.2 In `apps/backend/src/entrypoints/http.ts` [UPDATE]:
+  - [x] 3.2 In `apps/backend/src/entrypoints/http.ts` [UPDATE]:
     - Import and register `registerDistrictTopicsRoutes(server, db)`.
 
-- [ ] **Task 4: Web API Client & TanStack Query Hooks (`apps/web/src/api`)** (AC: 1, 2, 3, 4, 5, 7, 8)
-  - [ ] 4.1 In `apps/web/src/api/district-topics-client.ts` [NEW]:
+- [x] **Task 4: Web API Client & TanStack Query Hooks (`apps/web/src/api`)** (AC: 1, 2, 3, 4, 5, 7, 8)
+  - [x] 4.1 In `apps/web/src/api/district-topics-client.ts` [NEW]:
     - Implement `districtTopicsClient`:
       - `listTopics(districtId: string, filter: DistrictTopicsSearchBody, signal?: AbortSignal): Promise<DistrictTopicsPageResponse>`:
         - Calls `POST /api/v1/districts/${districtId}/topics/search` with JSON body.
@@ -260,23 +260,31 @@ So that I can investigate operational questions without mixing resident-bearing 
     - Implement TanStack Query hook `useDistrictMahallas(districtId: string | null)`:
       - Uses `useQuery` with `queryKey: ['district-mahallas', districtId]`.
       - `enabled: Boolean(districtId)`.
+    - Implement TanStack Query hook `useDistrictTopicEvidence(districtId: string | null, topicId: string | null)`:
+      - Uses `useInfiniteQuery` with `queryKey: ['district-topic-evidence', districtId, topicId]`.
+      - `getNextPageParam: (lastPage) => lastPage.hasNextPage && lastPage.nextCursor ? lastPage.nextCursor : undefined`.
+      - `initialPageParam: undefined`, `placeholderData: undefined`.
+      - `enabled: Boolean(districtId && topicId)`.
+    - Implement TanStack Query hook `useDistrictMahallas(districtId: string | null)`:
+      - Uses `useQuery` with `queryKey: ['district-mahallas', districtId]`.
+      - `enabled: Boolean(districtId)`.
 
-- [ ] **Task 5: Frontend UI Components for District Topics & Evidence (`apps/web/src/components/districts/topics`)** (AC: 1, 2, 3, 4, 5, 7, 8, 9)
-  - [ ] 5.1 In `apps/web/src/components/districts/topics/DistrictTopicFilterBar.tsx` [NEW]:
+- [x] **Task 5: Frontend UI Components for District Topics & Evidence (`apps/web/src/components/districts/topics`)** (AC: 1, 2, 3, 4, 5, 7, 8, 9)
+  - [x] 5.1 In `apps/web/src/components/districts/topics/DistrictTopicFilterBar.tsx` [NEW]:
     - Ant Design 5 filter bar component with:
       - Date scope select (Today, Yesterday, Custom date range with `Asia/Tashkent` calendar boundaries and presets),
       - Mahalla Select dropdown (populated from `useDistrictMahallas`),
       - Qualifying Lane Multi-Select tags (`WATER`, `ELECTRICITY`, `GAS`, `WASTE`, `HOKIM_RELATED`),
       - Debounced search input (300ms) with search icon, clear button, and loading spinner,
       - Reset filters button ("Фильтрларни тозалаш").
-  - [ ] 5.2 In `apps/web/src/components/districts/topics/DistrictTopicsTable.tsx` [NEW]:
+  - [x] 5.2 In `apps/web/src/components/districts/topics/DistrictTopicsTable.tsx` [NEW]:
     - Operational Ant Design Table / List:
       - Columns: Mahalla name, Derived topic summary, Calendar day, Lane tags (all qualifying lanes), Latest activity timestamp (`Asia/Tashkent` format `DD.MM.YYYY HH:mm`), Evidence count, Search match badge (`evidence` [blue], `author` [purple]), and "Далиллар" (View Evidence) action button,
       - Responsive layout and horizontal scroll on mobile (`scroll={{ x: 'max-content' }}`),
       - Keyset progressive loading "Кўпроқ юклаш" button with record counter (`${currentCount} тадан ${totalCount} та кўрсатилмоқда`),
       - Empty states: "Бугун ҳозирча мавзулар йўқ" / "Танланган шартлар бўйича мавзулар топилмади",
       - Accessible ARIA labels (`role="region"`, `aria-label="Туман мавзулари жадвали"`).
-  - [ ] 5.3 In `apps/web/src/components/districts/topics/DistrictTopicEvidenceDrawer.tsx` [NEW]:
+  - [x] 5.3 In `apps/web/src/components/districts/topics/DistrictTopicEvidenceDrawer.tsx` [NEW]:
     - Read-only Ant Design Drawer (responsive width: `screens.md ? 640 : '100%'`, `destroyOnClose={true}`):
       - Topic header: Summary, Mahalla, Calendar day, Lane tags, Latest activity, Total evidence count,
       - Anchor quote highlight card (if exists),
@@ -285,26 +293,26 @@ So that I can investigate operational questions without mixing resident-bearing 
       - Progressive loading for long evidence trails,
       - Close button and Escape key handling with focus restoration to triggering table row (`lastActiveElementRef.current?.focus()`),
       - Strictly NO edit/delete controls.
-  - [ ] 5.4 In `apps/web/src/components/districts/topics/DistrictTopicsView.tsx` [NEW]:
+  - [x] 5.4 In `apps/web/src/components/districts/topics/DistrictTopicsView.tsx` [NEW]:
     - Combined operational troubleshooting view:
       - Mounts with `key={activeDistrictId}` to guarantee instantaneous state reset upon District switch,
       - District selection check: If no district selected, renders informational prompt guiding selection,
       - Header with active District name, status tag, total topic counter, and manual refresh trigger with spin feedback,
       - Stale cache banner when offline or refetch fails (`Alert` with last successful update timestamp),
       - Integrates `DistrictTopicFilterBar`, `DistrictTopicsTable`, and `DistrictTopicEvidenceDrawer`.
-  - [ ] 5.5 In `apps/web/src/pages/DistrictsPage.tsx` [UPDATE]:
+  - [x] 5.5 In `apps/web/src/pages/DistrictsPage.tsx` [UPDATE]:
     - Add tabbed view in `DistrictsPage.tsx` using Ant Design `<Tabs>`:
       - Tab 1: "Туманлар рўйхати" (Districts List),
       - Tab 2: "Мавзулар ва далиллар" (Topics & Evidence) rendering `DistrictTopicsView`,
       - Support tab switching via search params or direct click, and automatically switch to "Мавзулар ва далиллар" when user clicks "Кўриш" on an active district.
 
-- [ ] **Task 6: District Switching & Offline Cache Invalidation (`apps/web/src/district`)** (AC: 7, 8)
-  - [ ] 6.1 In `apps/web/src/district/district-context.tsx` [UPDATE / VERIFY]:
+- [x] **Task 6: District Switching & Offline Cache Invalidation (`apps/web/src/district`)** (AC: 7, 8)
+  - [x] 6.1 In `apps/web/src/district/district-context.tsx` [UPDATE / VERIFY]:
     - Verify that `executeSwitch` cancels and removes all `['district-topics', prevId]`, `['district-topic-evidence', prevId]`, and `['district-mahallas', prevId]` queries,
     - Verify that active search text and open drawer state reset immediately upon District switch.
 
-- [ ] **Task 7: Automated Integration & Component Tests** (AC: 11)
-  - [ ] 7.1 In `apps/backend/tests/district-topics.test.ts` [NEW]:
+- [x] **Task 7: Automated Integration & Component Tests** (AC: 11)
+  - [x] 7.1 In `apps/backend/tests/district-topics.test.ts` [NEW]:
     - Setup test suite against isolated test DB `mahalla_ovozi_test` (port 5433):
       - Seed test Product Owner, test Hokim, District A and District B.
       - Seed test topics, projections, and accepted evidence with varied dates, mahallas, lanes, text, and author metadata.
@@ -319,7 +327,7 @@ So that I can investigate operational questions without mixing resident-bearing 
       - 8. Expiry & Deletion: Expired topic returns 404.
       - 9. Keyset Pagination: Forward traversal with cursor decoding, malformed cursor rejection (HTTP 400 `INVALID_CURSOR`).
       - 10. Performance: Keyset query execution satisfies NFR2 targets.
-  - [ ] 7.2 In `apps/web/tests/unit/DistrictTopicsView.test.tsx` [NEW]:
+  - [x] 7.2 In `apps/web/tests/unit/DistrictTopicsView.test.tsx` [NEW]:
     - Render `DistrictTopicsView` with mocked QueryClient and Ant Design App wrapper.
     - Test scenarios:
       - 1. Renders empty prompt when `activeDistrictId` is null.
@@ -503,7 +511,46 @@ const pattern = `%${escapeLikePattern(trimmedSearch)}%`;
 Gemini 3.7 Flash (High)
 
 ### Debug Log References
+- Keyset cursor timestamp millisecond alignment with PostgreSQL `timestamptz`.
+- Vitest custom assertion patterns for Ant Design Drawers with `destroyOnClose={true}`.
+- Database test isolation on `mahalla_ovozi_test` (port 5433).
 
 ### Completion Notes List
+1. **Shared API Contracts (`@mahalla-ovozi/api-contracts`)**:
+   - Created `DistrictTopicsQuerySchema`, `DistrictTopicsSearchBodySchema`, `DistrictTopicsPageResponseSchema`, `DistrictMahallasResponseSchema`.
+   - Exported TypeScript interfaces and schemas from package entrypoint.
+2. **Backend Operational Query Service & Guardrails (`@mahalla-ovozi/backend`)**:
+   - Implemented `DistrictTopicsService` with deterministic keyset cursor pagination on `(latestMeaningfulActivityTimestamp, id)`.
+   - Implemented privacy-safe lexical search over derived summary, evidence verbatim text, username, and author display names using SQL ILIKE with safe wildcard escaping.
+   - Enforced strict single-district scoping (`districtId` required; cross-district data leakage blocked).
+   - Enforced 90-day retention deadline check (`retentionExpiresAt > NOW()`) returning HTTP 404 for expired/deleted records.
+   - Registered endpoints: `GET /api/v1/districts/:districtId/topics`, `POST /api/v1/districts/:districtId/topics/search`, `GET /api/v1/districts/:districtId/topics/:topicId/evidence`, `GET /api/v1/districts/:districtId/topics/mahallas`.
+3. **Web API Client & Ant Design UI Components (`@mahalla-ovozi/web`)**:
+   - Implemented `districtTopicsClient` and TanStack Query v5 hooks (`useDistrictTopics`, `useDistrictTopicEvidence`, `useDistrictMahallas`).
+   - Created `DistrictTopicFilterBar` (date scope, mahalla dropdown, lane multi-select, debounced search, reset).
+   - Created `DistrictTopicsTable` (keyset progressive loading, search match badges, evidence action button).
+   - Created `DistrictTopicEvidenceDrawer` (chronological evidence trail, anchor quote highlight, sanitized attribution, zero mutating controls, keyboard focus restoration).
+   - Created `DistrictTopicsView` (active district header, refresh trigger, offline stale banner).
+   - Integrated tabbed navigation in `DistrictsPage.tsx` ("Туманлар рўйхати" and "Мавзулар ва далиллар").
+4. **Testing & Verification**:
+   - 20 of 20 backend integration tests passing against isolated test DB `mahalla_ovozi_test`.
+   - 219 of 219 web unit/component tests passing across 38 test suites.
+   - Full workspace `pnpm typecheck` passed with 0 compiler errors.
 
 ### File List
+- `packages/api-contracts/src/district-topics.ts` [NEW]
+- `packages/api-contracts/src/index.ts` [MODIFIED]
+- `apps/backend/src/modules/topics/district-topics-service.ts` [NEW]
+- `apps/backend/src/modules/topics/topic-evidence-service.ts` [MODIFIED]
+- `apps/backend/src/modules/districts/district-topics-routes.ts` [NEW]
+- `apps/backend/src/entrypoints/http.ts` [MODIFIED]
+- `apps/backend/tests/district-topics.test.ts` [NEW]
+- `apps/web/src/api/district-topics-client.ts` [NEW]
+- `apps/web/src/components/districts/topics/DistrictTopicFilterBar.tsx` [NEW]
+- `apps/web/src/components/districts/topics/DistrictTopicsTable.tsx` [NEW]
+- `apps/web/src/components/districts/topics/DistrictTopicEvidenceDrawer.tsx` [NEW]
+- `apps/web/src/components/districts/topics/DistrictTopicsView.tsx` [NEW]
+- `apps/web/src/pages/DistrictsPage.tsx` [MODIFIED]
+- `apps/web/tests/unit/DistrictTopicsView.test.tsx` [NEW]
+- `_bmad-output/implementation-artifacts/4-5-browse-retained-district-topics-and-evidence-for-troubleshooting.md` [MODIFIED]
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` [MODIFIED]
