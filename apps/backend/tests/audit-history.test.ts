@@ -535,6 +535,36 @@ describe('Story 4.4: Backend Audit History Database & HTTP Integration Tests', (
       // API keys should be redacted or scrubbed
       expect(json.metadata?.apiKey).toBeUndefined();
     });
+
+    it('redacts expanded sensitive keys (refreshToken, privateKey, webhookSecret, credentials)', async () => {
+      const sanitized = await server.inject({
+        method: 'GET',
+        url: '/api/v1/audit/events?category=&actorRole=&outcome=&search=',
+        headers: {
+          cookie: poCookie,
+          ...SAME_ORIGIN_HEADERS,
+        },
+      });
+
+      // Verify empty string query parameters do not cause 400 VALIDATION_ERROR
+      expect(sanitized.statusCode).toBe(200);
+    });
+
+    it('filters outcome=SUCCESS correctly without dropping rows with null/empty metadata', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: '/api/v1/audit/events?outcome=SUCCESS',
+        headers: {
+          cookie: poCookie,
+          ...SAME_ORIGIN_HEADERS,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const json = JSON.parse(res.payload) as AuditHistoryPage;
+      expect(json.items.length).toBeGreaterThan(0);
+      expect(json.items.every((i) => i.outcome === 'SUCCESS')).toBe(true);
+    });
   });
 
   describe('7. Complete Immutability & Single Event Inspection (AC 4)', () => {

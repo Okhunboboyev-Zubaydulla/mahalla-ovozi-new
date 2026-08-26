@@ -88,7 +88,7 @@ development_status:
   4-1-inspect-truthful-system-and-district-health: done
   4-2-investigate-active-operational-issues-and-verified-recovery: done
   4-3-safely-retry-eligible-incomplete-work: done
-  4-4-inspect-immutable-searchable-audit-history: review
+  4-4-inspect-immutable-searchable-audit-history: done
   4-5-browse-retained-district-topics-and-evidence-for-troubleshooting: backlog
   4-6-review-complete-and-resilient-system-health-coverage: backlog
   epic-4-retrospective: optional

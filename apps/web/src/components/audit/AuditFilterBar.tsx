@@ -10,6 +10,8 @@ import {
 } from '@mahalla-ovozi/api-contracts';
 import { districtClient } from '../../district/district-client.js';
 
+import { getTashkentToday } from '../../lib/formatters.js';
+
 const { RangePicker } = DatePicker;
 
 export interface AuditFilters {
@@ -37,20 +39,29 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
   const { token } = theme.useToken();
   const [searchInput, setSearchInput] = useState(filters.search || '');
 
-  // Debounce search input by 300ms
+  const filtersRef = React.useRef(filters);
+  filtersRef.current = filters;
+  const onChangeRef = React.useRef(onChange);
+  onChangeRef.current = onChange;
+
+  // Debounce search input by 300ms using latest filtersRef
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchInput !== (filters.search || '')) {
-        onChange({ ...filters, search: searchInput ? searchInput.trim() : undefined });
+      const trimmed = searchInput.trim() || undefined;
+      if (trimmed !== filtersRef.current.search) {
+        onChangeRef.current({ ...filtersRef.current, search: trimmed });
       }
     }, 300);
 
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Sync external filter changes to searchInput
+  // Sync external filter reset/change to searchInput without wiping active trailing spaces
   useEffect(() => {
-    setSearchInput(filters.search || '');
+    const externalSearch = filters.search || '';
+    if (externalSearch !== searchInput.trim()) {
+      setSearchInput(externalSearch);
+    }
   }, [filters.search]);
 
   // Fetch districts for dropdown
@@ -112,10 +123,12 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
     onChange({ ...filters, startDate, endDate });
   };
 
+  const todayYmd = getTashkentToday();
+  const todayDayjs = dayjs(todayYmd, 'YYYY-MM-DD');
   const rangePresets: { label: string; value: [Dayjs, Dayjs] }[] = [
-    { label: 'Бугун', value: [dayjs(), dayjs()] },
-    { label: 'Охирги 7 кун', value: [dayjs().subtract(6, 'day'), dayjs()] },
-    { label: 'Охирги 30 кун', value: [dayjs().subtract(29, 'day'), dayjs()] },
+    { label: 'Бугун', value: [todayDayjs, todayDayjs] },
+    { label: 'Охирги 7 кун', value: [todayDayjs.subtract(6, 'day'), todayDayjs] },
+    { label: 'Охирги 30 кун', value: [todayDayjs.subtract(29, 'day'), todayDayjs] },
   ];
 
   const hasActiveFilters = Boolean(

@@ -44,11 +44,9 @@ export const AuditHistoryPage: React.FC = () => {
   const [paginationState, setPaginationState] = useState<{
     cursor?: string;
     direction: 'forward' | 'backward';
-    cursorStack: string[]; // history of forward cursors for discrete backtracking
   }>({
     cursor: undefined,
     direction: 'forward',
-    cursorStack: [],
   });
 
   // Selected event for detail drawer
@@ -93,7 +91,6 @@ export const AuditHistoryPage: React.FC = () => {
     setPaginationState({
       cursor: undefined,
       direction: 'forward',
-      cursorStack: [],
     });
   };
 
@@ -102,30 +99,23 @@ export const AuditHistoryPage: React.FC = () => {
     setPaginationState({
       cursor: undefined,
       direction: 'forward',
-      cursorStack: [],
     });
   };
 
   // Pagination actions
   const handleNextPage = () => {
     if (!pagination?.nextCursor) return;
-    setPaginationState((prev) => ({
-      cursor: pagination.nextCursor || undefined,
+    setPaginationState({
+      cursor: pagination.nextCursor,
       direction: 'forward',
-      cursorStack: prev.cursor ? [...prev.cursorStack, prev.cursor] : prev.cursorStack,
-    }));
+    });
   };
 
   const handlePrevPage = () => {
     if (!pagination?.prevCursor) return;
-    setPaginationState((prev) => {
-      const newStack = [...prev.cursorStack];
-      const previousCursor = newStack.pop();
-      return {
-        cursor: previousCursor || pagination.prevCursor || undefined,
-        direction: 'backward',
-        cursorStack: newStack,
-      };
+    setPaginationState({
+      cursor: pagination.prevCursor,
+      direction: 'backward',
     });
   };
 
@@ -279,7 +269,7 @@ export const AuditHistoryPage: React.FC = () => {
           <Button
             icon={<ReloadOutlined spin={isFetching} />}
             onClick={() => refetch()}
-            loading={isFetching && isLoading}
+            loading={isFetching}
             aria-label="Маълумотларни янгилаш"
           >
             Янгилаш
@@ -296,6 +286,7 @@ export const AuditHistoryPage: React.FC = () => {
           description={
             <Flex justify="space-between" align="center" wrap="wrap">
               <span>
+                {error instanceof Error && error.message ? `${error.message}. ` : ''}
                 Кўрсатилаётган маълумотлар кэшдан олинган.
                 {dataUpdatedAt > 0 && ` Охирги муваффақиятли янгиланиш: ${formatTashkentDate(new Date(dataUpdatedAt).toISOString())}.`}
               </span>

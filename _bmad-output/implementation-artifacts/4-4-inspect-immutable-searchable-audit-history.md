@@ -4,7 +4,7 @@ baseline_commit: 6a5c604
 
 # Story 4.4: Inspect Immutable Searchable Audit History
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -310,7 +310,19 @@ So that I can verify operational history, investigate security events, and demon
       - 5. Closing drawer preserves table filters and pagination state, restoring focus.
       - 6. Keyset pagination buttons enable/disable based on metadata.
       - 7. Verifies zero edit or delete buttons exist in the DOM.
-      - 8. Stale data banner displays when query fails with cached data.
+
+### Review Findings
+
+- [x] [Review][Patch] Fix SQL Three-Valued Logic in Outcome SUCCESS filter [`apps/backend/src/modules/audit/audit-query-service.ts:138-144`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/audit/audit-query-service.ts#L138-L144)
+- [x] [Review][Patch] Fix Frontend Keyset Backward Pagination Desynchronization [`apps/web/src/pages/AuditHistoryPage.tsx:110-130`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/pages/AuditHistoryPage.tsx#L110-L130)
+- [x] [Review][Patch] Fix Stale Closure and Space Truncation in Debounced Search Input [`apps/web/src/components/audit/AuditFilterBar.tsx:38-55`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/components/audit/AuditFilterBar.tsx#L38-L55)
+- [x] [Review][Patch] Expand Credential Key Allowlist in Metadata Sanitizer [`apps/backend/src/modules/audit/audit-service.ts:6-21`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/audit/audit-service.ts#L6-L21)
+- [x] [Review][Patch] Handle Empty String Query Parameters in AuditHistoryQuerySchema [`packages/api-contracts/src/audit.ts:45-63`](file:///c:/codevision-works/mahalla-ovozi-trial-2/packages/api-contracts/src/audit.ts#L45-L63)
+- [x] [Review][Patch] Add Primitive Type Safety for previousValues and newValues Parsing [`apps/backend/src/modules/audit/audit-query-service.ts:219-224`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/audit/audit-query-service.ts#L219-L224)
+- [x] [Review][Patch] Fix Keyset Backward Traversal Phantom hasNextPage on Empty Result Set [`apps/backend/src/modules/audit/audit-query-service.ts:207-213`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/audit/audit-query-service.ts#L207-L213)
+- [x] [Review][Patch] Fix Refresh Button Loading Indicator and Validation Error Visibility [`apps/web/src/pages/AuditHistoryPage.tsx:280-285,290-309`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/pages/AuditHistoryPage.tsx#L280-L309)
+- [x] [Review][Patch] Use Tashkent UTC+5 Timezone Offset for Date Presets [`apps/web/src/components/audit/AuditFilterBar.tsx:115-119`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/components/audit/AuditFilterBar.tsx#L115-L119)
+- [x] [Review][Defer] Evaluate GIN / pg_trgm index optimization for high-scale multi-column audit search [`apps/backend/src/adapters/db/schema/audit.ts:19-26`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/adapters/db/schema/audit.ts#L19-L26) — deferred, pre-existing
 
 ---
 

@@ -34,6 +34,13 @@ export function escapeIlikePattern(term: string): string {
   return term.replace(/[\\%_]/g, (match) => `\\${match}`);
 }
 
+function toObjectRecord(val: unknown): Record<string, unknown> | null {
+  if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+    return val as Record<string, unknown>;
+  }
+  return null;
+}
+
 export class AuditQueryService {
   /**
    * Queries audit events with multi-parameter filtering, allowlisted ILIKE search,
@@ -118,7 +125,9 @@ export class AuditQueryService {
           );
           break;
         case 'OPERATIONAL_LIFECYCLE':
-          conditions.push(sql`(${auditEvents.action} LIKE 'OPERATIONAL_%')`);
+          conditions.push(
+            sql`(${auditEvents.action} LIKE 'OPERATIONAL_%' OR (${auditEvents.action} NOT LIKE 'AUTH_%' AND ${auditEvents.action} NOT LIKE 'ACCOUNT_%' AND ${auditEvents.action} NOT LIKE 'DISTRICT_%'))`,
+          );
           break;
       }
     }
@@ -135,7 +144,13 @@ export class AuditQueryService {
 
     // 7. Outcome Filter
     if (params.outcome) {
-      const failureCondition = sql`(${auditEvents.metadata}->>'outcome' = 'FAILURE' OR ${auditEvents.metadata}->>'status' = 'FAILED' OR ${auditEvents.metadata}->>'success' = 'false' OR ${auditEvents.action} LIKE '%_FAILED' OR ${auditEvents.action} LIKE '%_FAILURE')`;
+      const failureCondition = sql`(
+        COALESCE(${auditEvents.metadata}->>'outcome', '') = 'FAILURE' OR
+        COALESCE(${auditEvents.metadata}->>'status', '') = 'FAILED' OR
+        COALESCE(${auditEvents.metadata}->>'success', '') = 'false' OR
+        ${auditEvents.action} LIKE '%_FAILED' OR
+        ${auditEvents.action} LIKE '%_FAILURE'
+      )`;
       if (params.outcome === 'FAILURE') {
         conditions.push(failureCondition);
       } else if (params.outcome === 'SUCCESS') {
@@ -209,19 +224,19 @@ export class AuditQueryService {
       hasPrevPage = Boolean(params.cursor);
     } else {
       hasPrevPage = hasMore;
-      hasNextPage = true;
+      hasNextPage = pageRows.length > 0;
     }
 
     const items: AuditEvent[] = pageRows.map((row) => {
       const rawMeta = row.metadata as Record<string, unknown> | null;
       const sanitizedMeta = sanitizeMetadata(rawMeta || undefined);
 
-      const previousValues = (rawMeta?.previousState ||
-        rawMeta?.previousValues ||
-        null) as Record<string, unknown> | null;
-      const newValues = (rawMeta?.newState ||
-        rawMeta?.newValues ||
-        null) as Record<string, unknown> | null;
+      const previousValues = toObjectRecord(
+        rawMeta?.previousState ?? rawMeta?.previousValues,
+      );
+      const newValues = toObjectRecord(
+        rawMeta?.newState ?? rawMeta?.newValues,
+      );
       const reason =
         typeof rawMeta?.reason === 'string' ? rawMeta.reason : null;
 
@@ -319,12 +334,12 @@ export class AuditQueryService {
     const rawMeta = row.metadata as Record<string, unknown> | null;
     const sanitizedMeta = sanitizeMetadata(rawMeta || undefined);
 
-    const previousValues = (rawMeta?.previousState ||
-      rawMeta?.previousValues ||
-      null) as Record<string, unknown> | null;
-    const newValues = (rawMeta?.newState ||
-      rawMeta?.newValues ||
-      null) as Record<string, unknown> | null;
+    const previousValues = toObjectRecord(
+      rawMeta?.previousState ?? rawMeta?.previousValues,
+    );
+    const newValues = toObjectRecord(
+      rawMeta?.newState ?? rawMeta?.newValues,
+    );
     const reason =
       typeof rawMeta?.reason === 'string' ? rawMeta.reason : null;
 

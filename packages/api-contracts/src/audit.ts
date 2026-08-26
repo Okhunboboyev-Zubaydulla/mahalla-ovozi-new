@@ -45,22 +45,30 @@ export type AuditEventDetail = z.infer<typeof AuditEventDetailSchema>;
 export const AuditHistoryQuerySchema = z
   .object({
     limit: z.coerce.number().int().min(1).max(100).default(50),
-    cursor: z.string().min(1).optional(),
+    cursor: z.preprocess((val) => (val === '' ? undefined : val), z.string().min(1).optional()),
     direction: z.enum(['forward', 'backward']).default('forward'),
-    districtId: z.string().optional(),
-    startDate: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD format required')
-      .optional(),
-    endDate: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD format required')
-      .optional(),
-    category: AuditActionCategoryEnumSchema.optional(),
-    actorRole: AuditActorRoleEnumSchema.optional(),
-    outcome: AuditActionOutcomeEnumSchema.optional(),
-    action: z.string().optional(),
-    search: z.string().max(100).optional(),
+    districtId: z.preprocess((val) => (val === '' ? undefined : val), z.string().optional()),
+    startDate: z.preprocess(
+      (val) => (val === '' ? undefined : val),
+      z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD format required')
+        .refine((val) => !Number.isNaN(Date.parse(val)), 'Нотўғри сана киритилди.')
+        .optional(),
+    ),
+    endDate: z.preprocess(
+      (val) => (val === '' ? undefined : val),
+      z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD format required')
+        .refine((val) => !Number.isNaN(Date.parse(val)), 'Нотўғри сана киритилди.')
+        .optional(),
+    ),
+    category: z.preprocess((val) => (val === '' ? undefined : val), AuditActionCategoryEnumSchema.optional()),
+    actorRole: z.preprocess((val) => (val === '' ? undefined : val), AuditActorRoleEnumSchema.optional()),
+    outcome: z.preprocess((val) => (val === '' ? undefined : val), AuditActionOutcomeEnumSchema.optional()),
+    action: z.preprocess((val) => (val === '' ? undefined : val), z.string().optional()),
+    search: z.preprocess((val) => (val === '' ? undefined : val), z.string().max(100).optional()),
   })
   .refine(
     (data) => !data.startDate || !data.endDate || data.startDate <= data.endDate,
