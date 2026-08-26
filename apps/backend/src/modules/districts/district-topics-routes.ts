@@ -236,6 +236,18 @@ function handleDistrictTopicsError(err: unknown, reply: FastifyReply) {
     });
   }
 
+  if (err instanceof Error) {
+    if (
+      err.message.includes('сана') ||
+      err.message.includes('Сана') ||
+      err.message.includes('муддат')
+    ) {
+      return reply.status(400).send({
+        error: { code: 'INVALID_DATE_RANGE', message: err.message },
+      });
+    }
+  }
+
   if (
     typeof err === 'object' &&
     err !== null &&

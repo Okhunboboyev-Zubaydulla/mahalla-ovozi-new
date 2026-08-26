@@ -225,7 +225,7 @@ export class TopicEvidenceService {
       )`;
     }
 
-    const limit = query.limit;
+    const limit = query.limit ?? 50;
 
     // 6. Query evidence batch with JOIN on district_telegram_groups for group username
     const rawEvidenceRows = await this.db.execute<RawEvidenceRow>(sql`

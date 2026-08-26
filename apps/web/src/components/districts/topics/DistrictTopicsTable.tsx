@@ -21,6 +21,7 @@ export interface DistrictTopicsTableProps {
   topics: TopicCardItem[];
   totalCount: number;
   isLoading: boolean;
+  isFetching?: boolean;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   onFetchNextPage: () => void;
@@ -32,6 +33,7 @@ export const DistrictTopicsTable: React.FC<DistrictTopicsTableProps> = ({
   topics,
   totalCount,
   isLoading,
+  isFetching = false,
   hasNextPage,
   isFetchingNextPage,
   onFetchNextPage,
@@ -52,8 +54,8 @@ export const DistrictTopicsTable: React.FC<DistrictTopicsTableProps> = ({
       key: 'summary',
       render: (summary: string) => (
         <Paragraph
-          ellipsis={{ rows: 2, expandable: false }}
-          style={{ margin: 0, color: '#1E293B', fontSize: 13, lineHeight: 1.4 }}
+          ellipsis={{ rows: 2, tooltip: summary }}
+          style={{ marginBottom: 0, fontSize: 13, lineHeight: '1.4' }}
         >
           {summary}
         </Paragraph>
@@ -65,17 +67,17 @@ export const DistrictTopicsTable: React.FC<DistrictTopicsTableProps> = ({
       key: 'calendarDay',
       width: 110,
       render: (day: string) => (
-        <Text style={{ fontSize: 12, color: '#64748B' }}>{day}</Text>
+        <Tag style={{ borderRadius: 4, margin: 0, fontSize: 12 }}>{day}</Tag>
       ),
     },
     {
       title: 'Йўналишлар',
       dataIndex: 'lanes',
       key: 'lanes',
-      width: 170,
-      render: (lanes: QualifyingLane[]) => (
-        <Space wrap size={[4, 4]}>
-          {(lanes || []).map((lane) => {
+      width: 180,
+      render: (lanes: QualifyingLane[], record) => (
+        <Space size={[0, 4]} wrap>
+          {(lanes || []).map((lane, index) => {
             const style = LANE_STYLES[lane] || {
               bg: '#F1F5F9',
               text: '#475569',
@@ -83,7 +85,7 @@ export const DistrictTopicsTable: React.FC<DistrictTopicsTableProps> = ({
             };
             return (
               <Tag
-                key={lane}
+                key={`${record.id}-${lane}-${index}`}
                 style={{
                   backgroundColor: style.bg,
                   color: style.text,
@@ -106,10 +108,10 @@ export const DistrictTopicsTable: React.FC<DistrictTopicsTableProps> = ({
       dataIndex: 'latestMeaningfulActivityTimestamp',
       key: 'latestMeaningfulActivityTimestamp',
       width: 120,
-      render: (ts: string, record) => (
+      render: (ts: string) => (
         <Space size={4} style={{ fontSize: 12, color: '#64748B' }}>
           <ClockCircleOutlined style={{ fontSize: 11 }} />
-          <span>{formatTashkentActivityTime(ts, record.calendarDay)}</span>
+          <span>{formatTashkentActivityTime(ts)}</span>
         </Space>
       ),
     },
@@ -195,7 +197,7 @@ export const DistrictTopicsTable: React.FC<DistrictTopicsTableProps> = ({
         dataSource={topics}
         columns={columns}
         rowKey="id"
-        loading={isLoading && topics.length === 0}
+        loading={isLoading || (isFetching && !isFetchingNextPage)}
         pagination={false}
         scroll={{ x: 'max-content' }}
         locale={{
@@ -228,7 +230,7 @@ export const DistrictTopicsTable: React.FC<DistrictTopicsTableProps> = ({
         >
           <Text type="secondary" style={{ fontSize: 13 }}>
             {totalCount > 0
-              ? `${topics.length} тадан ${totalCount} та кўрсатилмоқда`
+              ? `${totalCount} тадан ${topics.length} та кўрсатилмоқда`
               : `${topics.length} та мавзу кўрсатилмоқда`}
           </Text>
 

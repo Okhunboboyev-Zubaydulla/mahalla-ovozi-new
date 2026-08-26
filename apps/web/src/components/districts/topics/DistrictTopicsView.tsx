@@ -229,6 +229,7 @@ export const DistrictTopicsView: React.FC<DistrictTopicsViewProps> = ({
           topics={topics}
           totalCount={totalCount}
           isLoading={isLoading}
+          isFetching={isFetching}
           hasNextPage={Boolean(hasNextPage)}
           isFetchingNextPage={isFetchingNextPage}
           onFetchNextPage={() => void fetchNextPage()}

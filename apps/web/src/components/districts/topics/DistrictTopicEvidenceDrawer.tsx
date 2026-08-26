@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   Drawer,
   Typography,
@@ -71,17 +71,6 @@ export const DistrictTopicEvidenceDrawer: React.FC<DistrictTopicEvidenceDrawerPr
       }, 50);
     }
   };
-
-  // Keyboard navigation: Escape key closes drawer
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (open && e.key === 'Escape') {
-        handleClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const evidenceList = useMemo(() => {
     if (!data?.pages) return [];
@@ -225,7 +214,12 @@ export const DistrictTopicEvidenceDrawer: React.FC<DistrictTopicEvidenceDrawerPr
           {/* Loading / Error States */}
           {isLoading && evidenceList.length === 0 && (
             <div style={{ padding: '40px 0', textAlign: 'center' }}>
-              <Spin tip="Далиллар юкланмоқда..." />
+              <Space direction="vertical" align="center" size={8}>
+                <Spin size="default" />
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  Далиллар юкланмоқда...
+                </Text>
+              </Space>
             </div>
           )}
 

@@ -238,7 +238,7 @@ export class DistrictTopicsService {
         ${cursorPredicate}
         ${searchPredicate}
       GROUP BY t.id, tp.id
-      ORDER BY tp.latest_meaningful_activity_timestamp DESC, t.id DESC
+      ORDER BY date_trunc('milliseconds', tp.latest_meaningful_activity_timestamp) DESC, t.id DESC
       LIMIT ${limit + 1};
     `;
 

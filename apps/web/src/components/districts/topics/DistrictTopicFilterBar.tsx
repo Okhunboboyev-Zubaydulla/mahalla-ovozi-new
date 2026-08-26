@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Select, Input, Button, Space, theme } from 'antd';
 import { SearchOutlined, ClearOutlined, LoadingOutlined } from '@ant-design/icons';
 import {
@@ -30,6 +30,11 @@ export const DistrictTopicFilterBar: React.FC<DistrictTopicFilterBarProps> = ({
   const [searchInput, setSearchInput] = useState<string>(filter.search || '');
   const [isDebouncing, setIsDebouncing] = useState(false);
 
+  const filterRef = useRef(filter);
+  filterRef.current = filter;
+  const onFilterChangeRef = useRef(onFilterChange);
+  onFilterChangeRef.current = onFilterChange;
+
   // Sync internal search input with incoming prop
   useEffect(() => {
     setSearchInput(filter.search || '');
@@ -38,7 +43,7 @@ export const DistrictTopicFilterBar: React.FC<DistrictTopicFilterBarProps> = ({
   // Debounce search input changes (300ms)
   useEffect(() => {
     const trimmed = searchInput.trim();
-    const currentPropSearch = filter.search?.trim() || '';
+    const currentPropSearch = filterRef.current.search?.trim() || '';
 
     if (trimmed === currentPropSearch) {
       setIsDebouncing(false);
@@ -48,14 +53,14 @@ export const DistrictTopicFilterBar: React.FC<DistrictTopicFilterBarProps> = ({
     setIsDebouncing(true);
     const timer = setTimeout(() => {
       setIsDebouncing(false);
-      onFilterChange({
-        ...filter,
+      onFilterChangeRef.current({
+        ...filterRef.current,
         search: trimmed.length > 0 ? trimmed : undefined,
       });
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchInput]);
 
   const handleDateScopeChange = (scope: {
     dateScope: DateFilterScope;

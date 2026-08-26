@@ -43,7 +43,9 @@ export const DistrictsPage: React.FC = () => {
   const handleCloseDrawer = () => {
     setDrawerOpen(false);
     if (searchParams.get('action') === 'create') {
-      setSearchParams({}, { replace: true });
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('action');
+      setSearchParams(nextParams, { replace: true });
     }
   };
 
@@ -66,11 +68,13 @@ export const DistrictsPage: React.FC = () => {
     setSearchParams(nextParams);
   };
 
-  const handleViewTopics = async (districtId: string) => {
-    if (activeDistrictId !== districtId) {
-      await switchDistrict(districtId);
-    }
-    handleTabChange('topics');
+  const handleViewTopics = (districtId: string) => {
+    attemptTransition(async () => {
+      if (activeDistrictId !== districtId) {
+        await switchDistrict(districtId);
+      }
+      handleTabChange('topics');
+    });
   };
 
   const activeDistrict = districts.find((d) => d.id === activeDistrictId);

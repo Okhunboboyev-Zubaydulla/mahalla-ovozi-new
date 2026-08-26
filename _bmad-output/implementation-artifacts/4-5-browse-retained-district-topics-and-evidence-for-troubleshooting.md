@@ -4,7 +4,7 @@ baseline_commit: caa67cb
 
 # Story 4.5: Browse Retained District Topics and Evidence for Troubleshooting
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -339,6 +339,17 @@ So that I can investigate operational questions without mixing resident-bearing 
       - 7. District switch purges previous district data and closes drawer.
       - 8. Offline stale banner appears when offline with formatted last updated time.
       - 9. Verifies zero edit/delete controls in the DOM.
+
+### Review Findings
+
+- [x] [Review][Patch] Align Keyset Pagination ORDER BY with `date_trunc` Cursor Predicate [`apps/backend/src/modules/topics/district-topics-service.ts:241`]
+- [x] [Review][Patch] Map Date Boundary Error Violations to HTTP 400 in Fastify Route [`apps/backend/src/modules/districts/district-topics-routes.ts:214-257`]
+- [x] [Review][Patch] Fix Stale Closure in Search Debounce using Filter Reference [`apps/web/src/components/districts/topics/DistrictTopicFilterBar.tsx:49-58`]
+- [x] [Review][Patch] Provide Default Fallback for `query.limit` in TopicEvidenceService [`apps/backend/src/modules/topics/topic-evidence-service.ts:228`]
+- [x] [Review][Patch] Fix Activity Time Tashkent Date Display for Past Topics [`apps/web/src/components/districts/topics/DistrictTopicsTable.tsx:112`]
+- [x] [Review][Patch] Remove Duplicate Window Keydown Listener for Escape Key in Drawer [`apps/web/src/components/districts/topics/DistrictTopicEvidenceDrawer.tsx:76-84`]
+- [x] [Review][Patch] Preserve URL Search Parameters and Protect Active Form State on Tab Transitions [`apps/web/src/pages/DistrictsPage.tsx:43-48,69-74`]
+- [x] [Review][Patch] Connect Table Background Fetching State, Progressive Loading Uzbek Phrasing, and Unique Lane Keys [`apps/web/src/components/districts/topics/DistrictTopicsTable.tsx:86,198,230-232`, `apps/web/src/components/districts/topics/DistrictTopicsView.tsx:231`]
 
 ---
 
