@@ -22,11 +22,10 @@ export interface TelegramContentQualificationJobData {
   telegramChatId: string;
   telegramMessageId: string;
   originalTimestamp: string;
+  issueId?: string;
 }
 
 export interface TelegramSemanticRelevanceJobData {
-
-
   intakeId: string;
   districtId: string;
   mahallaName: string;
@@ -38,6 +37,7 @@ export interface TelegramSemanticRelevanceJobData {
   contentType: 'TEXT' | 'MEDIA_CAPTION';
   verbatimText: string;
   replyMetadata: TelegramReplyMetadata | null;
+  issueId?: string;
 }
 
 export interface TelegramTopicAssignmentJobData {
@@ -55,6 +55,7 @@ export interface TelegramTopicAssignmentJobData {
   aiOperationId: string;
   relevantLanes: QualifyingLane[];
   reasoning: string;
+  issueId?: string;
 }
 
 export interface TelegramTopicProjectionJobData {
@@ -63,10 +64,12 @@ export interface TelegramTopicProjectionJobData {
   mahallaName: string;
   calendarDay: string;
   generation: number;
+  issueId?: string;
 }
 
 export interface TelegramTopicRetentionJobData {
   districtId?: string;
+  issueId?: string;
 }
 
 export function createBossClient(options?: { connectionString?: string; schema?: string }): PgBoss {
@@ -132,6 +135,13 @@ export const JobSingletonKeys = {
    */
   forDistrictMahallaDay(districtId: string, mahallaName: string, calendarDay: string): string {
     return `scope:${districtId}:${mahallaName.trim().toLowerCase()}:${calendarDay}`;
+  },
+
+  /**
+   * Deduplication key for Global or District retention scans (Story 4.3 Task 3).
+   */
+  forRetention(districtId?: string): string {
+    return `retention:${districtId || 'global'}`;
   },
 };
 

@@ -1,7 +1,9 @@
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { message } from 'antd';
 import {
   OperationalIssuesListResponse,
   OperationalIssueDetailResponse,
+  RetryOperationResponse,
 } from '@mahalla-ovozi/api-contracts';
 import { issuesClient, GetIssuesParams } from './issues-client.js';
 
@@ -53,3 +55,36 @@ export function useOperationalIssueDetail(issueId: string | null) {
     retry: false,
   });
 }
+
+/**
+ * Custom TanStack Query mutation hook for triggering manual retry on an operational issue (Story 4.3 AC 1, AC 3, AC 10).
+ */
+export function useRetryOperationalIssue() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    RetryOperationResponse,
+    Error,
+    { issueId: string; reason?: string }
+  >({
+    mutationFn: ({ issueId, reason }) =>
+      issuesClient.retryOperationalIssue(issueId, reason),
+    networkMode: 'online',
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: issueKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['health'] });
+      if (variables.issueId) {
+        queryClient.invalidateQueries({
+          queryKey: issueKeys.detail(variables.issueId),
+        });
+      }
+      message.success(
+        data.message || 'Қайта ижро этиш навбатга муваффақиятли қўшилди.',
+      );
+    },
+    onError: (err) => {
+      message.error(err.message || 'Қайта ижро этишда хатолик юз берди.');
+    },
+  });
+}
+

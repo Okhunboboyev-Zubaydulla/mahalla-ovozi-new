@@ -75,6 +75,10 @@ export const OperationalIssueSchema = z.object({
   startedAt: z.string().datetime(),
   latestCheckAt: z.string().datetime(),
   resolvedAt: z.string().datetime().nullable(),
+  isRetryEligible: z.boolean(),
+  retryCount: z.number().int().nonnegative().optional(),
+  pendingRetry: z.boolean().optional(),
+  lastRetryAt: z.string().datetime().nullable().optional(),
   metadata: z.record(z.unknown()).nullable().optional(),
 });
 export type OperationalIssue = z.infer<typeof OperationalIssueSchema>;

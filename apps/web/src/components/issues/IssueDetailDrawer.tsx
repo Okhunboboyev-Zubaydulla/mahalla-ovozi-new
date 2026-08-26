@@ -10,6 +10,7 @@ import {
   Alert,
   theme,
   Spin,
+  Popconfirm,
 } from 'antd';
 import {
   CloseOutlined,
@@ -17,11 +18,16 @@ import {
   CheckCircleOutlined,
   WarningOutlined,
   ClockCircleOutlined,
+  ReloadOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { OperationalIssue } from '@mahalla-ovozi/api-contracts';
 import { IssueSeverityBadge } from './IssueSeverityBadge.js';
-import { useOperationalIssueDetail } from '../../issues/useOperationalIssues.js';
+import {
+  useOperationalIssueDetail,
+  useRetryOperationalIssue,
+} from '../../issues/useOperationalIssues.js';
 import { formatIssueDuration } from '../../utils/duration-format.js';
 
 const { Title, Text, Paragraph } = Typography;
@@ -42,6 +48,7 @@ export const IssueDetailDrawer: React.FC<IssueDetailDrawerProps> = ({
   const { token } = theme.useToken();
   const navigate = useNavigate();
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const retryMutation = useRetryOperationalIssue();
 
   const { data: detailData, isLoading: isDetailLoading } =
     useOperationalIssueDetail(issue?.id || null);
@@ -158,19 +165,70 @@ export const IssueDetailDrawer: React.FC<IssueDetailDrawerProps> = ({
             message="Тавсия этилган ҳаракат"
             description={
               <div>
-                <Paragraph style={{ marginBottom: currentIssue.targetRoute ? 12 : 0 }}>
+                <Paragraph style={{ marginBottom: currentIssue.targetRoute || currentIssue.isRetryEligible ? 12 : 0 }}>
                   {currentIssue.recommendedAction}
                 </Paragraph>
-                {currentIssue.targetRoute && (
-                  <Button
-                    type="primary"
-                    size="middle"
-                    icon={<ArrowRightOutlined />}
-                    onClick={() => handleActionNavigate(currentIssue.targetRoute!)}
-                  >
-                    {getActionBtnLabel(currentIssue.targetRoute)}
-                  </Button>
-                )}
+                <Space size={8} wrap>
+                  {currentIssue.isRetryEligible && (
+                    <Popconfirm
+                      title="Қайта ижро этишни тасдиқлайсизми?"
+                      description="Ушбу амалиёт хавфсиз навбат орқали қайта ишга туширилади."
+                      okText="Ҳа, қайта ижро этиш"
+                      cancelText="Бекор қилиш"
+                      disabled={
+                        currentIssue.pendingRetry ||
+                        (retryMutation.isPending &&
+                          retryMutation.variables?.issueId === currentIssue.id)
+                      }
+                      okButtonProps={{
+                        loading:
+                          retryMutation.isPending &&
+                          retryMutation.variables?.issueId === currentIssue.id,
+                      }}
+                      onConfirm={() => {
+                        retryMutation.mutate({ issueId: currentIssue.id });
+                      }}
+                    >
+                      <Button
+                        type="primary"
+                        ghost
+                        size="middle"
+                        icon={
+                          currentIssue.pendingRetry ? (
+                            <SyncOutlined spin />
+                          ) : (
+                            <ReloadOutlined />
+                          )
+                        }
+                        disabled={
+                          currentIssue.pendingRetry ||
+                          (retryMutation.isPending &&
+                            retryMutation.variables?.issueId === currentIssue.id)
+                        }
+                        loading={
+                          retryMutation.isPending &&
+                          retryMutation.variables?.issueId === currentIssue.id
+                        }
+                        aria-label="Муаммони қайта ижро этиш"
+                      >
+                        {currentIssue.pendingRetry
+                          ? 'Қайта ижро этилмоқда...'
+                          : 'Қайта уриниш'}
+                      </Button>
+                    </Popconfirm>
+                  )}
+
+                  {currentIssue.targetRoute && (
+                    <Button
+                      type="primary"
+                      size="middle"
+                      icon={<ArrowRightOutlined />}
+                      onClick={() => handleActionNavigate(currentIssue.targetRoute!)}
+                    >
+                      {getActionBtnLabel(currentIssue.targetRoute)}
+                    </Button>
+                  )}
+                </Space>
               </div>
             }
             type={
@@ -290,18 +348,40 @@ export const IssueDetailDrawer: React.FC<IssueDetailDrawerProps> = ({
             <Timeline
               items={auditEvents.map((evt) => {
                 const isDetected = evt.action === 'OPERATIONAL_ISSUE_DETECTED';
+                const isRetry = evt.action === 'OPERATIONAL_RETRY_TRIGGERED';
+                const isResolved = evt.action === 'OPERATIONAL_ISSUE_RESOLVED';
+
+                const color = isDetected ? 'red' : isRetry ? 'blue' : isResolved ? 'green' : 'gray';
+                const dot = isDetected ? (
+                  <WarningOutlined style={{ fontSize: 14 }} />
+                ) : isRetry ? (
+                  <SyncOutlined style={{ fontSize: 14 }} />
+                ) : (
+                  <CheckCircleOutlined style={{ fontSize: 14 }} />
+                );
+
+                const eventTitle = isDetected
+                  ? 'Муаммо қайд этилди'
+                  : isRetry
+                    ? 'Қайта ижро этиш сўралди'
+                    : isResolved
+                      ? 'Муаммо бартараф этилди'
+                      : evt.action;
+
+                const actorText = evt.actorRole === 'PRODUCT_OWNER'
+                  ? 'Маҳсулот эгаси'
+                  : evt.actorId || 'Тизим';
+
+                const reason = evt.metadata?.reason ? String(evt.metadata.reason) : null;
+
                 return {
                   key: evt.id,
-                  color: isDetected ? 'red' : 'green',
-                  dot: isDetected ? (
-                    <WarningOutlined style={{ fontSize: 14 }} />
-                  ) : (
-                    <CheckCircleOutlined style={{ fontSize: 14 }} />
-                  ),
+                  color,
+                  dot,
                   children: (
                     <div>
                       <Text strong style={{ fontSize: 13 }}>
-                        {isDetected ? 'Муаммо қайд этилди' : 'Муаммо бартараф этилди'}
+                        {eventTitle}
                       </Text>
                       <br />
                       <Text type="secondary" style={{ fontSize: 12 }}>
@@ -312,7 +392,14 @@ export const IssueDetailDrawer: React.FC<IssueDetailDrawerProps> = ({
                       {evt.actorId && (
                         <div style={{ marginTop: 2 }}>
                           <Text type="secondary" style={{ fontSize: 11 }}>
-                            Манба: <Text code style={{ fontSize: 11 }}>{evt.actorId}</Text>
+                            Манба: <Text code style={{ fontSize: 11 }}>{actorText}</Text>
+                          </Text>
+                        </div>
+                      )}
+                      {reason && (
+                        <div style={{ marginTop: 2 }}>
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            Сабаб: {reason}
                           </Text>
                         </div>
                       )}

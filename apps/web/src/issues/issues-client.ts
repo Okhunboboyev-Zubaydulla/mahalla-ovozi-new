@@ -3,6 +3,9 @@ import {
   OperationalIssuesListResponseSchema,
   OperationalIssueDetailResponse,
   OperationalIssueDetailResponseSchema,
+  RetryOperationRequest,
+  RetryOperationResponse,
+  RetryOperationResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
 
@@ -54,4 +57,40 @@ export const issuesClient = {
       OperationalIssueDetailResponseSchema,
     );
   },
+
+  /**
+   * Triggers manual retry for an operational issue (Story 4.3 AC 1, AC 2, AC 3).
+   */
+  retryOperationalIssue(
+    issueId: string,
+    reason?: string,
+  ): Promise<RetryOperationResponse> {
+    return request<RetryOperationResponse>(
+      `/api/v1/issues/${encodeURIComponent(issueId)}/retry`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      },
+      RetryOperationResponseSchema,
+    );
+  },
+
+  /**
+   * Triggers manual retry for a background job directly (Story 4.3 AC 2, AC 3).
+   */
+  retryBackgroundJob(
+    payload: RetryOperationRequest,
+  ): Promise<RetryOperationResponse> {
+    return request<RetryOperationResponse>(
+      '/api/v1/retry/jobs',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      RetryOperationResponseSchema,
+    );
+  },
 };
+

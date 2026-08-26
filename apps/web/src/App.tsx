@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App as AntdApp } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { mahallaTheme } from './theme/antd-theme.js';
 import { AuthProvider } from './auth/auth-context.js';
@@ -47,67 +47,69 @@ export function App() {
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ConfigProvider theme={mahallaTheme}>
-          <AuthProvider>
-            {/* P4-E: DistrictProvider inside AuthProvider & QueryClientProvider */}
-            <DistrictProvider>
-              <LiveAnnouncerProvider>
-                <BrowserRouter>
-                  <Routes>
-                  <Route path="/sign-in" element={<SignInPage />} />
-                  <Route
-                    path="/first-login-password-change"
-                    element={
-                      <ProtectedRoute>
-                        <FirstSignInPasswordChangePage />
-                      </ProtectedRoute>
-                    }
-                  />
+          <AntdApp>
+            <AuthProvider>
+              {/* P4-E: DistrictProvider inside AuthProvider & QueryClientProvider */}
+              <DistrictProvider>
+                <LiveAnnouncerProvider>
+                  <BrowserRouter>
+                    <Routes>
+                    <Route path="/sign-in" element={<SignInPage />} />
+                    <Route
+                      path="/first-login-password-change"
+                      element={
+                        <ProtectedRoute>
+                          <FirstSignInPasswordChangePage />
+                        </ProtectedRoute>
+                      }
+                    />
 
-                  {/* Narrow-screen routed Topic Evidence Page for Hokim (AC 8) */}
-                  <Route
-                    path="/topics/:topicId/evidence"
-                    element={
-                      <ProtectedRoute>
-                        <TopicEvidencePage />
-                      </ProtectedRoute>
-                    }
-                  />
+                    {/* Narrow-screen routed Topic Evidence Page for Hokim (AC 8) */}
+                    <Route
+                      path="/topics/:topicId/evidence"
+                      element={
+                        <ProtectedRoute>
+                          <TopicEvidencePage />
+                        </ProtectedRoute>
+                      }
+                    />
 
-                  {/* Narrow-screen routed Help Page for Hokim (AC 4) */}
-                  <Route
-                    path="/help"
-                    element={
-                      <ProtectedRoute>
-                        <DashboardHelpPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  
-                  {/* Role-discriminating root route: DISTRICT_HOKIM gets HokimDashboardPage directly; PRODUCT_OWNER gets ConsoleLayout */}
-                  <Route
-                    path="/"
-                    element={
-                      <ProtectedRoute>
-                        <AuthenticatedRoot />
-                      </ProtectedRoute>
-                    }
-                  >
-                    <Route index element={<OverviewPage />} />
-                    <Route path="districts" element={<DistrictsPage />} />
-                    <Route path="system-health" element={<SystemHealthPage />} />
-                    <Route path="telegram-setup" element={<TelegramSetupPage />} />
-                    <Route path="subscriptions" element={<SubscriptionsPage />} />
-                    <Route path="hokim-accounts" element={<HokimAccountsPage />} />
-                    <Route path="ai-operations" element={<AiOperationsPage />} />
-                    <Route path="audit-history" element={<AuditHistoryPage />} />
-                  </Route>
+                    {/* Narrow-screen routed Help Page for Hokim (AC 4) */}
+                    <Route
+                      path="/help"
+                      element={
+                        <ProtectedRoute>
+                          <DashboardHelpPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    {/* Role-discriminating root route: DISTRICT_HOKIM gets HokimDashboardPage directly; PRODUCT_OWNER gets ConsoleLayout */}
+                    <Route
+                      path="/"
+                      element={
+                        <ProtectedRoute>
+                          <AuthenticatedRoot />
+                        </ProtectedRoute>
+                      }
+                    >
+                      <Route index element={<OverviewPage />} />
+                      <Route path="districts" element={<DistrictsPage />} />
+                      <Route path="system-health" element={<SystemHealthPage />} />
+                      <Route path="telegram-setup" element={<TelegramSetupPage />} />
+                      <Route path="subscriptions" element={<SubscriptionsPage />} />
+                      <Route path="hokim-accounts" element={<HokimAccountsPage />} />
+                      <Route path="ai-operations" element={<AiOperationsPage />} />
+                      <Route path="audit-history" element={<AuditHistoryPage />} />
+                    </Route>
 
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </BrowserRouter>
-            </LiveAnnouncerProvider>
-          </DistrictProvider>
-        </AuthProvider>
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </BrowserRouter>
+              </LiveAnnouncerProvider>
+            </DistrictProvider>
+          </AuthProvider>
+        </AntdApp>
       </ConfigProvider>
     </QueryClientProvider>
   </AppErrorBoundary>

@@ -1,15 +1,18 @@
 import React from 'react';
-import { Card, List, Button, Typography, Space, Empty, theme, Badge } from 'antd';
+import { Card, List, Button, Typography, Space, Empty, theme, Badge, Popconfirm } from 'antd';
 import {
   RightOutlined,
   CheckCircleTwoTone,
   ClockCircleOutlined,
   GlobalOutlined,
   BankOutlined,
+  ReloadOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 import { OperationalIssue } from '@mahalla-ovozi/api-contracts';
 import { IssueSeverityBadge } from './IssueSeverityBadge.js';
 import { formatIssueDuration } from '../../utils/duration-format.js';
+import { useRetryOperationalIssue } from '../../issues/useOperationalIssues.js';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -25,6 +28,7 @@ export const ActiveIssuesList: React.FC<ActiveIssuesListProps> = ({
   onSelectIssue,
 }) => {
   const { token } = theme.useToken();
+  const retryMutation = useRetryOperationalIssue();
 
   return (
     <Card
@@ -154,17 +158,69 @@ export const ActiveIssuesList: React.FC<ActiveIssuesListProps> = ({
                   </div>
 
                   <div style={{ alignSelf: 'center' }}>
-                    <Button
-                      type="primary"
-                      ghost
-                      size="middle"
-                      onClick={(e) => onSelectIssue(issue, e.currentTarget)}
-                      aria-haspopup="dialog"
-                      aria-controls="issue-detail-drawer"
-                      aria-label={`${issue.sanitizedTitle} бўйича батафсил маълумот`}
-                    >
-                      Батафсил <RightOutlined />
-                    </Button>
+                    <Space size={8}>
+                      {issue.isRetryEligible && (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Popconfirm
+                            title="Қайта ижро этишни тасдиқлайсизми?"
+                            description="Ушбу амалиёт хавфсиз навбат орқали қайта ишга туширилади."
+                            okText="Ҳа, қайта ижро этиш"
+                            cancelText="Бекор қилиш"
+                            disabled={
+                              issue.pendingRetry ||
+                              (retryMutation.isPending &&
+                                retryMutation.variables?.issueId === issue.id)
+                            }
+                            okButtonProps={{
+                              loading:
+                                retryMutation.isPending &&
+                                retryMutation.variables?.issueId === issue.id,
+                            }}
+                            onConfirm={() => {
+                              retryMutation.mutate({ issueId: issue.id });
+                            }}
+                          >
+                            <Button
+                              type="default"
+                              size="middle"
+                              icon={
+                                issue.pendingRetry ? (
+                                  <SyncOutlined spin />
+                                ) : (
+                                  <ReloadOutlined />
+                                )
+                              }
+                              disabled={
+                                issue.pendingRetry ||
+                                (retryMutation.isPending &&
+                                  retryMutation.variables?.issueId === issue.id)
+                              }
+                              loading={
+                                retryMutation.isPending &&
+                                retryMutation.variables?.issueId === issue.id
+                              }
+                              aria-label={`${issue.sanitizedTitle} бўйича қайта ижро этиш`}
+                            >
+                              {issue.pendingRetry
+                                ? 'Қайта ижро этилмоқда...'
+                                : 'Қайта уриниш'}
+                            </Button>
+                          </Popconfirm>
+                        </div>
+                      )}
+
+                      <Button
+                        type="primary"
+                        ghost
+                        size="middle"
+                        onClick={(e) => onSelectIssue(issue, e.currentTarget)}
+                        aria-haspopup="dialog"
+                        aria-controls="issue-detail-drawer"
+                        aria-label={`${issue.sanitizedTitle} бўйича батафсил маълумот`}
+                      >
+                        Батафсил <RightOutlined />
+                      </Button>
+                    </Space>
                   </div>
                 </div>
               </List.Item>

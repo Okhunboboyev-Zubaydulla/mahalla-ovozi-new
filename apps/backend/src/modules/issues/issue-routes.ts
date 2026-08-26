@@ -5,6 +5,8 @@ import type PgBoss from 'pg-boss';
 import {
   OperationalIssuesQuerySchema,
   OperationalIssuesQuery,
+  RetryOperationRequestSchema,
+  RetryOperationRequest,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import { createRequireProductOwner } from '../auth/require-product-owner.js';
@@ -13,6 +15,12 @@ import {
   issueService,
   OperationalIssueNotFoundError,
 } from './issue-service.js';
+import {
+  retryService,
+  DuplicateRetryInProgressError,
+  OperationIneligibleError,
+} from './retry-service.js';
+import { createBossClient } from '../../adapters/jobs/boss-client.js';
 
 const DistrictIssueParamsSchema = z.object({
   districtId: z.string().min(1, 'Туман ID киритилиши шарт.'),
@@ -21,6 +29,12 @@ const DistrictIssueParamsSchema = z.object({
 const IssueDetailParamsSchema = z.object({
   issueId: z.string().min(1, 'Муаммо ID киритилиши шарт.'),
 });
+
+const RetryIssueBodySchema = z
+  .object({
+    reason: z.string().max(500).optional(),
+  })
+  .optional();
 
 export function registerIssueRoutes(
   server: FastifyInstance,
@@ -154,6 +168,158 @@ export function registerIssueRoutes(
           districtId: paramResult.data.districtId,
         });
         return reply.status(200).send(result);
+      },
+    );
+
+    /**
+     * POST /api/v1/issues/:issueId/retry
+     * Triggers manual retry for an operational issue (Story 4.3 AC 1, AC 2, AC 3).
+     */
+    scope.post(
+      '/api/v1/issues/:issueId/retry',
+      async (
+        req: FastifyRequest<{
+          Params: { issueId: string };
+          Body?: { reason?: string };
+        }>,
+        reply: FastifyReply,
+      ) => {
+        const paramResult = IssueDetailParamsSchema.safeParse(req.params);
+        if (!paramResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message:
+                paramResult.error.issues[0]?.message ||
+                'Муаммо ID нотўғри кўрсатилди.',
+              statusCode: 400,
+            },
+          });
+        }
+
+        const bodyResult = RetryIssueBodySchema.safeParse(req.body);
+        if (!bodyResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message:
+                bodyResult.error.issues[0]?.message ||
+                'Нотўғри сўров маълумотлари.',
+              statusCode: 400,
+            },
+          });
+        }
+
+        const sessionAccount = (req as any).session?.account;
+        const actor = {
+          id: sessionAccount?.id || 'system:product-owner',
+          role: sessionAccount?.role || 'PRODUCT_OWNER',
+        };
+
+        const boss = deps.boss || createBossClient();
+
+        try {
+          const result = await retryService.retryOperationalIssue(
+            deps.pool,
+            boss,
+            paramResult.data.issueId,
+            actor,
+            bodyResult.data,
+          );
+          return reply.status(202).send(result);
+        } catch (err) {
+          if (err instanceof OperationalIssueNotFoundError) {
+            return reply.status(404).send({
+              error: {
+                code: err.code,
+                message: err.message,
+                statusCode: 404,
+              },
+            });
+          }
+          if (err instanceof DuplicateRetryInProgressError) {
+            return reply.status(409).send({
+              error: {
+                code: err.code,
+                message: err.message,
+                statusCode: 409,
+              },
+            });
+          }
+          if (err instanceof OperationIneligibleError) {
+            return reply.status(422).send({
+              error: {
+                code: err.code,
+                message: err.message,
+                statusCode: 422,
+              },
+            });
+          }
+          throw err;
+        }
+      },
+    );
+
+    /**
+     * POST /api/v1/retry/jobs
+     * Triggers manual retry for a background job directly (Story 4.3 AC 2, AC 3).
+     */
+    scope.post(
+      '/api/v1/retry/jobs',
+      async (
+        req: FastifyRequest<{ Body: RetryOperationRequest }>,
+        reply: FastifyReply,
+      ) => {
+        const bodyResult = RetryOperationRequestSchema.safeParse(req.body);
+        if (!bodyResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message:
+                bodyResult.error.issues[0]?.message ||
+                'Нотўғри қайта ишга тушириш параметрлари.',
+              statusCode: 400,
+            },
+          });
+        }
+
+        const sessionAccount = (req as any).session?.account;
+        const actor = {
+          id: sessionAccount?.id || 'system:product-owner',
+          role: sessionAccount?.role || 'PRODUCT_OWNER',
+        };
+
+        const boss = deps.boss || createBossClient();
+
+        try {
+          const result = await retryService.retryBackgroundJob(
+            deps.pool,
+            boss,
+            bodyResult.data,
+            actor,
+          );
+          return reply.status(202).send(result);
+        } catch (err) {
+          if (err instanceof DuplicateRetryInProgressError) {
+            return reply.status(409).send({
+              error: {
+                code: err.code,
+                message: err.message,
+                statusCode: 409,
+              },
+            });
+          }
+          if (err instanceof OperationIneligibleError) {
+            return reply.status(422).send({
+              error: {
+                code: err.code,
+                message: err.message,
+                statusCode: 422,
+              },
+            });
+          }
+          throw err;
+        }
       },
     );
   });

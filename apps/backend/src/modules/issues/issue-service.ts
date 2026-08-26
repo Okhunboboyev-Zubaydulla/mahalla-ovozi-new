@@ -18,6 +18,7 @@ import {
   auditEvents,
 } from '../../adapters/db/schema/index.js';
 import { sortOperationalIssues } from './issue-evaluator.js';
+import { isIssueRetryEligible } from './retry-evaluator.js';
 
 export class OperationalIssueNotFoundError extends Error {
   statusCode = 404;
@@ -38,6 +39,19 @@ function formatOperationalIssue(
   row: typeof operationalIssues.$inferSelect,
   districtName?: string | null,
 ): OperationalIssue {
+  const isRetryEligible =
+    row.status === 'ACTIVE' &&
+    isIssueRetryEligible(row.issueCategory as IssueCategory, row.metadata);
+  const pendingRetry = Boolean(row.metadata?.pendingRetry);
+  const retryCount =
+    typeof row.metadata?.retryCount === 'number'
+      ? row.metadata.retryCount
+      : undefined;
+  const lastRetryAt =
+    typeof row.metadata?.lastRetryAt === 'string'
+      ? row.metadata.lastRetryAt
+      : null;
+
   return {
     id: row.id,
     logicalKey: row.logicalKey,
@@ -56,6 +70,10 @@ function formatOperationalIssue(
     startedAt: row.startedAt.toISOString(),
     latestCheckAt: row.latestCheckAt.toISOString(),
     resolvedAt: row.resolvedAt ? row.resolvedAt.toISOString() : null,
+    isRetryEligible,
+    retryCount,
+    pendingRetry,
+    lastRetryAt,
     metadata: row.metadata,
   };
 }
