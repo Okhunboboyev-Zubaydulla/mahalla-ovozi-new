@@ -123,7 +123,7 @@ export function useDistrictTopicEvidence(
   });
 }
 
-export function useDistrictMahallas(districtId: string | null) {
+export function useDistrictTopicsMahallas(districtId: string | null) {
   return useQuery<DistrictMahallasResponse, Error>({
     queryKey: ['district-mahallas', districtId],
     queryFn: ({ signal }) => districtTopicsClient.listMahallas(districtId!, signal),
@@ -131,3 +131,5 @@ export function useDistrictMahallas(districtId: string | null) {
     staleTime: 60_000,
   });
 }
+
+export { useDistrictTopicsMahallas as useDistrictMahallas };

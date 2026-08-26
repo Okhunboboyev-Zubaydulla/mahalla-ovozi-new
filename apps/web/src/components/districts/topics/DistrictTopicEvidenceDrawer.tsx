@@ -23,7 +23,7 @@ import {
   TopicCardItem,
   QualifyingLane,
 } from '@mahalla-ovozi/api-contracts';
-import { useDistrictTopicEvidence } from '../../../api/district-topics-client.js';
+import { useDistrictTopicEvidence } from '../../../topics/index.js';
 import { formatTashkentActivityTime } from '../../../lib/formatters.js';
 import { LANE_LABELS, LANE_STYLES } from '../../topics/TopicCard.js';
 import { EvidenceTimeline } from '../../topics/EvidenceTimeline.js';

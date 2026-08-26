@@ -13,7 +13,7 @@ import {
   auditEvents,
 } from '../src/adapters/db/schema/index.js';
 import { encryptToken } from '../src/adapters/crypto/token-cipher.js';
-import { globalTestSessionManager } from '../src/modules/telegram-groups/telegram-test-session-manager.js';
+import { globalTestSessionManager } from '../src/modules/telegram-groups/telegram-test-session-store.js';
 
 const SAME_ORIGIN_HEADERS = { 'sec-fetch-site': 'same-origin' } as const;
 

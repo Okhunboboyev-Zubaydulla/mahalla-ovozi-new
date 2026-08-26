@@ -16,10 +16,8 @@ import {
   TopicEvidenceService,
   TopicNotFoundError,
 } from './topic-evidence-service.js';
-import {
-  escapeLikePattern,
-  resolveDateBoundary,
-} from './hokim-topic-service.js';
+import { escapeLikePattern } from './hokim-topic-service.js';
+import { resolveDateBoundary } from '../telegram-intake/timezone-util.js';
 
 export { escapeLikePattern, resolveDateBoundary, TopicNotFoundError };
 

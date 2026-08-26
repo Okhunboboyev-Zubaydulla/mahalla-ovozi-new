@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { eq, asc, sql } from 'drizzle-orm';
-import { DbClient } from '../../adapters/db/client.js';
+import { DbClient, mapPostgresConstraintError } from '../../adapters/db/client.js';
 import { districts } from '../../adapters/db/schema/index.js';
 import {
   CreateDistrictRequest,
@@ -150,16 +150,16 @@ export async function createDistrict(
       });
     });
   } catch (err: unknown) {
-    // Handle concurrent duplicate name collision caught by DB unique index
-    if (
-      err instanceof DistrictNameExistsError ||
-      (typeof err === 'object' &&
-        err !== null &&
-        'code' in err &&
-        (err as { code: string }).code === '23505')
-    ) {
-      throw new DistrictNameExistsError(trimmedName);
+    if (err instanceof DistrictNameExistsError) {
+      throw err;
     }
+    mapPostgresConstraintError(
+      err,
+      {
+        districts_name_lower_idx: () => new DistrictNameExistsError(trimmedName),
+      },
+      () => new DistrictNameExistsError(trimmedName),
+    );
     throw err;
   }
 
@@ -239,15 +239,16 @@ export async function updateDistrict(
       });
     });
   } catch (err: unknown) {
-    if (
-      err instanceof DistrictNameExistsError ||
-      (typeof err === 'object' &&
-        err !== null &&
-        'code' in err &&
-        (err as { code: string }).code === '23505')
-    ) {
-      throw new DistrictNameExistsError(trimmedName);
+    if (err instanceof DistrictNameExistsError) {
+      throw err;
     }
+    mapPostgresConstraintError(
+      err,
+      {
+        districts_name_lower_idx: () => new DistrictNameExistsError(trimmedName!),
+      },
+      () => new DistrictNameExistsError(trimmedName!),
+    );
     throw err;
   }
 

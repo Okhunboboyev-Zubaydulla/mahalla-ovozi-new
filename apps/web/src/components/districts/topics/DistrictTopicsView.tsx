@@ -20,8 +20,8 @@ import {
 } from '@mahalla-ovozi/api-contracts';
 import {
   useDistrictTopics,
-  useDistrictMahallas,
-} from '../../../api/district-topics-client.js';
+  useDistrictTopicsMahallas,
+} from '../../../topics/index.js';
 import { formatTashkentDate } from '../../../lib/formatters.js';
 import { DistrictTopicFilterBar } from './DistrictTopicFilterBar.js';
 import { DistrictTopicsTable } from './DistrictTopicsTable.js';
@@ -62,7 +62,7 @@ export const DistrictTopicsView: React.FC<DistrictTopicsViewProps> = ({
   } = useDistrictTopics(activeDistrictId, filter);
 
   const { data: mahallasData, isLoading: isLoadingMahallas } =
-    useDistrictMahallas(activeDistrictId);
+    useDistrictTopicsMahallas(activeDistrictId);
 
   // Flatten infinite query topic pages
   const topics = useMemo(() => {

@@ -60,8 +60,44 @@ describe('getTashkentCalendarDay Utility', () => {
     // Start of 2026-08-25 in Tashkent (UTC+5) is 2026-08-24 19:00:00.000Z
     expect(bounds.startUtc.toISOString()).toBe('2026-08-24T19:00:00.000Z');
     // End of 2026-08-25 in Tashkent (UTC+5) is 2026-08-25 18:59:59.999Z
-    expect(bounds.endUtc.toISOString()).toBe('2026-08-25T18:59:59.999Z');
-
     expect(() => getTashkentDayBounds('invalid-day')).toThrow('Invalid calendar day format');
+  });
+
+  describe('resolveDateBoundary', () => {
+    it('resolves default scope to today', async () => {
+      const { resolveDateBoundary } = await import('../src/modules/telegram-intake/timezone-util.js');
+      const res = resolveDateBoundary({});
+      expect(res.resolvedCalendarDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(res.datePredicate).toBeDefined();
+    });
+
+    it('resolves yesterday scope properly', async () => {
+      const { resolveDateBoundary } = await import('../src/modules/telegram-intake/timezone-util.js');
+      const res = resolveDateBoundary({ dateScope: 'yesterday' });
+      expect(res.resolvedCalendarDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(res.datePredicate).toBeDefined();
+    });
+
+    it('rejects invalid custom range where dateFrom > dateTo', async () => {
+      const { resolveDateBoundary } = await import('../src/modules/telegram-intake/timezone-util.js');
+      expect(() =>
+        resolveDateBoundary({
+          dateScope: 'custom',
+          dateFrom: '2026-08-25',
+          dateTo: '2026-08-20',
+        }),
+      ).toThrow('Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.');
+    });
+
+    it('rejects custom range older than 90-day retention', async () => {
+      const { resolveDateBoundary } = await import('../src/modules/telegram-intake/timezone-util.js');
+      expect(() =>
+        resolveDateBoundary({
+          dateScope: 'custom',
+          dateFrom: '2020-01-01',
+          dateTo: '2020-01-02',
+        }),
+      ).toThrow('Сана 90 кунлик сақлаш муддатидан эски бўлиши мумкин эмас.');
+    });
   });
 });

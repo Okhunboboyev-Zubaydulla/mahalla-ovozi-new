@@ -9,6 +9,7 @@ import {
   TELEGRAM_CONTENT_QUALIFICATION_QUEUE,
   TELEGRAM_SEMANTIC_RELEVANCE_QUEUE,
   JobSingletonKeys,
+  sendQueueJob,
   type TelegramContentQualificationJobData,
   type TelegramSemanticRelevanceJobData,
 } from '../../../adapters/jobs/boss-client.js';
@@ -90,11 +91,8 @@ export async function processQualificationJobs(
         const candidateData: TelegramSemanticRelevanceJobData = qualification.candidate;
         const singletonKey = JobSingletonKeys.forSemanticRelevance(districtId, telegramChatId, telegramMessageId);
 
-        await boss.send(TELEGRAM_SEMANTIC_RELEVANCE_QUEUE, candidateData, {
+        await sendQueueJob(boss, TELEGRAM_SEMANTIC_RELEVANCE_QUEUE, candidateData, {
           singletonKey,
-          retryLimit: 3,
-          retryDelay: 5,
-          retryBackoff: true,
         });
 
         // 5. Emit privacy-safe structured telemetry (AD-11 / AC 9)

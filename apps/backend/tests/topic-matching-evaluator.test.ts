@@ -1,10 +1,8 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import {
+  TopicMatchingEvaluator,
   TopicMatchingResultSchema,
   type TopicMatchingResult,
-} from '../src/modules/ai/topic-matching-contracts.js';
-import {
-  TopicMatchingEvaluator,
   findDirectReplyTopic,
 } from '../src/modules/topics/topic-matching-evaluator.js';
 import type { MahallaDailySnapshot } from '../src/modules/ai/context-snapshot.js';

@@ -1,4 +1,9 @@
-import { eq, and, desc, asc, gte, lte, sql, SQL } from 'drizzle-orm';
+import { eq, and, or, lt, desc, asc, gte, lte, sql, SQL } from 'drizzle-orm';
+import {
+  encodeKeysetCursor,
+  decodeKeysetCursor,
+  type AiOperationKeysetCursorPayload,
+} from '@mahalla-ovozi/api-contracts';
 import type { DbOrTx } from '../../adapters/db/client.js';
 import {
   aiOperations,
@@ -51,19 +56,40 @@ export async function findOperations(
   filter: AiOperationFilter,
 ): Promise<PaginatedResult<AiOperationListItem>> {
   const conditions = buildFilterConditions(filter);
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  const page = filter.page && filter.page > 0 ? Math.floor(filter.page) : 1;
-  const pageSize =
-    filter.pageSize && filter.pageSize > 0
-      ? Math.min(Math.floor(filter.pageSize), 200)
+  let cursorConditions: SQL | undefined;
+  if (filter.cursor) {
+    const decoded = decodeKeysetCursor<AiOperationKeysetCursorPayload>(filter.cursor);
+    if (decoded && decoded.id && decoded.createdAt) {
+      const cursorDate = new Date(decoded.createdAt);
+      if (!Number.isNaN(cursorDate.getTime())) {
+        cursorConditions = or(
+          lt(aiOperations.createdAt, cursorDate),
+          and(
+            eq(aiOperations.createdAt, cursorDate),
+            lt(aiOperations.id, decoded.id),
+          ),
+        );
+      }
+    }
+  }
+
+  const baseWhere = conditions.length > 0 ? and(...conditions) : undefined;
+  const queryWhere = cursorConditions
+    ? baseWhere
+      ? and(baseWhere, cursorConditions)
+      : cursorConditions
+    : baseWhere;
+
+  const limit =
+    filter.limit && filter.limit > 0
+      ? Math.min(Math.floor(filter.limit), 200)
       : 50;
-  const offset = (page - 1) * pageSize;
 
   const countQuery = db
     .select({ count: sql<number>`count(*)::int`.mapWith(Number) })
     .from(aiOperations)
-    .where(whereClause);
+    .where(baseWhere);
 
   const itemsQuery = db
     .select({
@@ -84,23 +110,33 @@ export async function findOperations(
     })
     .from(aiOperations)
     .leftJoin(aiProviderAttempts, eq(aiOperations.id, aiProviderAttempts.operationId))
-    .where(whereClause)
+    .where(queryWhere)
     .groupBy(aiOperations.id)
     .orderBy(desc(aiOperations.createdAt), desc(aiOperations.id))
-    .limit(pageSize)
-    .offset(offset);
+    .limit(limit + 1);
 
-  const [countResult, items] = await Promise.all([countQuery, itemsQuery]);
-  const total = countResult[0]?.count ?? 0;
-  const totalPages = Math.ceil(total / pageSize);
+  const [countResult, fetchedItems] = await Promise.all([countQuery, itemsQuery]);
+  const totalCount = countResult[0]?.count ?? 0;
+  const hasNextPage = fetchedItems.length > limit;
+  const items = hasNextPage ? fetchedItems.slice(0, limit) : fetchedItems;
+
+  const lastItem = items[items.length - 1];
+  const nextCursor =
+    hasNextPage && lastItem
+      ? encodeKeysetCursor({
+          id: lastItem.id,
+          createdAt: lastItem.createdAt.toISOString(),
+        })
+      : null;
 
   return {
     items,
     pagination: {
-      total,
-      page,
-      pageSize,
-      totalPages,
+      limit,
+      hasNextPage,
+      hasPrevPage: Boolean(filter.cursor),
+      nextCursor,
+      totalCount,
     },
   };
 }

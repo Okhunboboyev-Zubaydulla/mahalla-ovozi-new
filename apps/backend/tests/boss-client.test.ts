@@ -44,4 +44,62 @@ describe('JobSingletonKeys and Queue Architecture (AD-3)', () => {
     expect(TELEGRAM_TOPIC_PROJECTION_QUEUE).toBe('telegram-topic-projection');
     expect(TELEGRAM_TOPIC_RETENTION_QUEUE).toBe('telegram-topic-retention');
   });
+
+  it('defines resilient retry and backoff defaults for all queues', async () => {
+    const { DEFAULT_QUEUE_CONFIGS } = await import('../src/adapters/jobs/boss-client.js');
+    expect(DEFAULT_QUEUE_CONFIGS[TELEGRAM_CONTENT_QUALIFICATION_QUEUE]).toEqual({
+      retryLimit: 3,
+      retryDelay: 5,
+      retryBackoff: true,
+      expireInMinutes: 10,
+      retentionDays: 7,
+    });
+    expect(DEFAULT_QUEUE_CONFIGS[TELEGRAM_SEMANTIC_RELEVANCE_QUEUE]).toEqual({
+      retryLimit: 3,
+      retryDelay: 5,
+      retryBackoff: true,
+      expireInMinutes: 10,
+      retentionDays: 7,
+    });
+    expect(DEFAULT_QUEUE_CONFIGS[TELEGRAM_TOPIC_RETENTION_QUEUE]).toEqual({
+      retryLimit: 2,
+      retryDelay: 30,
+      retryBackoff: false,
+      expireInMinutes: 30,
+      retentionDays: 14,
+    });
+  });
+
+  it('sendQueueJob merges default queue configuration with custom overrides', async () => {
+    const { sendQueueJob } = await import('../src/adapters/jobs/boss-client.js');
+    let capturedQueue = '';
+    let capturedData: unknown = null;
+    let capturedOptions: unknown = null;
+
+    const mockBoss = {
+      send: async (queue: string, data: unknown, options: unknown) => {
+        capturedQueue = queue;
+        capturedData = data;
+        capturedOptions = options;
+        return 'job_123';
+      },
+    } as any;
+
+    const jobId = await sendQueueJob(mockBoss, TELEGRAM_CONTENT_QUALIFICATION_QUEUE, { test: 1 }, {
+      singletonKey: 'msg:1',
+      retryLimit: 5, // custom override
+    });
+
+    expect(jobId).toBe('job_123');
+    expect(capturedQueue).toBe(TELEGRAM_CONTENT_QUALIFICATION_QUEUE);
+    expect(capturedData).toEqual({ test: 1 });
+    expect(capturedOptions).toEqual({
+      retryLimit: 5,
+      retryDelay: 5,
+      retryBackoff: true,
+      expireInMinutes: 10,
+      retentionDays: 7,
+      singletonKey: 'msg:1',
+    });
+  });
 });

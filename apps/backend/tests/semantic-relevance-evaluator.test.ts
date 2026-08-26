@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
+  SemanticRelevanceEvaluator,
   SemanticRelevanceResultSchema,
   type SemanticRelevanceResult,
-} from '../src/modules/ai/semantic-relevance-contracts.js';
+} from '../src/modules/ai/semantic-relevance-evaluator.js';
 import {
   computeSnapshotFingerprint,
   type AcceptedEvidenceItem,
   type MahallaDailySnapshot,
 } from '../src/modules/ai/context-snapshot.js';
-import { SemanticRelevanceEvaluator } from '../src/modules/ai/semantic-relevance-evaluator.js';
 import { MockProviderAdapter } from '../src/adapters/ai-providers/mock-provider-adapter.js';
 import { AiGateway } from '../src/modules/ai/ai-gateway.js';
 import type { AiProfile } from '../src/adapters/db/schema/ai.js';

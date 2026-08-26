@@ -152,8 +152,9 @@ export function registerAiOperationsRoutes(fastify: FastifyInstance, db: DbClien
             targetId: query.targetId,
             startDate: query.startDate ? new Date(query.startDate) : undefined,
             endDate: query.endDate ? new Date(query.endDate) : undefined,
-            page: query.page,
-            pageSize: query.pageSize,
+            cursor: query.cursor,
+            limit: query.limit,
+            direction: query.direction,
           });
 
           return reply.status(200).send(result);
@@ -236,8 +237,9 @@ export function registerAiOperationsRoutes(fastify: FastifyInstance, db: DbClien
             targetId: query.targetId,
             startDate: query.startDate ? new Date(query.startDate) : undefined,
             endDate: query.endDate ? new Date(query.endDate) : undefined,
-            page: query.page,
-            pageSize: query.pageSize,
+            cursor: query.cursor,
+            limit: query.limit,
+            direction: query.direction,
           });
 
           return reply.status(200).send(result);

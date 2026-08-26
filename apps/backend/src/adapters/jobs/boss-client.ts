@@ -145,6 +145,61 @@ export const JobSingletonKeys = {
   },
 };
 
+export const DEFAULT_QUEUE_CONFIGS: Record<string, Omit<PgBoss.SendOptions, 'db'>> = {
+  [TELEGRAM_CONTENT_QUALIFICATION_QUEUE]: {
+    retryLimit: 3,
+    retryDelay: 5,
+    retryBackoff: true,
+    expireInMinutes: 10,
+    retentionDays: 7,
+  },
+  [TELEGRAM_SEMANTIC_RELEVANCE_QUEUE]: {
+    retryLimit: 3,
+    retryDelay: 5,
+    retryBackoff: true,
+    expireInMinutes: 10,
+    retentionDays: 7,
+  },
+  [TELEGRAM_TOPIC_ASSIGNMENT_QUEUE]: {
+    retryLimit: 3,
+    retryDelay: 5,
+    retryBackoff: true,
+    expireInMinutes: 10,
+    retentionDays: 7,
+  },
+  [TELEGRAM_TOPIC_PROJECTION_QUEUE]: {
+    retryLimit: 3,
+    retryDelay: 5,
+    retryBackoff: true,
+    expireInMinutes: 10,
+    retentionDays: 7,
+  },
+  [TELEGRAM_TOPIC_RETENTION_QUEUE]: {
+    retryLimit: 2,
+    retryDelay: 30,
+    retryBackoff: false,
+    expireInMinutes: 30,
+    retentionDays: 14,
+  },
+};
+
+/**
+ * Sends a job to a pg-boss queue with default resilient retry/retention options automatically applied.
+ */
+export async function sendQueueJob<T extends object>(
+  boss: PgBoss,
+  queueName: string,
+  data: T,
+  options?: PgBoss.SendOptions,
+): Promise<string | null> {
+  const defaultOpts = DEFAULT_QUEUE_CONFIGS[queueName] || {};
+  const mergedOptions: PgBoss.SendOptions = {
+    ...defaultOpts,
+    ...options,
+  };
+  return boss.send(queueName, data, mergedOptions);
+}
+
 export interface TransactionScope {
   tx: NodePgDatabase<typeof schema>;
   client: pg.PoolClient;
@@ -176,7 +231,9 @@ export async function withTransactionalIntake<T>(
       data: J,
       options?: Omit<PgBoss.SendOptions, 'db'>,
     ): Promise<string | null> => {
+      const defaultOpts = DEFAULT_QUEUE_CONFIGS[queueName] || {};
       return boss.send(queueName, data, {
+        ...defaultOpts,
         ...options,
         db: {
           executeSql: async (text: string, values?: unknown[]) => {

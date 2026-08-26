@@ -22,8 +22,8 @@ import {
 import {
   TopicMatchingEvaluator,
   findDirectReplyTopic,
+  type TopicMatchingResult,
 } from '../topic-matching-evaluator.js';
-import type { TopicMatchingResult } from '../../ai/topic-matching-contracts.js';
 import {
   getMahallaDailySnapshot,
   verifySnapshotIntegrity,

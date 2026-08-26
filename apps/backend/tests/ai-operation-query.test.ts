@@ -554,9 +554,10 @@ describe('Story 2.7: AI Operation Traceability and Failure State Verification Ma
     expect(Array.isArray(body.items)).toBe(true);
     expect(body.items.length).toBeGreaterThanOrEqual(10);
     expect(body.pagination).toBeDefined();
-    expect(body.pagination.page).toBe(1);
-    expect(body.pagination.pageSize).toBe(50);
-    expect(body.pagination.total).toBeGreaterThanOrEqual(10);
+    expect(body.pagination.limit).toBe(50);
+    expect(body.pagination.totalCount).toBeGreaterThanOrEqual(10);
+    expect(typeof body.pagination.hasNextPage).toBe('boolean');
+    expect(typeof body.pagination.hasPrevPage).toBe('boolean');
 
     // Verify all items belong to District A
     for (const item of body.items) {

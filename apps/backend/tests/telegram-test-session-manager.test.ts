@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { TelegramTestSessionManager } from '../src/modules/telegram-groups/telegram-test-session-manager.js';
+import { TelegramTestSessionManager } from '../src/modules/telegram-groups/telegram-test-session-store.js';
 
 describe('TelegramTestSessionManager (In-Memory)', () => {
   let manager: TelegramTestSessionManager;

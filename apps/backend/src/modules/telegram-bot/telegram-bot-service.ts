@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { DbClient } from '../../adapters/db/client.js';
+import { DbClient, mapPostgresConstraintError } from '../../adapters/db/client.js';
 import { districts, districtTelegramBots, districtTelegramGroups, DistrictTelegramBot } from '../../adapters/db/schema/index.js';
 import {
   TelegramBotInfo,
@@ -225,29 +225,23 @@ export async function connectDistrictTelegramBot(
       });
     });
   } catch (err: unknown) {
-    const pgErr = (
-      err && typeof err === 'object' && 'cause' in err && err.cause && typeof err.cause === 'object'
-        ? err.cause
-        : err
-    ) as { code?: string; detail?: string; constraint?: string } | null;
-
-    if (pgErr && pgErr.code === '23505') {
-      const detail = String(pgErr.detail || '');
-      const constraint = String(pgErr.constraint || '');
-      const fullErr = String(err);
-      if (
-        detail.includes('bot_id') ||
-        constraint.includes('bot_id') ||
-        fullErr.includes('bot_id') ||
-        fullErr.includes('district_telegram_bots_bot_id_idx') ||
-        detail.includes('district_id') ||
-        constraint.includes('district_id') ||
-        fullErr.includes('district_id') ||
-        fullErr.includes('district_telegram_bots_district_id_idx')
-      ) {
-        throw new BotAlreadyAssignedError(validatedBot.botId);
-      }
+    if (
+      err instanceof DistrictNotFoundError ||
+      err instanceof DistrictAlreadyActiveError ||
+      err instanceof BotAlreadyAssignedError
+    ) {
+      throw err;
     }
+    mapPostgresConstraintError(
+      err,
+      {
+        district_telegram_bots_bot_id_idx: () => new BotAlreadyAssignedError(validatedBot.botId),
+        bot_id: () => new BotAlreadyAssignedError(validatedBot.botId),
+        district_telegram_bots_district_id_idx: () => new BotAlreadyAssignedError(validatedBot.botId),
+        district_id: () => new BotAlreadyAssignedError(validatedBot.botId),
+      },
+      () => new BotAlreadyAssignedError(validatedBot.botId),
+    );
     throw err;
   }
 

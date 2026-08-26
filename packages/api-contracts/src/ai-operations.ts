@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  createKeysetPageSchema,
+  type KeysetPage,
+  type KeysetCursorPayload,
+} from './pagination.js';
 
 export const AiOperationErrorCodeSchema = z.enum([
   'RATE_LIMIT_EXCEEDED',
@@ -147,8 +152,9 @@ export const ListAiOperationsQuerySchema = z.object({
   targetId: z.string().trim().optional(),
   startDate: z.string().datetime({ offset: true }).optional(),
   endDate: z.string().datetime({ offset: true }).optional(),
-  page: z.coerce.number().int().min(1).max(10000).default(1),
-  pageSize: z.coerce.number().int().min(1).max(200).default(50),
+  cursor: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  direction: z.enum(['forward', 'backward']).default('forward'),
 });
 export type ListAiOperationsQuery = z.infer<typeof ListAiOperationsQuerySchema>;
 
@@ -157,19 +163,13 @@ export const ListGlobalAiOperationsQuerySchema = ListAiOperationsQuerySchema.ext
 });
 export type ListGlobalAiOperationsQuery = z.infer<typeof ListGlobalAiOperationsQuerySchema>;
 
-export const PaginationMetaSchema = z.object({
-  total: z.number().int().min(0),
-  page: z.number().int().min(1),
-  pageSize: z.number().int().min(1),
-  totalPages: z.number().int().min(0),
-});
-export type PaginationMeta = z.infer<typeof PaginationMetaSchema>;
+export const ListAiOperationsResponseSchema = createKeysetPageSchema(AiOperationListItemSchema);
+export type ListAiOperationsResponse = KeysetPage<AiOperationListItemDto>;
 
-export const ListAiOperationsResponseSchema = z.object({
-  items: z.array(AiOperationListItemSchema),
-  pagination: PaginationMetaSchema,
-});
-export type ListAiOperationsResponse = z.infer<typeof ListAiOperationsResponseSchema>;
+export interface AiOperationKeysetCursorPayload extends KeysetCursorPayload {
+  id: string;
+  createdAt: string;
+}
 
 export const GetAiOperationResponseSchema = z.object({
   operation: AiOperationDetailSchema,

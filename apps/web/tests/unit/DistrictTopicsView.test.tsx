@@ -9,7 +9,7 @@ import {
   TopicEvidenceResponse,
 } from '@mahalla-ovozi/api-contracts';
 import { DistrictTopicsView } from '../../src/components/districts/topics/DistrictTopicsView.js';
-import { districtTopicsClient } from '../../src/api/district-topics-client.js';
+import { districtTopicsClient } from '../../src/topics/index.js';
 import { mahallaTheme } from '../../src/theme/antd-theme.js';
 
 function setupMatchMedia() {

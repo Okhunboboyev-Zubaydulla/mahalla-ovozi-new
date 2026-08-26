@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { eq, and, sql } from 'drizzle-orm';
-import { DbClient } from '../../adapters/db/client.js';
+import { DbClient, mapPostgresConstraintError } from '../../adapters/db/client.js';
 import {
   districts,
   districtTelegramBots,
@@ -280,28 +280,12 @@ export async function createDistrictTelegramGroup(
       throw err;
     }
 
-    const pgErr = (
-      err && typeof err === 'object' && 'cause' in err && err.cause && typeof err.cause === 'object'
-        ? err.cause
-        : err
-    ) as { code?: string; detail?: string; constraint?: string } | null;
-
-    if (pgErr && pgErr.code === '23505') {
-      const detail = String(pgErr.detail || '');
-      const constraint = String(pgErr.constraint || '');
-      if (
-        detail.includes('mahalla_name') ||
-        constraint.includes('district_telegram_groups_district_mahalla_lower_idx')
-      ) {
-        throw new MahallaNameAlreadyExistsError(trimmedMahalla);
-      }
-      if (
-        detail.includes('telegram_chat_id') ||
-        constraint.includes('district_telegram_groups_chat_id_idx')
-      ) {
-        throw new GroupAlreadyAssignedError(trimmedChatId);
-      }
-    }
+    mapPostgresConstraintError(err, {
+      district_telegram_groups_district_mahalla_lower_idx: () => new MahallaNameAlreadyExistsError(trimmedMahalla),
+      mahalla_name: () => new MahallaNameAlreadyExistsError(trimmedMahalla),
+      district_telegram_groups_chat_id_idx: () => new GroupAlreadyAssignedError(trimmedChatId),
+      telegram_chat_id: () => new GroupAlreadyAssignedError(trimmedChatId),
+    });
     throw err;
   }
 

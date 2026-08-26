@@ -42,6 +42,70 @@ export interface StartWorkerOptions {
   ) => Promise<AcceptedEvidenceItem[] | undefined>;
 }
 
+export interface WorkerPipelineContext {
+  db: DbClient;
+  pool: pg.Pool;
+  boss: PgBoss;
+  aiGateway: AiGatewayPort;
+  relevanceEvaluator: SemanticRelevanceEvaluator;
+  topicMatchingEvaluator: TopicMatchingEvaluator;
+  topicProjectionEvaluator: TopicProjectionEvaluator;
+  injectedEvidenceResolver?: (
+    districtId: string,
+    mahallaName: string,
+    calendarDay: string,
+  ) => Promise<AcceptedEvidenceItem[] | undefined>;
+}
+
+/**
+ * Registers all durable job pipeline workers into pg-boss, conditionally filtering by active queues.
+ */
+export async function registerWorkerPipelines(
+  boss: PgBoss,
+  ctx: WorkerPipelineContext,
+  activeQueues?: string[],
+): Promise<void> {
+  const shouldWork = (queueName: string) => !activeQueues || activeQueues.includes(queueName);
+
+  if (shouldWork(TELEGRAM_CONTENT_QUALIFICATION_QUEUE)) {
+    await registerQualificationJobHandler(boss, { db: ctx.db, boss: ctx.boss });
+  }
+
+  if (shouldWork(TELEGRAM_SEMANTIC_RELEVANCE_QUEUE)) {
+    await registerSemanticRelevanceJobHandler(boss, {
+      db: ctx.db,
+      pool: ctx.pool,
+      boss: ctx.boss,
+      relevanceEvaluator: ctx.relevanceEvaluator,
+      injectedEvidenceResolver: ctx.injectedEvidenceResolver,
+    });
+  }
+
+  if (shouldWork(TELEGRAM_TOPIC_ASSIGNMENT_QUEUE)) {
+    await registerTopicAssignmentJobHandler(boss, {
+      db: ctx.db,
+      pool: ctx.pool,
+      boss: ctx.boss,
+      topicMatchingEvaluator: ctx.topicMatchingEvaluator,
+      injectedEvidenceResolver: ctx.injectedEvidenceResolver,
+    });
+  }
+
+  if (shouldWork(TELEGRAM_TOPIC_PROJECTION_QUEUE)) {
+    await registerTopicProjectionJobHandler(boss, {
+      db: ctx.db,
+      pool: ctx.pool,
+      boss: ctx.boss,
+      topicProjectionEvaluator: ctx.topicProjectionEvaluator,
+      injectedEvidenceResolver: ctx.injectedEvidenceResolver,
+    });
+  }
+
+  if (shouldWork(TELEGRAM_TOPIC_RETENTION_QUEUE)) {
+    await registerRetentionJobHandler(boss, { db: ctx.db, pool: ctx.pool, boss: ctx.boss });
+  }
+}
+
 export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss> {
   const boss = options?.boss || createBossClient();
   activeBossInstance = boss;
@@ -73,47 +137,18 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
   const topicMatchingEvaluator = new TopicMatchingEvaluator(aiGateway);
   const topicProjectionEvaluator = new TopicProjectionEvaluator(aiGateway);
 
-  const shouldWork = (queueName: string) =>
-    !options?.queues || options.queues.includes(queueName);
+  const context: WorkerPipelineContext = {
+    db,
+    pool,
+    boss,
+    aiGateway,
+    relevanceEvaluator,
+    topicMatchingEvaluator,
+    topicProjectionEvaluator,
+    injectedEvidenceResolver: options?.injectedEvidenceResolver,
+  };
 
-  if (shouldWork(TELEGRAM_CONTENT_QUALIFICATION_QUEUE)) {
-    await registerQualificationJobHandler(boss, { db, boss });
-  }
-
-  if (shouldWork(TELEGRAM_SEMANTIC_RELEVANCE_QUEUE)) {
-    await registerSemanticRelevanceJobHandler(boss, {
-      db,
-      pool,
-      boss,
-      relevanceEvaluator,
-      injectedEvidenceResolver: options?.injectedEvidenceResolver,
-    });
-  }
-
-  if (shouldWork(TELEGRAM_TOPIC_ASSIGNMENT_QUEUE)) {
-    await registerTopicAssignmentJobHandler(boss, {
-      db,
-      pool,
-      boss,
-      topicMatchingEvaluator,
-      injectedEvidenceResolver: options?.injectedEvidenceResolver,
-    });
-  }
-
-  if (shouldWork(TELEGRAM_TOPIC_PROJECTION_QUEUE)) {
-    await registerTopicProjectionJobHandler(boss, {
-      db,
-      pool,
-      boss,
-      topicProjectionEvaluator,
-      injectedEvidenceResolver: options?.injectedEvidenceResolver,
-    });
-  }
-
-  if (shouldWork(TELEGRAM_TOPIC_RETENTION_QUEUE)) {
-    await registerRetentionJobHandler(boss, { db, pool, boss });
-  }
-
+  await registerWorkerPipelines(boss, context, options?.queues);
 
   console.log('[worker] Mahalla Ovozi worker process started successfully');
   return boss;

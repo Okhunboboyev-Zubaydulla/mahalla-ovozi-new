@@ -18,7 +18,9 @@ import {
   TopicStatisticCard5,
   TopicStatisticCard1Comparison,
 } from '@mahalla-ovozi/api-contracts';
-import { getTashkentCalendarDay } from '../telegram-intake/timezone-util.js';
+import { getTashkentCalendarDay, resolveDateBoundary } from '../telegram-intake/timezone-util.js';
+
+export { resolveDateBoundary };
 
 export const CANONICAL_LANES: QualifyingLane[] = [
   'HOKIM_RELATED',
@@ -54,69 +56,6 @@ export interface HokimLaneQueryParams {
 
 export function escapeLikePattern(input: string): string {
   return input.replace(/[%_\\]/g, '\\$&');
-}
-
-export function resolveDateBoundary(params: {
-  dateScope?: DateFilterScope;
-  dateFrom?: string;
-  dateTo?: string;
-  calendarDay?: string;
-}): {
-  datePredicate: ReturnType<typeof sql>;
-  resolvedCalendarDay: string;
-} {
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  const today = getTashkentCalendarDay(nowSeconds);
-  const yesterday = getTashkentCalendarDay(nowSeconds - 86400);
-  const retentionLowerBound = getTashkentCalendarDay(nowSeconds - 90 * 86400);
-
-  const scope = params.dateScope ?? 'today';
-
-  if (scope === 'yesterday') {
-    return {
-      datePredicate: sql`t.calendar_day = ${yesterday}`,
-      resolvedCalendarDay: yesterday,
-    };
-  }
-
-  if (scope === 'custom') {
-    const { dateFrom, dateTo } = params;
-    if (!dateFrom || !dateTo) {
-      throw new Error('Бошланиш ва тугаш саналари киритилиши шарт.');
-    }
-    if (dateFrom > dateTo) {
-      throw new Error('Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.');
-    }
-    if (dateFrom < retentionLowerBound) {
-      throw new Error('Сана 90 кунлик сақлаш муддатидан эски бўлиши мумкин эмас.');
-    }
-    if (dateTo > today) {
-      throw new Error('Сана бугунги кундан кейин бўлиши мумкин эмас.');
-    }
-
-    return {
-      datePredicate: sql`t.calendar_day >= ${dateFrom} AND t.calendar_day <= ${dateTo}`,
-      resolvedCalendarDay: dateFrom === dateTo ? dateFrom : `${dateFrom}..${dateTo}`,
-    };
-  }
-
-  if (params.calendarDay) {
-    if (params.calendarDay < retentionLowerBound) {
-      throw new Error('Сана 90 кунлик сақлаш муддатидан эски бўлиши мумкин эмас.');
-    }
-    if (params.calendarDay > today) {
-      throw new Error('Сана бугунги кундан кейин бўлиши мумкин эмас.');
-    }
-    return {
-      datePredicate: sql`t.calendar_day = ${params.calendarDay}`,
-      resolvedCalendarDay: params.calendarDay,
-    };
-  }
-
-  return {
-    datePredicate: sql`t.calendar_day = ${today}`,
-    resolvedCalendarDay: today,
-  };
 }
 
 export interface KeysetCursorPayload {

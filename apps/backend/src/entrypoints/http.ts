@@ -28,6 +28,33 @@ class ForbiddenOriginError extends Error {
   constructor() { super('Ноқонуний сўров манбаи.'); }
 }
 
+export interface HttpServerContext {
+  db: DbClient;
+  pool: pg.Pool;
+  boss: PgBoss;
+}
+
+/**
+ * Registers all domain route plugins into the Fastify HTTP server.
+ */
+export function registerAllDomainRoutes(
+  server: FastifyInstance,
+  ctx: HttpServerContext,
+): void {
+  registerAuthRoutes(server, ctx.db);
+  registerDistrictRoutes(server, ctx.db);
+  registerTelegramBotRoutes(server, ctx.db);
+  registerTelegramGroupRoutes(server, ctx.db);
+  registerHokimAccountRoutes(server, ctx.db);
+  registerTelegramIntakeRoutes(server, { pool: ctx.pool, boss: ctx.boss });
+  registerAiOperationsRoutes(server, ctx.db);
+  registerHokimTopicsRoutes(server, ctx.db);
+  registerHealthRoutes(server, { db: ctx.db, pool: ctx.pool, boss: ctx.boss });
+  registerIssueRoutes(server, { db: ctx.db, pool: ctx.pool, boss: ctx.boss });
+  registerAuditRoutes(server, ctx.db);
+  registerDistrictTopicsRoutes(server, ctx.db);
+}
+
 export async function buildHttpServer(options?: {
   db?: DbClient;
   pool?: pg.Pool;
@@ -175,19 +202,9 @@ export async function buildHttpServer(options?: {
     await boss.stop({ graceful: true, timeout: 5000 }).catch(() => {});
   });
 
-  // Register domain module routes
-  registerAuthRoutes(server, db);
-  registerDistrictRoutes(server, db);
-  registerTelegramBotRoutes(server, db);
-  registerTelegramGroupRoutes(server, db);
-  registerHokimAccountRoutes(server, db);
-  registerTelegramIntakeRoutes(server, { pool, boss });
-  registerAiOperationsRoutes(server, db);
-  registerHokimTopicsRoutes(server, db);
-  registerHealthRoutes(server, { db, pool, boss });
-  registerIssueRoutes(server, { db, pool, boss });
-  registerAuditRoutes(server, db);
-  registerDistrictTopicsRoutes(server, db);
+  // Register domain module routes via unified context
+  const context: HttpServerContext = { db, pool, boss };
+  registerAllDomainRoutes(server, context);
 
   return server;
 }

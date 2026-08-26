@@ -1,6 +1,7 @@
 import {
   AiOperationErrorCodeSchema,
   type AiOperationErrorCode,
+  type KeysetPage,
 } from '@mahalla-ovozi/api-contracts';
 import type { AiOperation, AiProfile, AiProviderAttempt } from '../../adapters/db/schema/ai.js';
 import type { AiGatewayErrorCode } from './types.js';
@@ -17,8 +18,9 @@ export interface AiOperationFilter {
   targetId?: string;
   startDate?: Date;
   endDate?: Date;
-  page?: number;
-  pageSize?: number;
+  cursor?: string;
+  limit?: number;
+  direction?: 'forward' | 'backward';
 }
 
 export interface AiOperationListItem {
@@ -44,15 +46,7 @@ export interface AiOperationDetailRecord {
   attempts: AiProviderAttempt[];
 }
 
-export interface PaginatedResult<T> {
-  items: T[];
-  pagination: {
-    total: number;
-    page: number;
-    pageSize: number;
-    totalPages: number;
-  };
-}
+export type PaginatedResult<T> = KeysetPage<T>;
 
 export interface AiOperationHealthMetrics {
   totalOperations: number;

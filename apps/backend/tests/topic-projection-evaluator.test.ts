@@ -1,11 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
+  TopicProjectionEvaluator,
   TopicProjectionResultSchema,
   isUzbekCyrillic,
   type TopicProjectionResult,
-} from '../src/modules/ai/topic-projection-contracts.js';
-import {
-  TopicProjectionEvaluator,
 } from '../src/modules/topics/topic-projection-evaluator.js';
 import type { AiGatewayPort } from '../src/modules/ai/ai-gateway.js';
 import type { GenerateStructuredOptions, AiGatewayResult } from '../src/modules/ai/types.js';

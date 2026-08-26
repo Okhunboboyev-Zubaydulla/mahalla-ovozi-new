@@ -80,4 +80,85 @@ export async function closeDbPool(pool: pg.Pool): Promise<void> {
   }
 }
 
+export interface PostgresErrorPayload {
+  code?: string;
+  constraint?: string;
+  detail?: string;
+  table?: string;
+  message?: string;
+}
+
+/**
+ * Safely extracts raw PostgreSQL error properties from an Error or nested Drizzle Error.cause.
+ */
+export function extractPostgresError(err: unknown): PostgresErrorPayload | null {
+  if (!err || typeof err !== 'object') {
+    return null;
+  }
+  const root =
+    'cause' in err && err.cause && typeof err.cause === 'object'
+      ? (err.cause as Record<string, unknown>)
+      : (err as Record<string, unknown>);
+
+  const code = typeof root.code === 'string' ? root.code : undefined;
+  const constraint = typeof root.constraint === 'string' ? root.constraint : undefined;
+  const detail = typeof root.detail === 'string' ? root.detail : undefined;
+  const table = typeof root.table === 'string' ? root.table : undefined;
+  const message = typeof root.message === 'string' ? root.message : undefined;
+
+  if (!code && !constraint && !detail) {
+    return null;
+  }
+
+  return { code, constraint, detail, table, message };
+}
+
+/**
+ * Returns true if the error is a PostgreSQL driver error, optionally matching a specific code (e.g. '23505').
+ */
+export function isPostgresError(err: unknown, expectedCode?: string): boolean {
+  const pgErr = extractPostgresError(err);
+  if (!pgErr || !pgErr.code) {
+    return false;
+  }
+  if (expectedCode) {
+    return pgErr.code === expectedCode;
+  }
+  return true;
+}
+
+/**
+ * Matches a PostgreSQL constraint violation against a declarative map,
+ * throwing the mapped domain error if a constraint match is found.
+ */
+export function mapPostgresConstraintError(
+  err: unknown,
+  constraintMap: Record<string, () => Error>,
+  defaultError?: () => Error,
+): void {
+  const pgErr = extractPostgresError(err);
+  if (!pgErr) {
+    return;
+  }
+
+  const constraint = (pgErr.constraint || '').toLowerCase();
+  const detail = (pgErr.detail || '').toLowerCase();
+  const message = (pgErr.message || '').toLowerCase();
+
+  for (const [targetConstraint, errorFactory] of Object.entries(constraintMap)) {
+    const target = targetConstraint.toLowerCase();
+    if (
+      constraint.includes(target) ||
+      detail.includes(target) ||
+      message.includes(target)
+    ) {
+      throw errorFactory();
+    }
+  }
+
+  if (defaultError && (pgErr.code === '23505' || pgErr.code === '23503' || pgErr.code === '23514')) {
+    throw defaultError();
+  }
+}
+
 

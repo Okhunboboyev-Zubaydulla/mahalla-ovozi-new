@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { eq, and, desc, isNull } from 'drizzle-orm';
-import { DbClient } from '../../adapters/db/client.js';
+import { DbClient, mapPostgresConstraintError } from '../../adapters/db/client.js';
 import { accounts, districts, sessions, Account } from '../../adapters/db/schema/index.js';
 import {
   DistrictHokimAccount,
@@ -234,13 +234,21 @@ export async function createDistrictHokimAccount(
       temporaryPassword,
     };
   } catch (err: unknown) {
-    const pgErr = err as { code?: string; constraint?: string; message?: string };
-    if (pgErr && pgErr.code === '23505') {
-      if (pgErr.constraint?.includes('district') || pgErr.message?.includes('accounts_active_district_hokim_idx')) {
-        throw new DistrictHokimAlreadyExistsError(districtId);
-      }
-      throw new UsernameAlreadyTakenError(normalizedUsername);
+    if (
+      err instanceof DistrictHokimAlreadyExistsError ||
+      err instanceof UsernameAlreadyTakenError
+    ) {
+      throw err;
     }
+    mapPostgresConstraintError(
+      err,
+      {
+        accounts_active_district_hokim_idx: () => new DistrictHokimAlreadyExistsError(districtId),
+        district: () => new DistrictHokimAlreadyExistsError(districtId),
+        username: () => new UsernameAlreadyTakenError(normalizedUsername),
+      },
+      () => new UsernameAlreadyTakenError(normalizedUsername),
+    );
     throw err;
   }
 }
@@ -560,17 +568,20 @@ export async function replaceDistrictHokimAccount(
     if (
       err instanceof DistrictNotFoundError ||
       err instanceof HokimAccountNotFoundError ||
-      err instanceof UsernameAlreadyTakenError
+      err instanceof UsernameAlreadyTakenError ||
+      err instanceof DistrictHokimAlreadyExistsError
     ) {
       throw err;
     }
-    const pgErr = err as { code?: string; constraint?: string; message?: string };
-    if (pgErr && pgErr.code === '23505') {
-      if (pgErr.constraint?.includes('district') || pgErr.message?.includes('accounts_active_district_hokim_idx')) {
-        throw new DistrictHokimAlreadyExistsError(districtId);
-      }
-      throw new UsernameAlreadyTakenError(normalizedUsername);
-    }
+    mapPostgresConstraintError(
+      err,
+      {
+        accounts_active_district_hokim_idx: () => new DistrictHokimAlreadyExistsError(districtId),
+        district: () => new DistrictHokimAlreadyExistsError(districtId),
+        username: () => new UsernameAlreadyTakenError(normalizedUsername),
+      },
+      () => new UsernameAlreadyTakenError(normalizedUsername),
+    );
     throw err;
   }
 }

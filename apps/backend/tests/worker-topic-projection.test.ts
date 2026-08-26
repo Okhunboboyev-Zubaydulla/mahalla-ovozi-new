@@ -28,7 +28,7 @@ import { startWorker, stopWorker } from '../src/entrypoints/worker.js';
 import { createMockAiGateway, type MockAiGatewayController } from './helpers/mock-ai-gateway.js';
 import { AiGatewayError } from '../src/modules/ai/types.js';
 import type { AcceptedEvidenceItem } from '../src/modules/ai/context-snapshot.js';
-import type { TopicProjectionResult } from '../src/modules/ai/topic-projection-contracts.js';
+import type { TopicProjectionResult } from '../src/modules/topics/topic-projection-evaluator.js';
 
 describe('Story 2.5: Worker Topic Projection 28-Row Verification Matrix Integration Tests', () => {
   let pool: pg.Pool;
