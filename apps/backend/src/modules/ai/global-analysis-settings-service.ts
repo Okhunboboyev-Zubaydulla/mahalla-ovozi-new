@@ -122,12 +122,15 @@ export class GlobalAnalysisSettingsService {
 
     const activeConfig = await this.getActiveConfiguration(db);
 
-    // Sanitize and deduplicate vocabulary items (case-insensitive)
+    // Sanitize and deduplicate vocabulary items (case-insensitive & NFC normalized)
     const seen = new Set<string>();
     const sanitizedVocabulary: GlobalServiceVocabularyItem[] = [];
     for (const item of payload.globalServiceVocabulary) {
       const term = item.term.trim();
-      const normalized = term.toLowerCase();
+      const normalized = term
+        .normalize('NFC')
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
       if (!seen.has(normalized)) {
         seen.add(normalized);
         sanitizedVocabulary.push({
@@ -140,37 +143,46 @@ export class GlobalAnalysisSettingsService {
       }
     }
 
-    const saved = await this.repository.saveDraft(db, {
-      id: 'global',
-      baseActiveVersionId: activeConfig.id,
-      modelProvider: payload.modelProvider,
-      modelId: payload.modelId.trim(),
-      temperature: payload.temperature,
-      maxOutputTokens: payload.maxOutputTokens,
-      relevanceSystemPrompt: payload.relevanceSystemPrompt.trim(),
-      topicMatchingSystemPrompt: payload.topicMatchingSystemPrompt.trim(),
-      topicProjectionSystemPrompt: payload.topicProjectionSystemPrompt.trim(),
-      globalServiceVocabulary: sanitizedVocabulary,
-      updatedBy: actor.id,
-      updatedAt: new Date(),
-    });
-
-    await recordAuditEvent(db, {
-      districtId: null,
-      actorId: actor.id,
-      actorRole: 'PRODUCT_OWNER',
-      action: 'GLOBAL_ANALYSIS_SETTINGS_DRAFT_SAVED',
-      ipAddress: actor.ipAddress || null,
-      userAgent: actor.userAgent || null,
-      metadata: {
+    const executeInTx = async (tx: DbOrTx) => {
+      const saved = await this.repository.saveDraft(tx, {
+        id: 'global',
         baseActiveVersionId: activeConfig.id,
         modelProvider: payload.modelProvider,
         modelId: payload.modelId.trim(),
         temperature: payload.temperature,
         maxOutputTokens: payload.maxOutputTokens,
-        vocabularyCount: sanitizedVocabulary.length,
-      },
-    });
+        relevanceSystemPrompt: payload.relevanceSystemPrompt.trim(),
+        topicMatchingSystemPrompt: payload.topicMatchingSystemPrompt.trim(),
+        topicProjectionSystemPrompt: payload.topicProjectionSystemPrompt.trim(),
+        globalServiceVocabulary: sanitizedVocabulary,
+        updatedBy: actor.id,
+        updatedAt: new Date(),
+      });
+
+      await recordAuditEvent(tx, {
+        districtId: null,
+        actorId: actor.id,
+        actorRole: 'PRODUCT_OWNER',
+        action: 'GLOBAL_ANALYSIS_SETTINGS_DRAFT_SAVED',
+        ipAddress: actor.ipAddress || null,
+        userAgent: actor.userAgent || null,
+        metadata: {
+          baseActiveVersionId: activeConfig.id,
+          modelProvider: payload.modelProvider,
+          modelId: payload.modelId.trim(),
+          temperature: payload.temperature,
+          maxOutputTokens: payload.maxOutputTokens,
+          vocabularyCount: sanitizedVocabulary.length,
+        },
+      });
+
+      return saved;
+    };
+
+    const saved =
+      'transaction' in db && typeof db.transaction === 'function'
+        ? await db.transaction(async (tx) => executeInTx(tx))
+        : await executeInTx(db);
 
     return this.mapDraftToDto(saved);
   }

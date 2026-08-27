@@ -66,7 +66,9 @@ describe('Story 5.1: Global Analysis Settings & Drafts Integration Tests', () =>
     });
     expect(poSignIn.statusCode).toBe(200);
     const poSetCookie = poSignIn.headers['set-cookie'];
-    poCookie = Array.isArray(poSetCookie) ? poSetCookie[0] : (poSetCookie as string);
+    poCookie =
+      (Array.isArray(poSetCookie) ? poSetCookie[0] : (poSetCookie as string)) ||
+      '';
 
     // 3. Seed District & Hokim
     districtId = `dist_settings_test_${crypto.randomUUID()}`;
@@ -99,7 +101,10 @@ describe('Story 5.1: Global Analysis Settings & Drafts Integration Tests', () =>
     });
     expect(hokimSignIn.statusCode).toBe(200);
     const hokimSetCookie = hokimSignIn.headers['set-cookie'];
-    hokimCookie = Array.isArray(hokimSetCookie) ? hokimSetCookie[0] : (hokimSetCookie as string);
+    hokimCookie =
+      (Array.isArray(hokimSetCookie)
+        ? hokimSetCookie[0]
+        : (hokimSetCookie as string)) || '';
   });
 
   afterAll(async () => {
@@ -292,9 +297,10 @@ describe('Story 5.1: Global Analysis Settings & Drafts Integration Tests', () =>
 
       const afterVersions = await db.select().from(globalAnalysisSettingsVersions);
       expect(afterVersions.length).toBe(initialVersions.length);
-      const [activeVer] = afterVersions.filter((v) => v.isActive);
-      expect(activeVer.id).toBe('gcfg_v1');
-      expect(activeVer.modelProvider).toBe('OPENAI'); // remains OPENAI
+      const activeVer = afterVersions.find((v) => v.isActive);
+      expect(activeVer).toBeDefined();
+      expect(activeVer!.id).toBe('gcfg_v1');
+      expect(activeVer!.modelProvider).toBe('OPENAI'); // remains OPENAI
     });
   });
 

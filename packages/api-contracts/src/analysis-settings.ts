@@ -171,7 +171,11 @@ export const SaveGlobalAnalysisSettingsDraftSchema = z.object({
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         if (!item) continue;
-        const normalized = item.term.trim().toLowerCase();
+        const normalized = item.term
+          .trim()
+          .normalize('NFC')
+          .replace(/\s+/g, ' ')
+          .toLowerCase();
         if (seen.has(normalized)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,

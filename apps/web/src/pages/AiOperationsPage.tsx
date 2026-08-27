@@ -86,7 +86,6 @@ export const AiOperationsPage: React.FC = () => {
               <GlobalSettingsDraftForm
                 activeSettings={settingsData.activeConfiguration}
                 draft={settingsData.draft}
-                onSaveSuccess={() => refetch()}
               />
             </div>
           )}

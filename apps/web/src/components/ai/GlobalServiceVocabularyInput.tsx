@@ -60,14 +60,23 @@ export const GlobalServiceVocabularyInput: React.FC<
       setInputError('Атама 100 та белгидан ошмаслиги керак.');
       return;
     }
+    if (trimmedDesc.length > 500) {
+      setInputError('Тавсиф 500 та белгидан ошмаслиги керак.');
+      return;
+    }
     if (!trimmedCategory) {
       setInputError('Тоифани танланг ёки киритинг.');
       return;
     }
 
-    const normalizedNew = trimmedTerm.toLowerCase();
+    const normalizedNew = trimmedTerm
+      .normalize('NFC')
+      .replace(/\s+/g, ' ')
+      .toLowerCase();
     const exists = value.some(
-      (item) => item.term.trim().toLowerCase() === normalizedNew,
+      (item) =>
+        item.term.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase() ===
+        normalizedNew,
     );
     if (exists) {
       setInputError(`"${trimmedTerm}" атамаси рўйхатда аллақачон мавжуд.`);
@@ -124,22 +133,38 @@ export const GlobalServiceVocabularyInput: React.FC<
       title: 'Амал',
       key: 'action',
       width: '10%',
-      render: (_: unknown, __: unknown, index: number) => (
+      render: (_: unknown, record: GlobalServiceVocabularyItem) => (
         <Button
           type="text"
           danger
           size="small"
           icon={<DeleteOutlined />}
           disabled={disabled || value.length <= 1}
-          onClick={() => handleRemove(index)}
-          aria-label={`Ўчириш: ${value[index]?.term}`}
+          onClick={() => {
+            const actualIndex = value.findIndex(
+              (item) => item.term === record.term,
+            );
+            if (actualIndex !== -1) {
+              handleRemove(actualIndex);
+            }
+          }}
+          aria-label={`Ўчириш: ${record.term}`}
         />
       ),
     },
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div
+      id="draft-globalServiceVocabulary"
+      tabIndex={-1}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        outline: 'none',
+      }}
+    >
       {!disabled && (
         <div
           style={{

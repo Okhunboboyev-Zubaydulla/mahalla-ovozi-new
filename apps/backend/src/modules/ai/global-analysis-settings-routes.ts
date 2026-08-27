@@ -65,9 +65,19 @@ export function registerGlobalAnalysisSettingsRoutes(
           });
         }
 
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Аутентификация талаб қилинади.',
+              statusCode: 401,
+            },
+          });
+        }
+
         const actor = {
-          id: req.actor?.id || 'unknown_po',
-          role: req.actor?.role || 'PRODUCT_OWNER',
+          id: req.actor.id,
+          role: req.actor.role,
           ipAddress: req.ip || null,
           userAgent:
             typeof req.headers['user-agent'] === 'string'

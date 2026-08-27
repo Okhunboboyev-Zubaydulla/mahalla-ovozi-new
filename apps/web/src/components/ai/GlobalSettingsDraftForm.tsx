@@ -90,9 +90,10 @@ export const GlobalSettingsDraftForm: React.FC<GlobalSettingsDraftFormProps> = (
 
   // Sync form when incoming draft or activeSettings change (and form is clean)
   useEffect(() => {
-    form.setFieldsValue(initialValues);
-    setSelectedProvider(initialValues.modelProvider);
-    setIsFormDirty(false);
+    if (!isFormDirty) {
+      form.setFieldsValue(initialValues);
+      setSelectedProvider(initialValues.modelProvider);
+    }
   }, [draft?.updatedAt, activeSettings.id]);
 
   // Track dirty state with global unsaved guard
@@ -345,7 +346,6 @@ export const GlobalSettingsDraftForm: React.FC<GlobalSettingsDraftFormProps> = (
         <Row gutter={16}>
           <Col xs={24} md={12}>
             <Form.Item
-              name="temperature"
               label="Ҳарорат (Temperature: 0.0 - 1.0)"
               required
               validateStatus={getFieldError('temperature') ? 'error' : undefined}

@@ -4,7 +4,7 @@ baseline_commit: 9e37fb220dbf10bfcaa00d55e7a9053e033ffdf5
 
 # Story 5.1: Prepare a Validated Global Analysis Settings Draft
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -176,6 +176,21 @@ So that I can safely prepare model, prompt, and global recognition-vocabulary ch
 - [x] **Task 8: Frontend Component Tests** (AC: 12)
   - [x] 8.1 Create `apps/web/tests/unit/AiOperationsPage.test.tsx`.
   - [x] 8.2 Verify form interaction, dirty state, error accessibility, and save confirmation.
+
+### Review Findings
+
+- [x] [Review][Patch] Pagination-Induced Wrong Row Deletion in Vocabulary Table [apps/web/src/components/ai/GlobalServiceVocabularyInput.tsx:127-136]
+- [x] [Review][Patch] TypeScript Strictness Typecheck Errors in Backend Integration Test Suite [apps/backend/tests/global-analysis-settings.test.ts:69,102,296,297]
+- [x] [Review][Patch] Unchecked Background Sync Wiping In-Progress Draft Form State [apps/web/src/components/ai/GlobalSettingsDraftForm.tsx:91-96]
+- [x] [Review][Patch] Missing Accessible DOM Focus Target for Vocabulary Error Link in Error Summary [apps/web/src/components/ai/GlobalSettingsDraftForm.tsx:466, apps/web/src/components/ai/GlobalServiceVocabularyInput.tsx:142]
+- [x] [Review][Patch] Atomic Transaction for Draft Persistence and Audit Trail [apps/backend/src/modules/ai/global-analysis-settings-service.ts:143-174]
+- [x] [Review][Patch] Unsafe Actor Privilege and ID Fallback in POST Draft Route Handler [apps/backend/src/modules/ai/global-analysis-settings-routes.ts:68-71]
+- [x] [Review][Patch] Unicode NFC Normalization & Whitespace Collapse in Vocabulary Deduplication [packages/api-contracts/src/analysis-settings.ts:174, apps/backend/src/modules/ai/global-analysis-settings-service.ts:130]
+- [x] [Review][Patch] Missing Frontend Vocabulary Description Max Length Validation Guard [apps/web/src/components/ai/GlobalServiceVocabularyInput.tsx:50-67]
+- [x] [Review][Patch] Deterministic Active Configuration Ordering in Repository [apps/backend/src/modules/ai/global-analysis-settings-repository.ts:28-35]
+- [x] [Review][Patch] Redundant Duplicate GET Request on Draft Save Completion [apps/web/src/pages/AiOperationsPage.tsx:89]
+- [x] [Review][Patch] Redundant Outer Form.Item Name on Slider + InputNumber Control [apps/web/src/components/ai/GlobalSettingsDraftForm.tsx:347-380]
+- [x] [Review][Defer] Database Schema Constraints (Partial Unique Index on Active Version & Singleton Check) [apps/backend/src/adapters/db/schema/ai.ts] — deferred, pre-existing / future scope for activation story 5.4
 
 ---
 

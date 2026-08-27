@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import type { DbOrTx } from '../../adapters/db/client.js';
 import {
   globalAnalysisSettingsVersions,
@@ -29,6 +29,7 @@ export class DrizzleGlobalAnalysisSettingsRepository
       .select()
       .from(globalAnalysisSettingsVersions)
       .where(eq(globalAnalysisSettingsVersions.isActive, true))
+      .orderBy(desc(globalAnalysisSettingsVersions.version))
       .limit(1);
 
     return row || null;
