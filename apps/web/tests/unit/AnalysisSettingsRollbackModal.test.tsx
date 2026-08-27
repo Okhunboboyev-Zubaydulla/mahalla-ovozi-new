@@ -76,7 +76,9 @@ describe('AnalysisSettingsRollbackModal Component Tests (Story 5.4)', () => {
     });
   });
 
-  function renderModal(props: Partial<AnalysisSettingsRollbackModalProps> = {}) {
+  function renderModal(
+    props?: Partial<Extract<AnalysisSettingsRollbackModalProps, { scope: 'global' }>>,
+  ) {
     const defaultProps: AnalysisSettingsRollbackModalProps = {
       open: true,
       scope: 'global',

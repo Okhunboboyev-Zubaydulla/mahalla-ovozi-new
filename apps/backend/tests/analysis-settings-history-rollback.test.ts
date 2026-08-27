@@ -41,6 +41,7 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
   let poCookie = '';
   let poAccountId = '';
   let hokimCookie = '';
+  let hokimAccountId = '';
   let districtAId = '';
   let districtBId = '';
 
@@ -91,7 +92,7 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
     // 4. Seed Hokim user for District A
     const hokimUsername = `hokim_hist_${Date.now()}`;
     const hokimPassword = 'HokimPassword2026!';
-    const hokimAccountId = `acc_hokim_${crypto.randomUUID()}`;
+    hokimAccountId = `acc_hokim_${crypto.randomUUID()}`;
     await db
       .insert(accounts)
       .values({
@@ -146,6 +147,9 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
       .delete(districtAnalysisSettingsVersions)
       .where(eq(districtAnalysisSettingsVersions.districtId, districtBId));
     await db.delete(accounts).where(eq(accounts.id, poAccountId));
+    if (hokimAccountId) {
+      await db.delete(accounts).where(eq(accounts.id, hokimAccountId));
+    }
     await db.delete(districts).where(eq(districts.id, districtAId));
     await db.delete(districts).where(eq(districts.id, districtBId));
 
@@ -203,10 +207,11 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
     });
 
     it('handles unseeded district gracefully by returning default baseline V1', async () => {
-      const unseededDistrictId = `dist_unseeded_${Date.now()}`;
+      const uniqueSuffix = Date.now();
+      const unseededDistrictId = `dist_unseeded_${uniqueSuffix}`;
       await db.insert(districts).values({
         id: unseededDistrictId,
-        name: 'Unseeded District',
+        name: `Unseeded District ${uniqueSuffix}`,
         status: 'ACTIVE',
       });
 

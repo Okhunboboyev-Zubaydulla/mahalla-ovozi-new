@@ -387,7 +387,12 @@ export class GlobalAnalysisSettingsService {
     payload: RollbackGlobalAnalysisSettingsRequest,
   ): Promise<RollbackGlobalAnalysisSettingsResponse> {
     if (actor.role !== 'PRODUCT_OWNER') {
-      throw new Error('Ушбу амални бажариш учун маҳсулот эгаси ҳуқуқи талаб қилинади.');
+      const error = new Error(
+        'Ушбу амални бажариш учун маҳсулот эгаси ҳуқуқи талаб қилинади.',
+      );
+      (error as any).code = 'FORBIDDEN';
+      (error as any).statusCode = 403;
+      throw error;
     }
 
     const executeInTx = async (tx: DbOrTx) => {

@@ -4,7 +4,7 @@ baseline_commit: ce24464e6398903c9a6e7f15bf388de04de5a3b7
 
 # Story 5.4: Review Configuration History and Roll Back as a New Future-Only Version
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -271,6 +271,23 @@ So that I can safely recover from an undesirable configuration change without re
   - [x] 10.1: Run `pnpm -r typecheck` across `packages/api-contracts`, `apps/backend`, and `apps/web`.
   - [x] 10.2: Run Vitest backend test suite (`pnpm --filter @mahalla-ovozi/backend test`).
   - [x] 10.3: Run Vitest frontend test suite (`pnpm --filter @mahalla-ovozi/web test`).
+
+### Review Findings
+
+- [x] [Review][Patch] Fix leaked hokimAccountId test account in integration test teardown [apps/backend/tests/analysis-settings-history-rollback.test.ts:94,148]
+- [x] [Review][Patch] Enforce explicit id check and match Port contract in DrizzleGlobalAnalysisSettingsRepository.deactivateVersion [apps/backend/src/modules/ai/global-analysis-settings-repository.ts:130]
+- [x] [Review][Patch] Set 403 status code on service-layer defense-in-depth role check in rollback methods [apps/backend/src/modules/ai/global-analysis-settings-service.ts:389,apps/backend/src/modules/ai/district-analysis-settings-service.ts:476]
+- [x] [Review][Patch] Trim districtId route parameter in district history endpoint [apps/backend/src/modules/ai/district-analysis-settings-routes.ts:271]
+- [x] [Review][Patch] Add try-catch with standardized 500 error envelope in global and district history endpoints [apps/backend/src/modules/ai/global-analysis-settings-routes.ts:192,apps/backend/src/modules/ai/district-analysis-settings-routes.ts:290]
+- [x] [Review][Patch] Deduplicate default district baseline version construction using createDefaultDistrictAnalysisSettingsVersion helper [apps/backend/src/modules/ai/district-analysis-settings-service.ts:146,305]
+- [x] [Review][Patch] Use standardized useOnlineStatus hook instead of manual window event listeners in Rollback Modal [apps/web/src/components/ai/AnalysisSettingsRollbackModal.tsx:61]
+- [x] [Review][Patch] Add whitespace: true validation rule and guard undefined values in changeReason form handler [apps/web/src/components/ai/AnalysisSettingsRollbackModal.tsx:98,273]
+- [x] [Review][Patch] Use discriminated union for AnalysisSettingsRollbackModalProps to eliminate unchecked type assertions [apps/web/src/components/ai/AnalysisSettingsRollbackModal.tsx:39]
+- [x] [Review][Patch] Fallback to active item from history items if districtActiveData is pending in AnalysisSettingsHistoryPanel [apps/web/src/components/ai/AnalysisSettingsHistoryPanel.tsx:292]
+- [x] [Review][Patch] Clear active district target version when activeDistrictId changes to prevent mismatched modal state [apps/web/src/components/ai/AnalysisSettingsHistoryPanel.tsx:45]
+- [x] [Review][Patch] Use centralized formatTashkentDate formatter in AnalysisSettingsHistoryTable [apps/web/src/components/ai/AnalysisSettingsHistoryTable.tsx:24]
+- [x] [Review][Patch] Support rollback mode labels and accurate vocabulary modification descriptions in ConfigurationDiffViewer [apps/web/src/components/ai/ConfigurationDiffViewer.tsx:209,304]
+- [x] [Review][Patch] Add dedicated unit test suite for diff-utils.ts to test all configuration comparison edge cases [apps/web/tests/unit/diff-utils.test.ts]
 
 ---
 
@@ -797,7 +814,7 @@ Gemini 3.7 Flash (High)
 ### Debug Log References
 
 - Backend integration tests ran against isolated PostgreSQL test database (`mahalla_ovozi_test`): 15/15 tests passing in `tests/analysis-settings-history-rollback.test.ts`. Total backend suite: 53 test files, 769 tests passing (100%).
-- Frontend unit and component tests: 17/17 tests passing across `AnalysisSettingsHistoryTable.test.tsx`, `AnalysisSettingsRollbackModal.test.tsx`, and `AiOperationsPage.test.tsx`. Total web suite: 43 test files, 251 tests passing (100%).
+- Frontend unit and component tests: 24/24 tests passing across `AnalysisSettingsHistoryTable.test.tsx`, `AnalysisSettingsRollbackModal.test.tsx`, `AiOperationsPage.test.tsx`, and `diff-utils.test.ts`. Total web suite: 44 test files, 258 tests passing (100%).
 - Strict typecheck: `pnpm -r typecheck` passed with 0 errors across all workspace packages (`@mahalla-ovozi/api-contracts`, `@mahalla-ovozi/backend`, `@mahalla-ovozi/web`).
 
 ### Completion Notes List
@@ -815,10 +832,16 @@ Gemini 3.7 Flash (High)
    - Built `AnalysisSettingsRollbackModal.tsx` with future-only disclosure banner, field-level diff preview using `ConfigurationDiffViewer`, change reason textarea with real-time secret scanning (`containsProhibitedSecrets`), offline detection, and focus restoration.
    - Built `AnalysisSettingsHistoryPanel.tsx` with Global and District sub-tabs, `DistrictSelector` integration, and state synchronization.
    - Enabled `Созламалар тарихи` (`history`) tab in `AiOperationsPage.tsx`.
+7. **Code Review & Quality Hardening**:
+   - Fixed leaked test accounts in backend integration tests.
+   - Enforced explicit `id` checks in repository deactivations.
+   - Standardized `useOnlineStatus` hook and discriminated union props in rollback modal.
+   - Added dedicated unit tests for configuration diff computation (`diff-utils.test.ts`).
 
 ### File List
 
 - `packages/api-contracts/src/analysis-settings.ts`
+- `apps/backend/src/adapters/db/seeds.ts`
 - `apps/backend/src/modules/ai/global-analysis-settings-repository.ts`
 - `apps/backend/src/modules/ai/global-analysis-settings-service.ts`
 - `apps/backend/src/modules/ai/global-analysis-settings-routes.ts`
@@ -831,10 +854,12 @@ Gemini 3.7 Flash (High)
 - `apps/web/src/hooks/useGlobalAnalysisSettings.ts`
 - `apps/web/src/hooks/useDistrictAnalysisSettings.ts`
 - `apps/web/src/components/ai/diff-utils.ts`
+- `apps/web/src/components/ai/ConfigurationDiffViewer.tsx`
 - `apps/web/src/components/ai/AnalysisSettingsHistoryTable.tsx`
 - `apps/web/src/components/ai/AnalysisSettingsRollbackModal.tsx`
 - `apps/web/src/components/ai/AnalysisSettingsHistoryPanel.tsx`
 - `apps/web/src/pages/AiOperationsPage.tsx`
+- `apps/web/tests/unit/diff-utils.test.ts`
 - `apps/web/tests/unit/AnalysisSettingsHistoryTable.test.tsx`
 - `apps/web/tests/unit/AnalysisSettingsRollbackModal.test.tsx`
 - `apps/web/tests/unit/AiOperationsPage.test.tsx`

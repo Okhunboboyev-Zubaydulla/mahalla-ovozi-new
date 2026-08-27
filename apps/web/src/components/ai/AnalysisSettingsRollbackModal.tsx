@@ -22,6 +22,7 @@ import {
   type DistrictAnalysisSettingsDto,
   containsProhibitedSecrets,
 } from '@mahalla-ovozi/api-contracts';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
 import {
   computeGlobalSettingsDiff,
   computeDistrictSettingsDiff,
@@ -31,47 +32,46 @@ import { ConfigurationDiffViewer } from './ConfigurationDiffViewer.js';
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
-export interface AnalysisSettingsRollbackModalProps {
-  open: boolean;
-  scope: 'global' | 'district';
-  districtId?: string;
-  districtName?: string;
-  activeVersion: GlobalAnalysisSettingsDto | DistrictAnalysisSettingsDto;
-  targetVersion: GlobalAnalysisSettingsDto | DistrictAnalysisSettingsDto;
-  onConfirm: (reason: string) => Promise<void>;
-  onCancel: () => void;
-}
+export type AnalysisSettingsRollbackModalProps =
+  | {
+      open: boolean;
+      scope: 'global';
+      districtId?: never;
+      districtName?: never;
+      activeVersion: GlobalAnalysisSettingsDto;
+      targetVersion: GlobalAnalysisSettingsDto;
+      onConfirm: (reason: string) => Promise<void>;
+      onCancel: () => void;
+    }
+  | {
+      open: boolean;
+      scope: 'district';
+      districtId: string;
+      districtName: string;
+      activeVersion: DistrictAnalysisSettingsDto;
+      targetVersion: DistrictAnalysisSettingsDto;
+      onConfirm: (reason: string) => Promise<void>;
+      onCancel: () => void;
+    };
 
 export const AnalysisSettingsRollbackModal: React.FC<
   AnalysisSettingsRollbackModalProps
-> = ({
-  open,
-  scope,
-  districtId,
-  districtName,
-  activeVersion,
-  targetVersion,
-  onConfirm,
-  onCancel,
-}) => {
+> = (props) => {
+  const {
+    open,
+    scope,
+    districtId,
+    districtName,
+    activeVersion,
+    targetVersion,
+    onConfirm,
+    onCancel,
+  } = props;
   const { token } = theme.useToken();
   const [form] = Form.useForm<{ changeReason: string }>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [isOffline, setIsOffline] = useState(!window.navigator.onLine);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  const isOffline = useOnlineStatus();
 
   useEffect(() => {
     if (open) {
@@ -95,7 +95,7 @@ export const AnalysisSettingsRollbackModal: React.FC<
     setApiError(null);
     setIsSubmitting(true);
     try {
-      await onConfirm(values.changeReason.trim());
+      await onConfirm((values?.changeReason || '').trim());
       handleClose();
     } catch (err: any) {
       const msg =
@@ -108,18 +108,18 @@ export const AnalysisSettingsRollbackModal: React.FC<
   };
 
   const globalDiff =
-    scope === 'global'
+    props.scope === 'global'
       ? computeGlobalSettingsDiff(
-          activeVersion as GlobalAnalysisSettingsDto,
-          targetVersion as GlobalAnalysisSettingsDto,
+          props.activeVersion,
+          props.targetVersion,
         )
       : undefined;
 
   const districtDiff =
-    scope === 'district'
+    props.scope === 'district'
       ? computeDistrictSettingsDiff(
-          activeVersion as DistrictAnalysisSettingsDto,
-          targetVersion as DistrictAnalysisSettingsDto,
+          props.activeVersion,
+          props.targetVersion,
         )
       : undefined;
 
@@ -133,7 +133,7 @@ export const AnalysisSettingsRollbackModal: React.FC<
         </Space>
       }
       onCancel={handleClose}
-      destroyOnClose={true}
+      destroyOnHidden={true}
       focusTriggerAfterClose={true}
       width={760}
       footer={null}
@@ -240,6 +240,7 @@ export const AnalysisSettingsRollbackModal: React.FC<
             scope={scope}
             globalDiff={globalDiff}
             districtDiff={districtDiff}
+            mode="rollback"
           />
         </div>
 
@@ -272,6 +273,7 @@ export const AnalysisSettingsRollbackModal: React.FC<
             rules={[
               {
                 required: true,
+                whitespace: true,
                 message: 'Қайтариш сабабини киритиш шарт.',
               },
               {

@@ -168,14 +168,14 @@ export function computeGlobalSettingsDiff(
   const activeVocabMap = new Map<string, GlobalServiceVocabularyItem>();
   for (const item of active?.globalServiceVocabulary || []) {
     if (!item || typeof item.term !== 'string') continue;
-    const key = item.term.trim().toLowerCase().normalize('NFC');
+    const key = item.term.trim().toLowerCase().normalize('NFC').replace(/\s+/g, ' ');
     if (key) activeVocabMap.set(key, item);
   }
 
   const draftVocabMap = new Map<string, GlobalServiceVocabularyItem>();
   for (const item of draft?.globalServiceVocabulary || []) {
     if (!item || typeof item.term !== 'string') continue;
-    const key = item.term.trim().toLowerCase().normalize('NFC');
+    const key = item.term.trim().toLowerCase().normalize('NFC').replace(/\s+/g, ' ');
     if (key) draftVocabMap.set(key, item);
   }
 
@@ -267,14 +267,14 @@ export function computeDistrictSettingsDiff(
   const activeTermsMap = new Map<string, string>();
   for (const term of active?.hokimRecognitionTerms || []) {
     if (typeof term !== 'string') continue;
-    const key = term.trim().toLowerCase().normalize('NFC');
+    const key = term.trim().toLowerCase().normalize('NFC').replace(/\s+/g, ' ');
     if (key) activeTermsMap.set(key, term.trim());
   }
 
   const draftTermsMap = new Map<string, string>();
   for (const term of draft?.hokimRecognitionTerms || []) {
     if (typeof term !== 'string') continue;
-    const key = term.trim().toLowerCase().normalize('NFC');
+    const key = term.trim().toLowerCase().normalize('NFC').replace(/\s+/g, ' ');
     if (key) draftTermsMap.set(key, term.trim());
   }
 
@@ -309,14 +309,14 @@ export function computeDistrictSettingsDiff(
   const activeVocabMap = new Map<string, DistrictLocalVocabularyItem>();
   for (const item of active?.localVocabularyAdditions || []) {
     if (!item || typeof item.term !== 'string') continue;
-    const key = item.term.trim().toLowerCase().normalize('NFC');
+    const key = item.term.trim().toLowerCase().normalize('NFC').replace(/\s+/g, ' ');
     if (key) activeVocabMap.set(key, item);
   }
 
   const draftVocabMap = new Map<string, DistrictLocalVocabularyItem>();
   for (const item of draft?.localVocabularyAdditions || []) {
     if (!item || typeof item.term !== 'string') continue;
-    const key = item.term.trim().toLowerCase().normalize('NFC');
+    const key = item.term.trim().toLowerCase().normalize('NFC').replace(/\s+/g, ' ');
     if (key) draftVocabMap.set(key, item);
   }
 

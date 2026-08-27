@@ -268,29 +268,52 @@ export function registerDistrictAnalysisSettingsRoutes(
         req: FastifyRequest<{ Params: DistrictSettingsRouteParams }>,
         reply: FastifyReply,
       ) => {
-        const { districtId } = req.params;
-
-        // Validate district exists
-        const [district] = await db
-          .select({ id: districts.id, name: districts.name })
-          .from(districts)
-          .where(eq(districts.id, districtId))
-          .limit(1);
-
-        if (!district) {
-          return reply.status(404).send({
+        const districtId = req.params.districtId?.trim();
+        if (!districtId) {
+          return reply.status(400).send({
             error: {
-              code: 'DISTRICT_NOT_FOUND',
-              message: 'Туман топилмади.',
-              statusCode: 404,
+              code: 'INVALID_DISTRICT_ID',
+              message: 'Туман идентификатори кўрсатилиши шарт.',
+              statusCode: 400,
             },
           });
         }
 
-        const history =
-          await districtAnalysisSettingsService.getHistory(db, districtId);
+        try {
+          // Validate district exists
+          const [district] = await db
+            .select({ id: districts.id, name: districts.name })
+            .from(districts)
+            .where(eq(districts.id, districtId))
+            .limit(1);
 
-        return reply.status(200).send(history);
+          if (!district) {
+            return reply.status(404).send({
+              error: {
+                code: 'DISTRICT_NOT_FOUND',
+                message: 'Туман топилмади.',
+                statusCode: 404,
+              },
+            });
+          }
+
+          const history =
+            await districtAnalysisSettingsService.getHistory(db, districtId);
+
+          return reply.status(200).send(history);
+        } catch (err: any) {
+          req.log.error(
+            { err, districtId },
+            'Failed to fetch district analysis settings history',
+          );
+          return reply.status(500).send({
+            error: {
+              code: 'INTERNAL_SERVER_ERROR',
+              message: 'Туман созламалари тарихини юклашда хатолик юз берди.',
+              statusCode: 500,
+            },
+          });
+        }
       },
     );
 

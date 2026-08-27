@@ -137,6 +137,7 @@ export function createDefaultDistrictAnalysisSettingsVersion(
     activatedAt: new Date('2026-08-01T00:00:00.000Z'),
     activatedBy: null,
     changeReason: 'Туманнинг дастлабки фаол созламалари',
+    createdAt: new Date('2026-08-01T00:00:00.000Z'),
   };
 }
 

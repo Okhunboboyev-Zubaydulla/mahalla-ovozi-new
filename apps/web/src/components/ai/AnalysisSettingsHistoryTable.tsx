@@ -9,6 +9,7 @@ import type {
   GlobalAnalysisSettingsDto,
   DistrictAnalysisSettingsDto,
 } from '@mahalla-ovozi/api-contracts';
+import { formatTashkentDate } from '../../lib/formatters.js';
 
 const { Text } = Typography;
 
@@ -19,25 +20,6 @@ export interface AnalysisSettingsHistoryTableProps {
   onRollbackClick: (
     version: GlobalAnalysisSettingsDto | DistrictAnalysisSettingsDto,
   ) => void;
-}
-
-function formatTashkentDateTime(dateString: string | null | undefined): string {
-  if (!dateString) return '—';
-  try {
-    const d = new Date(dateString);
-    return new Intl.DateTimeFormat('uz-UZ', {
-      timeZone: 'Asia/Tashkent',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    }).format(d);
-  } catch {
-    return dateString;
-  }
 }
 
 export const AnalysisSettingsHistoryTable: React.FC<
@@ -100,7 +82,7 @@ export const AnalysisSettingsHistoryTable: React.FC<
       width: 180,
       render: (activatedAt: string | null) => (
         <Text style={{ fontSize: 13 }}>
-          {formatTashkentDateTime(activatedAt)}
+          {activatedAt ? formatTashkentDate(activatedAt) : '—'}
         </Text>
       ),
     },

@@ -1,4 +1,4 @@
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc, sql, and } from 'drizzle-orm';
 import type { DbOrTx } from '../../adapters/db/client.js';
 import {
   globalAnalysisSettingsVersions,
@@ -127,11 +127,18 @@ export class DrizzleGlobalAnalysisSettingsRepository
     return saved;
   }
 
-  async deactivateVersion(tx: DbOrTx, _id?: string): Promise<void> {
+  async deactivateVersion(tx: DbOrTx, id?: string): Promise<void> {
+    const whereClause = id
+      ? and(
+          eq(globalAnalysisSettingsVersions.id, id),
+          eq(globalAnalysisSettingsVersions.isActive, true),
+        )
+      : eq(globalAnalysisSettingsVersions.isActive, true);
+
     await tx
       .update(globalAnalysisSettingsVersions)
       .set({ isActive: false })
-      .where(eq(globalAnalysisSettingsVersions.isActive, true));
+      .where(whereClause);
   }
 
   async getNextVersionNumber(tx: DbOrTx): Promise<number> {

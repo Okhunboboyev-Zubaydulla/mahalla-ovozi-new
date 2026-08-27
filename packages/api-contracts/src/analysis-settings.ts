@@ -365,16 +365,16 @@ export type SaveDistrictAnalysisSettingsDraftResponse = z.infer<
 // ==========================================
 
 export const PROHIBITED_SECRET_PATTERNS = [
-  // 1. Telegram Bot Token: 8 to 12 digits, colon, and 34 to 36 base64url characters
-  /\b\d{8,12}:[A-Za-z0-9_-]{34,36}\b/,
-  // 2. OpenAI API Keys (Legacy sk-, Project sk-proj-, Admin sk-admin-, Org sk-org-)
-  /\bsk-(?:proj-|admin-|org-)?[A-Za-z0-9_-]{20,}\b/,
+  // 1. Telegram Bot Token: 7 to 12 digits, colon, and 34 to 36 base64url characters
+  /\b\d{7,12}:[A-Za-z0-9_-]{34,36}\b/,
+  // 2. OpenAI API Keys (Legacy sk-, Project sk-proj-, Service Account sk-svcacct-, Admin sk-admin-, Org sk-org-)
+  /\bsk-(?:proj-|svcacct-|admin-|org-)?[A-Za-z0-9_-]{20,}\b/,
   // 3. Google AI Studio / Gemini API Keys (Legacy AIza... and Modern AQ....)
   /\b(?:AIza[0-9A-Za-z-_]{35}|AQ\.[0-9A-Za-z-_]{20,})\b/,
   // 4. Groq Cloud API Key
   /\bgsk_[A-Za-z0-9_-]{40,64}\b/,
-  // 5. Anthropic Claude API Key (sk-ant-api..., sk-ant-admin..., sk-ant-oat...)
-  /\bsk-ant-(?:api\d{2}|admin\d{2}|oat\d{2})-[A-Za-z0-9_-]{40,}\b/,
+  // 5. Anthropic Claude API Key (sk-ant-api..., sk-ant-admin..., sk-ant-oat..., sk-ant-sid...)
+  /\bsk-ant-[A-Za-z0-9_-]{20,}\b/,
   // 6. JSON Web Tokens (JWT: 3 base64url parts starting with eyJ)
   /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/,
   // 7. Authorization Bearer Token header string

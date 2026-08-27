@@ -28,12 +28,14 @@ export interface ConfigurationDiffViewerProps {
   scope: 'global' | 'district';
   globalDiff?: GlobalSettingsDiff;
   districtDiff?: DistrictSettingsDiff;
+  mode?: 'activation' | 'rollback';
 }
 
 export const ConfigurationDiffViewer: React.FC<ConfigurationDiffViewerProps> = ({
   scope,
   globalDiff,
   districtDiff,
+  mode = 'activation',
 }) => {
   const { token } = theme.useToken();
 
@@ -54,7 +56,9 @@ export const ConfigurationDiffViewer: React.FC<ConfigurationDiffViewerProps> = (
           image={Empty.PRESENTED_IMAGE_SIMPLE}
           description={
             <Text type="secondary">
-              Қораламада фаол созламаларга нисбатан ҳеч қандай ўзгариш мавжуд эмас.
+              {mode === 'rollback'
+                ? 'Қайтариладиган версияда фаол созламаларга нисбатан ҳеч қандай ўзгариш мавжуд эмас.'
+                : 'Қораламада фаол созламаларга нисбатан ҳеч қандай ўзгариш мавжуд эмас.'}
             </Text>
           }
         />
@@ -206,7 +210,10 @@ export const ConfigurationDiffViewer: React.FC<ConfigurationDiffViewerProps> = (
 
                       <div>
                         <Text type="success" strong style={{ fontSize: 12 }}>
-                          + Янги матн (Қоралама):
+                          +{' '}
+                          {mode === 'rollback'
+                            ? 'Қайтариладиган версия матни:'
+                            : 'Янги матн (Қоралама):'}
                         </Text>
                         <div
                           tabIndex={0}
@@ -301,7 +308,11 @@ export const ConfigurationDiffViewer: React.FC<ConfigurationDiffViewerProps> = (
                               ~ {v.term}
                             </Text>{' '}
                             <span style={{ opacity: 0.85 }}>
-                              ({v.oldCategory} ➔ {v.category})
+                              (
+                              {v.oldCategory && v.oldCategory !== v.category
+                                ? `${v.oldCategory} ➔ ${v.category}`
+                                : 'тавсифи янгиланган'}
+                              )
                             </span>
                           </Tag>
                         ))}
@@ -477,7 +488,11 @@ export const ConfigurationDiffViewer: React.FC<ConfigurationDiffViewerProps> = (
                             ~ {v.term}
                           </Text>{' '}
                           <span style={{ opacity: 0.85 }}>
-                            ({v.oldCategory} ➔ {v.category})
+                            (
+                            {v.oldCategory && v.oldCategory !== v.category
+                              ? `${v.oldCategory} ➔ ${v.category}`
+                              : 'тавсифи янгиланган'}
+                            )
                           </span>
                         </Tag>
                       ))}

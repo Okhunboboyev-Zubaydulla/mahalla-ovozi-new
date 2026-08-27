@@ -10,7 +10,6 @@ import {
   type RollbackDistrictAnalysisSettingsRequest,
   type RollbackDistrictAnalysisSettingsResponse,
   type DistrictLocalVocabularyItem,
-  DEFAULT_HOKIM_RECOGNITION_TERMS,
 } from '@mahalla-ovozi/api-contracts';
 import {
   districtAnalysisSettingsRepository,
@@ -112,7 +111,9 @@ export class DistrictAnalysisSettingsService {
         : null,
       activatedBy: version.activatedBy,
       changeReason: version.changeReason,
-      createdAt: version.createdAt.toISOString(),
+      createdAt: version.createdAt
+        ? version.createdAt.toISOString()
+        : (version.activatedAt ? version.activatedAt.toISOString() : new Date('2026-08-01T00:00:00.000Z').toISOString()),
     };
   }
 
@@ -142,18 +143,9 @@ export class DistrictAnalysisSettingsService {
     );
     if (!activeRow) {
       // Fallback baseline for districts without activated versions yet
-      return {
-        id: `dcfg_${districtId}_v1`,
-        districtId,
-        version: 1,
-        hokimRecognitionTerms: [...DEFAULT_HOKIM_RECOGNITION_TERMS],
-        localVocabularyAdditions: [],
-        isActive: true,
-        activatedAt: new Date('2026-08-01T00:00:00.000Z').toISOString(),
-        activatedBy: null,
-        changeReason: 'Туманнинг дастлабки фаол созламалари',
-        createdAt: new Date('2026-08-01T00:00:00.000Z').toISOString(),
-      };
+      return this.mapVersionToDto(
+        createDefaultDistrictAnalysisSettingsVersion(districtId) as any,
+      );
     }
     return this.mapVersionToDto(activeRow);
   }
@@ -302,18 +294,9 @@ export class DistrictAnalysisSettingsService {
         districtId,
       );
 
-      const defaultBaseline: DistrictAnalysisSettingsDto = {
-        id: `dcfg_${districtId}_v1`,
-        districtId,
-        version: 1,
-        hokimRecognitionTerms: [...DEFAULT_HOKIM_RECOGNITION_TERMS],
-        localVocabularyAdditions: [],
-        isActive: true,
-        activatedAt: new Date('2026-08-01T00:00:00.000Z').toISOString(),
-        activatedBy: null,
-        changeReason: 'Туманнинг дастлабки фаол созламалари',
-        createdAt: new Date('2026-08-01T00:00:00.000Z').toISOString(),
-      };
+      const defaultBaseline = this.mapVersionToDto(
+        createDefaultDistrictAnalysisSettingsVersion(districtId) as any,
+      );
 
       const currentActiveId = activeRow ? activeRow.id : defaultBaseline.id;
       const currentHokimTerms = activeRow
@@ -474,9 +457,12 @@ export class DistrictAnalysisSettingsService {
     payload: RollbackDistrictAnalysisSettingsRequest,
   ): Promise<RollbackDistrictAnalysisSettingsResponse> {
     if (actor.role !== 'PRODUCT_OWNER') {
-      throw new Error(
+      const error = new Error(
         'Ушбу амални бажариш учун маҳсулот эгаси ҳуқуқи талаб қилинади.',
       );
+      (error as any).code = 'FORBIDDEN';
+      (error as any).statusCode = 403;
+      throw error;
     }
 
     const executeInTx = async (tx: DbOrTx) => {

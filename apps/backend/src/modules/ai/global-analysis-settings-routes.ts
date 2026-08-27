@@ -188,11 +188,25 @@ export function registerGlobalAnalysisSettingsRoutes(
      */
     scope.get(
       '/api/v1/ai/settings/global/history',
-      async (_req: FastifyRequest, reply: FastifyReply) => {
-        const history =
-          await globalAnalysisSettingsService.getHistory(db);
+      async (req: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const history =
+            await globalAnalysisSettingsService.getHistory(db);
 
-        return reply.status(200).send(history);
+          return reply.status(200).send(history);
+        } catch (err: any) {
+          req.log.error(
+            { err },
+            'Failed to fetch global analysis settings history',
+          );
+          return reply.status(500).send({
+            error: {
+              code: 'INTERNAL_SERVER_ERROR',
+              message: 'Глобал созламалар тарихини юклашда хатолик юз берди.',
+              statusCode: 500,
+            },
+          });
+        }
       },
     );
 

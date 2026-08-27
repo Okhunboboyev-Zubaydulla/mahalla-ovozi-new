@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Tabs,
   Card,
@@ -45,6 +45,10 @@ export const AnalysisSettingsHistoryPanel: React.FC = () => {
   const [selectedTargetVersion, setSelectedTargetVersion] = useState<
     GlobalAnalysisSettingsDto | DistrictAnalysisSettingsDto | null
   >(null);
+
+  useEffect(() => {
+    setSelectedTargetVersion(null);
+  }, [activeDistrictId]);
 
   // Global Settings Data & History
   const {
@@ -185,12 +189,18 @@ export const AnalysisSettingsHistoryPanel: React.FC = () => {
           {/* Rollback Modal for Global */}
           {selectedTargetVersion &&
             subTabKey === 'global' &&
-            globalActiveData?.activeConfiguration && (
+            (globalActiveData?.activeConfiguration ||
+              globalHistoryData?.items?.find((v) => v.isActive)) && (
               <AnalysisSettingsRollbackModal
                 open={true}
                 scope="global"
-                activeVersion={globalActiveData.activeConfiguration}
-                targetVersion={selectedTargetVersion}
+                activeVersion={
+                  globalActiveData?.activeConfiguration ||
+                  globalHistoryData!.items.find((v) => v.isActive)!
+                }
+                targetVersion={
+                  selectedTargetVersion as GlobalAnalysisSettingsDto
+                }
                 onConfirm={handleRollbackGlobalConfirm}
                 onCancel={() => setSelectedTargetVersion(null)}
               />
@@ -291,14 +301,24 @@ export const AnalysisSettingsHistoryPanel: React.FC = () => {
               {/* Rollback Modal for District */}
               {selectedTargetVersion &&
                 subTabKey === 'district' &&
-                districtActiveData?.activeConfiguration && (
+                (districtActiveData?.activeConfiguration ||
+                  districtHistoryData?.items?.find((v) => v.isActive)) && (
                   <AnalysisSettingsRollbackModal
                     open={true}
                     scope="district"
                     districtId={activeDistrictId}
-                    districtName={districtActiveData.districtName}
-                    activeVersion={districtActiveData.activeConfiguration}
-                    targetVersion={selectedTargetVersion}
+                    districtName={
+                      districtActiveData?.districtName ||
+                      districtHistoryData?.districtName ||
+                      activeDistrictId
+                    }
+                    activeVersion={
+                      districtActiveData?.activeConfiguration ||
+                      districtHistoryData!.items.find((v) => v.isActive)!
+                    }
+                    targetVersion={
+                      selectedTargetVersion as DistrictAnalysisSettingsDto
+                    }
                     onConfirm={handleRollbackDistrictConfirm}
                     onCancel={() => setSelectedTargetVersion(null)}
                   />
