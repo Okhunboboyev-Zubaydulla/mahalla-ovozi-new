@@ -241,7 +241,7 @@ export function registerDistrictAnalysisSettingsRoutes(
           const code =
             typeof err.code === 'string' ? err.code : 'INTERNAL_SERVER_ERROR';
           const message =
-            typeof err.message === 'string'
+            statusCode < 500 && typeof err.message === 'string'
               ? err.message
               : 'Туман созламаларини фаоллаштиришда хатолик юз берди.';
 

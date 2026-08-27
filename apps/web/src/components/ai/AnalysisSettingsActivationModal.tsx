@@ -121,7 +121,7 @@ export const AnalysisSettingsActivationModal: React.FC<
   const handleFinish = async (values: { changeReason: string }) => {
     if (isOffline || isSubmitting || !hasEffectiveChanges) return;
 
-    const trimmedReason = values.changeReason.trim();
+    const trimmedReason = (values?.changeReason || '').trim();
 
     if (trimmedReason.length < 5) {
       form.setFields([
@@ -173,11 +173,14 @@ export const AnalysisSettingsActivationModal: React.FC<
     }
   };
 
-  const formattedActivatedAt = (activeSettings as any).activatedAt
-    ? new Date((activeSettings as any).activatedAt).toLocaleString('uz-UZ', {
-        timeZone: 'Asia/Tashkent',
-      })
-    : 'Дастлабки созлама';
+  const rawDate = (activeSettings as any)?.activatedAt;
+  const parsedDate = rawDate ? new Date(rawDate) : null;
+  const formattedActivatedAt =
+    parsedDate && !isNaN(parsedDate.getTime())
+      ? parsedDate.toLocaleString('uz-UZ', {
+          timeZone: 'Asia/Tashkent',
+        })
+      : 'Дастлабки созлама';
 
   return (
     <Modal
@@ -386,10 +389,14 @@ export const AnalysisSettingsActivationModal: React.FC<
               icon={<ThunderboltOutlined />}
               loading={isSubmitting}
               disabled={isOffline || !hasEffectiveChanges || isSubmitting}
-              style={{
-                background: token.colorWarningActive,
-                borderColor: token.colorWarningActive,
-              }}
+              style={
+                !isOffline && hasEffectiveChanges && !isSubmitting
+                  ? {
+                      background: token.colorWarningActive,
+                      borderColor: token.colorWarningActive,
+                    }
+                  : undefined
+              }
             >
               Фаоллаштиришни тасдиқлаш
             </Button>

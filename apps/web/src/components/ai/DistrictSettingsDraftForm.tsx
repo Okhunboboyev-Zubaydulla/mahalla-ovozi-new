@@ -377,9 +377,13 @@ export const DistrictSettingsDraftForm: React.FC<
               form.getFieldsValue(true) as SaveDistrictAnalysisSettingsDraftRequest;
             const parsed =
               SaveDistrictAnalysisSettingsDraftSchema.safeParse(values);
-            if (parsed.success) {
-              await saveMutation.mutateAsync(parsed.data);
+            if (!parsed.success) {
+              const firstError =
+                parsed.error.issues[0]?.message ||
+                'Қораламада хатоликлар мавжуд. Илтимос, формани тўғри тўлдиринг.';
+              throw new Error(firstError);
             }
+            await saveMutation.mutateAsync(parsed.data);
           }
           const res = await activateMutation.mutateAsync({
             baseActiveVersionId: activeSettings.id,

@@ -406,6 +406,7 @@ export const ChangeReasonSchema = z
 export const ActivateGlobalAnalysisSettingsRequestSchema = z.object({
   baseActiveVersionId: z
     .string({ invalid_type_error: 'Базавий фаол версия идентификатори талаб қилинади.' })
+    .trim()
     .min(1, 'Базавий фаол версия идентификатори талаб қилинади.'),
   changeReason: ChangeReasonSchema,
 });
@@ -425,6 +426,7 @@ export type ActivateGlobalAnalysisSettingsResponse = z.infer<
 export const ActivateDistrictAnalysisSettingsRequestSchema = z.object({
   baseActiveVersionId: z
     .string({ invalid_type_error: 'Базавий фаол версия идентификатори талаб қилинади.' })
+    .trim()
     .min(1, 'Базавий фаол версия идентификатори талаб қилинади.'),
   changeReason: ChangeReasonSchema,
 });

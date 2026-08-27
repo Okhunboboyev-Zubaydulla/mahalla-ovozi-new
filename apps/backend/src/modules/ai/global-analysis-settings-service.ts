@@ -23,23 +23,38 @@ function areGlobalVocabulariesEqual(
   a: GlobalServiceVocabularyItem[],
   b: GlobalServiceVocabularyItem[],
 ): boolean {
-  if (a.length !== b.length) return false;
-  const mapA = new Map(
-    a.map((i) => [
-      i.term.trim().toLowerCase().normalize('NFC'),
-      {
-        term: i.term.trim().normalize('NFC'),
-        category: i.category.trim(),
-        description: (i.description || '').trim(),
-      },
-    ]),
-  );
-  for (const itemB of b) {
-    const key = itemB.term.trim().toLowerCase().normalize('NFC');
-    const itemA = mapA.get(key);
-    if (!itemA) return false;
-    if (itemA.category !== itemB.category.trim()) return false;
-    if (itemA.description !== (itemB.description || '').trim()) return false;
+  const normalizeMap = (items: GlobalServiceVocabularyItem[]) => {
+    const map = new Map<
+      string,
+      { term: string; category: string; description: string }
+    >();
+    for (const i of items || []) {
+      if (!i || typeof i.term !== 'string') continue;
+      const normalizedKey = i.term
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
+        .normalize('NFC');
+      if (!normalizedKey) continue;
+      map.set(normalizedKey, {
+        term: i.term.trim().replace(/\s+/g, ' ').normalize('NFC'),
+        category: (i.category || '').trim().replace(/\s+/g, ' '),
+        description: (i.description || '').trim().replace(/\s+/g, ' '),
+      });
+    }
+    return map;
+  };
+
+  const mapA = normalizeMap(a);
+  const mapB = normalizeMap(b);
+
+  if (mapA.size !== mapB.size) return false;
+
+  for (const [key, itemA] of mapA.entries()) {
+    const itemB = mapB.get(key);
+    if (!itemB) return false;
+    if (itemA.category !== itemB.category) return false;
+    if (itemA.description !== itemB.description) return false;
   }
   return true;
 }
@@ -255,12 +270,15 @@ export class GlobalAnalysisSettingsService {
       // 4. Validate effective changes exist
       const hasChanges =
         draft.modelProvider !== currentActive.modelProvider ||
-        draft.modelId !== currentActive.modelId ||
-        draft.temperature !== currentActive.temperature ||
-        draft.maxOutputTokens !== currentActive.maxOutputTokens ||
-        draft.relevanceSystemPrompt !== currentActive.relevanceSystemPrompt ||
-        draft.topicMatchingSystemPrompt !== currentActive.topicMatchingSystemPrompt ||
-        draft.topicProjectionSystemPrompt !== currentActive.topicProjectionSystemPrompt ||
+        draft.modelId.trim() !== currentActive.modelId.trim() ||
+        Number(draft.temperature) !== Number(currentActive.temperature) ||
+        Number(draft.maxOutputTokens) !== Number(currentActive.maxOutputTokens) ||
+        draft.relevanceSystemPrompt.trim() !==
+          currentActive.relevanceSystemPrompt.trim() ||
+        draft.topicMatchingSystemPrompt.trim() !==
+          currentActive.topicMatchingSystemPrompt.trim() ||
+        draft.topicProjectionSystemPrompt.trim() !==
+          currentActive.topicProjectionSystemPrompt.trim() ||
         !areGlobalVocabulariesEqual(
           (draft.globalServiceVocabulary || []) as GlobalServiceVocabularyItem[],
           (currentActive.globalServiceVocabulary || []) as GlobalServiceVocabularyItem[],
@@ -281,7 +299,8 @@ export class GlobalAnalysisSettingsService {
       }
 
       // 6. Compute next version number
-      const nextVersion = await this.repository.getNextVersionNumber(tx);
+      const maxVersion = await this.repository.getNextVersionNumber(tx);
+      const nextVersion = Math.max(maxVersion, (currentActive?.version ?? 1) + 1);
       const newVersionId = `gcfg_v${nextVersion}`;
 
       // 7. Insert new immutable active version

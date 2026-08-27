@@ -102,11 +102,11 @@ export class DrizzleGlobalAnalysisSettingsRepository
     return saved;
   }
 
-  async deactivateVersion(tx: DbOrTx, id: string): Promise<void> {
+  async deactivateVersion(tx: DbOrTx, _id?: string): Promise<void> {
     await tx
       .update(globalAnalysisSettingsVersions)
       .set({ isActive: false })
-      .where(eq(globalAnalysisSettingsVersions.id, id));
+      .where(eq(globalAnalysisSettingsVersions.isActive, true));
   }
 
   async getNextVersionNumber(tx: DbOrTx): Promise<number> {

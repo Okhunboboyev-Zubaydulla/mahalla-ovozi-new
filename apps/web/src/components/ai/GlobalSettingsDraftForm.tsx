@@ -47,7 +47,7 @@ const { TextArea } = Input;
 
 const PROVIDER_MODEL_PRESETS: Record<AiModelProvider, string[]> = {
   OPENAI: ['gpt-4o-mini', 'gpt-4o', 'gpt-4o-mini-2024-07-18'],
-  GEMINI: ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-pro-exp-02-05'],
+  GEMINI: ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'],
   GROQ: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile'],
   OLLAMA: ['qwen2.5:7b', 'llama3.1:8b'],
 };
@@ -526,9 +526,13 @@ export const GlobalSettingsDraftForm: React.FC<GlobalSettingsDraftFormProps> = (
               form.getFieldsValue(true) as SaveGlobalAnalysisSettingsDraftRequest;
             const parsed =
               SaveGlobalAnalysisSettingsDraftSchema.safeParse(values);
-            if (parsed.success) {
-              await saveMutation.mutateAsync(parsed.data);
+            if (!parsed.success) {
+              const firstError =
+                parsed.error.issues[0]?.message ||
+                'Қораламада хатоликлар мавжуд. Илтимос, формани тўғри тўлдиринг.';
+              throw new Error(firstError);
             }
+            await saveMutation.mutateAsync(parsed.data);
           }
           const res = await activateMutation.mutateAsync({
             baseActiveVersionId: activeSettings.id,

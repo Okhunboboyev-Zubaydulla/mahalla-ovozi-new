@@ -248,6 +248,18 @@ So that future AI processing uses the intended configuration without rewriting o
   - [x] 11.2: Run Vitest backend test suite (`pnpm --filter @mahalla-ovozi/backend test`).
   - [x] 11.3: Run Vitest frontend test suite (`pnpm --filter @mahalla-ovozi/web test`).
 
+### Review Findings
+
+- [x] [Review][Patch] Validate and throw error on dirty form schema validation failure during activation confirmation [`apps/web/src/components/ai/GlobalSettingsDraftForm.tsx:524-533`]
+- [x] [Review][Patch] Validate and throw error on dirty form schema validation failure during district activation confirmation [`apps/web/src/components/ai/DistrictSettingsDraftForm.tsx:375-384`]
+- [x] [Review][Patch] Protect against invalid date parsing RangeError in activation modal header [`apps/web/src/components/ai/AnalysisSettingsActivationModal.tsx:176-180`]
+- [x] [Review][Patch] Ensure baseline version number calculation defaults to version 1 baseline when tables are empty [`apps/backend/src/modules/ai/global-analysis-settings-service.ts:284-290`, `apps/backend/src/modules/ai/district-analysis-settings-service.ts:337-346`]
+- [x] [Review][Patch] Add defensive string and term guards in field-level diff calculation utilities [`apps/web/src/components/ai/diff-utils.ts:165-348`]
+- [x] [Review][Patch] Robust deduplication and set-based equality check for vocabulary and terms [`apps/backend/src/modules/ai/global-analysis-settings-service.ts:22-45`, `apps/backend/src/modules/ai/district-analysis-settings-service.ts:23-57`]
+- [x] [Review][Patch] Sanitize 500 error messages in activation routes to prevent leaking internal database errors [`apps/backend/src/modules/ai/global-analysis-settings-routes.ts:162-179`, `apps/backend/src/modules/ai/district-analysis-settings-routes.ts:238-255`]
+- [x] [Review][Patch] Fix disabled styling on activation confirmation button in modal [`apps/web/src/components/ai/AnalysisSettingsActivationModal.tsx:389-393`]
+- [x] [Review][Patch] Add .trim() to baseActiveVersionId in Zod validation schemas [`packages/api-contracts/src/analysis-settings.ts:407-430`]
+
 ---
 
 ## Dev Notes

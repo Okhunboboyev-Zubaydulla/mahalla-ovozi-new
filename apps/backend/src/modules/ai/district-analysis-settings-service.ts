@@ -21,12 +21,26 @@ import {
 import { recordAuditEvent } from '../audit/audit-service.js';
 
 function areHokimTermsEqual(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
-  const setA = new Set(
-    a.map((t) => t.trim().toLowerCase().normalize('NFC')),
-  );
-  for (const item of b) {
-    if (!setA.has(item.trim().toLowerCase().normalize('NFC'))) return false;
+  const normalizeSet = (terms: string[]) => {
+    const set = new Set<string>();
+    for (const raw of terms || []) {
+      if (typeof raw !== 'string') continue;
+      const normalized = raw
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
+        .normalize('NFC');
+      if (normalized) set.add(normalized);
+    }
+    return set;
+  };
+
+  const setA = normalizeSet(a);
+  const setB = normalizeSet(b);
+
+  if (setA.size !== setB.size) return false;
+  for (const item of setB) {
+    if (!setA.has(item)) return false;
   }
   return true;
 }
@@ -35,23 +49,38 @@ function areDistrictVocabulariesEqual(
   a: DistrictLocalVocabularyItem[],
   b: DistrictLocalVocabularyItem[],
 ): boolean {
-  if (a.length !== b.length) return false;
-  const mapA = new Map(
-    a.map((i) => [
-      i.term.trim().toLowerCase().normalize('NFC'),
-      {
-        term: i.term.trim().normalize('NFC'),
-        category: i.category.trim(),
-        description: (i.description || '').trim(),
-      },
-    ]),
-  );
-  for (const itemB of b) {
-    const key = itemB.term.trim().toLowerCase().normalize('NFC');
-    const itemA = mapA.get(key);
-    if (!itemA) return false;
-    if (itemA.category !== itemB.category.trim()) return false;
-    if (itemA.description !== (itemB.description || '').trim()) return false;
+  const normalizeMap = (items: DistrictLocalVocabularyItem[]) => {
+    const map = new Map<
+      string,
+      { term: string; category: string; description: string }
+    >();
+    for (const i of items || []) {
+      if (!i || typeof i.term !== 'string') continue;
+      const normalizedKey = i.term
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
+        .normalize('NFC');
+      if (!normalizedKey) continue;
+      map.set(normalizedKey, {
+        term: i.term.trim().replace(/\s+/g, ' ').normalize('NFC'),
+        category: (i.category || '').trim().replace(/\s+/g, ' '),
+        description: (i.description || '').trim().replace(/\s+/g, ' '),
+      });
+    }
+    return map;
+  };
+
+  const mapA = normalizeMap(a);
+  const mapB = normalizeMap(b);
+
+  if (mapA.size !== mapB.size) return false;
+
+  for (const [key, itemA] of mapA.entries()) {
+    const itemB = mapB.get(key);
+    if (!itemB) return false;
+    if (itemA.category !== itemB.category) return false;
+    if (itemA.description !== itemB.description) return false;
   }
   return true;
 }
@@ -334,10 +363,11 @@ export class DistrictAnalysisSettingsService {
       }
 
       // 7. Compute next monotonic version number
-      const nextVersion = await this.repository.getNextVersionNumber(
+      const maxVersion = await this.repository.getNextVersionNumber(
         tx,
         districtId,
       );
+      const nextVersion = Math.max(maxVersion, (activeRow?.version ?? 1) + 1);
       const newVersionId = `dcfg_${districtId}_v${nextVersion}`;
 
       // 8. Insert new immutable active version

@@ -162,13 +162,17 @@ export function computeGlobalSettingsDiff(
 
   // 3. Vocabulary diffs
   const activeVocabMap = new Map<string, GlobalServiceVocabularyItem>();
-  for (const item of active.globalServiceVocabulary || []) {
-    activeVocabMap.set(item.term.trim().toLowerCase().normalize('NFC'), item);
+  for (const item of active?.globalServiceVocabulary || []) {
+    if (!item || typeof item.term !== 'string') continue;
+    const key = item.term.trim().toLowerCase().normalize('NFC');
+    if (key) activeVocabMap.set(key, item);
   }
 
   const draftVocabMap = new Map<string, GlobalServiceVocabularyItem>();
-  for (const item of draft.globalServiceVocabulary || []) {
-    draftVocabMap.set(item.term.trim().toLowerCase().normalize('NFC'), item);
+  for (const item of draft?.globalServiceVocabulary || []) {
+    if (!item || typeof item.term !== 'string') continue;
+    const key = item.term.trim().toLowerCase().normalize('NFC');
+    if (key) draftVocabMap.set(key, item);
   }
 
   const vocabularyDiffs: VocabularyDiffItem[] = [];
@@ -176,6 +180,9 @@ export function computeGlobalSettingsDiff(
   // Check draft items for added or modified
   for (const [key, draftItem] of draftVocabMap.entries()) {
     const activeItem = activeVocabMap.get(key);
+    const draftCategory = (draftItem.category || '').trim();
+    const draftDesc = (draftItem.description || '').trim();
+
     if (!activeItem) {
       vocabularyDiffs.push({
         term: draftItem.term,
@@ -185,9 +192,10 @@ export function computeGlobalSettingsDiff(
       });
       totalChanges++;
     } else {
+      const activeCategory = (activeItem.category || '').trim();
+      const activeDesc = (activeItem.description || '').trim();
       const isModified =
-        activeItem.category.trim() !== draftItem.category.trim() ||
-        (activeItem.description || '').trim() !== (draftItem.description || '').trim();
+        activeCategory !== draftCategory || activeDesc !== draftDesc;
 
       if (isModified) {
         vocabularyDiffs.push({
@@ -234,7 +242,10 @@ export function computeGlobalSettingsDiff(
 
 export function computeDistrictSettingsDiff(
   active: DistrictAnalysisSettingsDto,
-  draft: DistrictAnalysisSettingsDraftDto | SaveDistrictAnalysisSettingsDraftRequest | null,
+  draft:
+    | DistrictAnalysisSettingsDraftDto
+    | SaveDistrictAnalysisSettingsDraftRequest
+    | null,
 ): DistrictSettingsDiff {
   if (!draft) {
     return {
@@ -249,13 +260,17 @@ export function computeDistrictSettingsDiff(
 
   // 1. Hokim Recognition Terms diffs
   const activeTermsMap = new Map<string, string>();
-  for (const term of active.hokimRecognitionTerms || []) {
-    activeTermsMap.set(term.trim().toLowerCase().normalize('NFC'), term.trim());
+  for (const term of active?.hokimRecognitionTerms || []) {
+    if (typeof term !== 'string') continue;
+    const key = term.trim().toLowerCase().normalize('NFC');
+    if (key) activeTermsMap.set(key, term.trim());
   }
 
   const draftTermsMap = new Map<string, string>();
-  for (const term of draft.hokimRecognitionTerms || []) {
-    draftTermsMap.set(term.trim().toLowerCase().normalize('NFC'), term.trim());
+  for (const term of draft?.hokimRecognitionTerms || []) {
+    if (typeof term !== 'string') continue;
+    const key = term.trim().toLowerCase().normalize('NFC');
+    if (key) draftTermsMap.set(key, term.trim());
   }
 
   const hokimTermsDiffs: HokimTermDiffItem[] = [];
@@ -287,19 +302,26 @@ export function computeDistrictSettingsDiff(
 
   // 2. District Local Vocabulary diffs
   const activeVocabMap = new Map<string, DistrictLocalVocabularyItem>();
-  for (const item of active.localVocabularyAdditions || []) {
-    activeVocabMap.set(item.term.trim().toLowerCase().normalize('NFC'), item);
+  for (const item of active?.localVocabularyAdditions || []) {
+    if (!item || typeof item.term !== 'string') continue;
+    const key = item.term.trim().toLowerCase().normalize('NFC');
+    if (key) activeVocabMap.set(key, item);
   }
 
   const draftVocabMap = new Map<string, DistrictLocalVocabularyItem>();
-  for (const item of draft.localVocabularyAdditions || []) {
-    draftVocabMap.set(item.term.trim().toLowerCase().normalize('NFC'), item);
+  for (const item of draft?.localVocabularyAdditions || []) {
+    if (!item || typeof item.term !== 'string') continue;
+    const key = item.term.trim().toLowerCase().normalize('NFC');
+    if (key) draftVocabMap.set(key, item);
   }
 
   const vocabularyDiffs: VocabularyDiffItem[] = [];
 
   for (const [key, draftItem] of draftVocabMap.entries()) {
     const activeItem = activeVocabMap.get(key);
+    const draftCategory = (draftItem.category || '').trim();
+    const draftDesc = (draftItem.description || '').trim();
+
     if (!activeItem) {
       vocabularyDiffs.push({
         term: draftItem.term,
@@ -309,9 +331,10 @@ export function computeDistrictSettingsDiff(
       });
       totalChanges++;
     } else {
+      const activeCategory = (activeItem.category || '').trim();
+      const activeDesc = (activeItem.description || '').trim();
       const isModified =
-        activeItem.category.trim() !== draftItem.category.trim() ||
-        (activeItem.description || '').trim() !== (draftItem.description || '').trim();
+        activeCategory !== draftCategory || activeDesc !== draftDesc;
 
       if (isModified) {
         vocabularyDiffs.push({

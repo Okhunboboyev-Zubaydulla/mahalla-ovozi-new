@@ -165,7 +165,7 @@ export function registerGlobalAnalysisSettingsRoutes(
           const code =
             typeof err.code === 'string' ? err.code : 'INTERNAL_SERVER_ERROR';
           const message =
-            typeof err.message === 'string'
+            statusCode < 500 && typeof err.message === 'string'
               ? err.message
               : 'Глобал созламаларни фаоллаштиришда хатолик юз берди.';
 
