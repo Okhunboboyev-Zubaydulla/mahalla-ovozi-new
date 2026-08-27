@@ -103,7 +103,7 @@ development_status:
 
   # ── Epic 6: Subscription Lifecycle, Recovery & Verified Deletion ──
   epic-6: in-progress
-  6-1-review-and-maintain-district-subscription-records: ready-for-dev
+  6-1-review-and-maintain-district-subscription-records: done
   6-2-manage-active-grace-and-suspended-district-service: backlog
   6-3-cancel-and-recover-a-district-before-live-deletion: backlog
   6-4-execute-permanent-live-system-district-deletion: backlog

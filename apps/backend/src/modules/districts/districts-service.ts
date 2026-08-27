@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { eq, asc, sql } from 'drizzle-orm';
 import { DbClient, mapPostgresConstraintError } from '../../adapters/db/client.js';
-import { districts } from '../../adapters/db/schema/index.js';
+import { districts, districtSubscriptions } from '../../adapters/db/schema/index.js';
 import {
   CreateDistrictRequest,
   UpdateDistrictRequest,
@@ -130,6 +130,16 @@ export async function createDistrict(
         .returning();
 
       createdRow = inserted;
+
+      // Initialize district subscription record atomically
+      await tx.insert(districtSubscriptions).values({
+        id: `sub_${id}`,
+        districtId: id,
+        status: 'SETUP_INCOMPLETE',
+        statusStartedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
 
       // P2-E & P1-10: DISTRICT_CREATED audit payload shape — privacy safe
       const auditMetadata: Record<string, unknown> = {

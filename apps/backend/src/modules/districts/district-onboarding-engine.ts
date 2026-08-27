@@ -2,6 +2,7 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { DbClient, DbOrTx } from '../../adapters/db/client.js';
 import {
   districts,
+  districtSubscriptions,
   districtTelegramBots,
   districtTelegramGroups,
   accounts,
@@ -404,6 +405,26 @@ export async function activateDistrict(
       if (!updated) {
         throw new DistrictAlreadyActiveError(districtId);
       }
+
+      // Atomically synchronize subscription lifecycle status
+      await tx
+        .insert(districtSubscriptions)
+        .values({
+          id: `sub_${districtId}`,
+          districtId,
+          status: 'ACTIVE',
+          statusStartedAt: now,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: districtSubscriptions.districtId,
+          set: {
+            status: 'ACTIVE',
+            statusStartedAt: now,
+            updatedAt: now,
+          },
+        });
 
       // Insert DISTRICT_ACTIVATED audit event inside transaction
       await recordAuditEvent(tx, {

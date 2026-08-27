@@ -19,6 +19,7 @@ import { registerAuditRoutes } from '../modules/audit/audit-routes.js';
 import { registerDistrictTopicsRoutes } from '../modules/districts/district-topics-routes.js';
 import { registerGlobalAnalysisSettingsRoutes } from '../modules/ai/global-analysis-settings-routes.js';
 import { registerDistrictAnalysisSettingsRoutes } from '../modules/ai/district-analysis-settings-routes.js';
+import { registerSubscriptionRoutes } from '../modules/subscriptions/subscriptions-routes.js';
 import { createBossClient, initBossQueues } from '../adapters/jobs/boss-client.js';
 import type PgBoss from 'pg-boss';
 import pg from 'pg';
@@ -57,6 +58,7 @@ export function registerAllDomainRoutes(
   registerDistrictTopicsRoutes(server, ctx.db);
   registerGlobalAnalysisSettingsRoutes(server, ctx.db);
   registerDistrictAnalysisSettingsRoutes(server, ctx.db);
+  registerSubscriptionRoutes(server, ctx.db);
 }
 
 export async function buildHttpServer(options?: {

@@ -139,6 +139,7 @@ const ACTION_DISPLAY_NAMES_UZ: Record<string, string> = {
   OPERATIONAL_ISSUE_DETECTED: 'Операцион муаммо аниқланди',
   OPERATIONAL_ISSUE_RESOLVED: 'Операцион муаммо бартараф этилди',
   OPERATIONAL_RETRY_TRIGGERED: 'Қайта уриниш амали ишга туширилди',
+  DISTRICT_SUBSCRIPTION_METADATA_UPDATED: 'Обуна маълумотлари янгиланди',
 };
 
 export function getActionDisplayNameUz(action: string): string {
