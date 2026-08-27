@@ -15,6 +15,9 @@ import {
   acceptedEvidence,
   telegramIntakeRecords,
   ensureDefaultAiProfiles,
+  globalAnalysisSettingsVersions,
+  globalAnalysisSettingsDrafts,
+  ensureDefaultGlobalAnalysisSettings,
 } from '../src/adapters/db/schema/index.js';
 import { eq } from 'drizzle-orm';
 import pg from 'pg';
@@ -930,7 +933,78 @@ describe('Database Schema & Migration Verification', () => {
       await db.delete(districts).where(eq(districts.id, districtId));
     });
   });
+
+  describe('Story 5.1: Global Analysis Settings Versions & Drafts Schemas', () => {
+    it('seeds and retrieves default active global analysis configuration (gcfg_v1)', async () => {
+      await ensureDefaultGlobalAnalysisSettings(db);
+
+      const [activeVersion] = await db
+        .select()
+        .from(globalAnalysisSettingsVersions)
+        .where(eq(globalAnalysisSettingsVersions.id, 'gcfg_v1'));
+
+      expect(activeVersion).toBeDefined();
+      expect(activeVersion!.version).toBe(1);
+      expect(activeVersion!.modelProvider).toBe('OPENAI');
+      expect(activeVersion!.modelId).toBe('gpt-4o-mini-2024-07-18');
+      expect(activeVersion!.temperature).toBe(0.0);
+      expect(activeVersion!.maxOutputTokens).toBe(500);
+      expect(activeVersion!.isActive).toBe(true);
+      expect(Array.isArray(activeVersion!.globalServiceVocabulary)).toBe(true);
+      expect(activeVersion!.globalServiceVocabulary.length).toBeGreaterThanOrEqual(6);
+    });
+
+    it('can insert, update, and query the singleton global settings draft', async () => {
+      await ensureDefaultGlobalAnalysisSettings(db);
+
+      // Clean existing draft if any
+      await db.delete(globalAnalysisSettingsDrafts).where(eq(globalAnalysisSettingsDrafts.id, 'global'));
+
+      await db.insert(globalAnalysisSettingsDrafts).values({
+        id: 'global',
+        baseActiveVersionId: 'gcfg_v1',
+        modelProvider: 'GEMINI',
+        modelId: 'gemini-2.0-flash',
+        temperature: 0.1,
+        maxOutputTokens: 800,
+        relevanceSystemPrompt: 'Custom test relevance prompt for draft testing at least 20 chars',
+        topicMatchingSystemPrompt: 'Custom test topic matching prompt for draft testing at least 20 chars',
+        topicProjectionSystemPrompt: 'Custom test topic projection prompt for draft testing at least 20 chars',
+        globalServiceVocabulary: [
+          { term: 'Газ таъминоти', category: 'Газ таъминоти', description: 'Газ тармоғи' },
+        ],
+      });
+
+      const [draft] = await db
+        .select()
+        .from(globalAnalysisSettingsDrafts)
+        .where(eq(globalAnalysisSettingsDrafts.id, 'global'));
+
+      expect(draft).toBeDefined();
+      expect(draft!.modelProvider).toBe('GEMINI');
+      expect(draft!.modelId).toBe('gemini-2.0-flash');
+      expect(draft!.temperature).toBeCloseTo(0.1);
+      expect(draft!.maxOutputTokens).toBe(800);
+
+      // Updating draft works
+      await db
+        .update(globalAnalysisSettingsDrafts)
+        .set({ temperature: 0.2, updatedAt: new Date() })
+        .where(eq(globalAnalysisSettingsDrafts.id, 'global'));
+
+      const [updatedDraft] = await db
+        .select()
+        .from(globalAnalysisSettingsDrafts)
+        .where(eq(globalAnalysisSettingsDrafts.id, 'global'));
+
+      expect(updatedDraft!.temperature).toBeCloseTo(0.2);
+
+      // Clean up draft
+      await db.delete(globalAnalysisSettingsDrafts).where(eq(globalAnalysisSettingsDrafts.id, 'global'));
+    });
+  });
 });
+
 
 
 

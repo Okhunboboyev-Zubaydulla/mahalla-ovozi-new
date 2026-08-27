@@ -11,6 +11,8 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { districts } from './districts.js';
+import { accounts } from './accounts.js';
+import type { GlobalServiceVocabularyItem } from '@mahalla-ovozi/api-contracts';
 
 export const aiProfiles = pgTable('ai_profiles', {
   id: text('id').primaryKey(), // e.g. "prof_rel_2026_08_v1"
@@ -91,12 +93,81 @@ export const aiProviderAttempts = pgTable(
   ],
 );
 
+export const globalAnalysisSettingsVersions = pgTable(
+  'global_analysis_settings_versions',
+  {
+    id: text('id').primaryKey(), // e.g. "gcfg_v1"
+    version: integer('version').notNull(),
+    modelProvider: text('model_provider').notNull(), // 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA'
+    modelId: text('model_id').notNull(),
+    temperature: real('temperature').notNull().default(0.0),
+    maxOutputTokens: integer('max_output_tokens').notNull().default(500),
+    relevanceSystemPrompt: text('relevance_system_prompt').notNull(),
+    topicMatchingSystemPrompt: text('topic_matching_system_prompt').notNull(),
+    topicProjectionSystemPrompt: text('topic_projection_system_prompt').notNull(),
+    globalServiceVocabulary: jsonb('global_service_vocabulary')
+      .notNull()
+      .$type<GlobalServiceVocabularyItem[]>(),
+    isActive: boolean('is_active').notNull().default(false),
+    activatedAt: timestamp('activated_at', { withTimezone: true }),
+    activatedBy: text('activated_by').references(() => accounts.id, {
+      onDelete: 'set null',
+    }),
+    changeReason: text('change_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('global_settings_versions_version_idx').on(table.version),
+    index('global_settings_versions_active_idx').on(table.isActive),
+  ],
+);
+
+export const globalAnalysisSettingsDrafts = pgTable(
+  'global_analysis_settings_drafts',
+  {
+    id: text('id').primaryKey(), // singleton 'global'
+    baseActiveVersionId: text('base_active_version_id').references(
+      () => globalAnalysisSettingsVersions.id,
+      { onDelete: 'set null' },
+    ),
+    modelProvider: text('model_provider').notNull(),
+    modelId: text('model_id').notNull(),
+    temperature: real('temperature').notNull().default(0.0),
+    maxOutputTokens: integer('max_output_tokens').notNull().default(500),
+    relevanceSystemPrompt: text('relevance_system_prompt').notNull(),
+    topicMatchingSystemPrompt: text('topic_matching_system_prompt').notNull(),
+    topicProjectionSystemPrompt: text('topic_projection_system_prompt').notNull(),
+    globalServiceVocabulary: jsonb('global_service_vocabulary')
+      .notNull()
+      .$type<GlobalServiceVocabularyItem[]>(),
+    updatedBy: text('updated_by').references(() => accounts.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+);
+
 export type AiProfile = typeof aiProfiles.$inferSelect;
 export type NewAiProfile = typeof aiProfiles.$inferInsert;
 export type AiOperation = typeof aiOperations.$inferSelect;
 export type NewAiOperation = typeof aiOperations.$inferInsert;
 export type AiProviderAttempt = typeof aiProviderAttempts.$inferSelect;
 export type NewAiProviderAttempt = typeof aiProviderAttempts.$inferInsert;
+export type GlobalAnalysisSettingsVersion =
+  typeof globalAnalysisSettingsVersions.$inferSelect;
+export type NewGlobalAnalysisSettingsVersion =
+  typeof globalAnalysisSettingsVersions.$inferInsert;
+export type GlobalAnalysisSettingsDraft =
+  typeof globalAnalysisSettingsDrafts.$inferSelect;
+export type NewGlobalAnalysisSettingsDraft =
+  typeof globalAnalysisSettingsDrafts.$inferInsert;
 
 
 

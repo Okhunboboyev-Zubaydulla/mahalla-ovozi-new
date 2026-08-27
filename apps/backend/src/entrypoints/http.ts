@@ -17,6 +17,7 @@ import { registerHealthRoutes } from '../modules/health/health-routes.js';
 import { registerIssueRoutes } from '../modules/issues/issue-routes.js';
 import { registerAuditRoutes } from '../modules/audit/audit-routes.js';
 import { registerDistrictTopicsRoutes } from '../modules/districts/district-topics-routes.js';
+import { registerGlobalAnalysisSettingsRoutes } from '../modules/ai/global-analysis-settings-routes.js';
 import { createBossClient, initBossQueues } from '../adapters/jobs/boss-client.js';
 import type PgBoss from 'pg-boss';
 import pg from 'pg';
@@ -53,6 +54,7 @@ export function registerAllDomainRoutes(
   registerIssueRoutes(server, { db: ctx.db, pool: ctx.pool, boss: ctx.boss });
   registerAuditRoutes(server, ctx.db);
   registerDistrictTopicsRoutes(server, ctx.db);
+  registerGlobalAnalysisSettingsRoutes(server, ctx.db);
 }
 
 export async function buildHttpServer(options?: {

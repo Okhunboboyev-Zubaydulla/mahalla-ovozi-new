@@ -1,5 +1,14 @@
-import { aiProfiles, NewAiProfile } from './schema/ai.js';
+import {
+  aiProfiles,
+  NewAiProfile,
+  globalAnalysisSettingsVersions,
+  NewGlobalAnalysisSettingsVersion,
+} from './schema/ai.js';
 import type { DbOrTx } from './client.js';
+import { SEMANTIC_RELEVANCE_SYSTEM_PROMPT } from '../../modules/ai/semantic-relevance-evaluator.js';
+import { TOPIC_MATCHING_SYSTEM_PROMPT } from '../../modules/topics/topic-matching-evaluator.js';
+import { TOPIC_PROJECTION_SYSTEM_PROMPT } from '../../modules/topics/topic-projection-evaluator.js';
+import { DEFAULT_GLOBAL_SERVICE_VOCABULARY } from '@mahalla-ovozi/api-contracts';
 
 export const defaultSemanticRelevanceProfile: NewAiProfile = {
   id: 'prof_rel_2026_08_v1',
@@ -70,6 +79,30 @@ export const defaultTopicProjectionProfile: NewAiProfile = {
   isActive: true,
 };
 
+export const defaultGlobalAnalysisSettingsVersion: NewGlobalAnalysisSettingsVersion = {
+  id: 'gcfg_v1',
+  version: 1,
+  modelProvider: 'OPENAI',
+  modelId: 'gpt-4o-mini-2024-07-18',
+  temperature: 0.0,
+  maxOutputTokens: 500,
+  relevanceSystemPrompt: SEMANTIC_RELEVANCE_SYSTEM_PROMPT,
+  topicMatchingSystemPrompt: TOPIC_MATCHING_SYSTEM_PROMPT,
+  topicProjectionSystemPrompt: TOPIC_PROJECTION_SYSTEM_PROMPT,
+  globalServiceVocabulary: DEFAULT_GLOBAL_SERVICE_VOCABULARY,
+  isActive: true,
+  activatedAt: new Date('2026-08-01T00:00:00.000Z'),
+  activatedBy: null,
+  changeReason: 'Тизимнинг дастлабки фаол глобал таҳлил конфигурацияси',
+};
+
+export async function ensureDefaultGlobalAnalysisSettings(db: DbOrTx): Promise<void> {
+  await db
+    .insert(globalAnalysisSettingsVersions)
+    .values(defaultGlobalAnalysisSettingsVersion)
+    .onConflictDoNothing({ target: globalAnalysisSettingsVersions.id });
+}
+
 export async function ensureDefaultAiProfiles(db: DbOrTx): Promise<void> {
   await db
     .insert(aiProfiles)
@@ -83,4 +116,6 @@ export async function ensureDefaultAiProfiles(db: DbOrTx): Promise<void> {
     .insert(aiProfiles)
     .values(defaultTopicProjectionProfile)
     .onConflictDoNothing({ target: aiProfiles.id });
+  await ensureDefaultGlobalAnalysisSettings(db);
 }
+

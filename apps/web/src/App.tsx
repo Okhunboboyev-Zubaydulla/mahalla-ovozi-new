@@ -14,7 +14,7 @@ import { SystemHealthPage } from './pages/SystemHealthPage.js';
 import { TelegramSetupPage } from './pages/TelegramSetupPage.js';
 import { SubscriptionsPage } from './pages/placeholders/SubscriptionsPage.js';
 import { HokimAccountsPage } from './pages/HokimAccountsPage.js';
-import { AiOperationsPage } from './pages/placeholders/AiOperationsPage.js';
+import { AiOperationsPage } from './pages/AiOperationsPage.js';
 import { AuditHistoryPage } from './pages/AuditHistoryPage.js';
 import { HokimDashboardPage } from './pages/HokimDashboardPage.js';
 import { TopicEvidencePage } from './pages/TopicEvidencePage.js';
