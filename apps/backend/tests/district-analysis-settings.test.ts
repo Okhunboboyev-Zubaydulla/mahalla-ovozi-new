@@ -342,6 +342,59 @@ describe('Story 5.2: District Recognition Settings & Drafts Integration Tests', 
       const afterVersions = await db.select().from(districtAnalysisSettingsVersions);
       expect(afterVersions.length).toBe(initialVersions.length);
     });
+
+    it('successfully saves and retrieves a draft for a brand-new unseeded district without active version records (AC 3, 4, 8)', async () => {
+      const now = Date.now();
+      const newDistrictId = `dist_unseeded_${now}`;
+      await db.insert(districts).values({
+        id: newDistrictId,
+        name: `Янги туман ${now}`,
+        region: 'Тошкент шаҳри',
+        status: 'SETUP_INCOMPLETE',
+      });
+
+      // No records in districtAnalysisSettingsVersions for this district
+      const res = await server.inject({
+        method: 'POST',
+        url: `/api/v1/ai/settings/districts/${newDistrictId}/draft`,
+        headers: {
+          cookie: poCookie,
+          'content-type': 'application/json',
+          ...SAME_ORIGIN_HEADERS,
+        },
+        payload: {
+          hokimRecognitionTerms: ['Ҳоким', 'Янги туман ҳокими'],
+          localVocabularyAdditions: [
+            {
+              term: 'Янги Маҳалла',
+              category: 'Маҳалла номлари',
+              description: 'Янги маҳалла ҳудуди',
+            },
+          ],
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.payload) as SaveDistrictAnalysisSettingsDraftResponse;
+      expect(data.draft.districtId).toBe(newDistrictId);
+      expect(data.draft.baseActiveVersionId).toBeNull();
+      expect(data.draft.hokimRecognitionTerms).toEqual(['Ҳоким', 'Янги туман ҳокими']);
+
+      // Subsequent GET returns baseline activeConfig and saved draft
+      const getRes = await server.inject({
+        method: 'GET',
+        url: `/api/v1/ai/settings/districts/${newDistrictId}`,
+        headers: {
+          cookie: poCookie,
+          ...SAME_ORIGIN_HEADERS,
+        },
+      });
+      expect(getRes.statusCode).toBe(200);
+      const getData = JSON.parse(getRes.payload) as GetDistrictAnalysisSettingsResponse;
+      expect(getData.activeConfiguration.id).toBe(`dcfg_${newDistrictId}_v1`);
+      expect(getData.draft).not.toBeNull();
+      expect(getData.draft?.baseActiveVersionId).toBeNull();
+    });
   });
 
   describe('Validation & Edge Cases (AC 6, 7)', () => {

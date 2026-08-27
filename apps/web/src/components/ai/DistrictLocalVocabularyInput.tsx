@@ -42,11 +42,12 @@ export const DistrictLocalVocabularyInput: React.FC<
   );
   const [newDescription, setNewDescription] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
+  const safeValue = value ?? [];
 
   const handleAdd = () => {
-    const trimmedTerm = newTerm.trim();
-    const trimmedCategory = newCategory.trim();
-    const trimmedDesc = newDescription.trim();
+    const trimmedTerm = newTerm.trim().replace(/\s+/g, ' ');
+    const trimmedCategory = newCategory.trim().replace(/\s+/g, ' ');
+    const trimmedDesc = newDescription.trim().replace(/\s+/g, ' ');
 
     if (!trimmedTerm) {
       setInputError('Атама номини киритинг.');
@@ -64,13 +65,16 @@ export const DistrictLocalVocabularyInput: React.FC<
       setInputError('Тоифани танланг ёки киритинг.');
       return;
     }
+    if (safeValue.length >= 100) {
+      setInputError('Маҳаллий луғат атамалари сони 100 тадан ошмаслиги керак.');
+      return;
+    }
 
     const normalizedNew = trimmedTerm
       .normalize('NFC')
-      .replace(/\s+/g, ' ')
       .toLowerCase();
 
-    const exists = value.some(
+    const exists = safeValue.some(
       (item) =>
         item.term.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase() ===
         normalizedNew,
@@ -83,7 +87,7 @@ export const DistrictLocalVocabularyInput: React.FC<
 
     setInputError(null);
     const updated: DistrictLocalVocabularyItem[] = [
-      ...value,
+      ...safeValue,
       {
         term: trimmedTerm,
         category: trimmedCategory,
@@ -96,8 +100,8 @@ export const DistrictLocalVocabularyInput: React.FC<
     setNewDescription('');
   };
 
-  const handleRemove = (index: number) => {
-    const updated = value.filter((_, idx) => idx !== index);
+  const handleRemove = (termToRemove: string) => {
+    const updated = safeValue.filter((item) => item.term !== termToRemove);
     onChange?.(updated);
   };
 
@@ -138,14 +142,7 @@ export const DistrictLocalVocabularyInput: React.FC<
           size="small"
           icon={<DeleteOutlined />}
           disabled={disabled}
-          onClick={() => {
-            const actualIndex = value.findIndex(
-              (item) => item.term === record.term,
-            );
-            if (actualIndex !== -1) {
-              handleRemove(actualIndex);
-            }
-          }}
+          onClick={() => handleRemove(record.term)}
           aria-label={`Ўчириш: ${record.term}`}
         />
       ),
@@ -224,10 +221,8 @@ export const DistrictLocalVocabularyInput: React.FC<
       )}
 
       <Table
-        dataSource={value.map((item, idx) => ({
-          ...item,
-          key: `${item.term}-${idx}`,
-        }))}
+        rowKey="term"
+        dataSource={safeValue}
         columns={columns}
         pagination={{ pageSize: 6, size: 'small' }}
         size="small"

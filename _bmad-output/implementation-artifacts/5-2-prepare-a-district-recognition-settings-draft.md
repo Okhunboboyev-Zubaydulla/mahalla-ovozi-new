@@ -4,7 +4,7 @@ baseline_commit: d7b789af9179f3e83509eede242e8f93646c4c47
 
 # Story 5.2: Prepare a District Recognition Settings Draft
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -220,6 +220,18 @@ So that I can prepare local Hokim-recognition terms and vocabulary additions wit
     - Test validation failure showing accessible error summary and focus transfer.
     - Test dirty state registration and `UnsavedChangesModal` interaction when switching districts.
     - Test successful draft save mutation.
+
+### Review Findings
+
+- [x] [Review][Patch] Fix foreign key violation when saving draft for unseeded districts by setting nullable baseActiveVersionId [apps/backend/src/modules/ai/district-analysis-settings-service.ts:154]
+- [x] [Review][Patch] Add null fallback safety and length limit enforcement in HokimRecognitionTermsInput and DistrictLocalVocabularyInput [apps/web/src/components/ai/HokimRecognitionTermsInput.tsx:15, apps/web/src/components/ai/DistrictLocalVocabularyInput.tsx:37]
+- [x] [Review][Patch] Target interactive input elements directly when activating error summary deep links [apps/web/src/components/ai/DistrictSettingsDraftForm.tsx:238]
+- [x] [Review][Patch] Normalize internal whitespace and skip empty terms during backend draft sanitization [apps/backend/src/modules/ai/district-analysis-settings-service.ts:121]
+- [x] [Review][Patch] Clear lingering field errors when switching districts in draft form [apps/web/src/components/ai/DistrictSettingsDraftForm.tsx:68]
+- [x] [Review][Patch] Remove tags by index rather than string filter in HokimRecognitionTermsInput [apps/web/src/components/ai/HokimRecognitionTermsInput.tsx:58]
+- [x] [Review][Patch] Add integration test for draft saving on brand-new unseeded district [apps/backend/tests/district-analysis-settings.test.ts]
+- [x] [Review][Defer] Concurrency guard / optimistic locking on draft updates [apps/backend/src/modules/ai/district-analysis-settings-repository.ts] — deferred, pre-existing draft pattern
+- [x] [Review][Defer] Automatic AI analysis settings initialization hook in legacy district creation service [apps/backend/src/modules/districts/districts-service.ts] — deferred, pre-existing Epic 1 service
 
 ---
 

@@ -16,9 +16,10 @@ export const HokimRecognitionTermsInput: React.FC<
   const { token } = theme.useToken();
   const [newTerm, setNewTerm] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
+  const safeValue = value ?? [];
 
   const handleAdd = () => {
-    const trimmed = newTerm.trim();
+    const trimmed = newTerm.trim().replace(/\s+/g, ' ');
 
     if (!trimmed) {
       setInputError('Ҳоким атамасини киритинг.');
@@ -32,13 +33,16 @@ export const HokimRecognitionTermsInput: React.FC<
       setInputError('Атама 100 та белгидан ошмаслиги керак.');
       return;
     }
+    if (safeValue.length >= 50) {
+      setInputError('Ҳокимга оид атамалар сони 50 тадан ошмаслиги керак.');
+      return;
+    }
 
     const normalizedNew = trimmed
       .normalize('NFC')
-      .replace(/\s+/g, ' ')
       .toLowerCase();
 
-    const exists = value.some(
+    const exists = safeValue.some(
       (term) =>
         term.trim().normalize('NFC').replace(/\s+/g, ' ').toLowerCase() ===
         normalizedNew,
@@ -50,13 +54,13 @@ export const HokimRecognitionTermsInput: React.FC<
     }
 
     setInputError(null);
-    const updated = [...value, trimmed];
+    const updated = [...safeValue, trimmed];
     onChange?.(updated);
     setNewTerm('');
   };
 
-  const handleRemove = (termToRemove: string) => {
-    const updated = value.filter((t) => t !== termToRemove);
+  const handleRemove = (indexToRemove: number) => {
+    const updated = safeValue.filter((_, idx) => idx !== indexToRemove);
     onChange?.(updated);
   };
 
@@ -124,18 +128,18 @@ export const HokimRecognitionTermsInput: React.FC<
           borderRadius: token.borderRadius,
         }}
       >
-        {value.length === 0 ? (
+        {safeValue.length === 0 ? (
           <Text type="secondary" style={{ fontStyle: 'italic', padding: '4px 8px' }}>
             Атамалар киритилмаган. Камида 1 та атама киритилиши шарт.
           </Text>
         ) : (
-          value.map((term) => (
+          safeValue.map((term, idx) => (
             <Tag
               key={term}
               closable={!disabled}
               onClose={(e) => {
                 e.preventDefault();
-                handleRemove(term);
+                handleRemove(idx);
               }}
               closeIcon={
                 <span
@@ -145,7 +149,7 @@ export const HokimRecognitionTermsInput: React.FC<
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      handleRemove(term);
+                      handleRemove(idx);
                     }
                   }}
                   style={{ cursor: 'pointer' }}

@@ -67,6 +67,7 @@ export const DistrictSettingsDraftForm: React.FC<
   useEffect(() => {
     if (!isFormDirty) {
       form.setFieldsValue(initialValues);
+      setFieldErrors({});
     }
   }, [draft?.updatedAt, activeSettings.id, districtId]);
 
@@ -236,8 +237,19 @@ export const DistrictSettingsDraftForm: React.FC<
                   <button
                     type="button"
                     onClick={() => {
-                      form.scrollToField(field, { behavior: 'smooth' });
-                      const el = document.getElementById(`draft-${field}`);
+                      form.scrollToField(field, {
+                        behavior: 'smooth',
+                        focus: true,
+                      });
+                      const targetInputId =
+                        field === 'hokimRecognitionTerms'
+                          ? 'hokim-new-term'
+                          : field === 'localVocabularyAdditions'
+                            ? 'district-vocab-new-term'
+                            : `draft-${field}`;
+                      const el =
+                        document.getElementById(targetInputId) ||
+                        document.getElementById(`draft-${field}`);
                       if (el) el.focus();
                     }}
                     style={{

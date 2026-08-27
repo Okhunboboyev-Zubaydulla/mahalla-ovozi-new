@@ -113,16 +113,14 @@ export class DistrictAnalysisSettingsService {
       );
     }
 
-    const activeConfig = await this.getActiveConfiguration(db, districtId);
-
     // Sanitize and deduplicate Hokim recognition terms
     const seenTerms = new Set<string>();
     const sanitizedTerms: string[] = [];
     for (const rawTerm of payload.hokimRecognitionTerms) {
-      const term = rawTerm.trim();
+      const term = rawTerm.trim().replace(/\s+/g, ' ');
+      if (!term) continue;
       const normalized = term
         .normalize('NFC')
-        .replace(/\s+/g, ' ')
         .toLowerCase();
       if (!seenTerms.has(normalized)) {
         seenTerms.add(normalized);
@@ -134,16 +132,16 @@ export class DistrictAnalysisSettingsService {
     const seenVocab = new Set<string>();
     const sanitizedVocabulary: DistrictLocalVocabularyItem[] = [];
     for (const item of payload.localVocabularyAdditions || []) {
-      const term = item.term.trim();
+      const term = item.term.trim().replace(/\s+/g, ' ');
+      if (!term) continue;
       const normalized = term
         .normalize('NFC')
-        .replace(/\s+/g, ' ')
         .toLowerCase();
       if (!seenVocab.has(normalized)) {
         seenVocab.add(normalized);
         sanitizedVocabulary.push({
           term,
-          category: item.category.trim(),
+          category: item.category.trim().replace(/\s+/g, ' '),
           ...(item.description && item.description.trim()
             ? { description: item.description.trim() }
             : {}),
@@ -152,10 +150,16 @@ export class DistrictAnalysisSettingsService {
     }
 
     const executeInTx = async (tx: DbOrTx) => {
+      const activeRow = await this.repository.getActiveConfiguration(
+        tx,
+        districtId,
+      );
+      const baseActiveVersionId = activeRow ? activeRow.id : null;
+
       const saved = await this.repository.saveDraft(tx, {
         id: `draft_${districtId}`,
         districtId,
-        baseActiveVersionId: activeConfig.id,
+        baseActiveVersionId,
         hokimRecognitionTerms: sanitizedTerms,
         localVocabularyAdditions: sanitizedVocabulary,
         updatedBy: actor.id,
@@ -170,7 +174,7 @@ export class DistrictAnalysisSettingsService {
         ipAddress: actor.ipAddress || null,
         userAgent: actor.userAgent || null,
         metadata: {
-          baseActiveVersionId: activeConfig.id,
+          baseActiveVersionId,
           hokimTermsCount: sanitizedTerms.length,
           vocabularyCount: sanitizedVocabulary.length,
         },
