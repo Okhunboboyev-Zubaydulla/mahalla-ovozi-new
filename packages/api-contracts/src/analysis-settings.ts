@@ -206,3 +206,157 @@ export const SaveGlobalAnalysisSettingsDraftResponseSchema = z.object({
 export type SaveGlobalAnalysisSettingsDraftResponse = z.infer<
   typeof SaveGlobalAnalysisSettingsDraftResponseSchema
 >;
+
+// ==========================================
+// District Analysis Settings Contracts (Story 5.2)
+// ==========================================
+
+export const DEFAULT_HOKIM_RECOGNITION_TERMS = [
+  'Ҳоким',
+  'Туман ҳокими',
+  'Ҳоким ёрдамчиси',
+  'Ҳокимият',
+  'Сектор раҳбари',
+  'Hokim',
+  'Tuman hokimi',
+  'Hokimiyat',
+] as const;
+
+export const DEFAULT_DISTRICT_VOCABULARY_CATEGORIES = [
+  'Маҳалла номлари',
+  'Мўлжал ва жойлар',
+  'Маҳаллий атамалар',
+  'Сув ҳавзалари ва каналлар',
+  'Маҳаллий муассасалар',
+  'Бошқа',
+] as const;
+
+export const DistrictLocalVocabularyItemSchema = z.object({
+  term: z
+    .string()
+    .trim()
+    .min(1, 'Атама бўш бўлиши мумкин эмас.')
+    .max(100, 'Атама 100 та белгидан ошмаслиги керак.'),
+  category: z
+    .string()
+    .trim()
+    .min(1, 'Тоифа бўш бўлиши мумкин эмас.')
+    .max(100, 'Тоифа 100 та белгидан ошмаслиги керак.'),
+  description: z
+    .string()
+    .trim()
+    .max(500, 'Тавсиф 500 та белгидан ошмаслиги керак.')
+    .optional(),
+});
+export type DistrictLocalVocabularyItem = z.infer<
+  typeof DistrictLocalVocabularyItemSchema
+>;
+
+export const DistrictAnalysisSettingsDtoSchema = z.object({
+  id: z.string(),
+  districtId: z.string(),
+  version: z.number().int().positive(),
+  hokimRecognitionTerms: z.array(z.string()),
+  localVocabularyAdditions: z.array(DistrictLocalVocabularyItemSchema),
+  isActive: z.boolean(),
+  activatedAt: z.string().datetime().nullable(),
+  activatedBy: z.string().nullable().optional(),
+  changeReason: z.string().nullable().optional(),
+  createdAt: z.string().datetime(),
+});
+export type DistrictAnalysisSettingsDto = z.infer<
+  typeof DistrictAnalysisSettingsDtoSchema
+>;
+
+export const DistrictAnalysisSettingsDraftDtoSchema = z.object({
+  id: z.string(),
+  districtId: z.string(),
+  baseActiveVersionId: z.string().nullable().optional(),
+  hokimRecognitionTerms: z.array(z.string()),
+  localVocabularyAdditions: z.array(DistrictLocalVocabularyItemSchema),
+  updatedBy: z.string().nullable().optional(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type DistrictAnalysisSettingsDraftDto = z.infer<
+  typeof DistrictAnalysisSettingsDraftDtoSchema
+>;
+
+export const SaveDistrictAnalysisSettingsDraftSchema = z.object({
+  hokimRecognitionTerms: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(2, 'Ҳоким атамаси камида 2 та белгидан иборат бўлиши керак.')
+        .max(100, 'Ҳоким атамаси 100 та белгидан ошмаслиги керак.'),
+    )
+    .min(1, 'Камида 1 та ҳокимга оид атама киритилиши шарт.')
+    .max(50, 'Ҳокимга оид атамалар сони 50 тадан ошмаслиги керак.')
+    .superRefine((terms, ctx) => {
+      const seen = new Set<string>();
+      for (let i = 0; i < terms.length; i++) {
+        const term = terms[i];
+        if (!term) continue;
+        const normalized = term
+          .trim()
+          .normalize('NFC')
+          .replace(/\s+/g, ' ')
+          .toLowerCase();
+        if (seen.has(normalized)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Ҳоким атамаси такрорланмаслиги керак: "${term}".`,
+            path: [i],
+          });
+        }
+        seen.add(normalized);
+      }
+    }),
+  localVocabularyAdditions: z
+    .array(DistrictLocalVocabularyItemSchema)
+    .max(100, 'Маҳаллий луғат атамалари сони 100 тадан ошмаслиги керак.')
+    .default([])
+    .superRefine((items, ctx) => {
+      const seen = new Set<string>();
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (!item) continue;
+        const normalized = item.term
+          .trim()
+          .normalize('NFC')
+          .replace(/\s+/g, ' ')
+          .toLowerCase();
+        if (seen.has(normalized)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Маҳаллий луғат атамаси такрорланмаслиги керак: "${item.term}".`,
+            path: [i, 'term'],
+          });
+        }
+        seen.add(normalized);
+      }
+    }),
+});
+export type SaveDistrictAnalysisSettingsDraftRequest = z.infer<
+  typeof SaveDistrictAnalysisSettingsDraftSchema
+>;
+
+export const GetDistrictAnalysisSettingsResponseSchema = z.object({
+  districtId: z.string(),
+  districtName: z.string(),
+  activeConfiguration: DistrictAnalysisSettingsDtoSchema,
+  draft: DistrictAnalysisSettingsDraftDtoSchema.nullable(),
+});
+export type GetDistrictAnalysisSettingsResponse = z.infer<
+  typeof GetDistrictAnalysisSettingsResponseSchema
+>;
+
+export const SaveDistrictAnalysisSettingsDraftResponseSchema = z.object({
+  draft: DistrictAnalysisSettingsDraftDtoSchema,
+  message: z.string(),
+});
+export type SaveDistrictAnalysisSettingsDraftResponse = z.infer<
+  typeof SaveDistrictAnalysisSettingsDraftResponseSchema
+>;
+

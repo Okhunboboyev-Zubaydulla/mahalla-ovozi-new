@@ -7,6 +7,7 @@ import {
   Alert,
   Tag,
   theme,
+  Space,
 } from 'antd';
 import {
   SettingOutlined,
@@ -14,26 +15,39 @@ import {
   HistoryOutlined,
   DashboardOutlined,
   ReloadOutlined,
+  EnvironmentOutlined,
 } from '@ant-design/icons';
 import { useDistrict } from '../district/district-context.js';
+import { DistrictSelector } from '../components/DistrictSelector.js';
 import { useGlobalAnalysisSettings } from '../hooks/useGlobalAnalysisSettings.js';
+import { useDistrictAnalysisSettings } from '../hooks/useDistrictAnalysisSettings.js';
 import { ActiveGlobalSettingsCard } from '../components/ai/ActiveGlobalSettingsCard.js';
 import { GlobalSettingsDraftForm } from '../components/ai/GlobalSettingsDraftForm.js';
+import { ActiveDistrictSettingsCard } from '../components/ai/ActiveDistrictSettingsCard.js';
+import { DistrictSettingsDraftForm } from '../components/ai/DistrictSettingsDraftForm.js';
 
 const { Title, Text, Paragraph } = Typography;
 
 export const AiOperationsPage: React.FC = () => {
   const { token } = theme.useToken();
-  const { attemptTransition } = useDistrict();
+  const { activeDistrictId, attemptTransition } = useDistrict();
   const [activeTabKey, setActiveTabKey] = useState<string>('global');
 
   const {
-    data: settingsData,
-    isLoading,
-    isError,
-    error,
-    refetch,
+    data: globalSettingsData,
+    isLoading: isGlobalLoading,
+    isError: isGlobalError,
+    error: globalError,
+    refetch: refetchGlobal,
   } = useGlobalAnalysisSettings();
+
+  const {
+    data: districtSettingsData,
+    isLoading: isDistrictLoading,
+    isError: isDistrictError,
+    error: districtError,
+    refetch: refetchDistrict,
+  } = useDistrictAnalysisSettings(activeDistrictId);
 
   const handleTabChange = (nextKey: string) => {
     if (nextKey === activeTabKey) return;
@@ -53,24 +67,24 @@ export const AiOperationsPage: React.FC = () => {
       ),
       children: (
         <div>
-          {isLoading && (
+          {isGlobalLoading && (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <Spin size="large" tip="Глобал созламалар юкланмоқда..." />
             </div>
           )}
 
-          {isError && (
+          {isGlobalError && (
             <Alert
               message="Созламаларни юклашда хатолик"
               description={
-                error instanceof Error
-                  ? error.message
+                globalError instanceof Error
+                  ? globalError.message
                   : 'Маълумотларни сервердан олишнинг имкони бўлмади.'
               }
               type="error"
               showIcon
               action={
-                <a onClick={() => refetch()} style={{ cursor: 'pointer' }}>
+                <a onClick={() => refetchGlobal()} style={{ cursor: 'pointer' }}>
                   <ReloadOutlined /> Қайта уриниш
                 </a>
               }
@@ -78,14 +92,14 @@ export const AiOperationsPage: React.FC = () => {
             />
           )}
 
-          {settingsData && (
+          {globalSettingsData && (
             <div>
               <ActiveGlobalSettingsCard
-                settings={settingsData.activeConfiguration}
+                settings={globalSettingsData.activeConfiguration}
               />
               <GlobalSettingsDraftForm
-                activeSettings={settingsData.activeConfiguration}
-                draft={settingsData.draft}
+                activeSettings={globalSettingsData.activeConfiguration}
+                draft={globalSettingsData.draft}
               />
             </div>
           )}
@@ -98,12 +112,83 @@ export const AiOperationsPage: React.FC = () => {
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <ApartmentOutlined />
           Туман созламалари
-          <Tag color="default" style={{ marginInlineStart: 4, fontSize: 11 }}>
-            5.2 босқичида
-          </Tag>
         </span>
       ),
-      disabled: true,
+      children: (
+        <div>
+          {!activeDistrictId ? (
+            <Card
+              variant="outlined"
+              style={{
+                borderRadius: token.borderRadiusLG,
+                background: token.colorBgContainer,
+                textAlign: 'center',
+                padding: '32px 16px',
+              }}
+            >
+              <Space direction="vertical" size="middle" style={{ maxWidth: 500 }}>
+                <EnvironmentOutlined
+                  style={{ fontSize: 48, color: token.colorPrimary }}
+                />
+                <Title level={4} style={{ margin: 0 }}>
+                  Туман созламаларини кўриш ва таҳрирлаш учун аввал туманни танланг
+                </Title>
+                <Paragraph type="secondary">
+                  Ҳокимни таниш атамалари ва маҳаллий луғат ҳар бир туман учун алоҳида сақланади ва бошқарилади.
+                </Paragraph>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <DistrictSelector />
+                </div>
+              </Space>
+            </Card>
+          ) : (
+            <div>
+              {isDistrictLoading && (
+                <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                  <Spin size="large" tip="Туман созламалари юкланмоқда..." />
+                </div>
+              )}
+
+              {isDistrictError && (
+                <Alert
+                  message="Туман созламаларини юклашда хатолик"
+                  description={
+                    districtError instanceof Error
+                      ? districtError.message
+                      : 'Маълумотларни сервердан олишнинг имкони бўлмади.'
+                  }
+                  type="error"
+                  showIcon
+                  action={
+                    <a
+                      onClick={() => refetchDistrict()}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <ReloadOutlined /> Қайта уриниш
+                    </a>
+                  }
+                  style={{ marginBottom: 16 }}
+                />
+              )}
+
+              {districtSettingsData && (
+                <div>
+                  <ActiveDistrictSettingsCard
+                    districtName={districtSettingsData.districtName}
+                    settings={districtSettingsData.activeConfiguration}
+                  />
+                  <DistrictSettingsDraftForm
+                    districtId={activeDistrictId}
+                    districtName={districtSettingsData.districtName}
+                    activeSettings={districtSettingsData.activeConfiguration}
+                    draft={districtSettingsData.draft}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ),
     },
     {
       key: 'history',
@@ -150,7 +235,7 @@ export const AiOperationsPage: React.FC = () => {
           АИ операциялари ва созламалари
         </Title>
         <Text type="secondary">
-          Глобал таҳлил модел параметрлари, тизим кўрсатмалари ва хизмат кўрсатиш луғатларини бошқариш.
+          Глобал таҳлил модел параметрлари, тизим кўрсатмалари ва туманларга хос атамаларни бошқариш.
         </Text>
       </div>
 
@@ -166,3 +251,4 @@ export const AiOperationsPage: React.FC = () => {
 };
 
 export default AiOperationsPage;
+

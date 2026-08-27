@@ -1,0 +1,154 @@
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { eq } from 'drizzle-orm';
+import {
+  SaveDistrictAnalysisSettingsDraftSchema,
+  type SaveDistrictAnalysisSettingsDraftRequest,
+} from '@mahalla-ovozi/api-contracts';
+import { DbClient } from '../../adapters/db/client.js';
+import { districts } from '../../adapters/db/schema/districts.js';
+import { createRequireProductOwner } from '../auth/require-product-owner.js';
+import { districtAnalysisSettingsService } from './district-analysis-settings-service.js';
+
+interface DistrictSettingsRouteParams {
+  districtId: string;
+}
+
+export function registerDistrictAnalysisSettingsRoutes(
+  server: FastifyInstance,
+  db: DbClient,
+): void {
+  // Encapsulated Fastify scope with strict Product Owner authorization guard (AC 1, AC 9)
+  server.register(async (scope) => {
+    scope.addHook('preHandler', createRequireProductOwner(db));
+
+    /**
+     * GET /api/v1/ai/settings/districts/:districtId
+     * Returns current active district analysis configuration and saved draft if any (AC 1, 2, 3, 4, 9).
+     */
+    scope.get(
+      '/api/v1/ai/settings/districts/:districtId',
+      async (
+        req: FastifyRequest<{ Params: DistrictSettingsRouteParams }>,
+        reply: FastifyReply,
+      ) => {
+        const { districtId } = req.params;
+
+        // Validate district exists
+        const [district] = await db
+          .select({ id: districts.id, name: districts.name })
+          .from(districts)
+          .where(eq(districts.id, districtId))
+          .limit(1);
+
+        if (!district) {
+          return reply.status(404).send({
+            error: {
+              code: 'DISTRICT_NOT_FOUND',
+              message: 'Туман топилмади.',
+              statusCode: 404,
+            },
+          });
+        }
+
+        const [activeConfiguration, draft] = await Promise.all([
+          districtAnalysisSettingsService.getActiveConfiguration(db, districtId),
+          districtAnalysisSettingsService.getDraft(db, districtId),
+        ]);
+
+        return reply.status(200).send({
+          districtId: district.id,
+          districtName: district.name,
+          activeConfiguration,
+          draft,
+        });
+      },
+    );
+
+    /**
+     * POST /api/v1/ai/settings/districts/:districtId/draft
+     * Validates and saves the district analysis settings draft with audit trail (AC 3, 4, 6, 7, 8, 9).
+     */
+    scope.post(
+      '/api/v1/ai/settings/districts/:districtId/draft',
+      async (
+        req: FastifyRequest<{
+          Params: DistrictSettingsRouteParams;
+          Body: SaveDistrictAnalysisSettingsDraftRequest;
+        }>,
+        reply: FastifyReply,
+      ) => {
+        const { districtId } = req.params;
+
+        // Validate district exists
+        const [district] = await db
+          .select({ id: districts.id, name: districts.name })
+          .from(districts)
+          .where(eq(districts.id, districtId))
+          .limit(1);
+
+        if (!district) {
+          return reply.status(404).send({
+            error: {
+              code: 'DISTRICT_NOT_FOUND',
+              message: 'Туман топилмади.',
+              statusCode: 404,
+            },
+          });
+        }
+
+        const parseResult = SaveDistrictAnalysisSettingsDraftSchema.safeParse(
+          req.body,
+        );
+
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message:
+                parseResult.error.issues[0]?.message ||
+                'Киритилган созламаларда хатолик бор.',
+              statusCode: 400,
+              validationErrors: parseResult.error.issues.map((issue) => ({
+                path: issue.path,
+                message: issue.message,
+                code: issue.code,
+              })),
+            },
+          });
+        }
+
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Аутентификация талаб қилинади.',
+              statusCode: 401,
+            },
+          });
+        }
+
+        const actor = {
+          id: req.actor.id,
+          role: req.actor.role,
+          ipAddress: req.ip || null,
+          userAgent:
+            typeof req.headers['user-agent'] === 'string'
+              ? req.headers['user-agent']
+              : null,
+        };
+
+        const savedDraft = await districtAnalysisSettingsService.saveDraft(
+          db,
+          districtId,
+          actor,
+          parseResult.data,
+        );
+
+        return reply.status(200).send({
+          draft: savedDraft,
+          message: 'Қоралама муваффақиятли сақланди',
+        });
+      },
+    );
+  });
+}

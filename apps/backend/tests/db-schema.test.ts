@@ -18,6 +18,9 @@ import {
   globalAnalysisSettingsVersions,
   globalAnalysisSettingsDrafts,
   ensureDefaultGlobalAnalysisSettings,
+  districtAnalysisSettingsVersions,
+  districtAnalysisSettingsDrafts,
+  ensureDefaultDistrictAnalysisSettings,
 } from '../src/adapters/db/schema/index.js';
 import { eq } from 'drizzle-orm';
 import pg from 'pg';
@@ -1003,7 +1006,151 @@ describe('Database Schema & Migration Verification', () => {
       await db.delete(globalAnalysisSettingsDrafts).where(eq(globalAnalysisSettingsDrafts.id, 'global'));
     });
   });
+
+  describe('Story 5.2: District Analysis Settings Versions & Drafts Schemas', () => {
+    it('seeds and retrieves default active district analysis configuration', async () => {
+      const districtId = `dist_schema_${crypto.randomUUID()}`;
+      await db.insert(districts).values({
+        id: districtId,
+        name: `DistrictSchemaTest_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
+      });
+
+      await ensureDefaultDistrictAnalysisSettings(db, districtId);
+
+      const [activeVersion] = await db
+        .select()
+        .from(districtAnalysisSettingsVersions)
+        .where(eq(districtAnalysisSettingsVersions.districtId, districtId));
+
+      expect(activeVersion).toBeDefined();
+      expect(activeVersion!.id).toBe(`dcfg_${districtId}_v1`);
+      expect(activeVersion!.version).toBe(1);
+      expect(activeVersion!.isActive).toBe(true);
+      expect(Array.isArray(activeVersion!.hokimRecognitionTerms)).toBe(true);
+      expect(activeVersion!.hokimRecognitionTerms.length).toBeGreaterThanOrEqual(5);
+      expect(Array.isArray(activeVersion!.localVocabularyAdditions)).toBe(true);
+
+      // Clean up
+      await db.delete(districts).where(eq(districts.id, districtId));
+    });
+
+    it('enforces composite unique constraint on (districtId, version)', async () => {
+      const districtId = `dist_ver_uniq_${crypto.randomUUID()}`;
+      await db.insert(districts).values({
+        id: districtId,
+        name: `VerUniqDist_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
+      });
+
+      await db.insert(districtAnalysisSettingsVersions).values({
+        id: `dcfg_${districtId}_v1`,
+        districtId,
+        version: 1,
+        hokimRecognitionTerms: ['Ҳоким'],
+        localVocabularyAdditions: [],
+        isActive: true,
+      });
+
+      // Duplicate (districtId, version = 1) must fail
+      await expect(
+        db.insert(districtAnalysisSettingsVersions).values({
+          id: `dcfg_${districtId}_v1_dup`,
+          districtId,
+          version: 1,
+          hokimRecognitionTerms: ['Ҳоким', 'Туман ҳокими'],
+          localVocabularyAdditions: [],
+          isActive: false,
+        }),
+      ).rejects.toThrow();
+
+      // Clean up
+      await db.delete(districts).where(eq(districts.id, districtId));
+    });
+
+    it('can insert, update, and query district settings draft and enforces unique districtId', async () => {
+      const districtId = `dist_draft_test_${crypto.randomUUID()}`;
+      await db.insert(districts).values({
+        id: districtId,
+        name: `DraftTestDist_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
+      });
+
+      await db.insert(districtAnalysisSettingsDrafts).values({
+        id: `draft_${districtId}`,
+        districtId,
+        hokimRecognitionTerms: ['Ҳоким', 'Ҳокимият'],
+        localVocabularyAdditions: [
+          { term: 'Қўшчинор маҳалласи', category: 'Маҳалла номлари', description: 'МФЙ' },
+        ],
+      });
+
+      const [draft] = await db
+        .select()
+        .from(districtAnalysisSettingsDrafts)
+        .where(eq(districtAnalysisSettingsDrafts.districtId, districtId));
+
+      expect(draft).toBeDefined();
+      expect(draft!.hokimRecognitionTerms).toEqual(['Ҳоким', 'Ҳокимият']);
+      expect(draft!.localVocabularyAdditions).toHaveLength(1);
+
+      // Inserting a second draft for the same districtId must fail
+      await expect(
+        db.insert(districtAnalysisSettingsDrafts).values({
+          id: `draft_another_${districtId}`,
+          districtId,
+          hokimRecognitionTerms: ['Ҳоким'],
+          localVocabularyAdditions: [],
+        }),
+      ).rejects.toThrow();
+
+      // Clean up
+      await db.delete(districts).where(eq(districts.id, districtId));
+    });
+
+    it('cascades deletion of district_analysis_settings_versions and drafts when district is deleted', async () => {
+      const districtId = `dist_cascade_${crypto.randomUUID()}`;
+      await db.insert(districts).values({
+        id: districtId,
+        name: `CascadeDist_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
+      });
+
+      await db.insert(districtAnalysisSettingsVersions).values({
+        id: `dcfg_${districtId}_v1`,
+        districtId,
+        version: 1,
+        hokimRecognitionTerms: ['Ҳоким'],
+        localVocabularyAdditions: [],
+        isActive: true,
+      });
+
+      await db.insert(districtAnalysisSettingsDrafts).values({
+        id: `draft_${districtId}`,
+        districtId,
+        hokimRecognitionTerms: ['Ҳоким'],
+        localVocabularyAdditions: [],
+      });
+
+      // Delete parent district
+      await db.delete(districts).where(eq(districts.id, districtId));
+
+      // Verify versions and drafts were deleted
+      const versions = await db
+        .select()
+        .from(districtAnalysisSettingsVersions)
+        .where(eq(districtAnalysisSettingsVersions.districtId, districtId));
+      expect(versions).toHaveLength(0);
+
+      const drafts = await db
+        .select()
+        .from(districtAnalysisSettingsDrafts)
+        .where(eq(districtAnalysisSettingsDrafts.districtId, districtId));
+      expect(drafts).toHaveLength(0);
+    });
+  });
 });
+
 
 
 

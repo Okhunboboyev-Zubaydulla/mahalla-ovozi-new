@@ -12,7 +12,10 @@ import {
 } from 'drizzle-orm/pg-core';
 import { districts } from './districts.js';
 import { accounts } from './accounts.js';
-import type { GlobalServiceVocabularyItem } from '@mahalla-ovozi/api-contracts';
+import type {
+  GlobalServiceVocabularyItem,
+  DistrictLocalVocabularyItem,
+} from '@mahalla-ovozi/api-contracts';
 
 export const aiProfiles = pgTable('ai_profiles', {
   id: text('id').primaryKey(), // e.g. "prof_rel_2026_08_v1"
@@ -154,6 +157,76 @@ export const globalAnalysisSettingsDrafts = pgTable(
   },
 );
 
+export const districtAnalysisSettingsVersions = pgTable(
+  'district_analysis_settings_versions',
+  {
+    id: text('id').primaryKey(), // e.g. "dcfg_dist_123_v1"
+    districtId: text('district_id')
+      .notNull()
+      .references(() => districts.id, { onDelete: 'cascade' }),
+    version: integer('version').notNull(),
+    hokimRecognitionTerms: jsonb('hokim_recognition_terms')
+      .notNull()
+      .$type<string[]>(),
+    localVocabularyAdditions: jsonb('local_vocabulary_additions')
+      .notNull()
+      .$type<DistrictLocalVocabularyItem[]>(),
+    isActive: boolean('is_active').notNull().default(false),
+    activatedAt: timestamp('activated_at', { withTimezone: true }),
+    activatedBy: text('activated_by').references(() => accounts.id, {
+      onDelete: 'set null',
+    }),
+    changeReason: text('change_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('district_settings_versions_district_version_idx').on(
+      table.districtId,
+      table.version,
+    ),
+    index('district_settings_versions_district_idx').on(table.districtId),
+    index('district_settings_versions_active_idx').on(
+      table.districtId,
+      table.isActive,
+    ),
+  ],
+);
+
+export const districtAnalysisSettingsDrafts = pgTable(
+  'district_analysis_settings_drafts',
+  {
+    id: text('id').primaryKey(), // e.g. "draft_dist_123" or districtId
+    districtId: text('district_id')
+      .notNull()
+      .unique()
+      .references(() => districts.id, { onDelete: 'cascade' }),
+    baseActiveVersionId: text('base_active_version_id').references(
+      () => districtAnalysisSettingsVersions.id,
+      { onDelete: 'set null' },
+    ),
+    hokimRecognitionTerms: jsonb('hokim_recognition_terms')
+      .notNull()
+      .$type<string[]>(),
+    localVocabularyAdditions: jsonb('local_vocabulary_additions')
+      .notNull()
+      .$type<DistrictLocalVocabularyItem[]>(),
+    updatedBy: text('updated_by').references(() => accounts.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('district_settings_drafts_district_idx').on(table.districtId),
+  ],
+);
+
 export type AiProfile = typeof aiProfiles.$inferSelect;
 export type NewAiProfile = typeof aiProfiles.$inferInsert;
 export type AiOperation = typeof aiOperations.$inferSelect;
@@ -168,6 +241,15 @@ export type GlobalAnalysisSettingsDraft =
   typeof globalAnalysisSettingsDrafts.$inferSelect;
 export type NewGlobalAnalysisSettingsDraft =
   typeof globalAnalysisSettingsDrafts.$inferInsert;
+export type DistrictAnalysisSettingsVersion =
+  typeof districtAnalysisSettingsVersions.$inferSelect;
+export type NewDistrictAnalysisSettingsVersion =
+  typeof districtAnalysisSettingsVersions.$inferInsert;
+export type DistrictAnalysisSettingsDraft =
+  typeof districtAnalysisSettingsDrafts.$inferSelect;
+export type NewDistrictAnalysisSettingsDraft =
+  typeof districtAnalysisSettingsDrafts.$inferInsert;
+
 
 
 

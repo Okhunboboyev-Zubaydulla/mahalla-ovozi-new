@@ -3,12 +3,17 @@ import {
   NewAiProfile,
   globalAnalysisSettingsVersions,
   NewGlobalAnalysisSettingsVersion,
+  districtAnalysisSettingsVersions,
+  NewDistrictAnalysisSettingsVersion,
 } from './schema/ai.js';
 import type { DbOrTx } from './client.js';
 import { SEMANTIC_RELEVANCE_SYSTEM_PROMPT } from '../../modules/ai/semantic-relevance-evaluator.js';
 import { TOPIC_MATCHING_SYSTEM_PROMPT } from '../../modules/topics/topic-matching-evaluator.js';
 import { TOPIC_PROJECTION_SYSTEM_PROMPT } from '../../modules/topics/topic-projection-evaluator.js';
-import { DEFAULT_GLOBAL_SERVICE_VOCABULARY } from '@mahalla-ovozi/api-contracts';
+import {
+  DEFAULT_GLOBAL_SERVICE_VOCABULARY,
+  DEFAULT_HOKIM_RECOGNITION_TERMS,
+} from '@mahalla-ovozi/api-contracts';
 
 export const defaultSemanticRelevanceProfile: NewAiProfile = {
   id: 'prof_rel_2026_08_v1',
@@ -118,4 +123,32 @@ export async function ensureDefaultAiProfiles(db: DbOrTx): Promise<void> {
     .onConflictDoNothing({ target: aiProfiles.id });
   await ensureDefaultGlobalAnalysisSettings(db);
 }
+
+export function createDefaultDistrictAnalysisSettingsVersion(
+  districtId: string,
+): NewDistrictAnalysisSettingsVersion {
+  return {
+    id: `dcfg_${districtId}_v1`,
+    districtId,
+    version: 1,
+    hokimRecognitionTerms: [...DEFAULT_HOKIM_RECOGNITION_TERMS],
+    localVocabularyAdditions: [],
+    isActive: true,
+    activatedAt: new Date('2026-08-01T00:00:00.000Z'),
+    activatedBy: null,
+    changeReason: 'Туманнинг дастлабки фаол созламалари',
+  };
+}
+
+export async function ensureDefaultDistrictAnalysisSettings(
+  db: DbOrTx,
+  districtId: string,
+): Promise<void> {
+  const defaultVersion = createDefaultDistrictAnalysisSettingsVersion(districtId);
+  await db
+    .insert(districtAnalysisSettingsVersions)
+    .values(defaultVersion)
+    .onConflictDoNothing({ target: districtAnalysisSettingsVersions.id });
+}
+
 
