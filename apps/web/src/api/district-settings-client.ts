@@ -2,8 +2,11 @@ import {
   type GetDistrictAnalysisSettingsResponse,
   type SaveDistrictAnalysisSettingsDraftRequest,
   type SaveDistrictAnalysisSettingsDraftResponse,
+  type ActivateDistrictAnalysisSettingsRequest,
+  type ActivateDistrictAnalysisSettingsResponse,
   GetDistrictAnalysisSettingsResponseSchema,
   SaveDistrictAnalysisSettingsDraftResponseSchema,
+  ActivateDistrictAnalysisSettingsResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
 
@@ -32,8 +35,24 @@ export async function saveDistrictAnalysisSettingsDraft(
   );
 }
 
+export async function activateDistrictSettings(
+  districtId: string,
+  payload: ActivateDistrictAnalysisSettingsRequest,
+): Promise<ActivateDistrictAnalysisSettingsResponse> {
+  return request<ActivateDistrictAnalysisSettingsResponse>(
+    `/api/v1/ai/settings/districts/${encodeURIComponent(districtId)}/activate`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    ActivateDistrictAnalysisSettingsResponseSchema,
+  );
+}
+
 export const districtSettingsClient = {
   getDistrictAnalysisSettings,
   saveDistrictAnalysisSettingsDraft,
+  activateDistrictSettings,
 };
+
 

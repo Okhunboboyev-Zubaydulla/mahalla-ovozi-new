@@ -360,3 +360,87 @@ export type SaveDistrictAnalysisSettingsDraftResponse = z.infer<
   typeof SaveDistrictAnalysisSettingsDraftResponseSchema
 >;
 
+// ==========================================
+// Story 5.3: Activation Contracts & Secret Scanning
+// ==========================================
+
+export const PROHIBITED_SECRET_PATTERNS = [
+  // 1. Telegram Bot Token: 8 to 12 digits, colon, and 34 to 36 base64url characters
+  /\b\d{8,12}:[A-Za-z0-9_-]{34,36}\b/,
+  // 2. OpenAI API Keys (Legacy sk-, Project sk-proj-, Admin sk-admin-, Org sk-org-)
+  /\bsk-(?:proj-|admin-|org-)?[A-Za-z0-9_-]{20,}\b/,
+  // 3. Google AI Studio / Gemini API Keys (Legacy AIza... and Modern AQ....)
+  /\b(?:AIza[0-9A-Za-z-_]{35}|AQ\.[0-9A-Za-z-_]{20,})\b/,
+  // 4. Groq Cloud API Key
+  /\bgsk_[A-Za-z0-9_-]{40,64}\b/,
+  // 5. Anthropic Claude API Key (sk-ant-api..., sk-ant-admin..., sk-ant-oat...)
+  /\bsk-ant-(?:api\d{2}|admin\d{2}|oat\d{2})-[A-Za-z0-9_-]{40,}\b/,
+  // 6. JSON Web Tokens (JWT: 3 base64url parts starting with eyJ)
+  /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/,
+  // 7. Authorization Bearer Token header string
+  /\bBearer\s+[A-Za-z0-9\-._~+/]{20,}=*\b/i,
+  // 8. Explicit key assignment patterns (e.g. api_key = "...", secret = '...')
+  /(?:api[_-]?key|secret[_-]?key|bot[_-]?token|access[_-]?token|auth[_-]?token)\s*[:=]\s*['"]?[A-Za-z0-9_\-.~+=]{16,}['"]?/i,
+];
+
+export function containsProhibitedSecrets(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+  return PROHIBITED_SECRET_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+export const ChangeReasonSchema = z
+  .string({ invalid_type_error: 'Ўзгартириш сабаби матн бўлиши шарт.' })
+  .trim()
+  .min(5, 'Ўзгартириш сабаби камида 5 та белгидан иборат бўлиши шарт.')
+  .max(500, 'Ўзгартириш сабаби 500 та белгидан ошмаслиги керак.')
+  .superRefine((val, ctx) => {
+    if (containsProhibitedSecrets(val)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Ўзгартириш сабабида махфий маълумотлар (бот токенлари, API калитлар ёки пароллар) кўрсатилиши мумкин эмас.',
+      });
+    }
+  });
+
+export const ActivateGlobalAnalysisSettingsRequestSchema = z.object({
+  baseActiveVersionId: z
+    .string({ invalid_type_error: 'Базавий фаол версия идентификатори талаб қилинади.' })
+    .min(1, 'Базавий фаол версия идентификатори талаб қилинади.'),
+  changeReason: ChangeReasonSchema,
+});
+export type ActivateGlobalAnalysisSettingsRequest = z.infer<
+  typeof ActivateGlobalAnalysisSettingsRequestSchema
+>;
+
+export const ActivateGlobalAnalysisSettingsResponseSchema = z.object({
+  activeConfiguration: GlobalAnalysisSettingsDtoSchema,
+  previousVersionId: z.string(),
+  message: z.string(),
+});
+export type ActivateGlobalAnalysisSettingsResponse = z.infer<
+  typeof ActivateGlobalAnalysisSettingsResponseSchema
+>;
+
+export const ActivateDistrictAnalysisSettingsRequestSchema = z.object({
+  baseActiveVersionId: z
+    .string({ invalid_type_error: 'Базавий фаол версия идентификатори талаб қилинади.' })
+    .min(1, 'Базавий фаол версия идентификатори талаб қилинади.'),
+  changeReason: ChangeReasonSchema,
+});
+export type ActivateDistrictAnalysisSettingsRequest = z.infer<
+  typeof ActivateDistrictAnalysisSettingsRequestSchema
+>;
+
+export const ActivateDistrictAnalysisSettingsResponseSchema = z.object({
+  districtId: z.string(),
+  districtName: z.string(),
+  activeConfiguration: DistrictAnalysisSettingsDtoSchema,
+  previousVersionId: z.string(),
+  message: z.string(),
+});
+export type ActivateDistrictAnalysisSettingsResponse = z.infer<
+  typeof ActivateDistrictAnalysisSettingsResponseSchema
+>;
+
+

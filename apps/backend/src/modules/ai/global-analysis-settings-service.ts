@@ -3,6 +3,8 @@ import {
   type GlobalAnalysisSettingsDto,
   type GlobalAnalysisSettingsDraftDto,
   type SaveGlobalAnalysisSettingsDraftRequest,
+  type ActivateGlobalAnalysisSettingsRequest,
+  type ActivateGlobalAnalysisSettingsResponse,
   type GlobalServiceVocabularyItem,
   type AiModelProvider,
 } from '@mahalla-ovozi/api-contracts';
@@ -16,6 +18,31 @@ import {
   defaultGlobalAnalysisSettingsVersion,
 } from '../../adapters/db/schema/index.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
+
+function areGlobalVocabulariesEqual(
+  a: GlobalServiceVocabularyItem[],
+  b: GlobalServiceVocabularyItem[],
+): boolean {
+  if (a.length !== b.length) return false;
+  const mapA = new Map(
+    a.map((i) => [
+      i.term.trim().toLowerCase().normalize('NFC'),
+      {
+        term: i.term.trim().normalize('NFC'),
+        category: i.category.trim(),
+        description: (i.description || '').trim(),
+      },
+    ]),
+  );
+  for (const itemB of b) {
+    const key = itemB.term.trim().toLowerCase().normalize('NFC');
+    const itemA = mapA.get(key);
+    if (!itemA) return false;
+    if (itemA.category !== itemB.category.trim()) return false;
+    if (itemA.description !== (itemB.description || '').trim()) return false;
+  }
+  return true;
+}
 
 export class GlobalAnalysisSettingsService {
   private readonly repository: GlobalAnalysisSettingsRepositoryPort;
@@ -186,8 +213,131 @@ export class GlobalAnalysisSettingsService {
 
     return this.mapDraftToDto(saved);
   }
+
+  async activateDraft(
+    db: DbOrTx,
+    actor: {
+      id: string;
+      role: string;
+      ipAddress?: string | null;
+      userAgent?: string | null;
+    },
+    payload: ActivateGlobalAnalysisSettingsRequest,
+  ): Promise<ActivateGlobalAnalysisSettingsResponse> {
+    if (actor.role !== 'PRODUCT_OWNER') {
+      throw new Error('Ушбу амални бажариш учун маҳсулот эгаси ҳуқуқи талаб қилинади.');
+    }
+
+    const executeInTx = async (tx: DbOrTx) => {
+      // 1. Fetch current active configuration with row lock
+      const activeRow = await this.repository.getActiveConfigurationForUpdate(tx);
+      const currentActive = activeRow || defaultGlobalAnalysisSettingsVersion;
+
+      // 2. Validate base active version (optimistic concurrency guard)
+      if (currentActive.id !== payload.baseActiveVersionId) {
+        const error = new Error(
+          'Фаол созламалар версияси ўзгарган. Илтимос, саҳифани янгилаб, қайта кўриб чиқинг.',
+        );
+        (error as any).code = 'STALE_BASELINE_VERSION';
+        (error as any).statusCode = 409;
+        throw error;
+      }
+
+      // 3. Fetch draft
+      const draft = await this.repository.getDraft(tx);
+      if (!draft) {
+        const error = new Error('Фаоллаштириш учун қоралама топилмади.');
+        (error as any).code = 'DRAFT_NOT_FOUND';
+        (error as any).statusCode = 400;
+        throw error;
+      }
+
+      // 4. Validate effective changes exist
+      const hasChanges =
+        draft.modelProvider !== currentActive.modelProvider ||
+        draft.modelId !== currentActive.modelId ||
+        draft.temperature !== currentActive.temperature ||
+        draft.maxOutputTokens !== currentActive.maxOutputTokens ||
+        draft.relevanceSystemPrompt !== currentActive.relevanceSystemPrompt ||
+        draft.topicMatchingSystemPrompt !== currentActive.topicMatchingSystemPrompt ||
+        draft.topicProjectionSystemPrompt !== currentActive.topicProjectionSystemPrompt ||
+        !areGlobalVocabulariesEqual(
+          (draft.globalServiceVocabulary || []) as GlobalServiceVocabularyItem[],
+          (currentActive.globalServiceVocabulary || []) as GlobalServiceVocabularyItem[],
+        );
+
+      if (!hasChanges) {
+        const error = new Error(
+          'Қораламада фаол созламаларга нисбатан ҳеч қандай ўзгариш мавжуд эмас.',
+        );
+        (error as any).code = 'NO_EFFECTIVE_CHANGES';
+        (error as any).statusCode = 400;
+        throw error;
+      }
+
+      // 5. Deactivate prior active version
+      if (currentActive.id) {
+        await this.repository.deactivateVersion(tx, currentActive.id);
+      }
+
+      // 6. Compute next version number
+      const nextVersion = await this.repository.getNextVersionNumber(tx);
+      const newVersionId = `gcfg_v${nextVersion}`;
+
+      // 7. Insert new immutable active version
+      const newVersionRow = await this.repository.insertVersion(tx, {
+        id: newVersionId,
+        version: nextVersion,
+        modelProvider: draft.modelProvider,
+        modelId: draft.modelId,
+        temperature: draft.temperature,
+        maxOutputTokens: draft.maxOutputTokens,
+        relevanceSystemPrompt: draft.relevanceSystemPrompt,
+        topicMatchingSystemPrompt: draft.topicMatchingSystemPrompt,
+        topicProjectionSystemPrompt: draft.topicProjectionSystemPrompt,
+        globalServiceVocabulary: draft.globalServiceVocabulary,
+        isActive: true,
+        activatedAt: new Date(),
+        activatedBy: actor.id,
+        changeReason: payload.changeReason.trim(),
+        createdAt: new Date(),
+      });
+
+      // 8. Delete draft
+      await this.repository.deleteDraft(tx);
+
+      // 9. Record audit trail event
+      await recordAuditEvent(tx, {
+        districtId: null,
+        actorId: actor.id,
+        actorRole: 'PRODUCT_OWNER',
+        action: 'GLOBAL_ANALYSIS_SETTINGS_ACTIVATED',
+        ipAddress: actor.ipAddress || null,
+        userAgent: actor.userAgent || null,
+        metadata: {
+          previousVersionId: currentActive.id,
+          newVersionId: newVersionRow.id,
+          newVersion: nextVersion,
+          modelProvider: newVersionRow.modelProvider,
+          modelId: newVersionRow.modelId,
+          changeReason: payload.changeReason.trim(),
+        },
+      });
+
+      return {
+        activeConfiguration: this.mapVersionToDto(newVersionRow),
+        previousVersionId: currentActive.id,
+        message: `Глобал таҳлил созламалари муваффақиятли фаоллаштирилди. Янги версия: ${newVersionRow.id}`,
+      };
+    };
+
+    return 'transaction' in db && typeof db.transaction === 'function'
+      ? await db.transaction(async (tx) => executeInTx(tx))
+      : await executeInTx(db);
+  }
 }
 
 export const globalAnalysisSettingsService = new GlobalAnalysisSettingsService(
   globalAnalysisSettingsRepository,
 );
+

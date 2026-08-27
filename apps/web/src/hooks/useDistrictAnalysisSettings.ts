@@ -3,6 +3,8 @@ import {
   type GetDistrictAnalysisSettingsResponse,
   type SaveDistrictAnalysisSettingsDraftResponse,
   type SaveDistrictAnalysisSettingsDraftRequest,
+  type ActivateDistrictAnalysisSettingsResponse,
+  type ActivateDistrictAnalysisSettingsRequest,
 } from '@mahalla-ovozi/api-contracts';
 import { districtSettingsClient } from '../api/district-settings-client.js';
 
@@ -52,3 +54,34 @@ export function useSaveDistrictSettingsDraft(districtId: string) {
     },
   });
 }
+
+export function useActivateDistrictSettings(districtId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ActivateDistrictAnalysisSettingsResponse,
+    Error,
+    ActivateDistrictAnalysisSettingsRequest
+  >({
+    mutationFn: (payload: ActivateDistrictAnalysisSettingsRequest) =>
+      districtSettingsClient.activateDistrictSettings(districtId, payload),
+    onSuccess: (data) => {
+      // Set updated active configuration and clear draft in query cache
+      queryClient.setQueryData<GetDistrictAnalysisSettingsResponse>(
+        districtSettingsKeys.detail(districtId),
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            activeConfiguration: data.activeConfiguration,
+            draft: null,
+          };
+        },
+      );
+      void queryClient.invalidateQueries({
+        queryKey: districtSettingsKeys.detail(districtId),
+      });
+    },
+  });
+}
+

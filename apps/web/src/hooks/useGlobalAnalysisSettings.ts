@@ -3,6 +3,8 @@ import {
   type GetGlobalAnalysisSettingsResponse,
   type SaveGlobalAnalysisSettingsDraftResponse,
   type SaveGlobalAnalysisSettingsDraftRequest,
+  type ActivateGlobalAnalysisSettingsResponse,
+  type ActivateGlobalAnalysisSettingsRequest,
 } from '@mahalla-ovozi/api-contracts';
 import { globalSettingsClient } from '../api/global-settings-client.js';
 
@@ -42,3 +44,32 @@ export function useSaveGlobalSettingsDraft() {
     },
   });
 }
+
+export function useActivateGlobalSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ActivateGlobalAnalysisSettingsResponse,
+    Error,
+    ActivateGlobalAnalysisSettingsRequest
+  >({
+    mutationFn: (payload: ActivateGlobalAnalysisSettingsRequest) =>
+      globalSettingsClient.activateGlobalSettings(payload),
+    onSuccess: (data) => {
+      // Set updated active configuration and clear draft in query cache
+      queryClient.setQueryData<GetGlobalAnalysisSettingsResponse>(
+        GLOBAL_SETTINGS_QUERY_KEY,
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            activeConfiguration: data.activeConfiguration,
+            draft: null,
+          };
+        },
+      );
+      void queryClient.invalidateQueries({ queryKey: GLOBAL_SETTINGS_QUERY_KEY });
+    },
+  });
+}
+

@@ -17,6 +17,7 @@ import {
   ExclamationCircleOutlined,
   DisconnectOutlined,
   BulbOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import {
   type DistrictAnalysisSettingsDto,
@@ -24,11 +25,15 @@ import {
   type SaveDistrictAnalysisSettingsDraftRequest,
   SaveDistrictAnalysisSettingsDraftSchema,
 } from '@mahalla-ovozi/api-contracts';
-import { useSaveDistrictSettingsDraft } from '../../hooks/useDistrictAnalysisSettings.js';
+import {
+  useSaveDistrictSettingsDraft,
+  useActivateDistrictSettings,
+} from '../../hooks/useDistrictAnalysisSettings.js';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
 import { useDirtyState } from '../../district/useDirtyState.js';
 import { HokimRecognitionTermsInput } from './HokimRecognitionTermsInput.js';
 import { DistrictLocalVocabularyInput } from './DistrictLocalVocabularyInput.js';
+import { AnalysisSettingsActivationModal } from './AnalysisSettingsActivationModal.js';
 import { ApiError } from '../../lib/api-client.js';
 
 const { Text, Title } = Typography;
@@ -51,6 +56,8 @@ export const DistrictSettingsDraftForm: React.FC<
   const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   const saveMutation = useSaveDistrictSettingsDraft(districtId);
+  const activateMutation = useActivateDistrictSettings(districtId);
+  const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
 
   // Initial values baseline: draft if present, else activeSettings
   const initialValues: SaveDistrictAnalysisSettingsDraftRequest = {
@@ -335,6 +342,14 @@ export const DistrictSettingsDraftForm: React.FC<
 
           <Space>
             <Button
+              id="district-review-activation-button"
+              icon={<ThunderboltOutlined />}
+              onClick={() => setIsActivationModalOpen(true)}
+              disabled={isOffline || saveMutation.isPending || activateMutation.isPending}
+            >
+              Фаоллаштиришни кўриб чиқиш
+            </Button>
+            <Button
               id="district-draft-submit-button"
               type="primary"
               icon={<SaveOutlined />}
@@ -347,6 +362,43 @@ export const DistrictSettingsDraftForm: React.FC<
           </Space>
         </div>
       </Form>
+
+      <AnalysisSettingsActivationModal
+        open={isActivationModalOpen}
+        scope="district"
+        districtId={districtId}
+        districtName={districtName}
+        activeVersionId={activeSettings.id}
+        activeSettings={activeSettings}
+        draftSettings={{ ...initialValues, ...form.getFieldsValue(true) }}
+        onConfirm={async (changeReason) => {
+          if (isFormDirty) {
+            const values =
+              form.getFieldsValue(true) as SaveDistrictAnalysisSettingsDraftRequest;
+            const parsed =
+              SaveDistrictAnalysisSettingsDraftSchema.safeParse(values);
+            if (parsed.success) {
+              await saveMutation.mutateAsync(parsed.data);
+            }
+          }
+          const res = await activateMutation.mutateAsync({
+            baseActiveVersionId: activeSettings.id,
+            changeReason,
+          });
+          message.success(
+            res.message ||
+              `${districtName}: Таҳлил созламалари муваффақиятли фаоллаштирилди.`,
+          );
+          setIsActivationModalOpen(false);
+          setIsFormDirty(false);
+          onSaveSuccess?.();
+        }}
+        onCancel={() => setIsActivationModalOpen(false)}
+        onRefresh={() => {
+          setIsActivationModalOpen(false);
+          onSaveSuccess?.();
+        }}
+      />
     </Card>
   );
 };

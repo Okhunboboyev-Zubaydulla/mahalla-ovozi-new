@@ -97,7 +97,7 @@ development_status:
   epic-5: in-progress
   5-1-prepare-a-validated-global-analysis-settings-draft: done
   5-2-prepare-a-district-recognition-settings-draft: done
-  5-3-review-and-activate-a-future-only-analysis-configuration-version: ready-for-dev
+  5-3-review-and-activate-a-future-only-analysis-configuration-version: review
   5-4-review-configuration-history-and-roll-back-as-a-new-future-only-version: backlog
   epic-5-retrospective: optional
 

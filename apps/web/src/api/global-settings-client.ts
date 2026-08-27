@@ -2,8 +2,11 @@ import {
   type GetGlobalAnalysisSettingsResponse,
   type SaveGlobalAnalysisSettingsDraftResponse,
   type SaveGlobalAnalysisSettingsDraftRequest,
+  type ActivateGlobalAnalysisSettingsRequest,
+  type ActivateGlobalAnalysisSettingsResponse,
   GetGlobalAnalysisSettingsResponseSchema,
   SaveGlobalAnalysisSettingsDraftResponseSchema,
+  ActivateGlobalAnalysisSettingsResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
 
@@ -28,7 +31,22 @@ export async function saveGlobalSettingsDraft(
   );
 }
 
+export async function activateGlobalSettings(
+  payload: ActivateGlobalAnalysisSettingsRequest,
+): Promise<ActivateGlobalAnalysisSettingsResponse> {
+  return request<ActivateGlobalAnalysisSettingsResponse>(
+    '/api/v1/ai/settings/global/activate',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    ActivateGlobalAnalysisSettingsResponseSchema,
+  );
+}
+
 export const globalSettingsClient = {
   getGlobalSettings,
   saveGlobalSettingsDraft,
+  activateGlobalSettings,
 };
+

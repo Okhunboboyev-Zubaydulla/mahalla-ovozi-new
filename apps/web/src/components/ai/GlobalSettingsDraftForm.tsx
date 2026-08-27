@@ -23,6 +23,7 @@ import {
   UndoOutlined,
   ExclamationCircleOutlined,
   DisconnectOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import {
   type GlobalAnalysisSettingsDto,
@@ -31,10 +32,14 @@ import {
   type AiModelProvider,
   SaveGlobalAnalysisSettingsDraftSchema,
 } from '@mahalla-ovozi/api-contracts';
-import { useSaveGlobalSettingsDraft } from '../../hooks/useGlobalAnalysisSettings.js';
+import {
+  useSaveGlobalSettingsDraft,
+  useActivateGlobalSettings,
+} from '../../hooks/useGlobalAnalysisSettings.js';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
 import { useDirtyState } from '../../district/useDirtyState.js';
 import { GlobalServiceVocabularyInput } from './GlobalServiceVocabularyInput.js';
+import { AnalysisSettingsActivationModal } from './AnalysisSettingsActivationModal.js';
 import { ApiError } from '../../lib/api-client.js';
 
 const { Text, Title } = Typography;
@@ -65,6 +70,8 @@ export const GlobalSettingsDraftForm: React.FC<GlobalSettingsDraftFormProps> = (
   const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   const saveMutation = useSaveGlobalSettingsDraft();
+  const activateMutation = useActivateGlobalSettings();
+  const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
 
   // Initial values baseline: draft if present, else activeSettings
   const initialValues: SaveGlobalAnalysisSettingsDraftRequest = {
@@ -486,6 +493,14 @@ export const GlobalSettingsDraftForm: React.FC<GlobalSettingsDraftFormProps> = (
 
           <Space>
             <Button
+              id="global-review-activation-button"
+              icon={<ThunderboltOutlined />}
+              onClick={() => setIsActivationModalOpen(true)}
+              disabled={isOffline || saveMutation.isPending || activateMutation.isPending}
+            >
+              Фаоллаштиришни кўриб чиқиш
+            </Button>
+            <Button
               id="draft-submit-button"
               type="primary"
               icon={<SaveOutlined />}
@@ -498,6 +513,40 @@ export const GlobalSettingsDraftForm: React.FC<GlobalSettingsDraftFormProps> = (
           </Space>
         </div>
       </Form>
+
+      <AnalysisSettingsActivationModal
+        open={isActivationModalOpen}
+        scope="global"
+        activeVersionId={activeSettings.id}
+        activeSettings={activeSettings}
+        draftSettings={{ ...initialValues, ...form.getFieldsValue(true) }}
+        onConfirm={async (changeReason) => {
+          if (isFormDirty) {
+            const values =
+              form.getFieldsValue(true) as SaveGlobalAnalysisSettingsDraftRequest;
+            const parsed =
+              SaveGlobalAnalysisSettingsDraftSchema.safeParse(values);
+            if (parsed.success) {
+              await saveMutation.mutateAsync(parsed.data);
+            }
+          }
+          const res = await activateMutation.mutateAsync({
+            baseActiveVersionId: activeSettings.id,
+            changeReason,
+          });
+          message.success(
+            res.message || 'Глобал таҳлил созламалари муваффақиятли фаоллаштирилди.',
+          );
+          setIsActivationModalOpen(false);
+          setIsFormDirty(false);
+          onSaveSuccess?.();
+        }}
+        onCancel={() => setIsActivationModalOpen(false)}
+        onRefresh={() => {
+          setIsActivationModalOpen(false);
+          onSaveSuccess?.();
+        }}
+      />
     </Card>
   );
 };

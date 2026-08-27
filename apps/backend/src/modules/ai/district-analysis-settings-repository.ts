@@ -1,9 +1,10 @@
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import type { DbOrTx } from '../../adapters/db/client.js';
 import {
   districtAnalysisSettingsVersions,
   districtAnalysisSettingsDrafts,
   type DistrictAnalysisSettingsVersion,
+  type NewDistrictAnalysisSettingsVersion,
   type NewDistrictAnalysisSettingsDraft,
   type DistrictAnalysisSettingsDraft,
 } from '../../adapters/db/schema/index.js';
@@ -11,6 +12,10 @@ import {
 export interface DistrictAnalysisSettingsRepositoryPort {
   getActiveConfiguration(
     db: DbOrTx,
+    districtId: string,
+  ): Promise<DistrictAnalysisSettingsVersion | null>;
+  getActiveConfigurationForUpdate(
+    tx: DbOrTx,
     districtId: string,
   ): Promise<DistrictAnalysisSettingsVersion | null>;
   getDraft(
@@ -21,6 +26,17 @@ export interface DistrictAnalysisSettingsRepositoryPort {
     db: DbOrTx,
     draft: NewDistrictAnalysisSettingsDraft,
   ): Promise<DistrictAnalysisSettingsDraft>;
+  deactivateVersion(
+    tx: DbOrTx,
+    districtId: string,
+    id: string,
+  ): Promise<void>;
+  getNextVersionNumber(tx: DbOrTx, districtId: string): Promise<number>;
+  insertVersion(
+    tx: DbOrTx,
+    version: NewDistrictAnalysisSettingsVersion,
+  ): Promise<DistrictAnalysisSettingsVersion>;
+  deleteDraft(tx: DbOrTx, districtId: string): Promise<void>;
 }
 
 export class DrizzleDistrictAnalysisSettingsRepository
@@ -41,6 +57,26 @@ export class DrizzleDistrictAnalysisSettingsRepository
       )
       .orderBy(desc(districtAnalysisSettingsVersions.version))
       .limit(1);
+
+    return row || null;
+  }
+
+  async getActiveConfigurationForUpdate(
+    tx: DbOrTx,
+    districtId: string,
+  ): Promise<DistrictAnalysisSettingsVersion | null> {
+    const [row] = await tx
+      .select()
+      .from(districtAnalysisSettingsVersions)
+      .where(
+        and(
+          eq(districtAnalysisSettingsVersions.districtId, districtId),
+          eq(districtAnalysisSettingsVersions.isActive, true),
+        ),
+      )
+      .orderBy(desc(districtAnalysisSettingsVersions.version))
+      .limit(1)
+      .for('update');
 
     return row || null;
   }
@@ -83,7 +119,62 @@ export class DrizzleDistrictAnalysisSettingsRepository
 
     return saved;
   }
+
+  async deactivateVersion(
+    tx: DbOrTx,
+    districtId: string,
+    id: string,
+  ): Promise<void> {
+    await tx
+      .update(districtAnalysisSettingsVersions)
+      .set({ isActive: false })
+      .where(
+        and(
+          eq(districtAnalysisSettingsVersions.districtId, districtId),
+          eq(districtAnalysisSettingsVersions.id, id),
+        ),
+      );
+  }
+
+  async getNextVersionNumber(
+    tx: DbOrTx,
+    districtId: string,
+  ): Promise<number> {
+    const [maxRow] = await tx
+      .select({
+        maxVersion: sql<number>`COALESCE(MAX(${districtAnalysisSettingsVersions.version}), 0)`,
+      })
+      .from(districtAnalysisSettingsVersions)
+      .where(eq(districtAnalysisSettingsVersions.districtId, districtId));
+
+    return (Number(maxRow?.maxVersion) || 0) + 1;
+  }
+
+  async insertVersion(
+    tx: DbOrTx,
+    version: NewDistrictAnalysisSettingsVersion,
+  ): Promise<DistrictAnalysisSettingsVersion> {
+    const [saved] = await tx
+      .insert(districtAnalysisSettingsVersions)
+      .values(version)
+      .returning();
+
+    if (!saved) {
+      throw new Error(
+        'Туман созламалари янги версиясини сақлашда хатолик юз берди.',
+      );
+    }
+
+    return saved;
+  }
+
+  async deleteDraft(tx: DbOrTx, districtId: string): Promise<void> {
+    await tx
+      .delete(districtAnalysisSettingsDrafts)
+      .where(eq(districtAnalysisSettingsDrafts.districtId, districtId));
+  }
 }
 
 export const districtAnalysisSettingsRepository =
   new DrizzleDistrictAnalysisSettingsRepository();
+
