@@ -145,6 +145,16 @@ export const JobSingletonKeys = {
   },
 };
 
+export interface BossQueueMap {
+  [TELEGRAM_CONTENT_QUALIFICATION_QUEUE]: TelegramContentQualificationJobData;
+  [TELEGRAM_SEMANTIC_RELEVANCE_QUEUE]: TelegramSemanticRelevanceJobData;
+  [TELEGRAM_TOPIC_ASSIGNMENT_QUEUE]: TelegramTopicAssignmentJobData;
+  [TELEGRAM_TOPIC_PROJECTION_QUEUE]: TelegramTopicProjectionJobData;
+  [TELEGRAM_TOPIC_RETENTION_QUEUE]: TelegramTopicRetentionJobData;
+}
+
+export type BossQueueName = keyof BossQueueMap;
+
 export const DEFAULT_QUEUE_CONFIGS: Record<string, Omit<PgBoss.SendOptions, 'db'>> = {
   [TELEGRAM_CONTENT_QUALIFICATION_QUEUE]: {
     retryLimit: 3,
@@ -185,7 +195,20 @@ export const DEFAULT_QUEUE_CONFIGS: Record<string, Omit<PgBoss.SendOptions, 'db'
 
 /**
  * Sends a job to a pg-boss queue with default resilient retry/retention options automatically applied.
+ * Enforces strict mapping between queue name and payload shape (AD-3).
  */
+export async function sendQueueJob<K extends BossQueueName>(
+  boss: PgBoss,
+  queueName: K,
+  data: BossQueueMap[K],
+  options?: PgBoss.SendOptions,
+): Promise<string | null>;
+export async function sendQueueJob<T extends object>(
+  boss: PgBoss,
+  queueName: string,
+  data: T,
+  options?: PgBoss.SendOptions,
+): Promise<string | null>;
 export async function sendQueueJob<T extends object>(
   boss: PgBoss,
   queueName: string,
@@ -203,11 +226,18 @@ export async function sendQueueJob<T extends object>(
 export interface TransactionScope {
   tx: NodePgDatabase<typeof schema>;
   client: pg.PoolClient;
-  enqueueJob: <T extends object>(
-    queueName: string,
-    data: T,
-    options?: Omit<PgBoss.SendOptions, 'db'>,
-  ) => Promise<string | null>;
+  enqueueJob: {
+    <K extends BossQueueName>(
+      queueName: K,
+      data: BossQueueMap[K],
+      options?: Omit<PgBoss.SendOptions, 'db'>,
+    ): Promise<string | null>;
+    <T extends object>(
+      queueName: string,
+      data: T,
+      options?: Omit<PgBoss.SendOptions, 'db'>,
+    ): Promise<string | null>;
+  };
 }
 
 /**

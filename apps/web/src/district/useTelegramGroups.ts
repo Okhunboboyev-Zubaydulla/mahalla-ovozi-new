@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { telegramGroupClient } from './telegram-group-client.js';
+import { districtQueryKeys } from './query-keys.js';
 import {
   TelegramGroupMapping,
   CreateTelegramGroupRequest,
@@ -16,7 +17,7 @@ export function useTelegramGroups(districtId: string | null) {
   const queryClient = useQueryClient();
 
   const query = useQuery<TelegramGroupMapping[]>({
-    queryKey: ['district', districtId, 'telegram-groups'],
+    queryKey: districtQueryKeys.groups(districtId),
     queryFn: async () => {
       if (!districtId) {
         throw new Error('Туман танланмаган.');
@@ -41,10 +42,10 @@ export function useTelegramGroups(districtId: string | null) {
     onSuccess: () => {
       if (districtId) {
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'telegram-groups'],
+          queryKey: districtQueryKeys.groups(districtId),
         });
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'readiness'],
+          queryKey: districtQueryKeys.readiness(districtId),
         });
       }
     },
@@ -64,10 +65,10 @@ export function useTelegramGroups(districtId: string | null) {
     onSuccess: () => {
       if (districtId) {
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'telegram-groups'],
+          queryKey: districtQueryKeys.groups(districtId),
         });
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'readiness'],
+          queryKey: districtQueryKeys.readiness(districtId),
         });
       }
     },
@@ -83,10 +84,10 @@ export function useTelegramGroups(districtId: string | null) {
     onSuccess: () => {
       if (districtId) {
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'telegram-groups'],
+          queryKey: districtQueryKeys.groups(districtId),
         });
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'readiness'],
+          queryKey: districtQueryKeys.readiness(districtId),
         });
       }
     },
@@ -102,7 +103,7 @@ export function useTelegramGroups(districtId: string | null) {
     onSuccess: () => {
       if (districtId) {
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'telegram-groups'],
+          queryKey: districtQueryKeys.groups(districtId),
         });
       }
     },
@@ -122,10 +123,10 @@ export function useTelegramGroups(districtId: string | null) {
     onSuccess: () => {
       if (districtId) {
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'telegram-groups'],
+          queryKey: districtQueryKeys.groups(districtId),
         });
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'readiness'],
+          queryKey: districtQueryKeys.readiness(districtId),
         });
       }
     },

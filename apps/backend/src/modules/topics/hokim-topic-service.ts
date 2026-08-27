@@ -19,6 +19,11 @@ import {
   TopicStatisticCard1Comparison,
 } from '@mahalla-ovozi/api-contracts';
 import { getTashkentCalendarDay, resolveDateBoundary } from '../telegram-intake/timezone-util.js';
+import {
+  type TopicKeysetCursorPayload,
+  encodeTopicKeysetCursor,
+  decodeTopicKeysetCursor,
+} from './district-topics-service.js';
 
 export { resolveDateBoundary };
 
@@ -58,43 +63,10 @@ export function escapeLikePattern(input: string): string {
   return input.replace(/[%_\\]/g, '\\$&');
 }
 
-export interface KeysetCursorPayload {
-  t: string; // ISO datetime string
-  id: string; // topic id
-}
-
-export function encodeKeysetCursor(timestamp: string, id: string): string {
-  return Buffer.from(JSON.stringify({ t: timestamp, id })).toString('base64url');
-}
-
-export function decodeKeysetCursor(cursor: string): KeysetCursorPayload | null {
-  try {
-    const raw = Buffer.from(cursor, 'base64url').toString('utf8');
-    const parsed = JSON.parse(raw);
-    if (
-      parsed &&
-      typeof parsed.t === 'string' &&
-      typeof parsed.id === 'string' &&
-      parsed.id.length > 0 &&
-      parsed.id.length <= 100
-    ) {
-      const time = new Date(parsed.t).getTime();
-      if (Number.isNaN(time)) return null;
-
-      const now = Date.now();
-      const ninetyDaysAgo = now - 90 * 86400 * 1000;
-      const oneMinuteInFuture = now + 60 * 1000;
-      if (time < ninetyDaysAgo || time > oneMinuteInFuture) {
-        return null;
-      }
-
-      return { t: parsed.t, id: parsed.id };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
+// Canonical keyset cursor aliases from district-topics-service
+export type KeysetCursorPayload = TopicKeysetCursorPayload;
+export const encodeKeysetCursor = encodeTopicKeysetCursor;
+export const decodeKeysetCursor = decodeTopicKeysetCursor;
 
 interface RawTopicRow extends Record<string, unknown> {
   id: string;

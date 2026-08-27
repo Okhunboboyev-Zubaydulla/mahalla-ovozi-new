@@ -149,3 +149,79 @@ export function assertSnapshotRevision(currentRevision: number, expectedRevision
   }
 }
 
+export interface FormatEvidenceItemOptions {
+  includeId?: boolean;
+  includeLane?: boolean;
+  indent?: string;
+  prefix?: string;
+  timeLabel?: 'Timestamp' | 'Time';
+}
+
+/**
+ * Pure deterministic formatter for an individual evidence item line (AD-5).
+ */
+export function formatEvidenceItemLine(
+  item: AcceptedEvidenceItem,
+  index: number,
+  options: FormatEvidenceItemOptions = {},
+): string {
+  const indent = options.indent ?? '';
+  const prefix = options.prefix ?? `#${index + 1}`;
+  const idPart = options.includeId ? `ID: ${item.id} | ` : '';
+  const timeLabel = options.timeLabel ?? 'Timestamp';
+  const lanePart = options.includeLane && item.lane ? ` | Lane: [${item.lane}]` : '';
+  return `${indent}[${prefix}] ${idPart}${timeLabel}: ${item.originalTimestamp} | MsgID: ${item.telegramMessageId}${lanePart} | Text: "${item.verbatimText}"`;
+}
+
+/**
+ * Formats a flat chronological evidence list for prompt injection (AD-5).
+ */
+export function formatSnapshotEvidenceList(
+  evidence: AcceptedEvidenceItem[],
+  options: FormatEvidenceItemOptions = {},
+): string {
+  if (!evidence || evidence.length === 0) {
+    return '';
+  }
+  return evidence
+    .map((item, idx) => formatEvidenceItemLine(item, idx, options))
+    .join('\n');
+}
+
+/**
+ * Deterministically groups snapshot evidence by topicId preserving chronological order.
+ */
+export function groupSnapshotByTopic(
+  snapshot: MahallaDailySnapshot,
+): Map<string, { lane: string; items: AcceptedEvidenceItem[] }> {
+  const topicMap = new Map<string, { lane: string; items: AcceptedEvidenceItem[] }>();
+  for (const item of snapshot.evidence) {
+    const topicId = item.topicId || 'UNKNOWN_TOPIC';
+    const existing = topicMap.get(topicId);
+    if (existing) {
+      existing.items.push(item);
+    } else {
+      topicMap.set(topicId, {
+        lane: item.lane || 'UNKNOWN',
+        items: [item],
+      });
+    }
+  }
+  return topicMap;
+}
+
+/**
+ * Formats the full SAME-DAY ACCEPTED EVIDENCE CONTEXT block for Semantic Relevance prompts (AD-5).
+ */
+export function formatSnapshotForSemanticRelevance(snapshot: MahallaDailySnapshot): string {
+  const header = `### SAME-DAY ACCEPTED EVIDENCE CONTEXT (Mahalla: ${snapshot.mahallaName}, Day: ${snapshot.calendarDay})`;
+  if (snapshot.evidence.length === 0) {
+    return `${header}\n(No accepted evidence recorded yet today for this Mahalla)`;
+  }
+  const evidenceList = formatSnapshotEvidenceList(snapshot.evidence, {
+    includeLane: true,
+  });
+  return `${header}\n${evidenceList}`;
+}
+
+

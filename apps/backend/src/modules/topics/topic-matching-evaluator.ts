@@ -7,7 +7,11 @@ import {
 import type { DbClient } from '../../adapters/db/client.js';
 import { acceptedEvidence } from '../../adapters/db/schema/accepted-evidence.js';
 import type { AiGatewayPort } from '../ai/ai-gateway.js';
-import type { MahallaDailySnapshot, AcceptedEvidenceItem } from '../ai/context-snapshot.js';
+import {
+  type MahallaDailySnapshot,
+  groupSnapshotByTopic,
+  formatEvidenceItemLine,
+} from '../ai/context-snapshot.js';
 import type { TelegramReplyMetadata } from '@mahalla-ovozi/api-contracts';
 import type { AiGatewayResult } from '../ai/types.js';
 
@@ -183,26 +187,16 @@ ${input.relevanceReasoning ? `- Relevance Reasoning: "${input.relevanceReasoning
     // 3. Existing Same-Day Topics and Evidence Context
     if (input.snapshot.evidence.length > 0) {
       // Group evidence items by topicId
-      const topicMap = new Map<string, { lane: string; items: AcceptedEvidenceItem[] }>();
-      for (const item of input.snapshot.evidence) {
-        const topicId = item.topicId || 'UNKNOWN_TOPIC';
-        const existing = topicMap.get(topicId);
-        if (existing) {
-          existing.items.push(item);
-        } else {
-          topicMap.set(topicId, {
-            lane: item.lane || 'UNKNOWN',
-            items: [item],
-          });
-        }
-      }
+      const topicMap = groupSnapshotByTopic(input.snapshot);
 
       const topicSections: string[] = [];
       for (const [topicId, group] of topicMap.entries()) {
         const itemsText = group.items
-          .map(
-            (it, idx) =>
-              `    [#${idx + 1}] Time: ${it.originalTimestamp} | MsgID: ${it.telegramMessageId} | Text: "${it.verbatimText}"`,
+          .map((it, idx) =>
+            formatEvidenceItemLine(it, idx, {
+              indent: '    ',
+              timeLabel: 'Time',
+            }),
           )
           .join('\n');
 

@@ -8,16 +8,8 @@ import {
   createDbClient,
   type DbClient,
 } from '../src/adapters/db/client.js';
-import {
-  districts,
-  telegramIntakeRecords,
-  aiOperations,
-  aiProviderAttempts,
-  topics,
-  acceptedEvidence,
-  topicProjections,
-  ensureDefaultAiProfiles,
-} from '../src/adapters/db/schema/index.js';
+import { districts, telegramIntakeRecords, aiOperations, aiProviderAttempts, topics, acceptedEvidence, topicProjections } from '../src/adapters/db/schema/index.js';
+import { ensureDefaultAiProfiles } from '../src/adapters/db/seeds.js';
 import {
   createBossClient,
   initBossQueues,

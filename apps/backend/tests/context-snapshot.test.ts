@@ -6,23 +6,37 @@ import {
   StaleSnapshotRevisionError,
   MahallaDailySnapshot,
   AcceptedEvidenceItem,
+  formatEvidenceItemLine,
+  formatSnapshotEvidenceList,
+  groupSnapshotByTopic,
+  formatSnapshotForSemanticRelevance,
 } from '../src/modules/ai/context-snapshot.js';
 
 describe('Context Snapshot Kernel & Cryptographic Integrity Tests (AD-5, AD-6)', () => {
   const sampleEvidence: AcceptedEvidenceItem[] = [
     {
       id: 'ev_1',
+      topicId: 'top_1',
       telegramMessageId: '1001',
       originalTimestamp: '2026-08-25T10:00:00.000Z',
       verbatimText: 'Elektr ta`minotida uzilishlar bo`lyapti',
-      lane: 'COMMUNAL_SERVICES',
+      lane: 'ELECTRICITY',
     },
     {
       id: 'ev_2',
+      topicId: 'top_1',
       telegramMessageId: '1002',
       originalTimestamp: '2026-08-25T10:05:00.000Z',
       verbatimText: 'Yo`l ta`mirlash ishlari to`xtab qoldi',
-      lane: 'ROADS_AND_TRANSPORT',
+      lane: 'ELECTRICITY',
+    },
+    {
+      id: 'ev_3',
+      topicId: 'top_2',
+      telegramMessageId: '1003',
+      originalTimestamp: '2026-08-25T10:10:00.000Z',
+      verbatimText: 'Suv quvuri yorildi',
+      lane: 'WATER',
     },
   ];
 
@@ -43,7 +57,7 @@ describe('Context Snapshot Kernel & Cryptographic Integrity Tests (AD-5, AD-6)',
       districtId: 'dist_1',
       mahallaName: 'Navbahor',
       calendarDay: '2026-08-25',
-      contextRevision: 2,
+      contextRevision: 3,
       snapshotFingerprint: computeSnapshotFingerprint(sampleEvidence),
       evidence: sampleEvidence,
     };
@@ -56,7 +70,7 @@ describe('Context Snapshot Kernel & Cryptographic Integrity Tests (AD-5, AD-6)',
       districtId: 'dist_1',
       mahallaName: 'Navbahor',
       calendarDay: '2026-08-25',
-      contextRevision: 2,
+      contextRevision: 3,
       snapshotFingerprint: 'tampered_fake_sha256_hash_1234567890abcdef',
       evidence: sampleEvidence,
     };
@@ -69,7 +83,7 @@ describe('Context Snapshot Kernel & Cryptographic Integrity Tests (AD-5, AD-6)',
       districtId: 'dist_1',
       mahallaName: 'Navbahor',
       calendarDay: '2026-08-25',
-      contextRevision: 999, // Should be 2
+      contextRevision: 999,
       snapshotFingerprint: computeSnapshotFingerprint(sampleEvidence),
       evidence: sampleEvidence,
     };
@@ -92,4 +106,83 @@ describe('Context Snapshot Kernel & Cryptographic Integrity Tests (AD-5, AD-6)',
       expect(staleErr.status).toBe(409);
     }
   });
+
+  describe('Deterministic Prompt Serialization Helpers (AD-5)', () => {
+    it('formats single evidence item line with canonical markers', () => {
+      const line = formatEvidenceItemLine(sampleEvidence[0]!, 0, {
+        includeLane: true,
+      });
+      expect(line).toBe(
+        '[#1] Timestamp: 2026-08-25T10:00:00.000Z | MsgID: 1001 | Lane: [ELECTRICITY] | Text: "Elektr ta`minotida uzilishlar bo`lyapti"',
+      );
+    });
+
+    it('formats evidence item line with ID, custom prefix and indent', () => {
+      const line = formatEvidenceItemLine(sampleEvidence[0]!, 0, {
+        prefix: 'Evidence #1',
+        includeId: true,
+        indent: '  ',
+        timeLabel: 'Time',
+      });
+      expect(line).toBe(
+        '  [Evidence #1] ID: ev_1 | Time: 2026-08-25T10:00:00.000Z | MsgID: 1001 | Text: "Elektr ta`minotida uzilishlar bo`lyapti"',
+      );
+    });
+
+    it('formats flat evidence list correctly', () => {
+      const list = formatSnapshotEvidenceList(sampleEvidence.slice(0, 2), {
+        includeLane: true,
+      });
+      expect(list).toContain('[#1] Timestamp: 2026-08-25T10:00:00.000Z | MsgID: 1001 | Lane: [ELECTRICITY]');
+      expect(list).toContain('[#2] Timestamp: 2026-08-25T10:05:00.000Z | MsgID: 1002 | Lane: [ELECTRICITY]');
+    });
+
+    it('groups evidence deterministically by topicId', () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-08-25',
+        contextRevision: 3,
+        snapshotFingerprint: computeSnapshotFingerprint(sampleEvidence),
+        evidence: sampleEvidence,
+      };
+
+      const topicMap = groupSnapshotByTopic(snapshot);
+      expect(topicMap.size).toBe(2);
+      expect(topicMap.get('top_1')?.items.length).toBe(2);
+      expect(topicMap.get('top_2')?.items.length).toBe(1);
+    });
+
+    it('formats semantic relevance context section', () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-08-25',
+        contextRevision: 3,
+        snapshotFingerprint: computeSnapshotFingerprint(sampleEvidence),
+        evidence: sampleEvidence,
+      };
+
+      const formatted = formatSnapshotForSemanticRelevance(snapshot);
+      expect(formatted).toContain('### SAME-DAY ACCEPTED EVIDENCE CONTEXT (Mahalla: Navbahor, Day: 2026-08-25)');
+      expect(formatted).toContain('[#1] Timestamp: 2026-08-25T10:00:00.000Z | MsgID: 1001 | Lane: [ELECTRICITY] | Text: "Elektr ta`minotida uzilishlar bo`lyapti"');
+      expect(formatted).toContain('[#2] Timestamp: 2026-08-25T10:05:00.000Z | MsgID: 1002 | Lane: [ELECTRICITY] | Text: "Yo`l ta`mirlash ishlari to`xtab qoldi"');
+      expect(formatted).toContain('[#3] Timestamp: 2026-08-25T10:10:00.000Z | MsgID: 1003 | Lane: [WATER] | Text: "Suv quvuri yorildi"');
+    });
+
+    it('formats semantic relevance context for empty snapshot', () => {
+      const emptySnapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Guliston',
+        calendarDay: '2026-08-25',
+        contextRevision: 0,
+        snapshotFingerprint: 'sha256_empty_v1',
+        evidence: [],
+      };
+
+      const formatted = formatSnapshotForSemanticRelevance(emptySnapshot);
+      expect(formatted).toContain('(No accepted evidence recorded yet today for this Mahalla)');
+    });
+  });
 });
+

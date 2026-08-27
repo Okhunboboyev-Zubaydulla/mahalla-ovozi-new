@@ -54,22 +54,25 @@ export type HokimLaneBoardData = z.infer<typeof HokimLaneBoardDataSchema>;
 export const DateFilterScopeSchema = z.enum(['today', 'yesterday', 'custom']);
 export type DateFilterScope = z.infer<typeof DateFilterScopeSchema>;
 
-export const LanesQueryParamSchema = z.preprocess((val) => {
-  if (val === undefined || val === null || val === '') return undefined;
-  let items: string[] = [];
-  if (typeof val === 'string') {
-    items = val.split(',').map((s) => s.trim()).filter(Boolean);
-  } else if (Array.isArray(val)) {
-    items = val
-      .flatMap((item) => (typeof item === 'string' ? item.split(',') : item))
-      .map((s) => (typeof s === 'string' ? s.trim() : s))
-      .filter(Boolean);
-  } else {
-    return val;
-  }
-  const unique = Array.from(new Set(items));
-  return unique.length > 0 ? unique : undefined;
-}, z.array(QualifyingLaneSchema).min(1, 'Камида 1 та йўналиш танланиши керак').max(5, 'Кўпи билан 5 та йўналиш танланиши мумкин').optional());
+export const LanesQueryParamSchema = z
+  .union([z.array(QualifyingLaneSchema), z.string()])
+  .optional()
+  .transform((val) => {
+    if (val === undefined || val === null || val === '') return undefined;
+    let items: string[] = [];
+    if (typeof val === 'string') {
+      items = val.split(',').map((s) => s.trim()).filter(Boolean);
+    } else if (Array.isArray(val)) {
+      items = val
+        .flatMap((item) => (typeof item === 'string' ? item.split(',') : item))
+        .map((s) => (typeof s === 'string' ? s.trim() : s))
+        .filter(Boolean);
+    } else {
+      return undefined;
+    }
+    const unique = Array.from(new Set(items));
+    return unique.length > 0 ? (unique as QualifyingLane[]) : undefined;
+  });
 export type LanesQueryParam = z.infer<typeof LanesQueryParamSchema>;
 
 export const TopicDateFilterFields = {
@@ -88,6 +91,13 @@ export const TopicBaseFilterFields = {
   ...TopicDateFilterFields,
   mahallaName: z.string().trim().min(1).optional(),
   lanes: LanesQueryParamSchema,
+  calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+};
+
+export const TopicSearchFilterFields = {
+  ...TopicDateFilterFields,
+  mahallaName: z.string().trim().min(1).optional(),
+  lanes: z.array(QualifyingLaneSchema).min(1).max(5).optional(),
   calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 };
 
@@ -131,15 +141,115 @@ export const TopicBaseFilterSchema = z
 export type TopicBaseFilter = z.input<typeof TopicBaseFilterSchema>;
 export type TopicBaseFilterOutput = z.output<typeof TopicBaseFilterSchema>;
 
+/**
+ * Composable field decorators for Topic query and search contracts.
+ */
+const baselineField = {
+  baselineTimestamp: z.string().datetime().optional(),
+};
+
+const searchField = {
+  search: z
+    .string()
+    .trim()
+    .max(200, 'Қидирув сўзи 200 та белгидан ошмаслиги керак')
+    .optional(),
+};
+
+const cursorPaginationFields = {
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+};
+
+// 1. Hokim Topic Board (GET Query & POST Search)
 export const HokimTopicBoardQuerySchema = z
   .object({
     ...TopicBaseFilterFields,
-    baselineTimestamp: z.string().datetime().optional(),
+    ...baselineField,
   })
   .superRefine(refineDateScopeRange);
 export type HokimTopicBoardQuery = z.input<typeof HokimTopicBoardQuerySchema>;
 export type HokimTopicBoardQueryOutput = z.output<typeof HokimTopicBoardQuerySchema>;
 
+export const HokimTopicBoardSearchBodySchema = z
+  .object({
+    ...searchField,
+    ...TopicSearchFilterFields,
+    ...baselineField,
+  })
+  .superRefine(refineDateScopeRange);
+export type HokimTopicBoardSearchBody = z.input<typeof HokimTopicBoardSearchBodySchema>;
+export type HokimTopicBoardSearchBodyOutput = z.output<typeof HokimTopicBoardSearchBodySchema>;
+
+// 2. Hokim Lane (GET Query & POST Search)
+export const HokimLaneQuerySchema = z
+  .object({
+    lane: QualifyingLaneSchema,
+    ...TopicBaseFilterFields,
+    ...cursorPaginationFields,
+    ...baselineField,
+  })
+  .superRefine(refineDateScopeRange);
+export type HokimLaneQuery = z.input<typeof HokimLaneQuerySchema>;
+export type HokimLaneQueryOutput = z.output<typeof HokimLaneQuerySchema>;
+
+export const HokimLaneSearchBodySchema = z
+  .object({
+    lane: QualifyingLaneSchema,
+    ...searchField,
+    ...TopicSearchFilterFields,
+    ...cursorPaginationFields,
+    ...baselineField,
+  })
+  .superRefine(refineDateScopeRange);
+export type HokimLaneSearchBody = z.input<typeof HokimLaneSearchBodySchema>;
+export type HokimLaneSearchBodyOutput = z.output<typeof HokimLaneSearchBodySchema>;
+
+// 3. Hokim Topic Statistics (GET Query & POST Search)
+export const HokimTopicStatisticsQuerySchema = TopicBaseFilterSchema;
+export type HokimTopicStatisticsQuery = z.input<typeof HokimTopicStatisticsQuerySchema>;
+export type HokimTopicStatisticsQueryOutput = z.output<typeof HokimTopicStatisticsQuerySchema>;
+
+export const HokimTopicStatisticsSearchBodySchema = z
+  .object({
+    ...searchField,
+    ...TopicSearchFilterFields,
+  })
+  .superRefine(refineDateScopeRange);
+export type HokimTopicStatisticsSearchBody = z.input<typeof HokimTopicStatisticsSearchBodySchema>;
+export type HokimTopicStatisticsSearchBodyOutput = z.output<typeof HokimTopicStatisticsSearchBodySchema>;
+
+// 4. District Topics (GET Query & POST Search)
+export const DistrictTopicsFilterFields = {
+  ...TopicBaseFilterFields,
+  ...cursorPaginationFields,
+};
+
+export const DistrictTopicsSearchBodyFilterFields = {
+  ...TopicSearchFilterFields,
+  ...cursorPaginationFields,
+};
+
+export const DistrictTopicsQuerySchema = z
+  .object(DistrictTopicsFilterFields)
+  .superRefine(refineDateScopeRange);
+
+export type DistrictTopicsQuery = z.input<typeof DistrictTopicsQuerySchema>;
+export type DistrictTopicsQueryInput = z.input<typeof DistrictTopicsQuerySchema>;
+export type DistrictTopicsQueryOutput = z.output<typeof DistrictTopicsQuerySchema>;
+
+export const DistrictTopicsSearchBodySchema = z
+  .object({
+    ...searchField,
+    ...DistrictTopicsSearchBodyFilterFields,
+  })
+  .superRefine(refineDateScopeRange);
+
+export type DistrictTopicsSearchBody = z.input<typeof DistrictTopicsSearchBodySchema>;
+export type DistrictTopicsSearchBodyInput = z.input<typeof DistrictTopicsSearchBodySchema>;
+export type DistrictTopicsSearchBodyOutput = z.output<typeof DistrictTopicsSearchBodySchema>;
+
+// 5. Response DTOs
 export const HokimTopicBoardResponseSchema = z.object({
   districtId: z.string(),
   districtName: z.string(),
@@ -152,18 +262,6 @@ export const HokimTopicBoardResponseSchema = z.object({
   lanes: z.record(QualifyingLaneSchema, HokimLaneBoardDataSchema),
 });
 export type HokimTopicBoardResponse = z.infer<typeof HokimTopicBoardResponseSchema>;
-
-export const HokimLaneQuerySchema = z
-  .object({
-    lane: QualifyingLaneSchema,
-    ...TopicBaseFilterFields,
-    cursor: z.string().optional(),
-    limit: z.coerce.number().int().min(1).max(100).default(20),
-    baselineTimestamp: z.string().datetime().optional(),
-  })
-  .superRefine(refineDateScopeRange);
-export type HokimLaneQuery = z.input<typeof HokimLaneQuerySchema>;
-export type HokimLaneQueryOutput = z.output<typeof HokimLaneQuerySchema>;
 
 export const HokimLaneResponseSchema = z.object({
   lane: QualifyingLaneSchema,
@@ -265,10 +363,6 @@ export const TopicStatisticCard5Schema = z.discriminatedUnion('mode', [
 ]);
 export type TopicStatisticCard5 = z.infer<typeof TopicStatisticCard5Schema>;
 
-export const HokimTopicStatisticsQuerySchema = TopicBaseFilterSchema;
-export type HokimTopicStatisticsQuery = z.input<typeof HokimTopicStatisticsQuerySchema>;
-export type HokimTopicStatisticsQueryOutput = z.output<typeof HokimTopicStatisticsQuerySchema>;
-
 export const HokimTopicStatisticsResponseSchema = z.object({
   districtId: z.string(),
   districtName: z.string(),
@@ -285,100 +379,6 @@ export const HokimTopicStatisticsResponseSchema = z.object({
   card5: TopicStatisticCard5Schema,
 });
 export type HokimTopicStatisticsResponse = z.infer<typeof HokimTopicStatisticsResponseSchema>;
-
-export const HokimTopicBoardSearchBodySchema = z
-  .object({
-    search: z
-      .string()
-      .trim()
-      .max(200, 'Қидирув сўзи 200 та белгидан ошмаслиги керак')
-      .optional(),
-    ...TopicBaseFilterFields,
-    baselineTimestamp: z.string().datetime().optional(),
-  })
-  .superRefine(refineDateScopeRange);
-export type HokimTopicBoardSearchBody = z.input<typeof HokimTopicBoardSearchBodySchema>;
-export type HokimTopicBoardSearchBodyOutput = z.output<typeof HokimTopicBoardSearchBodySchema>;
-
-export const HokimLaneSearchBodySchema = z
-  .object({
-    lane: QualifyingLaneSchema,
-    search: z
-      .string()
-      .trim()
-      .max(200, 'Қидирув сўзи 200 та белгидан ошмаслиги керак')
-      .optional(),
-    ...TopicBaseFilterFields,
-    cursor: z.string().optional(),
-    limit: z.coerce.number().int().min(1).max(100).default(20),
-    baselineTimestamp: z.string().datetime().optional(),
-  })
-  .superRefine(refineDateScopeRange);
-export type HokimLaneSearchBody = z.input<typeof HokimLaneSearchBodySchema>;
-export type HokimLaneSearchBodyOutput = z.output<typeof HokimLaneSearchBodySchema>;
-
-export const HokimTopicStatisticsSearchBodySchema = z
-  .object({
-    search: z
-      .string()
-      .trim()
-      .max(200, 'Қидирув сўзи 200 та белгидан ошмаслиги керак')
-      .optional(),
-    ...TopicBaseFilterFields,
-  })
-  .superRefine(refineDateScopeRange);
-export type HokimTopicStatisticsSearchBody = z.input<typeof HokimTopicStatisticsSearchBodySchema>;
-export type HokimTopicStatisticsSearchBodyOutput = z.output<typeof HokimTopicStatisticsSearchBodySchema>;
-
-export const DistrictTopicsFilterFields = {
-  ...TopicBaseFilterFields,
-  cursor: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-};
-
-export const DistrictTopicsQuerySchema = z
-  .object(DistrictTopicsFilterFields)
-  .superRefine(refineDateScopeRange);
-
-export interface DistrictTopicsQuery {
-  dateScope?: DateFilterScope;
-  dateFrom?: string;
-  dateTo?: string;
-  calendarDay?: string;
-  mahallaName?: string;
-  lanes?: QualifyingLane[];
-  cursor?: string;
-  limit?: number;
-}
-
-export type DistrictTopicsQueryInput = z.input<typeof DistrictTopicsQuerySchema>;
-export type DistrictTopicsQueryOutput = z.output<typeof DistrictTopicsQuerySchema>;
-
-export const DistrictTopicsSearchBodySchema = z
-  .object({
-    search: z
-      .string()
-      .trim()
-      .max(200, 'Қидирув сўзи 200 та белгидан ошмаслиги керак')
-      .optional(),
-    ...DistrictTopicsFilterFields,
-  })
-  .superRefine(refineDateScopeRange);
-
-export interface DistrictTopicsSearchBody {
-  search?: string;
-  dateScope?: DateFilterScope;
-  dateFrom?: string;
-  dateTo?: string;
-  calendarDay?: string;
-  mahallaName?: string;
-  lanes?: QualifyingLane[];
-  cursor?: string;
-  limit?: number;
-}
-
-export type DistrictTopicsSearchBodyInput = z.input<typeof DistrictTopicsSearchBodySchema>;
-export type DistrictTopicsSearchBodyOutput = z.output<typeof DistrictTopicsSearchBodySchema>;
 
 export const DistrictTopicsPageResponseSchema = z.object({
   districtId: z.string(),

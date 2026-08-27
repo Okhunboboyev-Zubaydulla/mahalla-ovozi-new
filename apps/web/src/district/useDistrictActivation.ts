@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { districtClient } from './district-client.js';
+import { districtQueryKeys } from './query-keys.js';
 import { ActivateDistrictResponse } from '@mahalla-ovozi/api-contracts';
 import { ApiError } from '../lib/api-client.js';
 
@@ -15,20 +16,20 @@ export function useDistrictActivation(districtId: string | null) {
     },
     onSuccess: (data) => {
       if (districtId) {
-        queryClient.setQueryData(['district', districtId], { district: data.district });
+        queryClient.setQueryData(districtQueryKeys.district(districtId), { district: data.district });
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'readiness'],
+          queryKey: districtQueryKeys.readiness(districtId),
         });
         queryClient.invalidateQueries({
-          queryKey: ['districts'],
+          queryKey: districtQueryKeys.list(),
         });
       }
     },
     onError: (err) => {
       if (err instanceof ApiError && err.code === 'DISTRICT_ALREADY_ACTIVE' && districtId) {
-        queryClient.invalidateQueries({ queryKey: ['district', districtId] });
-        queryClient.invalidateQueries({ queryKey: ['district', districtId, 'readiness'] });
-        queryClient.invalidateQueries({ queryKey: ['districts'] });
+        queryClient.invalidateQueries({ queryKey: districtQueryKeys.district(districtId) });
+        queryClient.invalidateQueries({ queryKey: districtQueryKeys.readiness(districtId) });
+        queryClient.invalidateQueries({ queryKey: districtQueryKeys.list() });
       }
     },
   });

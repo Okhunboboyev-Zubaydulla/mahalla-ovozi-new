@@ -4,7 +4,10 @@ import {
   type QualifyingLane,
 } from '@mahalla-ovozi/api-contracts';
 import type { AiGatewayPort } from './ai-gateway.js';
-import type { MahallaDailySnapshot } from './context-snapshot.js';
+import {
+  type MahallaDailySnapshot,
+  formatSnapshotForSemanticRelevance,
+} from './context-snapshot.js';
 import type { TelegramReplyMetadata } from '../../adapters/jobs/boss-client.js';
 import type { AiGatewayResult } from './types.js';
 
@@ -121,20 +124,7 @@ export class SemanticRelevanceEvaluator {
       }
     }
 
-    if (input.snapshot.evidence.length > 0) {
-      const evidenceList = input.snapshot.evidence
-        .map(
-          (e, idx) =>
-            `[#${idx + 1}] Timestamp: ${e.originalTimestamp} | MsgID: ${e.telegramMessageId}${e.lane ? ` | Lane: [${e.lane}]` : ''} | Text: "${e.verbatimText}"`,
-        )
-        .join('\n');
-
-      sections.push(`### SAME-DAY ACCEPTED EVIDENCE CONTEXT (Mahalla: ${input.snapshot.mahallaName}, Day: ${input.snapshot.calendarDay})
-${evidenceList}`);
-    } else {
-      sections.push(`### SAME-DAY ACCEPTED EVIDENCE CONTEXT (Mahalla: ${input.snapshot.mahallaName}, Day: ${input.snapshot.calendarDay})
-(No accepted evidence recorded yet today for this Mahalla)`);
-    }
+    sections.push(formatSnapshotForSemanticRelevance(input.snapshot));
 
     if (input.vocabularyGuidance && input.vocabularyGuidance.length > 0) {
       sections.push(`### CONFIGURED DISTRICT RECOGNITION VOCABULARY (GUIDANCE ONLY)

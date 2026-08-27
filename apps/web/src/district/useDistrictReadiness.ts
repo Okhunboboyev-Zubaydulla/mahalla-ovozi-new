@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { districtClient } from './district-client.js';
+import { districtQueryKeys } from './query-keys.js';
 import { DistrictReadiness, ConfirmDisclosureResponse } from '@mahalla-ovozi/api-contracts';
 
 export function useDistrictReadiness(districtId: string | null) {
   const queryClient = useQueryClient();
 
   const query = useQuery<DistrictReadiness>({
-    queryKey: ['district', districtId, 'readiness'],
+    queryKey: districtQueryKeys.readiness(districtId),
     queryFn: async () => {
       if (!districtId) {
         throw new Error('Туман танланмаган.');
@@ -27,7 +28,7 @@ export function useDistrictReadiness(districtId: string | null) {
     onSuccess: () => {
       if (districtId) {
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'readiness'],
+          queryKey: districtQueryKeys.readiness(districtId),
         });
       }
     },

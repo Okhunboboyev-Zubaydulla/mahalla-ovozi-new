@@ -12,5 +12,5 @@ export * from './accepted-evidence.js';
 export * from './topic-projections.js';
 export * from './user-visits.js';
 export * from './operational-issues.js';
-export * from '../seeds.js';
+
 

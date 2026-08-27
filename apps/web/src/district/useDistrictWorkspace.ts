@@ -29,20 +29,10 @@ import { telegramBotClient } from './telegram-bot-client.js';
 import { telegramGroupClient } from './telegram-group-client.js';
 import { hokimAccountClient } from './hokim-account-client.js';
 import { useDistrict } from './district-context.js';
+import { districtQueryKeys, type DistrictQueryKeys } from './query-keys.js';
 import { ApiError } from '../lib/api-client.js';
 
-/* ── Standardized Cache Keys ── */
-
-export const districtQueryKeys = {
-  all: ['district'] as const,
-  list: () => ['districts'] as const,
-  district: (id: string | null) => ['district', id] as const,
-  details: (id: string | null) => ['district', id, 'details'] as const,
-  readiness: (id: string | null) => ['district', id, 'readiness'] as const,
-  bot: (id: string | null) => ['district', id, 'telegram-bot'] as const,
-  groups: (id: string | null) => ['district', id, 'telegram-groups'] as const,
-  hokim: (id: string | null) => ['district', id, 'hokim-account'] as const,
-};
+export { districtQueryKeys, type DistrictQueryKeys };
 
 /* ── Options & Facade Interface ── */
 

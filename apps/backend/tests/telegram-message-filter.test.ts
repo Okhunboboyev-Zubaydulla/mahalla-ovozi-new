@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   filterTelegramMessage,
   TelegramIncomingMessage,
-} from '../src/adapters/telegram/telegram-message-filter.js';
+} from '../src/modules/telegram-intake/telegram-content-qualification.js';
 
 describe('Telegram Message Filter Predicate (Pure)', () => {
   it('accepts a valid ordinary human text message', () => {

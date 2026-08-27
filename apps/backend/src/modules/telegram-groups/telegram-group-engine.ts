@@ -9,7 +9,10 @@ import {
   GetGroupTestStatusResponse,
   SimulateTestMessageResponse,
 } from '@mahalla-ovozi/api-contracts';
-import { filterTelegramMessage, TelegramIncomingMessage } from '../../adapters/telegram/telegram-message-filter.js';
+import {
+  filterTelegramMessage,
+  TelegramIncomingMessage,
+} from '../telegram-intake/telegram-content-qualification.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
 import {
   globalTestSessionManager,

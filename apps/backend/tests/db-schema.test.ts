@@ -1,27 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/client.js';
-import {
-  accounts,
-  sessions,
-  auditEvents,
-  signInRateLimits,
-  districts,
-  districtTelegramBots,
-  districtTelegramGroups,
-  aiProfiles,
-  aiOperations,
-  aiProviderAttempts,
-  topics,
-  acceptedEvidence,
-  telegramIntakeRecords,
-  ensureDefaultAiProfiles,
-  globalAnalysisSettingsVersions,
-  globalAnalysisSettingsDrafts,
-  ensureDefaultGlobalAnalysisSettings,
-  districtAnalysisSettingsVersions,
-  districtAnalysisSettingsDrafts,
-  ensureDefaultDistrictAnalysisSettings,
-} from '../src/adapters/db/schema/index.js';
+import { accounts, sessions, auditEvents, signInRateLimits, districts, districtTelegramBots, districtTelegramGroups, aiProfiles, aiOperations, aiProviderAttempts, topics, acceptedEvidence, telegramIntakeRecords, globalAnalysisSettingsVersions, globalAnalysisSettingsDrafts, districtAnalysisSettingsVersions, districtAnalysisSettingsDrafts } from '../src/adapters/db/schema/index.js';
+import { ensureDefaultAiProfiles, ensureDefaultGlobalAnalysisSettings, ensureDefaultDistrictAnalysisSettings } from '../src/adapters/db/seeds.js';
 import { eq } from 'drizzle-orm';
 import pg from 'pg';
 import crypto from 'node:crypto';

@@ -4,72 +4,17 @@ import {
   ListGlobalAiOperationsQuerySchema,
   GetAiHealthMetricsQuerySchema,
 } from '@mahalla-ovozi/api-contracts';
-import { DbClient } from '../../adapters/db/client.js';
-import { COOKIE_NAME, validateAndTouchSession } from '../auth/session-manager.js';
-import { createRequireProductOwner } from '../auth/require-product-owner.js';
+import type { DbClient } from '../../adapters/db/client.js';
+import {
+  createRequireProductOwner,
+  createRequireDistrictAccess,
+} from '../auth/require-auth.js';
 import {
   aiOperationQueryService,
   InvalidDistrictScopeError,
   OperationNotFoundError,
   PrivacyBoundaryViolationError,
 } from './ai-operation-query-service.js';
-
-export function createRequireDistrictAccess(db: DbClient) {
-  return async function requireDistrictAccess(
-    req: FastifyRequest<{ Params: { districtId?: string } }>,
-    reply: FastifyReply,
-  ): Promise<void> {
-    const rawToken = req.cookies[COOKIE_NAME];
-    if (!rawToken) {
-      reply.status(401).send({
-        error: {
-          code: 'UNAUTHENTICATED',
-          message: 'Сессия топилмади ёки муддати тугаган.',
-        },
-      });
-      return;
-    }
-
-    const validation = await validateAndTouchSession(db, rawToken);
-    if (!validation.isValid || !validation.account || !validation.session) {
-      reply.clearCookie(COOKIE_NAME, {
-        path: '/',
-        httpOnly: true,
-        sameSite: 'strict',
-        secure: true,
-      });
-      reply.status(401).send({
-        error: {
-          code: 'UNAUTHENTICATED',
-          message: 'Сессия топилмади ёки муддати тугаган.',
-        },
-      });
-      return;
-    }
-
-    const requestedDistrictId = req.params?.districtId;
-    if (validation.account.role === 'PRODUCT_OWNER') {
-      req.actor = validation.account;
-      return;
-    }
-
-    if (
-      validation.account.role === 'DISTRICT_HOKIM' &&
-      requestedDistrictId &&
-      validation.account.districtId === requestedDistrictId
-    ) {
-      req.actor = validation.account;
-      return;
-    }
-
-    reply.status(403).send({
-      error: {
-        code: 'FORBIDDEN',
-        message: 'Ушбу амални бажариш учун ҳуқуқ етарли эмас.',
-      },
-    });
-  };
-}
 
 function handleAiOperationError(err: unknown, reply: FastifyReply, req?: FastifyRequest) {
   if (err instanceof InvalidDistrictScopeError) {

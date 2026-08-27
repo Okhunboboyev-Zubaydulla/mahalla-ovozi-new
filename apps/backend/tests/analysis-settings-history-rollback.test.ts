@@ -9,20 +9,8 @@ import {
 } from '@mahalla-ovozi/api-contracts';
 import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/client.js';
 import { buildHttpServer } from '../src/entrypoints/http.js';
-import {
-  accounts,
-  districts,
-  auditEvents,
-  aiOperations,
-  topics,
-  globalAnalysisSettingsVersions,
-  globalAnalysisSettingsDrafts,
-  districtAnalysisSettingsVersions,
-  districtAnalysisSettingsDrafts,
-  ensureDefaultAiProfiles,
-  ensureDefaultGlobalAnalysisSettings,
-  ensureDefaultDistrictAnalysisSettings,
-} from '../src/adapters/db/schema/index.js';
+import { accounts, districts, auditEvents, aiOperations, topics, globalAnalysisSettingsVersions, globalAnalysisSettingsDrafts, districtAnalysisSettingsVersions, districtAnalysisSettingsDrafts } from '../src/adapters/db/schema/index.js';
+import { ensureDefaultAiProfiles, ensureDefaultGlobalAnalysisSettings, ensureDefaultDistrictAnalysisSettings } from '../src/adapters/db/seeds.js';
 import { createOrResetProductOwner } from '../src/modules/auth/account-service.js';
 import { hashPassword } from '../src/adapters/crypto/argon2.js';
 import { eq, and, ne, desc } from 'drizzle-orm';

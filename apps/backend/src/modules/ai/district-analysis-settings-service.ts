@@ -18,9 +18,9 @@ import {
 import {
   type DistrictAnalysisSettingsVersion,
   type DistrictAnalysisSettingsDraft,
-  createDefaultDistrictAnalysisSettingsVersion,
   districts,
 } from '../../adapters/db/schema/index.js';
+import { createDefaultDistrictAnalysisSettingsVersion } from '../../adapters/db/seeds.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
 
 function areHokimTermsEqual(a: string[], b: string[]): boolean {

@@ -4,7 +4,12 @@ import {
   ComponentType,
   IssueCategory,
   IssueSeverity,
+  IssueStatus,
+  HealthStatus,
+  OperationalIssue,
 } from '@mahalla-ovozi/api-contracts';
+import { isIssueRetryEligible, deriveRetryJobSpec } from './retry-evaluator.js';
+import type { OperationalIssueEntity } from '../../adapters/db/schema/index.js';
 
 const SEVERITY_RANK: Record<IssueSeverity, number> = {
   Critical: 0,
@@ -238,4 +243,59 @@ export function sortOperationalIssues<
 
     return a.id.localeCompare(b.id);
   });
+}
+
+/**
+ * Canonical formatting function mapping an operational issue database entity to contract DTO (Story 4.2 AC 1, AC 4).
+ * Pure evaluation: derives retry eligibility, metadata, and ISO timestamps.
+ */
+export function formatOperationalIssue(
+  row: OperationalIssueEntity,
+  districtName?: string | null,
+): OperationalIssue {
+  const isRetryEligible =
+    row.status === 'ACTIVE' &&
+    isIssueRetryEligible(row.issueCategory as IssueCategory, row.metadata) &&
+    deriveRetryJobSpec({
+      id: row.id,
+      scope: row.scope,
+      districtId: row.districtId,
+      component: row.component,
+      issueCategory: row.issueCategory,
+      metadata: row.metadata,
+    }) !== null;
+  const pendingRetry = Boolean(row.metadata?.pendingRetry);
+  const retryCount =
+    typeof row.metadata?.retryCount === 'number'
+      ? row.metadata.retryCount
+      : undefined;
+  const lastRetryAt =
+    typeof row.metadata?.lastRetryAt === 'string'
+      ? row.metadata.lastRetryAt
+      : null;
+
+  return {
+    id: row.id,
+    logicalKey: row.logicalKey,
+    scope: row.scope as ComponentScope,
+    districtId: row.districtId,
+    districtName: districtName || null,
+    component: row.component as ComponentType,
+    issueCategory: row.issueCategory as IssueCategory,
+    severity: row.severity as IssueSeverity,
+    status: row.status as IssueStatus,
+    healthStatus: row.healthStatus as HealthStatus,
+    sanitizedTitle: row.sanitizedTitle,
+    sanitizedDescription: row.sanitizedDescription,
+    recommendedAction: row.recommendedAction,
+    targetRoute: row.targetRoute,
+    startedAt: row.startedAt.toISOString(),
+    latestCheckAt: row.latestCheckAt.toISOString(),
+    resolvedAt: row.resolvedAt ? row.resolvedAt.toISOString() : null,
+    isRetryEligible,
+    retryCount,
+    pendingRetry,
+    lastRetryAt,
+    metadata: row.metadata,
+  };
 }

@@ -13,7 +13,7 @@ import {
   TELEGRAM_TOPIC_RETENTION_QUEUE,
 } from '../adapters/jobs/boss-client.js';
 import { createDbPool, createDbClient, type DbClient } from '../adapters/db/client.js';
-import { ensureDefaultAiProfiles } from '../adapters/db/schema/index.js';
+import { ensureDefaultAiProfiles } from '../adapters/db/seeds.js';
 import { AiGateway, type AiGatewayPort } from '../modules/ai/ai-gateway.js';
 import { SemanticRelevanceEvaluator } from '../modules/ai/semantic-relevance-evaluator.js';
 import { TopicMatchingEvaluator } from '../modules/topics/topic-matching-evaluator.js';

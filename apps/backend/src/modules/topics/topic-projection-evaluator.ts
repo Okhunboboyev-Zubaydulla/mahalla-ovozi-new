@@ -4,7 +4,11 @@ import {
   type QualifyingLane,
 } from '@mahalla-ovozi/api-contracts';
 import type { AiGatewayPort } from '../ai/ai-gateway.js';
-import type { MahallaDailySnapshot, AcceptedEvidenceItem } from '../ai/context-snapshot.js';
+import {
+  type MahallaDailySnapshot,
+  type AcceptedEvidenceItem,
+  formatEvidenceItemLine,
+} from '../ai/context-snapshot.js';
 import { AiGatewayError, type AiGatewayResult } from '../ai/types.js';
 
 export const QualifyingLaneEnum = QualifyingLaneSchema;
@@ -177,9 +181,13 @@ export class TopicProjectionEvaluator {
     // 2. Target Topic Evidence Items
     if (targetEvidence.length > 0) {
       const targetItemsText = targetEvidence
-        .map(
-          (it, idx) =>
-            `  [Evidence #${idx + 1}] ID: ${it.id} | Time: ${it.originalTimestamp} | MsgID: ${it.telegramMessageId} | Text: "${it.verbatimText}"`,
+        .map((it, idx) =>
+          formatEvidenceItemLine(it, idx, {
+            prefix: `Evidence #${idx + 1}`,
+            includeId: true,
+            indent: '  ',
+            timeLabel: 'Time',
+          }),
         )
         .join('\n');
 
@@ -195,9 +203,12 @@ ${targetItemsText}`);
       const otherSections: string[] = [];
       for (const [otherId, group] of otherTopicsMap.entries()) {
         const itemsText = group.items
-          .map(
-            (it, idx) =>
-              `    [#${idx + 1}] ID: ${it.id} | Time: ${it.originalTimestamp} | MsgID: ${it.telegramMessageId} | Text: "${it.verbatimText}"`,
+          .map((it, idx) =>
+            formatEvidenceItemLine(it, idx, {
+              includeId: true,
+              indent: '    ',
+              timeLabel: 'Time',
+            }),
           )
           .join('\n');
 

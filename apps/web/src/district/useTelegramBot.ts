@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { telegramBotClient } from './telegram-bot-client.js';
+import { districtQueryKeys } from './query-keys.js';
 import { TelegramBotInfo, ConnectTelegramBotResponse, DisconnectTelegramBotResponse } from '@mahalla-ovozi/api-contracts';
 
 export function useTelegramBot(districtId: string | null) {
   const queryClient = useQueryClient();
 
   const query = useQuery<TelegramBotInfo | null>({
-    queryKey: ['district', districtId, 'telegram-bot'],
+    queryKey: districtQueryKeys.bot(districtId),
     queryFn: async () => {
       if (!districtId) {
         throw new Error('Туман танланмаган.');
@@ -27,10 +28,10 @@ export function useTelegramBot(districtId: string | null) {
     onSuccess: () => {
       if (districtId) {
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'telegram-bot'],
+          queryKey: districtQueryKeys.bot(districtId),
         });
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'readiness'],
+          queryKey: districtQueryKeys.readiness(districtId),
         });
       }
     },
@@ -46,10 +47,10 @@ export function useTelegramBot(districtId: string | null) {
     onSuccess: () => {
       if (districtId) {
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'telegram-bot'],
+          queryKey: districtQueryKeys.bot(districtId),
         });
         queryClient.invalidateQueries({
-          queryKey: ['district', districtId, 'readiness'],
+          queryKey: districtQueryKeys.readiness(districtId),
         });
       }
     },

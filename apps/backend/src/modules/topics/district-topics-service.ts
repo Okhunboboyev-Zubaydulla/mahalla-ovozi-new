@@ -21,19 +21,19 @@ import { resolveDateBoundary } from '../telegram-intake/timezone-util.js';
 
 export { escapeLikePattern, resolveDateBoundary, TopicNotFoundError };
 
-export interface DistrictTopicKeysetCursorPayload extends KeysetCursorPayload {
+export interface TopicKeysetCursorPayload extends KeysetCursorPayload {
   t: string; // ISO datetime string of latestMeaningfulActivityTimestamp
   id: string; // topic id
 }
 
-export function encodeDistrictTopicKeysetCursor(timestamp: string, id: string): string {
-  return encodeKeysetCursor<DistrictTopicKeysetCursorPayload>({ t: timestamp, id });
+export function encodeTopicKeysetCursor(timestamp: string, id: string): string {
+  return encodeKeysetCursor<TopicKeysetCursorPayload>({ t: timestamp, id });
 }
 
-export function decodeDistrictTopicKeysetCursor(
-  cursor: string,
-): DistrictTopicKeysetCursorPayload | null {
-  const parsed = decodeKeysetCursor<DistrictTopicKeysetCursorPayload>(cursor);
+export function decodeTopicKeysetCursor(
+  cursor: string | null | undefined,
+): TopicKeysetCursorPayload | null {
+  const parsed = decodeKeysetCursor<TopicKeysetCursorPayload>(cursor);
   if (
     parsed &&
     typeof parsed.t === 'string' &&
@@ -53,6 +53,11 @@ export function decodeDistrictTopicKeysetCursor(
   }
   return null;
 }
+
+// Backward compatibility aliases
+export type DistrictTopicKeysetCursorPayload = TopicKeysetCursorPayload;
+export const encodeDistrictTopicKeysetCursor = encodeTopicKeysetCursor;
+export const decodeDistrictTopicKeysetCursor = decodeTopicKeysetCursor;
 
 export class DistrictNotFoundError extends Error {
   readonly statusCode = 404;

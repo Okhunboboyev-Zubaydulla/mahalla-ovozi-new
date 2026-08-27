@@ -4,16 +4,8 @@ import pg from 'pg';
 import crypto from 'node:crypto';
 import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/client.js';
 import { buildHttpServer } from '../src/entrypoints/http.js';
-import {
-  accounts,
-  districts,
-  districtTelegramGroups,
-  topics,
-  topicProjections,
-  acceptedEvidence,
-  telegramIntakeRecords,
-  ensureDefaultAiProfiles,
-} from '../src/adapters/db/schema/index.js';
+import { accounts, districts, districtTelegramGroups, topics, topicProjections, acceptedEvidence, telegramIntakeRecords } from '../src/adapters/db/schema/index.js';
+import { ensureDefaultAiProfiles } from '../src/adapters/db/seeds.js';
 import { hashPassword } from '../src/adapters/crypto/argon2.js';
 import { getTashkentCalendarDay } from '../src/modules/telegram-intake/timezone-util.js';
 import { TopicEvidenceResponse } from '@mahalla-ovozi/api-contracts';

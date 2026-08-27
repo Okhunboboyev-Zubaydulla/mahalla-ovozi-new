@@ -4,16 +4,8 @@ import pg from 'pg';
 import crypto from 'node:crypto';
 import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/client.js';
 import { buildHttpServer } from '../src/entrypoints/http.js';
-import {
-  accounts,
-  districts,
-  topics,
-  topicProjections,
-  acceptedEvidence,
-  telegramIntakeRecords,
-  userDashboardVisits,
-  ensureDefaultAiProfiles,
-} from '../src/adapters/db/schema/index.js';
+import { accounts, districts, topics, topicProjections, acceptedEvidence, telegramIntakeRecords, userDashboardVisits } from '../src/adapters/db/schema/index.js';
+import { ensureDefaultAiProfiles } from '../src/adapters/db/seeds.js';
 import { eq, and } from 'drizzle-orm';
 import { hashPassword } from '../src/adapters/crypto/argon2.js';
 import { COOKIE_NAME } from '../src/modules/auth/session-manager.js';

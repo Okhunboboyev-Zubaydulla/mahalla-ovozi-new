@@ -1,15 +1,9 @@
 import { eq, and, sql, asc } from 'drizzle-orm';
 import {
   IssueSeverity,
-  OperationalIssue,
   OperationalIssuesListResponse,
   OperationalIssueDetailResponse,
   IssueAuditEvent,
-  IssueCategory,
-  IssueStatus,
-  ComponentScope,
-  ComponentType,
-  HealthStatus,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import {
@@ -17,11 +11,12 @@ import {
   districts,
   auditEvents,
 } from '../../adapters/db/schema/index.js';
-import { sortOperationalIssues } from './issue-evaluator.js';
 import {
-  isIssueRetryEligible,
-  deriveRetryJobSpec,
-} from './retry-evaluator.js';
+  sortOperationalIssues,
+  formatOperationalIssue,
+} from './issue-evaluator.js';
+
+export { formatOperationalIssue };
 
 export class OperationalIssueNotFoundError extends Error {
   statusCode = 404;
@@ -36,57 +31,6 @@ export interface GetIssuesOptions {
   districtId?: string;
   status?: 'ACTIVE' | 'RESOLVED';
   severity?: IssueSeverity;
-}
-
-function formatOperationalIssue(
-  row: typeof operationalIssues.$inferSelect,
-  districtName?: string | null,
-): OperationalIssue {
-  const isRetryEligible =
-    row.status === 'ACTIVE' &&
-    isIssueRetryEligible(row.issueCategory as IssueCategory, row.metadata) &&
-    deriveRetryJobSpec({
-      id: row.id,
-      scope: row.scope,
-      districtId: row.districtId,
-      component: row.component,
-      issueCategory: row.issueCategory,
-      metadata: row.metadata,
-    }) !== null;
-  const pendingRetry = Boolean(row.metadata?.pendingRetry);
-  const retryCount =
-    typeof row.metadata?.retryCount === 'number'
-      ? row.metadata.retryCount
-      : undefined;
-  const lastRetryAt =
-    typeof row.metadata?.lastRetryAt === 'string'
-      ? row.metadata.lastRetryAt
-      : null;
-
-  return {
-    id: row.id,
-    logicalKey: row.logicalKey,
-    scope: row.scope as ComponentScope,
-    districtId: row.districtId,
-    districtName: districtName || null,
-    component: row.component as ComponentType,
-    issueCategory: row.issueCategory as IssueCategory,
-    severity: row.severity as IssueSeverity,
-    status: row.status as IssueStatus,
-    healthStatus: row.healthStatus as HealthStatus,
-    sanitizedTitle: row.sanitizedTitle,
-    sanitizedDescription: row.sanitizedDescription,
-    recommendedAction: row.recommendedAction,
-    targetRoute: row.targetRoute,
-    startedAt: row.startedAt.toISOString(),
-    latestCheckAt: row.latestCheckAt.toISOString(),
-    resolvedAt: row.resolvedAt ? row.resolvedAt.toISOString() : null,
-    isRetryEligible,
-    retryCount,
-    pendingRetry,
-    lastRetryAt,
-    metadata: row.metadata,
-  };
 }
 
 export const issueService = {

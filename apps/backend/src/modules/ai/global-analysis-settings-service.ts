@@ -18,8 +18,8 @@ import {
 import {
   type GlobalAnalysisSettingsVersion,
   type GlobalAnalysisSettingsDraft,
-  defaultGlobalAnalysisSettingsVersion,
 } from '../../adapters/db/schema/index.js';
+import { defaultGlobalAnalysisSettingsVersion } from '../../adapters/db/seeds.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
 
 function areGlobalVocabulariesEqual(
