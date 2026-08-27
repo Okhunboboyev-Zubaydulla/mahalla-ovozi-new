@@ -69,7 +69,11 @@ const GLOBAL_PROMPT_LABELS: Record<string, string> = {
 
 export function computeGlobalSettingsDiff(
   active: GlobalAnalysisSettingsDto,
-  draft: GlobalAnalysisSettingsDraftDto | SaveGlobalAnalysisSettingsDraftRequest | null,
+  draft:
+    | GlobalAnalysisSettingsDto
+    | GlobalAnalysisSettingsDraftDto
+    | SaveGlobalAnalysisSettingsDraftRequest
+    | null,
 ): GlobalSettingsDiff {
   if (!draft) {
     return {
@@ -243,6 +247,7 @@ export function computeGlobalSettingsDiff(
 export function computeDistrictSettingsDiff(
   active: DistrictAnalysisSettingsDto,
   draft:
+    | DistrictAnalysisSettingsDto
     | DistrictAnalysisSettingsDraftDto
     | SaveDistrictAnalysisSettingsDraftRequest
     | null,

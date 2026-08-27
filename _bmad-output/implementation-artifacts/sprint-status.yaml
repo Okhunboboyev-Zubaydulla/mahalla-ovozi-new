@@ -98,7 +98,7 @@ development_status:
   5-1-prepare-a-validated-global-analysis-settings-draft: done
   5-2-prepare-a-district-recognition-settings-draft: done
   5-3-review-and-activate-a-future-only-analysis-configuration-version: done
-  5-4-review-configuration-history-and-roll-back-as-a-new-future-only-version: ready-for-dev
+  5-4-review-configuration-history-and-roll-back-as-a-new-future-only-version: review
   epic-5-retrospective: optional
 
   # ── Epic 6: Subscription Lifecycle, Recovery & Verified Deletion ──

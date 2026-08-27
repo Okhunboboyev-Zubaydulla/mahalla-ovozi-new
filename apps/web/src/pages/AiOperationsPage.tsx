@@ -5,7 +5,6 @@ import {
   Card,
   Spin,
   Alert,
-  Tag,
   theme,
   Space,
 } from 'antd';
@@ -25,6 +24,7 @@ import { ActiveGlobalSettingsCard } from '../components/ai/ActiveGlobalSettingsC
 import { GlobalSettingsDraftForm } from '../components/ai/GlobalSettingsDraftForm.js';
 import { ActiveDistrictSettingsCard } from '../components/ai/ActiveDistrictSettingsCard.js';
 import { DistrictSettingsDraftForm } from '../components/ai/DistrictSettingsDraftForm.js';
+import { AnalysisSettingsHistoryPanel } from '../components/ai/AnalysisSettingsHistoryPanel.js';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -196,12 +196,9 @@ export const AiOperationsPage: React.FC = () => {
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <HistoryOutlined />
           Созламалар тарихи
-          <Tag color="default" style={{ marginInlineStart: 4, fontSize: 11 }}>
-            5.4 босқичида
-          </Tag>
         </span>
       ),
-      disabled: true,
+      children: <AnalysisSettingsHistoryPanel />,
     },
     {
       key: 'monitoring',

@@ -5,6 +5,9 @@ import {
   type SaveGlobalAnalysisSettingsDraftRequest,
   type ActivateGlobalAnalysisSettingsRequest,
   type ActivateGlobalAnalysisSettingsResponse,
+  type GlobalAnalysisSettingsHistoryResponse,
+  type RollbackGlobalAnalysisSettingsRequest,
+  type RollbackGlobalAnalysisSettingsResponse,
   type GlobalServiceVocabularyItem,
   type AiModelProvider,
 } from '@mahalla-ovozi/api-contracts';
@@ -354,9 +357,139 @@ export class GlobalAnalysisSettingsService {
       ? await db.transaction(async (tx) => executeInTx(tx))
       : await executeInTx(db);
   }
+
+  async getHistory(
+    db: DbOrTx,
+  ): Promise<GlobalAnalysisSettingsHistoryResponse> {
+    const versions = await this.repository.getHistory(db);
+    if (versions.length === 0) {
+      const active = await this.getActiveConfiguration(db);
+      return {
+        items: [active],
+        totalCount: 1,
+      };
+    }
+    const items = versions.map((v) => this.mapVersionToDto(v));
+    return {
+      items,
+      totalCount: items.length,
+    };
+  }
+
+  async rollback(
+    db: DbOrTx,
+    actor: {
+      id: string;
+      role: string;
+      ipAddress?: string | null;
+      userAgent?: string | null;
+    },
+    payload: RollbackGlobalAnalysisSettingsRequest,
+  ): Promise<RollbackGlobalAnalysisSettingsResponse> {
+    if (actor.role !== 'PRODUCT_OWNER') {
+      throw new Error('Ушбу амални бажариш учун маҳсулот эгаси ҳуқуқи талаб қилинади.');
+    }
+
+    const executeInTx = async (tx: DbOrTx) => {
+      // 1. Fetch current active configuration with row lock via repository port
+      const activeRow = await this.repository.getActiveConfigurationForUpdate(tx);
+      const currentActive = activeRow || defaultGlobalAnalysisSettingsVersion;
+
+      // 2. Validate base active version (optimistic concurrency guard)
+      if (currentActive.id !== payload.baseActiveVersionId) {
+        const error = new Error(
+          'Фаол созламалар версияси ўзгарган. Илтимос, саҳифани янгилаб, қайта кўриб чиқинг.',
+        );
+        (error as any).code = 'STALE_BASELINE_VERSION';
+        (error as any).statusCode = 409;
+        throw error;
+      }
+
+      // 3. Fetch target historical version via repository port
+      const targetRow = await this.repository.getVersionById(
+        tx,
+        payload.targetVersionId,
+      );
+
+      if (!targetRow) {
+        const error = new Error('Қайтариш учун танланган тарихий версия топилмади.');
+        (error as any).code = 'VERSION_NOT_FOUND';
+        (error as any).statusCode = 404;
+        throw error;
+      }
+
+      // 4. Validate that target is not already the active version
+      if (targetRow.id === currentActive.id) {
+        const error = new Error(
+          'Танланган версия аллақачон фаол ҳисобланади. Қайтариш учун олдинги тарихий версияни танланг.',
+        );
+        (error as any).code = 'NO_EFFECTIVE_ROLLBACK';
+        (error as any).statusCode = 400;
+        throw error;
+      }
+
+      // 5. Deactivate prior active version
+      if (currentActive.id) {
+        await this.repository.deactivateVersion(tx, currentActive.id);
+      }
+
+      // 6. Compute next version number
+      const maxVersion = await this.repository.getNextVersionNumber(tx);
+      const nextVersion = Math.max(maxVersion, (currentActive?.version ?? 1) + 1);
+      const newVersionId = `gcfg_v${nextVersion}`;
+
+      // 7. Insert new immutable active version copying from target
+      const newVersionRow = await this.repository.insertVersion(tx, {
+        id: newVersionId,
+        version: nextVersion,
+        modelProvider: targetRow.modelProvider,
+        modelId: targetRow.modelId,
+        temperature: targetRow.temperature,
+        maxOutputTokens: targetRow.maxOutputTokens,
+        relevanceSystemPrompt: targetRow.relevanceSystemPrompt,
+        topicMatchingSystemPrompt: targetRow.topicMatchingSystemPrompt,
+        topicProjectionSystemPrompt: targetRow.topicProjectionSystemPrompt,
+        globalServiceVocabulary: targetRow.globalServiceVocabulary,
+        isActive: true,
+        activatedAt: new Date(),
+        activatedBy: actor.id,
+        changeReason: payload.changeReason.trim(),
+        createdAt: new Date(),
+      });
+
+      // 8. Record audit trail event
+      await recordAuditEvent(tx, {
+        districtId: null,
+        actorId: actor.id,
+        actorRole: 'PRODUCT_OWNER',
+        action: 'GLOBAL_ANALYSIS_SETTINGS_ROLLED_BACK',
+        ipAddress: actor.ipAddress || null,
+        userAgent: actor.userAgent || null,
+        metadata: {
+          previousActiveVersionId: currentActive.id,
+          targetSourceVersionId: targetRow.id,
+          newVersionId: newVersionRow.id,
+          newVersion: nextVersion,
+          changeReason: payload.changeReason.trim(),
+        },
+      });
+
+      return {
+        activeConfiguration: this.mapVersionToDto(newVersionRow),
+        restoredFromVersionId: targetRow.id,
+        previousActiveVersionId: currentActive.id,
+        message: `Глобал таҳлил созламалари V${targetRow.version} ҳолатига янги V${nextVersion} версияси сифатида муваффақиятли қайтарилди.`,
+      };
+    };
+
+    return 'transaction' in db && typeof db.transaction === 'function'
+      ? await db.transaction(async (tx) => executeInTx(tx))
+      : await executeInTx(db);
+  }
 }
 
 export const globalAnalysisSettingsService = new GlobalAnalysisSettingsService(
   globalAnalysisSettingsRepository,
 );
+
 

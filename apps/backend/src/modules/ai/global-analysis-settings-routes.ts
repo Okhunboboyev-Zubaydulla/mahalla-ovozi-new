@@ -2,8 +2,10 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import {
   SaveGlobalAnalysisSettingsDraftSchema,
   ActivateGlobalAnalysisSettingsRequestSchema,
+  RollbackGlobalAnalysisSettingsRequestSchema,
   type SaveGlobalAnalysisSettingsDraftRequest,
   type ActivateGlobalAnalysisSettingsRequest,
+  type RollbackGlobalAnalysisSettingsRequest,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import { createRequireProductOwner } from '../auth/require-product-owner.js';
@@ -179,6 +181,100 @@ export function registerGlobalAnalysisSettingsRoutes(
         }
       },
     );
+
+    /**
+     * GET /api/v1/ai/settings/global/history
+     * Returns immutable history of activated global analysis configuration versions (Story 5.4).
+     */
+    scope.get(
+      '/api/v1/ai/settings/global/history',
+      async (_req: FastifyRequest, reply: FastifyReply) => {
+        const history =
+          await globalAnalysisSettingsService.getHistory(db);
+
+        return reply.status(200).send(history);
+      },
+    );
+
+    /**
+     * POST /api/v1/ai/settings/global/rollback
+     * Atomically rolls back to a target historical configuration as a new future-only version (Story 5.4).
+     */
+    scope.post(
+      '/api/v1/ai/settings/global/rollback',
+      async (
+        req: FastifyRequest<{ Body: RollbackGlobalAnalysisSettingsRequest }>,
+        reply: FastifyReply,
+      ) => {
+        const parseResult =
+          RollbackGlobalAnalysisSettingsRequestSchema.safeParse(req.body);
+
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message:
+                parseResult.error.issues[0]?.message ||
+                'Қайтариш сўровида хатолик бор.',
+              statusCode: 400,
+              validationErrors: parseResult.error.issues.map((issue) => ({
+                path: issue.path,
+                message: issue.message,
+                code: issue.code,
+              })),
+            },
+          });
+        }
+
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Аутентификация талаб қилинади.',
+              statusCode: 401,
+            },
+          });
+        }
+
+        const actor = {
+          id: req.actor.id,
+          role: req.actor.role,
+          ipAddress: req.ip || null,
+          userAgent:
+            typeof req.headers['user-agent'] === 'string'
+              ? req.headers['user-agent']
+              : null,
+        };
+
+        try {
+          const result = await globalAnalysisSettingsService.rollback(
+            db,
+            actor,
+            parseResult.data,
+          );
+
+          return reply.status(200).send(result);
+        } catch (err: any) {
+          const statusCode =
+            typeof err.statusCode === 'number' ? err.statusCode : 500;
+          const code =
+            typeof err.code === 'string' ? err.code : 'INTERNAL_SERVER_ERROR';
+          const message =
+            statusCode < 500 && typeof err.message === 'string'
+              ? err.message
+              : 'Глобал созламаларни қайтаришда хатолик юз берди.';
+
+          return reply.status(statusCode).send({
+            error: {
+              code,
+              message,
+              statusCode,
+            },
+          });
+        }
+      },
+    );
   });
 }
+
 

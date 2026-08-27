@@ -313,4 +313,31 @@ describe('Story 5.1: AiOperationsPage & Global Settings UI Component Tests', () 
     expect(screen.queryByText('Ўзгаришлар сақланмаган')).toBeNull();
     expect(relevanceInput.value).toBe(mockActiveSettings.relevanceSystemPrompt);
   });
+
+  it('renders enabled History tab and switches to settings history on click (Story 5.4)', async () => {
+    vi.spyOn(globalSettingsClient, 'getGlobalSettingsHistory').mockResolvedValue({
+      items: [mockActiveSettings],
+      totalCount: 1,
+    });
+
+    renderAiOperationsPage({
+      activeConfiguration: mockActiveSettings,
+      draft: null,
+    });
+
+    const historyTab = screen.getByRole('tab', { name: /Созламалар тарихи/i });
+    expect(historyTab).toBeTruthy();
+    expect(historyTab.getAttribute('aria-disabled')).not.toBe('true');
+
+    fireEvent.click(historyTab);
+
+    expect(
+      await screen.findByText('Глобал созламалар тарихи'),
+    ).toBeTruthy();
+    expect(
+      screen.getByText('Туман созламалари тарихи'),
+    ).toBeTruthy();
+  });
 });
+
+

@@ -165,19 +165,19 @@ So that I can safely recover from an undesirable configuration change without re
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Shared API Contracts & Validation Schemas (`packages/api-contracts`)** (AC: 1, 2, 4, 6, 7, 9)
-  - [ ] 1.1: Define `GlobalAnalysisSettingsHistoryResponseSchema` (`items: GlobalAnalysisSettingsDto[]`, `totalCount: number`).
-  - [ ] 1.2: Define `DistrictAnalysisSettingsHistoryResponseSchema` (`districtId: string`, `districtName: string`, `items: DistrictAnalysisSettingsDto[]`, `totalCount: number`).
-  - [ ] 1.3: Define `RollbackGlobalAnalysisSettingsRequestSchema` (`baseActiveVersionId: string` trimmed min 1, `targetVersionId: string` trimmed min 1, `changeReason: ChangeReasonSchema`).
-  - [ ] 1.4: Define `RollbackGlobalAnalysisSettingsResponseSchema` (`activeConfiguration: GlobalAnalysisSettingsDtoSchema`, `restoredFromVersionId: string`, `previousActiveVersionId: string`, `message: string`).
-  - [ ] 1.5: Define `RollbackDistrictAnalysisSettingsRequestSchema` (`baseActiveVersionId: string` trimmed min 1, `targetVersionId: string` trimmed min 1, `changeReason: ChangeReasonSchema`).
-  - [ ] 1.6: Define `RollbackDistrictAnalysisSettingsResponseSchema` (`districtId: string`, `districtName: string`, `activeConfiguration: DistrictAnalysisSettingsDtoSchema`, `restoredFromVersionId: string`, `previousActiveVersionId: string`, `message: string`).
-  - [ ] 1.7: Export all history and rollback types and schemas in `packages/api-contracts/src/analysis-settings.ts` and `index.ts`.
+- [x] **Task 1: Shared API Contracts & Validation Schemas (`packages/api-contracts`)** (AC: 1, 2, 4, 6, 7, 9)
+  - [x] 1.1: Define `GlobalAnalysisSettingsHistoryResponseSchema` (`items: GlobalAnalysisSettingsDto[]`, `totalCount: number`).
+  - [x] 1.2: Define `DistrictAnalysisSettingsHistoryResponseSchema` (`districtId: string`, `districtName: string`, `items: DistrictAnalysisSettingsDto[]`, `totalCount: number`).
+  - [x] 1.3: Define `RollbackGlobalAnalysisSettingsRequestSchema` (`baseActiveVersionId: string` trimmed min 1, `targetVersionId: string` trimmed min 1, `changeReason: ChangeReasonSchema`).
+  - [x] 1.4: Define `RollbackGlobalAnalysisSettingsResponseSchema` (`activeConfiguration: GlobalAnalysisSettingsDtoSchema`, `restoredFromVersionId: string`, `previousActiveVersionId: string`, `message: string`).
+  - [x] 1.5: Define `RollbackDistrictAnalysisSettingsRequestSchema` (`baseActiveVersionId: string` trimmed min 1, `targetVersionId: string` trimmed min 1, `changeReason: ChangeReasonSchema`).
+  - [x] 1.6: Define `RollbackDistrictAnalysisSettingsResponseSchema` (`districtId: string`, `districtName: string`, `activeConfiguration: DistrictAnalysisSettingsDtoSchema`, `restoredFromVersionId: string`, `previousActiveVersionId: string`, `message: string`).
+  - [x] 1.7: Export all history and rollback types and schemas in `packages/api-contracts/src/analysis-settings.ts` and `index.ts`.
 
-- [ ] **Task 2: Backend Global History & Rollback Service, Repository & Routes (`apps/backend`)** (AC: 1, 4, 6, 7, 8, 9, 10, 12, 13)
-  - [ ] 2.1: Add `getHistory(db)` and `getVersionById(db, id)` methods to `GlobalAnalysisSettingsRepositoryPort` and `DrizzleGlobalAnalysisSettingsRepository` (ordered by `version DESC`).
-  - [ ] 2.2: Add `getHistory(db)` method to `GlobalAnalysisSettingsService` returning mapped DTOs.
-  - [ ] 2.3: Add `rollback(db, actor, payload)` method to `GlobalAnalysisSettingsService`:
+- [x] **Task 2: Backend Global History & Rollback Service, Repository & Routes (`apps/backend`)** (AC: 1, 4, 6, 7, 8, 9, 10, 12, 13)
+  - [x] 2.1: Add `getHistory(db)` and `getVersionById(db, id)` methods to `GlobalAnalysisSettingsRepositoryPort` and `DrizzleGlobalAnalysisSettingsRepository` (ordered by `version DESC`).
+  - [x] 2.2: Add `getHistory(db)` method to `GlobalAnalysisSettingsService` returning mapped DTOs.
+  - [x] 2.3: Add `rollback(db, actor, payload)` method to `GlobalAnalysisSettingsService`:
     - Fetch current active version (`FOR UPDATE`).
     - Stale baseline check: If `currentActive.id !== payload.baseActiveVersionId`, throw typed `StaleBaselineVersionError` (409 Conflict).
     - Fetch target historical version: If missing, throw `VersionNotFoundError` (404 Not Found).
@@ -186,12 +186,12 @@ So that I can safely recover from an undesirable configuration change without re
     - Bump monotonic version: `nextVersion = max(version) + 1`, ID `gcfg_v{nextVersion}`.
     - Insert new active version record copying configuration from target, with `isActive = true`, `activatedAt = new Date()`, `activatedBy = actor.id`, `changeReason = payload.changeReason.trim()`.
     - Record audit event: `GLOBAL_ANALYSIS_SETTINGS_ROLLED_BACK`.
-  - [ ] 2.4: Register routes `GET /api/v1/ai/settings/global/history` and `POST /api/v1/ai/settings/global/rollback` in `global-analysis-settings-routes.ts` protected by `createRequireProductOwner(db)`.
+  - [x] 2.4: Register routes `GET /api/v1/ai/settings/global/history` and `POST /api/v1/ai/settings/global/rollback` in `global-analysis-settings-routes.ts` protected by `createRequireProductOwner(db)`.
 
-- [ ] **Task 3: Backend District History & Rollback Service, Repository & Routes (`apps/backend`)** (AC: 2, 4, 6, 7, 8, 9, 10, 12, 13)
-  - [ ] 3.1: Add `getHistory(db, districtId)` and `getVersionById(db, districtId, id)` methods to `DistrictAnalysisSettingsRepositoryPort` and `DrizzleDistrictAnalysisSettingsRepository` (ordered by `version DESC`). Enforce strict composite tenant filtering: `WHERE district_id = :districtId AND id = :id` (AD-9 tenant isolation guard).
-  - [ ] 3.2: Add `getHistory(db, districtId)` method to `DistrictAnalysisSettingsService` returning mapped DTOs. If no physical rows exist in `district_analysis_settings_versions` for `districtId`, return `[this.getActiveConfiguration(db, districtId)]` so the initial active `V1` baseline is displayed as `Фаол`.
-  - [ ] 3.3: Add `rollback(db, districtId, actor, payload)` method to `DistrictAnalysisSettingsService`:
+- [x] **Task 3: Backend District History & Rollback Service, Repository & Routes (`apps/backend`)** (AC: 2, 4, 6, 7, 8, 9, 10, 12, 13)
+  - [x] 3.1: Add `getHistory(db, districtId)` and `getVersionById(db, districtId, id)` methods to `DistrictAnalysisSettingsRepositoryPort` and `DrizzleDistrictAnalysisSettingsRepository` (ordered by `version DESC`). Enforce strict composite tenant filtering: `WHERE district_id = :districtId AND id = :id` (AD-9 tenant isolation guard).
+  - [x] 3.2: Add `getHistory(db, districtId)` method to `DistrictAnalysisSettingsService` returning mapped DTOs. If no physical rows exist in `district_analysis_settings_versions` for `districtId`, return `[this.getActiveConfiguration(db, districtId)]` so the initial active `V1` baseline is displayed as `Фаол`.
+  - [x] 3.3: Add `rollback(db, districtId, actor, payload)` method to `DistrictAnalysisSettingsService`:
     - Verify district exists (`districts` table).
     - Fetch current active version for `districtId` (`FOR UPDATE`).
     - Stale baseline check: If `currentActive && currentActive.id !== payload.baseActiveVersionId`, throw `StaleBaselineVersionError` (409 Conflict).
@@ -202,26 +202,26 @@ So that I can safely recover from an undesirable configuration change without re
     - Bump monotonic version: `nextVersion = max(version) + 1`, ID `dcfg_{districtId}_v{nextVersion}`.
     - Insert new active version record copying terms and vocabulary from target, with `isActive = true`, `activatedAt = new Date()`, `activatedBy = actor.id`, `changeReason = payload.changeReason.trim()`.
     - Record audit event: `DISTRICT_ANALYSIS_SETTINGS_ROLLED_BACK`.
-  - [ ] 3.4: Register routes `GET /api/v1/ai/settings/districts/:districtId/history` and `POST /api/v1/ai/settings/districts/:districtId/rollback` in `district-analysis-settings-routes.ts` protected by `createRequireProductOwner(db)`.
+  - [x] 3.4: Register routes `GET /api/v1/ai/settings/districts/:districtId/history` and `POST /api/v1/ai/settings/districts/:districtId/rollback` in `district-analysis-settings-routes.ts` protected by `createRequireProductOwner(db)`.
 
-- [ ] **Task 4: AI Operations Lineage & Future-Only Runtime Invariant Verification (`apps/backend`)** (AC: 7, 11, AD-8)
-  - [ ] 4.1: Ensure AI Gateway and signal evaluators (Semantic Relevance, Topic Matching, Topic Projection) resolve the newly active rolled-back configuration for subsequent new operations.
-  - [ ] 4.2: Verify pre-existing logical AI operations remain strictly pinned to their `pinnedProfileId` and are never re-evaluated or overwritten upon version rollback.
-  - [ ] 4.3: Verify historical topic summaries, lanes, and accepted evidence records are never retroactively recalculated solely because a configuration was rolled back.
+- [x] **Task 4: AI Operations Lineage & Future-Only Runtime Invariant Verification (`apps/backend`)** (AC: 7, 11, AD-8)
+  - [x] 4.1: Ensure AI Gateway and signal evaluators (Semantic Relevance, Topic Matching, Topic Projection) resolve the newly active rolled-back configuration for subsequent new operations.
+  - [x] 4.2: Verify pre-existing logical AI operations remain strictly pinned to their `pinnedProfileId` and are never re-evaluated or overwritten upon version rollback.
+  - [x] 4.3: Verify historical topic summaries, lanes, and accepted evidence records are never retroactively recalculated solely because a configuration was rolled back.
 
-- [ ] **Task 5: Frontend API Clients & TanStack Query Hooks (`apps/web`)** (AC: 1, 2, 8, 14)
-  - [ ] 5.1: Add `getGlobalSettingsHistory()` and `rollbackGlobalSettings(payload)` to `apps/web/src/api/global-settings-client.ts`.
-  - [ ] 5.2: Add `getDistrictSettingsHistory(districtId)` and `rollbackDistrictSettings(districtId, payload)` to `apps/web/src/api/district-settings-client.ts`.
-  - [ ] 5.3: Add `useGlobalAnalysisSettingsHistory()` query hook and `useRollbackGlobalSettings()` mutation hook in `useGlobalAnalysisSettings.ts` with comprehensive cache invalidation (`['global-analysis-settings']`, `['global-analysis-settings-history']`).
-  - [ ] 5.4: Add `useDistrictAnalysisSettingsHistory(districtId)` query hook and `useRollbackDistrictSettings(districtId)` mutation hook in `useDistrictAnalysisSettings.ts` with comprehensive cache invalidation (`['district-analysis-settings', districtId]`, `['district-analysis-settings-history', districtId]`).
+- [x] **Task 5: Frontend API Clients & TanStack Query Hooks (`apps/web`)** (AC: 1, 2, 8, 14)
+  - [x] 5.1: Add `getGlobalSettingsHistory()` and `rollbackGlobalSettings(payload)` to `apps/web/src/api/global-settings-client.ts`.
+  - [x] 5.2: Add `getDistrictSettingsHistory(districtId)` and `rollbackDistrictSettings(districtId, payload)` to `apps/web/src/api/district-settings-client.ts`.
+  - [x] 5.3: Add `useGlobalAnalysisSettingsHistory()` query hook and `useRollbackGlobalSettings()` mutation hook in `useGlobalAnalysisSettings.ts` with comprehensive cache invalidation (`['ai', 'settings', 'global']`, `['ai', 'settings', 'global', 'history']`).
+  - [x] 5.4: Add `useDistrictAnalysisSettingsHistory(districtId)` query hook and `useRollbackDistrictSettings(districtId)` mutation hook in `useDistrictAnalysisSettings.ts` with comprehensive cache invalidation (`districtSettingsKeys.detail(districtId)`, `districtSettingsKeys.history(districtId)`).
 
-- [ ] **Task 6: Configuration History Table & Rollback Modal Components (`apps/web`)** (AC: 1, 2, 3, 5, 6, 8, 9, 14, 15)
-  - [ ] 6.1: Build `AnalysisSettingsHistoryTable.tsx` component:
+- [x] **Task 6: Configuration History Table & Rollback Modal Components (`apps/web`)** (AC: 1, 2, 3, 5, 6, 8, 9, 14, 15)
+  - [x] 6.1: Build `AnalysisSettingsHistoryTable.tsx` component:
     - Renders version table with columns: Version ID, Version number, Status tag (`Фаол` green, `Тарихий` default), Activation timestamp, Activated by, Operational reason, Configuration summary, and Actions (`Қайтариш` button).
     - Each row's rollback action button receives accessible DOM ID `id={'btn-rollback-' + item.id}`.
     - Disables rollback button for the currently active version with informative tooltip (`Жорий фаол версия`).
     - Full keyboard navigation and accessible tags.
-  - [ ] 6.2: Build `AnalysisSettingsRollbackModal.tsx` containing:
+  - [x] 6.2: Build `AnalysisSettingsRollbackModal.tsx` containing:
     - Target scope indicator (Global vs. District with District Name).
     - Baseline active version ID & Target historical version ID.
     - Future-only invariant warning banner (`Alert` type="warning"):
@@ -230,17 +230,17 @@ So that I can safely recover from an undesirable configuration change without re
     - Mandatory `changeReason` textarea with character count (5-500), help text, and instant secret scanning validation (`containsProhibitedSecrets`).
     - Confirmation (`Янги версия сифатида қайтариш`) and Cancel (`Бекор қилиш`) buttons with loading state and disabled state when offline or invalid.
     - On Cancel / Escape, restores focus directly to `document.getElementById('btn-rollback-' + targetVersion.id)?.focus()`.
-  - [ ] 6.3: Build `AnalysisSettingsHistoryPanel.tsx` container component with Global / District sub-tabs and DistrictSelector integration.
-  - [ ] 6.4: Update `apps/web/src/components/ai/diff-utils.ts` and `ConfigurationDiffViewer.tsx` to support `GlobalAnalysisSettingsDto` and `DistrictAnalysisSettingsDto` as valid comparison target parameters in `computeGlobalSettingsDiff` and `computeDistrictSettingsDiff`.
+  - [x] 6.3: Build `AnalysisSettingsHistoryPanel.tsx` container component with Global / District sub-tabs and DistrictSelector integration.
+  - [x] 6.4: Update `apps/web/src/components/ai/diff-utils.ts` and `ConfigurationDiffViewer.tsx` to support `GlobalAnalysisSettingsDto` and `DistrictAnalysisSettingsDto` as valid comparison target parameters in `computeGlobalSettingsDiff` and `computeDistrictSettingsDiff`.
 
-- [ ] **Task 7: Page Integration & Post-Rollback State Synchronization (`apps/web`)** (AC: 1, 2, 8, 9, 15)
-  - [ ] 7.1: Enable `history` tab in `apps/web/src/pages/AiOperationsPage.tsx` by embedding `AnalysisSettingsHistoryPanel`.
-  - [ ] 7.2: On successful rollback, close modal, display prominent Uzbek Cyrillic notification (`Созламалар V{target} ҳолатига янги V{new} версияси сифатида муваффақиятли қайтарилди`), invalidate and refresh active settings cards, draft forms (resetting baseline `baseActiveVersionId`), and history table.
-  - [ ] 7.3: On error (e.g. `409 STALE_BASELINE_VERSION`), display actionable alert with "Саҳифани янгилаш" (Refresh page) action without losing entered reason.
-  - [ ] 7.4: Verify full keyboard navigation (`Tab`, `Escape`, `Enter`), visible focus rings, and WCAG AA contrast.
+- [x] **Task 7: Page Integration & Post-Rollback State Synchronization (`apps/web`)** (AC: 1, 2, 8, 9, 15)
+  - [x] 7.1: Enable `history` tab in `apps/web/src/pages/AiOperationsPage.tsx` by embedding `AnalysisSettingsHistoryPanel`.
+  - [x] 7.2: On successful rollback, close modal, display prominent Uzbek Cyrillic notification (`Созламалар V{target} ҳолатига янги V{new} версияси сифатида муваффақиятли қайтарилди`), invalidate and refresh active settings cards, draft forms (resetting baseline `baseActiveVersionId`), and history table.
+  - [x] 7.3: On error (e.g. `409 STALE_BASELINE_VERSION`), display actionable alert with "Саҳифани янгилаш" (Refresh page) action without losing entered reason.
+  - [x] 7.4: Verify full keyboard navigation (`Tab`, `Escape`, `Enter`), visible focus rings, and WCAG AA contrast.
 
-- [ ] **Task 8: Backend Integration & Isolation Test Suite (`apps/backend/tests`)** (AC: 1, 2, 4, 6, 7, 8, 9, 10, 11, 12, 13, 16)
-  - [ ] 8.1: Write `apps/backend/tests/analysis-settings-history-rollback.test.ts` against isolated test database `mahalla_ovozi_test`:
+- [x] **Task 8: Backend Integration & Isolation Test Suite (`apps/backend/tests`)** (AC: 1, 2, 4, 6, 7, 8, 9, 10, 11, 12, 13, 16)
+  - [x] 8.1: Write `apps/backend/tests/analysis-settings-history-rollback.test.ts` against isolated test database `mahalla_ovozi_test`:
     - Global history query: returns all versions ordered `version DESC`, identifies active version.
     - District history query: returns district-specific versions only, respects district isolation; handles unseeded districts by returning the default baseline `V1`.
     - Global rollback: copies target historical configuration into new version (`gcfg_v{next}`), deactivates previous active, preserves historical source unmodified, records audit event.
@@ -253,24 +253,24 @@ So that I can safely recover from an undesirable configuration change without re
     - Authorization: Rejects non-Product Owner requests with `403` / `401`.
     - Future-only invariant: Proves completed `ai_operations`, `topics`, and `accepted_evidence` records are untouched.
 
-- [ ] **Task 9: Frontend Unit & Component Test Suite (`apps/web/tests/unit`)** (AC: 1, 2, 3, 5, 6, 8, 9, 14, 15, 16)
-  - [ ] 9.1: Write `apps/web/tests/unit/AnalysisSettingsHistoryTable.test.tsx`:
+- [x] **Task 9: Frontend Unit & Component Test Suite (`apps/web/tests/unit`)** (AC: 1, 2, 3, 5, 6, 8, 9, 14, 15, 16)
+  - [x] 9.1: Write `apps/web/tests/unit/AnalysisSettingsHistoryTable.test.tsx`:
     - Renders history items with version tags, timestamps, and change reasons.
     - Identifies active version and disables rollback button for it.
     - Enables rollback button for historical versions and triggers modal.
-  - [ ] 9.2: Write `apps/web/tests/unit/AnalysisSettingsRollbackModal.test.tsx`:
+  - [x] 9.2: Write `apps/web/tests/unit/AnalysisSettingsRollbackModal.test.tsx`:
     - Renders target and active versions, future-only warning, and field-level diff preview between historical DTOs.
     - Validates change reason input (min 5 chars, secret rejection).
     - Disables confirm button when reason is empty or invalid.
     - Handles successful rollback and cache invalidation.
     - Handles stale baseline conflict (`409`) with refresh prompt.
     - Closes on Cancel with focus restoration to row button.
-  - [ ] 9.3: Update `AiOperationsPage.test.tsx` for history tab enablement and rendering.
+  - [x] 9.3: Update `AiOperationsPage.test.tsx` for history tab enablement and rendering.
 
-- [ ] **Task 10: Verification & Typecheck Across Workspaces** (AC: 18)
-  - [ ] 10.1: Run `pnpm -r typecheck` across `packages/api-contracts`, `apps/backend`, and `apps/web`.
-  - [ ] 10.2: Run Vitest backend test suite (`pnpm --filter @mahalla-ovozi/backend test`).
-  - [ ] 10.3: Run Vitest frontend test suite (`pnpm --filter @mahalla-ovozi/web test`).
+- [x] **Task 10: Verification & Typecheck Across Workspaces** (AC: 18)
+  - [x] 10.1: Run `pnpm -r typecheck` across `packages/api-contracts`, `apps/backend`, and `apps/web`.
+  - [x] 10.2: Run Vitest backend test suite (`pnpm --filter @mahalla-ovozi/backend test`).
+  - [x] 10.3: Run Vitest frontend test suite (`pnpm --filter @mahalla-ovozi/web test`).
 
 ---
 
@@ -796,7 +796,47 @@ Gemini 3.7 Flash (High)
 
 ### Debug Log References
 
+- Backend integration tests ran against isolated PostgreSQL test database (`mahalla_ovozi_test`): 15/15 tests passing in `tests/analysis-settings-history-rollback.test.ts`. Total backend suite: 53 test files, 769 tests passing (100%).
+- Frontend unit and component tests: 17/17 tests passing across `AnalysisSettingsHistoryTable.test.tsx`, `AnalysisSettingsRollbackModal.test.tsx`, and `AiOperationsPage.test.tsx`. Total web suite: 43 test files, 251 tests passing (100%).
+- Strict typecheck: `pnpm -r typecheck` passed with 0 errors across all workspace packages (`@mahalla-ovozi/api-contracts`, `@mahalla-ovozi/backend`, `@mahalla-ovozi/web`).
+
 ### Completion Notes List
 
+1. **Shared API Contracts & Schemas**: Added `GlobalAnalysisSettingsHistoryResponseSchema`, `DistrictAnalysisSettingsHistoryResponseSchema`, `RollbackGlobalAnalysisSettingsRequestSchema`, `RollbackGlobalAnalysisSettingsResponseSchema`, `RollbackDistrictAnalysisSettingsRequestSchema`, and `RollbackDistrictAnalysisSettingsResponseSchema` in `packages/api-contracts/src/analysis-settings.ts`.
+2. **Backend History & Rollback Services and Repositories**:
+   - `GlobalAnalysisSettingsRepository` & `DistrictAnalysisSettingsRepository`: Added `getHistory` (ordered `version DESC`) and `getVersionById` with composite tenant isolation (`WHERE district_id = :districtId AND id = :id`).
+   - `GlobalAnalysisSettingsService` & `DistrictAnalysisSettingsService`: Added `getHistory` and `rollback` enforcing row-locking concurrency control (`FOR UPDATE`), stale baseline checks (409 Conflict), nonexistent version checks (404 Not Found), no-op active rollback prevention (400 Bad Request), immutable target preservation, new monotonic version insertion (`max(version) + 1`) with `isActive = true`, and structured audit logging (`GLOBAL_ANALYSIS_SETTINGS_ROLLED_BACK`, `DISTRICT_ANALYSIS_SETTINGS_ROLLED_BACK`).
+   - `district-analysis-settings-service.ts`: Handled unseeded districts by synthesizing baseline `V1` configuration.
+3. **Backend Routes & Authorization**: Registered `GET/POST` endpoints under `/api/v1/ai/settings/global/history`, `/api/v1/ai/settings/global/rollback`, `/api/v1/ai/settings/districts/:districtId/history`, and `/api/v1/ai/settings/districts/:districtId/rollback` protected by `createRequireProductOwner(db)`.
+4. **Future-Only Invariant & Lineage Traceability (AD-8)**: Verified through integration tests that pre-existing logical `ai_operations`, `topics`, and `accepted_evidence` records remain strictly pinned and unmutated by rollback operations.
+5. **Frontend API Clients & TanStack Query Hooks**: Added typed client methods and hooks `useGlobalAnalysisSettingsHistory`, `useRollbackGlobalSettings`, `useDistrictAnalysisSettingsHistory`, and `useRollbackDistrictSettings` with cache invalidations.
+6. **Frontend UI Components**:
+   - Built `AnalysisSettingsHistoryTable.tsx` with version badges, active/historical indicators, Tashkent timestamps, change reason tooltips, and accessible action buttons (`id={'btn-rollback-' + item.id}`, disabled for active version).
+   - Built `AnalysisSettingsRollbackModal.tsx` with future-only disclosure banner, field-level diff preview using `ConfigurationDiffViewer`, change reason textarea with real-time secret scanning (`containsProhibitedSecrets`), offline detection, and focus restoration.
+   - Built `AnalysisSettingsHistoryPanel.tsx` with Global and District sub-tabs, `DistrictSelector` integration, and state synchronization.
+   - Enabled `Созламалар тарихи` (`history`) tab in `AiOperationsPage.tsx`.
+
 ### File List
+
+- `packages/api-contracts/src/analysis-settings.ts`
+- `apps/backend/src/modules/ai/global-analysis-settings-repository.ts`
+- `apps/backend/src/modules/ai/global-analysis-settings-service.ts`
+- `apps/backend/src/modules/ai/global-analysis-settings-routes.ts`
+- `apps/backend/src/modules/ai/district-analysis-settings-repository.ts`
+- `apps/backend/src/modules/ai/district-analysis-settings-service.ts`
+- `apps/backend/src/modules/ai/district-analysis-settings-routes.ts`
+- `apps/backend/tests/analysis-settings-history-rollback.test.ts`
+- `apps/web/src/api/global-settings-client.ts`
+- `apps/web/src/api/district-settings-client.ts`
+- `apps/web/src/hooks/useGlobalAnalysisSettings.ts`
+- `apps/web/src/hooks/useDistrictAnalysisSettings.ts`
+- `apps/web/src/components/ai/diff-utils.ts`
+- `apps/web/src/components/ai/AnalysisSettingsHistoryTable.tsx`
+- `apps/web/src/components/ai/AnalysisSettingsRollbackModal.tsx`
+- `apps/web/src/components/ai/AnalysisSettingsHistoryPanel.tsx`
+- `apps/web/src/pages/AiOperationsPage.tsx`
+- `apps/web/tests/unit/AnalysisSettingsHistoryTable.test.tsx`
+- `apps/web/tests/unit/AnalysisSettingsRollbackModal.test.tsx`
+- `apps/web/tests/unit/AiOperationsPage.test.tsx`
+
 

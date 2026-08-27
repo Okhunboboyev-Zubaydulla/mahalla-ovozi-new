@@ -3,8 +3,10 @@ import { eq } from 'drizzle-orm';
 import {
   SaveDistrictAnalysisSettingsDraftSchema,
   ActivateDistrictAnalysisSettingsRequestSchema,
+  RollbackDistrictAnalysisSettingsRequestSchema,
   type SaveDistrictAnalysisSettingsDraftRequest,
   type ActivateDistrictAnalysisSettingsRequest,
+  type RollbackDistrictAnalysisSettingsRequest,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import { districts } from '../../adapters/db/schema/districts.js';
@@ -255,6 +257,145 @@ export function registerDistrictAnalysisSettingsRoutes(
         }
       },
     );
+
+    /**
+     * GET /api/v1/ai/settings/districts/:districtId/history
+     * Returns immutable history of activated district analysis configuration versions (Story 5.4).
+     */
+    scope.get(
+      '/api/v1/ai/settings/districts/:districtId/history',
+      async (
+        req: FastifyRequest<{ Params: DistrictSettingsRouteParams }>,
+        reply: FastifyReply,
+      ) => {
+        const { districtId } = req.params;
+
+        // Validate district exists
+        const [district] = await db
+          .select({ id: districts.id, name: districts.name })
+          .from(districts)
+          .where(eq(districts.id, districtId))
+          .limit(1);
+
+        if (!district) {
+          return reply.status(404).send({
+            error: {
+              code: 'DISTRICT_NOT_FOUND',
+              message: 'Туман топилмади.',
+              statusCode: 404,
+            },
+          });
+        }
+
+        const history =
+          await districtAnalysisSettingsService.getHistory(db, districtId);
+
+        return reply.status(200).send(history);
+      },
+    );
+
+    /**
+     * POST /api/v1/ai/settings/districts/:districtId/rollback
+     * Atomically rolls back to a target historical district configuration as a new future-only version (Story 5.4).
+     */
+    scope.post(
+      '/api/v1/ai/settings/districts/:districtId/rollback',
+      async (
+        req: FastifyRequest<{
+          Params: DistrictSettingsRouteParams;
+          Body: RollbackDistrictAnalysisSettingsRequest;
+        }>,
+        reply: FastifyReply,
+      ) => {
+        const { districtId } = req.params;
+
+        // Validate district exists
+        const [district] = await db
+          .select({ id: districts.id, name: districts.name })
+          .from(districts)
+          .where(eq(districts.id, districtId))
+          .limit(1);
+
+        if (!district) {
+          return reply.status(404).send({
+            error: {
+              code: 'DISTRICT_NOT_FOUND',
+              message: 'Туман топилмади.',
+              statusCode: 404,
+            },
+          });
+        }
+
+        const parseResult =
+          RollbackDistrictAnalysisSettingsRequestSchema.safeParse(req.body);
+
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message:
+                parseResult.error.issues[0]?.message ||
+                'Қайтариш сўровида хатолик бор.',
+              statusCode: 400,
+              validationErrors: parseResult.error.issues.map((issue) => ({
+                path: issue.path,
+                message: issue.message,
+                code: issue.code,
+              })),
+            },
+          });
+        }
+
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Аутентификация талаб қилинади.',
+              statusCode: 401,
+            },
+          });
+        }
+
+        const actor = {
+          id: req.actor.id,
+          role: req.actor.role,
+          ipAddress: req.ip || null,
+          userAgent:
+            typeof req.headers['user-agent'] === 'string'
+              ? req.headers['user-agent']
+              : null,
+        };
+
+        try {
+          const result = await districtAnalysisSettingsService.rollback(
+            db,
+            districtId,
+            actor,
+            parseResult.data,
+          );
+
+          return reply.status(200).send(result);
+        } catch (err: any) {
+          const statusCode =
+            typeof err.statusCode === 'number' ? err.statusCode : 500;
+          const code =
+            typeof err.code === 'string' ? err.code : 'INTERNAL_SERVER_ERROR';
+          const message =
+            statusCode < 500 && typeof err.message === 'string'
+              ? err.message
+              : 'Туман созламаларини қайтаришда хатолик юз берди.';
+
+          return reply.status(statusCode).send({
+            error: {
+              code,
+              message,
+              statusCode,
+            },
+          });
+        }
+      },
+    );
   });
 }
+
 

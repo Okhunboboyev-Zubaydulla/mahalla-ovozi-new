@@ -18,6 +18,15 @@ export interface DistrictAnalysisSettingsRepositoryPort {
     tx: DbOrTx,
     districtId: string,
   ): Promise<DistrictAnalysisSettingsVersion | null>;
+  getHistory(
+    db: DbOrTx,
+    districtId: string,
+  ): Promise<DistrictAnalysisSettingsVersion[]>;
+  getVersionById(
+    db: DbOrTx,
+    districtId: string,
+    id: string,
+  ): Promise<DistrictAnalysisSettingsVersion | null>;
   getDraft(
     db: DbOrTx,
     districtId: string,
@@ -77,6 +86,36 @@ export class DrizzleDistrictAnalysisSettingsRepository
       .orderBy(desc(districtAnalysisSettingsVersions.version))
       .limit(1)
       .for('update');
+
+    return row || null;
+  }
+
+  async getHistory(
+    db: DbOrTx,
+    districtId: string,
+  ): Promise<DistrictAnalysisSettingsVersion[]> {
+    return await db
+      .select()
+      .from(districtAnalysisSettingsVersions)
+      .where(eq(districtAnalysisSettingsVersions.districtId, districtId))
+      .orderBy(desc(districtAnalysisSettingsVersions.version));
+  }
+
+  async getVersionById(
+    db: DbOrTx,
+    districtId: string,
+    id: string,
+  ): Promise<DistrictAnalysisSettingsVersion | null> {
+    const [row] = await db
+      .select()
+      .from(districtAnalysisSettingsVersions)
+      .where(
+        and(
+          eq(districtAnalysisSettingsVersions.districtId, districtId),
+          eq(districtAnalysisSettingsVersions.id, id),
+        ),
+      )
+      .limit(1);
 
     return row || null;
   }

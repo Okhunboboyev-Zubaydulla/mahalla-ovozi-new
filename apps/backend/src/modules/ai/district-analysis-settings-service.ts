@@ -6,6 +6,9 @@ import {
   type SaveDistrictAnalysisSettingsDraftRequest,
   type ActivateDistrictAnalysisSettingsRequest,
   type ActivateDistrictAnalysisSettingsResponse,
+  type DistrictAnalysisSettingsHistoryResponse,
+  type RollbackDistrictAnalysisSettingsRequest,
+  type RollbackDistrictAnalysisSettingsResponse,
   type DistrictLocalVocabularyItem,
   DEFAULT_HOKIM_RECOGNITION_TERMS,
 } from '@mahalla-ovozi/api-contracts';
@@ -16,6 +19,7 @@ import {
 import {
   type DistrictAnalysisSettingsVersion,
   type DistrictAnalysisSettingsDraft,
+  createDefaultDistrictAnalysisSettingsVersion,
   districts,
 } from '../../adapters/db/schema/index.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
@@ -420,8 +424,186 @@ export class DistrictAnalysisSettingsService {
       ? await db.transaction(async (tx) => executeInTx(tx))
       : await executeInTx(db);
   }
+
+  async getHistory(
+    db: DbOrTx,
+    districtId: string,
+  ): Promise<DistrictAnalysisSettingsHistoryResponse> {
+    // Validate district exists
+    const [district] = await db
+      .select({ id: districts.id, name: districts.name })
+      .from(districts)
+      .where(eq(districts.id, districtId))
+      .limit(1);
+
+    if (!district) {
+      const error = new Error('Туман топилмади.');
+      (error as any).code = 'DISTRICT_NOT_FOUND';
+      (error as any).statusCode = 404;
+      throw error;
+    }
+
+    const versions = await this.repository.getHistory(db, districtId);
+    if (versions.length === 0) {
+      const active = await this.getActiveConfiguration(db, districtId);
+      return {
+        districtId: district.id,
+        districtName: district.name,
+        items: [active],
+        totalCount: 1,
+      };
+    }
+    const items = versions.map((v) => this.mapVersionToDto(v));
+    return {
+      districtId: district.id,
+      districtName: district.name,
+      items,
+      totalCount: items.length,
+    };
+  }
+
+  async rollback(
+    db: DbOrTx,
+    districtId: string,
+    actor: {
+      id: string;
+      role: string;
+      ipAddress?: string | null;
+      userAgent?: string | null;
+    },
+    payload: RollbackDistrictAnalysisSettingsRequest,
+  ): Promise<RollbackDistrictAnalysisSettingsResponse> {
+    if (actor.role !== 'PRODUCT_OWNER') {
+      throw new Error(
+        'Ушбу амални бажариш учун маҳсулот эгаси ҳуқуқи талаб қилинади.',
+      );
+    }
+
+    const executeInTx = async (tx: DbOrTx) => {
+      // 1. Fetch district to verify existence and get district name
+      const [district] = await tx
+        .select({ id: districts.id, name: districts.name })
+        .from(districts)
+        .where(eq(districts.id, districtId))
+        .limit(1);
+
+      if (!district) {
+        const error = new Error('Туман топилмади.');
+        (error as any).code = 'DISTRICT_NOT_FOUND';
+        (error as any).statusCode = 404;
+        throw error;
+      }
+
+      // 2. Fetch current active configuration with row lock
+      const activeRow = await this.repository.getActiveConfigurationForUpdate(
+        tx,
+        districtId,
+      );
+      const defaultBaseline = createDefaultDistrictAnalysisSettingsVersion(districtId);
+      const currentActiveId = activeRow ? activeRow.id : defaultBaseline.id;
+
+      // 3. Validate base active version (optimistic concurrency guard)
+      if (payload.baseActiveVersionId !== currentActiveId) {
+        const error = new Error(
+          'Фаол созламалар версияси ўзгарган. Илтимос, саҳифани янгилаб, қайта кўриб чиқинг.',
+        );
+        (error as any).code = 'STALE_BASELINE_VERSION';
+        (error as any).statusCode = 409;
+        throw error;
+      }
+
+      // 4. Fetch target historical version (strict composite tenant isolation)
+      let targetRow = await this.repository.getVersionById(
+        tx,
+        districtId,
+        payload.targetVersionId,
+      );
+
+      // Unseeded baseline fallback resolution
+      if (!targetRow && payload.targetVersionId === defaultBaseline.id) {
+        targetRow = defaultBaseline as DistrictAnalysisSettingsVersion;
+      }
+
+      if (!targetRow) {
+        const error = new Error('Қайтариш учун танланган тарихий версия топилмади.');
+        (error as any).code = 'VERSION_NOT_FOUND';
+        (error as any).statusCode = 404;
+        throw error;
+      }
+
+      // 5. Validate that target is not already the active version
+      if (targetRow.id === currentActiveId) {
+        const error = new Error(
+          'Танланган версия аллақачон фаол ҳисобланади. Қайтариш учун олдинги тарихий версияни танланг.',
+        );
+        (error as any).code = 'NO_EFFECTIVE_ROLLBACK';
+        (error as any).statusCode = 400;
+        throw error;
+      }
+
+      // 6. Deactivate prior active version if exists in DB
+      if (activeRow) {
+        await this.repository.deactivateVersion(tx, districtId, activeRow.id);
+      }
+
+      // 7. Compute next monotonic version number
+      const maxVersion = await this.repository.getNextVersionNumber(
+        tx,
+        districtId,
+      );
+      const nextVersion = Math.max(maxVersion, (activeRow?.version ?? 1) + 1);
+      const newVersionId = `dcfg_${districtId}_v${nextVersion}`;
+
+      // 8. Insert new immutable active version copying from target
+      const newVersionRow = await this.repository.insertVersion(tx, {
+        id: newVersionId,
+        districtId,
+        version: nextVersion,
+        hokimRecognitionTerms: targetRow.hokimRecognitionTerms,
+        localVocabularyAdditions: targetRow.localVocabularyAdditions,
+        isActive: true,
+        activatedAt: new Date(),
+        activatedBy: actor.id,
+        changeReason: payload.changeReason.trim(),
+        createdAt: new Date(),
+      });
+
+      // 9. Record audit event
+      await recordAuditEvent(tx, {
+        districtId,
+        actorId: actor.id,
+        actorRole: 'PRODUCT_OWNER',
+        action: 'DISTRICT_ANALYSIS_SETTINGS_ROLLED_BACK',
+        ipAddress: actor.ipAddress || null,
+        userAgent: actor.userAgent || null,
+        metadata: {
+          districtId,
+          districtName: district.name,
+          previousActiveVersionId: currentActiveId,
+          targetSourceVersionId: targetRow.id,
+          newVersionId: newVersionRow.id,
+          newVersion: nextVersion,
+          changeReason: payload.changeReason.trim(),
+        },
+      });
+
+      return {
+        districtId,
+        districtName: district.name,
+        activeConfiguration: this.mapVersionToDto(newVersionRow),
+        restoredFromVersionId: targetRow.id,
+        previousActiveVersionId: currentActiveId,
+        message: `${district.name}: Таҳлил созламалари V${targetRow.version} ҳолатига янги V${nextVersion} версияси сифатида муваффақиятли қайтарилди.`,
+      };
+    };
+
+    return 'transaction' in db && typeof db.transaction === 'function'
+      ? await db.transaction(async (tx) => executeInTx(tx))
+      : await executeInTx(db);
+  }
 }
 
 export const districtAnalysisSettingsService =
   new DistrictAnalysisSettingsService(districtAnalysisSettingsRepository);
+
 

@@ -445,4 +445,79 @@ export type ActivateDistrictAnalysisSettingsResponse = z.infer<
   typeof ActivateDistrictAnalysisSettingsResponseSchema
 >;
 
+// ==========================================
+// Story 5.4: History & Rollback Contracts
+// ==========================================
+
+export const GlobalAnalysisSettingsHistoryResponseSchema = z.object({
+  items: z.array(GlobalAnalysisSettingsDtoSchema),
+  totalCount: z.number().int().nonnegative(),
+});
+export type GlobalAnalysisSettingsHistoryResponse = z.infer<
+  typeof GlobalAnalysisSettingsHistoryResponseSchema
+>;
+
+export const DistrictAnalysisSettingsHistoryResponseSchema = z.object({
+  districtId: z.string(),
+  districtName: z.string(),
+  items: z.array(DistrictAnalysisSettingsDtoSchema),
+  totalCount: z.number().int().nonnegative(),
+});
+export type DistrictAnalysisSettingsHistoryResponse = z.infer<
+  typeof DistrictAnalysisSettingsHistoryResponseSchema
+>;
+
+export const RollbackGlobalAnalysisSettingsRequestSchema = z.object({
+  baseActiveVersionId: z
+    .string({ invalid_type_error: 'Базавий фаол версия идентификатори талаб қилинади.' })
+    .trim()
+    .min(1, 'Базавий фаол версия идентификатори талаб қилинади.'),
+  targetVersionId: z
+    .string({ invalid_type_error: 'Қайтариладиган версия идентификатори талаб қилинади.' })
+    .trim()
+    .min(1, 'Қайтариладиган версия идентификатори талаб қилинади.'),
+  changeReason: ChangeReasonSchema,
+});
+export type RollbackGlobalAnalysisSettingsRequest = z.infer<
+  typeof RollbackGlobalAnalysisSettingsRequestSchema
+>;
+
+export const RollbackGlobalAnalysisSettingsResponseSchema = z.object({
+  activeConfiguration: GlobalAnalysisSettingsDtoSchema,
+  restoredFromVersionId: z.string(),
+  previousActiveVersionId: z.string(),
+  message: z.string(),
+});
+export type RollbackGlobalAnalysisSettingsResponse = z.infer<
+  typeof RollbackGlobalAnalysisSettingsResponseSchema
+>;
+
+export const RollbackDistrictAnalysisSettingsRequestSchema = z.object({
+  baseActiveVersionId: z
+    .string({ invalid_type_error: 'Базавий фаол версия идентификатори талаб қилинади.' })
+    .trim()
+    .min(1, 'Базавий фаол версия идентификатори талаб қилинади.'),
+  targetVersionId: z
+    .string({ invalid_type_error: 'Қайтариладиган версия идентификатори талаб қилинади.' })
+    .trim()
+    .min(1, 'Қайтариладиган версия идентификатори талаб қилинади.'),
+  changeReason: ChangeReasonSchema,
+});
+export type RollbackDistrictAnalysisSettingsRequest = z.infer<
+  typeof RollbackDistrictAnalysisSettingsRequestSchema
+>;
+
+export const RollbackDistrictAnalysisSettingsResponseSchema = z.object({
+  districtId: z.string(),
+  districtName: z.string(),
+  activeConfiguration: DistrictAnalysisSettingsDtoSchema,
+  restoredFromVersionId: z.string(),
+  previousActiveVersionId: z.string(),
+  message: z.string(),
+});
+export type RollbackDistrictAnalysisSettingsResponse = z.infer<
+  typeof RollbackDistrictAnalysisSettingsResponseSchema
+>;
+
+
 

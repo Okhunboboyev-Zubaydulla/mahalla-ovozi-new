@@ -16,6 +16,11 @@ export interface GlobalAnalysisSettingsRepositoryPort {
   getActiveConfigurationForUpdate(
     tx: DbOrTx,
   ): Promise<GlobalAnalysisSettingsVersion | null>;
+  getHistory(db: DbOrTx): Promise<GlobalAnalysisSettingsVersion[]>;
+  getVersionById(
+    db: DbOrTx,
+    id: string,
+  ): Promise<GlobalAnalysisSettingsVersion | null>;
   getDraft(db: DbOrTx): Promise<GlobalAnalysisSettingsDraft | null>;
   saveDraft(
     db: DbOrTx,
@@ -56,6 +61,26 @@ export class DrizzleGlobalAnalysisSettingsRepository
       .orderBy(desc(globalAnalysisSettingsVersions.version))
       .limit(1)
       .for('update');
+
+    return row || null;
+  }
+
+  async getHistory(db: DbOrTx): Promise<GlobalAnalysisSettingsVersion[]> {
+    return await db
+      .select()
+      .from(globalAnalysisSettingsVersions)
+      .orderBy(desc(globalAnalysisSettingsVersions.version));
+  }
+
+  async getVersionById(
+    db: DbOrTx,
+    id: string,
+  ): Promise<GlobalAnalysisSettingsVersion | null> {
+    const [row] = await db
+      .select()
+      .from(globalAnalysisSettingsVersions)
+      .where(eq(globalAnalysisSettingsVersions.id, id))
+      .limit(1);
 
     return row || null;
   }

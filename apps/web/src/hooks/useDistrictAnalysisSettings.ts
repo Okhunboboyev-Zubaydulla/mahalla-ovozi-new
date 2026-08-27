@@ -5,12 +5,17 @@ import {
   type SaveDistrictAnalysisSettingsDraftRequest,
   type ActivateDistrictAnalysisSettingsResponse,
   type ActivateDistrictAnalysisSettingsRequest,
+  type DistrictAnalysisSettingsHistoryResponse,
+  type RollbackDistrictAnalysisSettingsRequest,
+  type RollbackDistrictAnalysisSettingsResponse,
 } from '@mahalla-ovozi/api-contracts';
 import { districtSettingsClient } from '../api/district-settings-client.js';
 
 export const districtSettingsKeys = {
   all: ['district-settings'] as const,
   detail: (districtId: string) => ['district-settings', districtId] as const,
+  history: (districtId: string) =>
+    ['district-settings-history', districtId] as const,
 };
 
 export function useDistrictAnalysisSettings(districtId: string | null) {
@@ -81,7 +86,53 @@ export function useActivateDistrictSettings(districtId: string) {
       void queryClient.invalidateQueries({
         queryKey: districtSettingsKeys.detail(districtId),
       });
+      void queryClient.invalidateQueries({
+        queryKey: districtSettingsKeys.history(districtId),
+      });
     },
   });
 }
+
+export function useDistrictAnalysisSettingsHistory(districtId: string | null) {
+  return useQuery<DistrictAnalysisSettingsHistoryResponse>({
+    queryKey: districtSettingsKeys.history(districtId || ''),
+    queryFn: ({ signal }) =>
+      districtSettingsClient.getDistrictSettingsHistory(districtId!, signal),
+    enabled: Boolean(districtId),
+    staleTime: 30_000,
+  });
+}
+
+export function useRollbackDistrictSettings(districtId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    RollbackDistrictAnalysisSettingsResponse,
+    Error,
+    RollbackDistrictAnalysisSettingsRequest
+  >({
+    mutationFn: (payload: RollbackDistrictAnalysisSettingsRequest) =>
+      districtSettingsClient.rollbackDistrictSettings(districtId, payload),
+    onSuccess: (data) => {
+      // Update active configuration in query cache
+      queryClient.setQueryData<GetDistrictAnalysisSettingsResponse>(
+        districtSettingsKeys.detail(districtId),
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            activeConfiguration: data.activeConfiguration,
+          };
+        },
+      );
+      void queryClient.invalidateQueries({
+        queryKey: districtSettingsKeys.detail(districtId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: districtSettingsKeys.history(districtId),
+      });
+    },
+  });
+}
+
 
