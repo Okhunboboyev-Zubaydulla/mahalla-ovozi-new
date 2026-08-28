@@ -105,7 +105,7 @@ development_status:
   epic-6: in-progress
   6-1-review-and-maintain-district-subscription-records: done
   6-2-manage-active-grace-and-suspended-district-service: done
-  6-3-cancel-and-recover-a-district-before-live-deletion: backlog
+  6-3-cancel-and-recover-a-district-before-live-deletion: ready-for-dev
   6-4-execute-permanent-live-system-district-deletion: backlog
   6-5-verify-protected-backup-expiry: backlog
   6-6-reconcile-disaster-restores-before-re-enabling-service: backlog
