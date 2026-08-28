@@ -147,7 +147,7 @@ export function aggregateOverallSystemHealth(
 
   const totalDistricts = districts.length;
   const activeDistricts = districts.filter(
-    (d) => d.lifecycleStatus === 'ACTIVE' || d.lifecycleStatus === null,
+    (d) => d.lifecycleStatus === 'ACTIVE' || d.lifecycleStatus === 'GRACE' || d.lifecycleStatus === null,
   ).length;
 
   if (totalDistricts === 0) {

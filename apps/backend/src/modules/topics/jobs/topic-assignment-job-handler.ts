@@ -120,7 +120,7 @@ export async function processTopicAssignmentJobs(
 
             if (
               !districtGate1 ||
-              districtGate1.status !== 'ACTIVE' ||
+              (districtGate1.status !== 'ACTIVE' && districtGate1.status !== 'GRACE') ||
               districtGate1.accessEligible === false
             ) {
               const durationMs = Math.round(performance.now() - startTime);
@@ -217,7 +217,7 @@ export async function processTopicAssignmentJobs(
 
             if (
               !districtGate2 ||
-              districtGate2.status !== 'ACTIVE' ||
+              (districtGate2.status !== 'ACTIVE' && districtGate2.status !== 'GRACE') ||
               districtGate2.accessEligible === false
             ) {
               const durationMs = Math.round(performance.now() - startTime);

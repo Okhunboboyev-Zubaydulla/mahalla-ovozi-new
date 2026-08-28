@@ -96,3 +96,10 @@ export const ALLOWED_METADATA_SEARCH_KEYS = [
   'chatId',
   'retryTrackingId',
 ] as const;
+
+export const DISTRICT_LIFECYCLE_AUDIT_ACTIONS = [
+  'DISTRICT_GRACE_STARTED',
+  'DISTRICT_SUBSCRIPTION_SUSPENDED',
+  'DISTRICT_SERVICE_RESTORED_ACTIVE',
+] as const;
+

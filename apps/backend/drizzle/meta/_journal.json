@@ -120,6 +120,13 @@
       "when": 1787800000000,
       "tag": "0016_subscription_records",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1787810000000,
+      "tag": "0017_subscription_lifecycle",
+      "breakpoints": true
     }
   ]
 }

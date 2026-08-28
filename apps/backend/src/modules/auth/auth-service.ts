@@ -172,7 +172,7 @@ export async function signIn(
       .where(eq(districts.id, account.districtId))
       .limit(1);
 
-    if (!district || district.status !== 'ACTIVE') {
+    if (!district || (district.status !== 'ACTIVE' && district.status !== 'GRACE')) {
       await recordAuditEvent(db, {
         actorId: account.id,
         actorRole: account.role,

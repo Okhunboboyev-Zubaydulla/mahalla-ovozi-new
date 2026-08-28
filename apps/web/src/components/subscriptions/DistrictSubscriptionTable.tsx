@@ -12,6 +12,8 @@ export interface DistrictSubscriptionTableProps {
   loading?: boolean;
   onSelectDistrict?: (districtId: string) => void;
   onEditSubscription?: (subscription: DistrictSubscription) => void;
+  onStartGrace?: (subscription: DistrictSubscription) => void;
+  onRestoreActive?: (subscription: DistrictSubscription) => void;
   isOffline?: boolean;
 }
 
@@ -20,6 +22,8 @@ export const DistrictSubscriptionTable: React.FC<DistrictSubscriptionTableProps>
   loading = false,
   onSelectDistrict,
   onEditSubscription,
+  onStartGrace,
+  onRestoreActive,
   isOffline = false,
 }) => {
   const { token } = theme.useToken();
@@ -85,7 +89,7 @@ export const DistrictSubscriptionTable: React.FC<DistrictSubscriptionTableProps>
       title: 'Амаллар',
       key: 'actions',
       render: (_: unknown, record: DistrictSubscription) => (
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {onSelectDistrict && (
             <Button
               type="link"
@@ -96,6 +100,31 @@ export const DistrictSubscriptionTable: React.FC<DistrictSubscriptionTableProps>
               Батафсил
             </Button>
           )}
+
+          {record.status === 'ACTIVE' && onStartGrace && (
+            <Button
+              type="link"
+              size="small"
+              danger
+              onClick={() => onStartGrace(record)}
+              disabled={isOffline}
+            >
+              Имтиёзли давр (Grace)
+            </Button>
+          )}
+
+          {(record.status === 'GRACE' || record.status === 'SUSPENDED') && onRestoreActive && (
+            <Button
+              type="link"
+              size="small"
+              onClick={() => onRestoreActive(record)}
+              disabled={isOffline}
+              style={isOffline ? undefined : { color: token.colorSuccess }}
+            >
+              Фаоллаштириш
+            </Button>
+          )}
+
           {onEditSubscription && (
             <Button
               type="link"

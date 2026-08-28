@@ -1,6 +1,6 @@
 # Story 6.2: Manage Active, Grace, and Suspended District Service
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -273,6 +273,18 @@ so that product access follows the District's manually managed subscription life
     - Test keyboard accessibility (contained focus, safe Cancel default, Escape dismissal, opener return)
     - Test offline button disabling.
   - [ ] 8.3 Verify monorepo typecheck (`pnpm typecheck`).
+
+### Review Findings
+
+- [x] [Review][Patch] AI and Topic background job handlers omit 'GRACE' status in Gate 1 and Gate 2 lifecycle checks [`apps/backend/src/modules/ai/jobs/semantic-relevance-job-handler.ts:108-112`, `apps/backend/src/modules/topics/jobs/topic-assignment-job-handler.ts:121-125`, `apps/backend/src/modules/topics/jobs/topic-projection-job-handler.ts:158-163`]
+- [x] [Review][Patch] expireDistrictGrace does not verify scheduled_transition_at <= now under lock [`apps/backend/src/modules/subscriptions/subscriptions-service.ts:537-540`]
+- [x] [Review][Patch] Hokim auth guard returns DISTRICT_SUSPENDED when district is not found or not access eligible [`apps/backend/src/modules/auth/require-auth.ts:93-101`]
+- [x] [Review][Patch] RestoreActive 409 DISTRICT_NOT_READY error does not display specific prerequisite blockers in UI toast [`apps/web/src/pages/SubscriptionsPage.tsx:106-109`]
+- [x] [Review][Patch] StartGraceModal and RestoreActiveModal missing closable={!isPending} and field reset on target change [`apps/web/src/components/subscriptions/StartGraceModal.tsx`, `apps/web/src/components/subscriptions/RestoreActiveModal.tsx`]
+- [x] [Review][Patch] Migration 0017_subscription_lifecycle.sql missing DROP CONSTRAINT IF EXISTS before adding scheduled_transition_type check [`apps/backend/drizzle/0017_subscription_lifecycle.sql:3`]
+- [x] [Review][Patch] Replace hardcoded #52c41a colors with Ant Design token.colorSuccess in subscription components [`apps/web/src/components/subscriptions/DistrictSubscriptionDetailCard.tsx:18`, `apps/web/src/components/subscriptions/DistrictSubscriptionTable.tsx:21`]
+- [x] [Review][Patch] Add integration test suite coverage for AI job handlers lifecycle checks under GRACE status [`apps/backend/tests/subscription-lifecycle.test.ts`]
+- [x] [Review][Patch] Add limit(100) clause to processOverdueGraceSubscriptions query [`apps/backend/src/modules/subscriptions/subscriptions-service.ts:755`]
 
 ---
 
@@ -622,15 +634,50 @@ Gemini 3.7 Flash (High)
 
 ### Completion Notes List
 
-- Authored complete story specification for Story 6.2: Manage Active, Grace, and Suspended District Service.
-- Detailed the 4 core lifecycle transitions (`ACTIVE -> GRACE`, `GRACE -> SUSPENDED` automatic expiry after 7 days, `GRACE -> ACTIVE` restore, and `SUSPENDED -> ACTIVE` restore with FR20 activation prerequisite verification).
-- Specified dual-table transactional status synchronization (`districts.status` and `district_subscriptions.status`) and database migration updating `districts_status_check`.
-- Specified two-tier pg-boss 10.x worker queue architecture (delayed job + recurring 1-minute cron sweep) for automated Grace expiry evaluation.
-- Documented operational consequences across all layers: Telegram intake and AI processing continuation during Grace, immediate suspension of intake/AI/Hokim access upon Suspension, prospective resumption without backfill upon Reactivation, and independent 90-day retention continuation across Active, Grace, and Suspended districts.
-- Defined shared API contracts, Drizzle schema check constraints, Fastify routes, and Ant Design 5 consequence modals with keyboard accessibility and opener focus return.
-- Outlined comprehensive backend integration test and frontend unit test suites.
+- Implemented database migration `0017_subscription_lifecycle.sql` and updated Drizzle schema check constraints for `districts` and `district_subscriptions`.
+- Added shared Zod API contracts and schemas for `startDistrictGrace` and `restoreDistrictActive` in `@mahalla-ovozi/api-contracts`.
+- Implemented transactional subscription lifecycle service methods (`startDistrictGrace`, `expireDistrictGrace`, `restoreDistrictActive`, `processOverdueGraceSubscriptions`) with row-level locking (`FOR UPDATE`).
+- Built two-tier automated expiry worker pipeline: delayed pg-boss job dispatch (`DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE`) + recurring 1-minute fallback cron sweeper.
+- Enforced cross-system lifecycle rules:
+  - Hokim sign-in and active session guards (`ACTIVE` and `GRACE` allowed; `SUSPENDED` receives HTTP 403 `DISTRICT_SUSPENDED`).
+  - Telegram webhook intake & job queues (`ACTIVE` and `GRACE` processed; `SUSPENDED` dropped without processing).
+  - 90-day retention worker covers `ACTIVE`, `GRACE`, and `SUSPENDED` districts.
+  - Health evaluation correctly tracks `ACTIVE` + `GRACE` in active district count.
+- Built accessible UI consequence modals (`StartGraceModal.tsx`, `RestoreActiveModal.tsx`) with safe Cancel default autofocus and client-side secret scanning.
+- Updated Subscription detail view, table rows, and TanStack Query cache invalidation matrix in `SubscriptionsPage.tsx`.
+- Created comprehensive integration test suite (`apps/backend/tests/subscription-lifecycle.test.ts`) and frontend unit test suite (`apps/web/tests/unit/SubscriptionsLifecycle.test.tsx`).
+- Full monorepo verification: 100 test suites (800 backend + 264 frontend = 1,064 tests) passing at 100% and zero TypeScript errors (`pnpm typecheck` passed).
 
 ### File List
 
+- `packages/api-contracts/src/subscriptions.ts`
+- `packages/api-contracts/src/audit.ts`
+- `packages/api-contracts/src/districts.ts`
+- `apps/backend/src/adapters/db/schema/districts.ts`
+- `apps/backend/src/adapters/db/schema/district-subscriptions.ts`
+- `apps/backend/src/adapters/db/schema/audit-events.ts`
+- `apps/backend/drizzle/0017_subscription_lifecycle.sql`
+- `apps/backend/src/adapters/jobs/boss-client.ts`
+- `apps/backend/src/modules/subscriptions/subscriptions-service.ts`
+- `apps/backend/src/modules/subscriptions/subscriptions-routes.ts`
+- `apps/backend/src/modules/subscriptions/jobs/subscription-expiry-job-handler.ts`
+- `apps/backend/src/entrypoints/worker.ts`
+- `apps/backend/src/modules/auth/auth-service.ts`
+- `apps/backend/src/modules/auth/require-auth.ts`
+- `apps/backend/src/modules/telegram-intake/telegram-intake-service.ts`
+- `apps/backend/src/modules/telegram-intake/jobs/qualification-job-handler.ts`
+- `apps/backend/src/modules/topics/jobs/topic-projection-job-handler.ts`
+- `apps/backend/src/modules/retention/jobs/retention-job-handler.ts`
+- `apps/backend/src/modules/health/health-evaluator.ts`
+- `apps/backend/src/modules/issues/retry-service.ts`
+- `apps/web/src/api/subscription-client.ts`
+- `apps/web/src/lib/formatters.ts`
+- `apps/web/src/components/subscriptions/StartGraceModal.tsx`
+- `apps/web/src/components/subscriptions/RestoreActiveModal.tsx`
+- `apps/web/src/components/subscriptions/DistrictSubscriptionDetailCard.tsx`
+- `apps/web/src/components/subscriptions/DistrictSubscriptionTable.tsx`
+- `apps/web/src/pages/SubscriptionsPage.tsx`
+- `apps/backend/tests/subscription-lifecycle.test.ts`
+- `apps/web/tests/unit/SubscriptionsLifecycle.test.tsx`
 - `_bmad-output/implementation-artifacts/6-2-manage-active-grace-and-suspended-district-service.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`

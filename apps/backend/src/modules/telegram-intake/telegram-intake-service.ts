@@ -117,7 +117,11 @@ export async function resolveDistrictBotAndGroup(
     .where(eq(districts.id, bot.districtId))
     .limit(1);
 
-  if (!district || district.status !== 'ACTIVE' || district.accessEligible === false) {
+  if (
+    !district ||
+    (district.status !== 'ACTIVE' && district.status !== 'GRACE') ||
+    district.accessEligible === false
+  ) {
     return { authorized: false, reason: 'DISTRICT_NOT_ACTIVE' };
   }
 

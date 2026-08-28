@@ -1,6 +1,6 @@
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { eq, and, not } from 'drizzle-orm';
+import { eq, and, not, inArray } from 'drizzle-orm';
 import type { DbClient } from '../../../adapters/db/client.js';
 import { districts } from '../../../adapters/db/schema/index.js';
 import {
@@ -41,7 +41,11 @@ export async function processRetentionJobs(
           .where(eq(districts.id, districtId))
           .limit(1);
 
-        if (!district || district.status !== 'ACTIVE' || district.accessEligible === false) {
+        if (
+          !district ||
+          (district.status !== 'ACTIVE' && district.status !== 'GRACE' && district.status !== 'SUSPENDED') ||
+          district.accessEligible === false
+        ) {
           const durationMs = Math.round(performance.now() - startTime);
           console.log(
             JSON.stringify({
@@ -70,13 +74,13 @@ export async function processRetentionJobs(
           }),
         );
       } else {
-        // Scheduled scan across all active districts (AC 13)
-        const activeDistricts = await db
+        // Scheduled scan across all active, grace, and suspended districts (AC 13, FR30)
+        const eligibleDistricts = await db
           .select({ id: districts.id })
           .from(districts)
           .where(
             and(
-              eq(districts.status, 'ACTIVE'),
+              inArray(districts.status, ['ACTIVE', 'GRACE', 'SUSPENDED']),
               not(eq(districts.accessEligible, false)),
             ),
           );
@@ -87,7 +91,7 @@ export async function processRetentionJobs(
         let totalProjections = 0;
         let districtsFailed = 0;
 
-        for (const d of activeDistricts) {
+        for (const d of eligibleDistricts) {
           try {
             const result = await retentionService.purgeDistrictExpiredTopicsBatch(d.id);
             totalEvaluated += result.topicsEvaluated;
@@ -113,7 +117,7 @@ export async function processRetentionJobs(
         console.log(
           JSON.stringify({
             event: 'TELEGRAM_TOPIC_RETENTION_SCAN_COMPLETED',
-            districtsScanned: activeDistricts.length,
+            districtsScanned: eligibleDistricts.length,
             districtsFailed,
             topicsEvaluated: totalEvaluated,
             topicsPurged: totalPurged,

@@ -25,7 +25,12 @@ export const districtSubscriptions = pgTable(
       'district_subscriptions_status_check',
       sql`${table.status} IN ('SETUP_INCOMPLETE', 'ACTIVE', 'GRACE', 'SUSPENDED', 'CANCELLED')`
     ),
+    check(
+      'district_subscriptions_scheduled_transition_type_check',
+      sql`${table.scheduledTransitionType} IS NULL OR ${table.scheduledTransitionType} IN ('AUTOMATIC_SUSPENSION', 'LIVE_DELETION')`
+    ),
     index('district_subscriptions_status_idx').on(table.status),
+    index('district_subscriptions_scheduled_transition_idx').on(table.scheduledTransitionAt),
   ]
 );
 

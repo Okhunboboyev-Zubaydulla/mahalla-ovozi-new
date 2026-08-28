@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { containsProhibitedSecrets } from './analysis-settings.js';
+import { PrerequisiteItemSchema } from './readiness.js';
 
 export const SubscriptionStatusSchema = z.enum([
   'SETUP_INCOMPLETE',
@@ -73,3 +74,67 @@ export const UpdateDistrictSubscriptionResponseSchema = z.object({
   message: z.string(),
 });
 export type UpdateDistrictSubscriptionResponse = z.infer<typeof UpdateDistrictSubscriptionResponseSchema>;
+
+export const ScheduledTransitionTypeSchema = z.enum([
+  'AUTOMATIC_SUSPENSION',
+  'LIVE_DELETION',
+]);
+export type ScheduledTransitionType = z.infer<typeof ScheduledTransitionTypeSchema>;
+
+export const StartGraceRequestSchema = z
+  .object({
+    reason: z
+      .string({ invalid_type_error: 'Сабаб матн кўринишида бўлиши керак.' })
+      .trim()
+      .max(1000, 'Сабаб 1000 та белгидан ошмаслиги керак.')
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.reason && containsProhibitedSecrets(data.reason)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['reason'],
+        message: 'Махфий маълумотлар (бот токенлари, API калитлар ёки пароллар) кўрсатилиши мумкин эмас.',
+      });
+    }
+  });
+export type StartGraceRequest = z.infer<typeof StartGraceRequestSchema>;
+
+export const StartGraceResponseSchema = z.object({
+  subscription: DistrictSubscriptionSchema,
+  message: z.string(),
+});
+export type StartGraceResponse = z.infer<typeof StartGraceResponseSchema>;
+
+export const RestoreActiveRequestSchema = z
+  .object({
+    reason: z
+      .string({ invalid_type_error: 'Сабаб матн кўринишида бўлиши керак.' })
+      .trim()
+      .max(1000, 'Сабаб 1000 та белгидан ошмаслиги керак.')
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.reason && containsProhibitedSecrets(data.reason)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['reason'],
+        message: 'Махфий маълумотлар (бот токенлари, API калитлар ёки пароллар) кўрсатилиши мумкин эмас.',
+      });
+    }
+  });
+export type RestoreActiveRequest = z.infer<typeof RestoreActiveRequestSchema>;
+
+export const RestoreActiveResponseSchema = z.object({
+  subscription: DistrictSubscriptionSchema,
+  message: z.string(),
+});
+export type RestoreActiveResponse = z.infer<typeof RestoreActiveResponseSchema>;
+
+export const DistrictNotReadyErrorSchema = z.object({
+  code: z.literal('DISTRICT_NOT_READY'),
+  message: z.string(),
+  blockers: z.array(PrerequisiteItemSchema),
+});
+export type DistrictNotReadyError = z.infer<typeof DistrictNotReadyErrorSchema>;
+

@@ -131,7 +131,7 @@ export const retryService = {
 
           if (
             !district ||
-            district.status !== 'ACTIVE' ||
+            (district.status !== 'ACTIVE' && district.status !== 'GRACE') ||
             district.accessEligible === false
           ) {
             throw new OperationIneligibleError(
@@ -273,7 +273,7 @@ export const retryService = {
             );
           }
           if (
-            district.status !== 'ACTIVE' ||
+            (district.status !== 'ACTIVE' && district.status !== 'GRACE') ||
             district.accessEligible === false
           ) {
             throw new OperationIneligibleError(

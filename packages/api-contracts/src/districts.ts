@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const DistrictStatusSchema = z.enum([
   'SETUP_INCOMPLETE',
   'ACTIVE',
+  'GRACE',
   'SUSPENDED',
   'CANCELLED',
 ]);

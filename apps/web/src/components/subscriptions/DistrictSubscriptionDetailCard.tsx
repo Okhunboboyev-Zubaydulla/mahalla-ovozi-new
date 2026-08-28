@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Typography, Descriptions, Alert, Button, Space, theme } from 'antd';
-import { EditOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { EditOutlined, ArrowLeftOutlined, WarningOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { DistrictSubscription } from '@mahalla-ovozi/api-contracts';
 import { SubscriptionStatusBadge } from './SubscriptionStatusBadge.js';
 import { formatTashkentDate } from '../../lib/formatters.js';
@@ -10,6 +10,8 @@ const { Title, Text, Paragraph } = Typography;
 export interface DistrictSubscriptionDetailCardProps {
   subscription: DistrictSubscription;
   onEdit: () => void;
+  onStartGrace?: () => void;
+  onRestoreActive?: () => void;
   onBack?: () => void;
   isOffline?: boolean;
 }
@@ -17,6 +19,8 @@ export interface DistrictSubscriptionDetailCardProps {
 export const DistrictSubscriptionDetailCard: React.FC<DistrictSubscriptionDetailCardProps> = ({
   subscription,
   onEdit,
+  onStartGrace,
+  onRestoreActive,
   onBack,
   isOffline = false,
 }) => {
@@ -51,18 +55,72 @@ export const DistrictSubscriptionDetailCard: React.FC<DistrictSubscriptionDetail
             </div>
           </Space>
 
-          <Button
-            type="primary"
-            icon={<EditOutlined />}
-            onClick={onEdit}
-            disabled={isOffline}
-          >
-            Обуна маълумотларини таҳрирлаш
-          </Button>
+          <Space wrap>
+            {subscription.status === 'ACTIVE' && onStartGrace && (
+              <Button
+                danger
+                icon={<WarningOutlined />}
+                onClick={onStartGrace}
+                disabled={isOffline}
+              >
+                Имтиёзли даврни бошлаш (Grace)
+              </Button>
+            )}
+
+            {(subscription.status === 'GRACE' || subscription.status === 'SUSPENDED') && onRestoreActive && (
+              <Button
+                type="primary"
+                icon={<CheckCircleOutlined />}
+                onClick={onRestoreActive}
+                disabled={isOffline}
+                style={isOffline ? undefined : { backgroundColor: token.colorSuccess }}
+              >
+                Фаол ҳолатни тиклаш (Restore Active)
+              </Button>
+            )}
+
+            <Button
+              icon={<EditOutlined />}
+              onClick={onEdit}
+              disabled={isOffline}
+            >
+              Обуна маълумотларини таҳрирлаш
+            </Button>
+          </Space>
         </div>
       }
     >
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        {subscription.status === 'GRACE' && (
+          <Alert
+            type="warning"
+            showIcon
+            message="Туман ҳозир 7 кунлик имтиёзли даврда (Grace)"
+            description={
+              <span>
+                Telegram қабули ва AI таҳлили одатдагидек давом этмоқда. Автоматик тўхтатилиш вақти:{' '}
+                <Text strong>
+                  {subscription.scheduledTransitionAt
+                    ? formatTashkentDate(subscription.scheduledTransitionAt)
+                    : '—'}
+                </Text>
+                . Тўхтатилишнинг олдини олиш учун юқоридаги «Фаол ҳолатни тиклаш» тугмасини босинг.
+              </span>
+            }
+            style={{ borderRadius: token.borderRadius }}
+          />
+        )}
+
+        {subscription.status === 'SUSPENDED' && (
+          <Alert
+            type="error"
+            showIcon
+            message="Туман фаолияти вақтинча тўхтатилган (Suspended)"
+            description="Янги Telegram хабарларини қабул қилиш, AI таҳлили ва Ҳоким ҳисобига кириш вақтинча тўхтатилган. Олдин сақланган маълумотлар сақланиб қолган (90 кунлик retention ишлайди). Хизматни қайта бошлаш учун юқоридаги «Фаол ҳолатни тиклаш» тугмасини босинг."
+            style={{ borderRadius: token.borderRadius }}
+          />
+        )}
+
         <Alert
           type="info"
           showIcon

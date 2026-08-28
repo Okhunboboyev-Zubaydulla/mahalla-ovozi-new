@@ -26,7 +26,7 @@ export const districts = pgTable(
     // Status check constraint matching database migration
     check(
       'districts_status_check',
-      sql`${table.status} IN ('SETUP_INCOMPLETE', 'ACTIVE', 'SUSPENDED', 'CANCELLED')`
+      sql`${table.status} IN ('SETUP_INCOMPLETE', 'ACTIVE', 'GRACE', 'SUSPENDED', 'CANCELLED')`
     ),
     // Functional unique index — enforces case-insensitive name uniqueness at DB level (P2-A)
     uniqueIndex('districts_name_lower_idx').on(sql`LOWER(${table.name})`),

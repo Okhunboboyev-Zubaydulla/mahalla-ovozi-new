@@ -57,7 +57,11 @@ export async function processTopicProjectionJobs(
               .where(eq(districts.id, districtId))
               .limit(1);
 
-            if (!district || district.status !== 'ACTIVE' || district.accessEligible === false) {
+            if (
+              !district ||
+              (district.status !== 'ACTIVE' && district.status !== 'GRACE') ||
+              district.accessEligible === false
+            ) {
               const durationMs = Math.round(performance.now() - startTime);
               console.log(
                 JSON.stringify({
@@ -153,7 +157,7 @@ export async function processTopicProjectionJobs(
 
             if (
               !gate2District ||
-              gate2District.status !== 'ACTIVE' ||
+              (gate2District.status !== 'ACTIVE' && gate2District.status !== 'GRACE') ||
               gate2District.accessEligible === false
             ) {
               const durationMs = Math.round(performance.now() - startTime);

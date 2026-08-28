@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Alert, Space, Spin, Button, theme } from 'antd';
+import { Card, Typography, Alert, Space, Spin, Button, message, theme } from 'antd';
 import { ReloadOutlined, WifiOutlined } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DistrictSubscription } from '@mahalla-ovozi/api-contracts';
+import { ApiError } from '../lib/api-client.js';
 import { subscriptionClient } from '../api/subscription-client.js';
 import { useDistrict } from '../district/district-context.js';
+import { districtQueryKeys } from '../district/query-keys.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { DistrictSubscriptionTable } from '../components/subscriptions/DistrictSubscriptionTable.js';
 import { DistrictSubscriptionDetailCard } from '../components/subscriptions/DistrictSubscriptionDetailCard.js';
 import { EditSubscriptionDrawer } from '../components/subscriptions/EditSubscriptionDrawer.js';
+import { StartGraceModal } from '../components/subscriptions/StartGraceModal.js';
+import { RestoreActiveModal } from '../components/subscriptions/RestoreActiveModal.js';
 
 const { Title, Paragraph } = Typography;
 
 export const SubscriptionsPage: React.FC = () => {
   const { token } = theme.useToken();
+  const queryClient = useQueryClient();
   const isOffline = useOnlineStatus();
   const { activeDistrictId, switchDistrict, attemptTransition } = useDistrict();
 
@@ -22,14 +27,20 @@ export const SubscriptionsPage: React.FC = () => {
   const [editingSubscription, setEditingSubscription] = useState<DistrictSubscription | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
+  // Lifecycle Modals State
+  const [startGraceTarget, setStartGraceTarget] = useState<DistrictSubscription | null>(null);
+  const [restoreActiveTarget, setRestoreActiveTarget] = useState<DistrictSubscription | null>(null);
+
   // Synchronize when global DistrictSelector switches district
   useEffect(() => {
     if (activeDistrictId) {
       setSelectedDistrictId(activeDistrictId);
     }
-    // Close drawer and reset in-flight editing on district context switch
+    // Close drawer and modals on district context switch
     setIsDrawerOpen(false);
     setEditingSubscription(null);
+    setStartGraceTarget(null);
+    setRestoreActiveTarget(null);
   }, [activeDistrictId]);
 
   // Effective district ID for detail view
@@ -49,10 +60,64 @@ export const SubscriptionsPage: React.FC = () => {
 
   const subscriptions = listData?.subscriptions || [];
 
-  // Find active subscription from list or single query
+  // Find active subscription from list
   const currentSubscription = currentDistrictId
     ? subscriptions.find((s) => s.districtId === currentDistrictId) || null
     : null;
+
+  // Cache invalidation helper
+  const invalidateSubscriptionQueries = async (districtId: string) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] }),
+      queryClient.invalidateQueries({ queryKey: districtQueryKeys.list() }),
+      queryClient.invalidateQueries({ queryKey: ['district-subscription', districtId] }),
+      queryClient.invalidateQueries({ queryKey: districtQueryKeys.district(districtId) }),
+      queryClient.invalidateQueries({ queryKey: districtQueryKeys.details(districtId) }),
+      queryClient.invalidateQueries({ queryKey: districtQueryKeys.readiness(districtId) }),
+      queryClient.invalidateQueries({ queryKey: ['audit-history'] }),
+      queryClient.invalidateQueries({ queryKey: ['health'] }),
+    ]);
+  };
+
+  // 2. Start Grace Mutation
+  const startGraceMutation = useMutation({
+    mutationFn: async ({ districtId, reason }: { districtId: string; reason?: string }) => {
+      return subscriptionClient.startDistrictGrace(districtId, { reason });
+    },
+    onSuccess: async (_data, variables) => {
+      message.success('Туман учун 7 кунлик имтиёзли давр (Grace) муваффақиятли бошланди.');
+      setStartGraceTarget(null);
+      await invalidateSubscriptionQueries(variables.districtId);
+    },
+    onError: (err: Error) => {
+      message.error(err.message || 'Имтиёзли даврни бошлашда хатолик юз берди.');
+    },
+  });
+
+  // 3. Restore Active Mutation
+  const restoreActiveMutation = useMutation({
+    mutationFn: async ({ districtId, reason }: { districtId: string; reason?: string }) => {
+      return subscriptionClient.restoreDistrictActive(districtId, { reason });
+    },
+    onSuccess: async (_data, variables) => {
+      message.success('Туман фаолияти (Active) муваффақиятли тикланди.');
+      setRestoreActiveTarget(null);
+      await invalidateSubscriptionQueries(variables.districtId);
+    },
+    onError: (err: Error) => {
+      if (
+        err instanceof ApiError &&
+        err.code === 'DISTRICT_NOT_READY' &&
+        err.blockers &&
+        err.blockers.length > 0
+      ) {
+        const blockerNames = err.blockers.map((b) => b.label).join(', ');
+        message.error(`Туманни фаоллаштириш талаблари бажарилмаган: ${blockerNames}`);
+      } else {
+        message.error(err.message || 'Фаол ҳолатни тиклашда хатолик юз берди.');
+      }
+    },
+  });
 
   const handleSelectDistrict = (districtId: string) => {
     attemptTransition(() => {
@@ -79,6 +144,14 @@ export const SubscriptionsPage: React.FC = () => {
 
   const handleEditSuccess = (updated: DistrictSubscription) => {
     setEditingSubscription(updated);
+  };
+
+  const handleOpenStartGrace = (subscription: DistrictSubscription) => {
+    setStartGraceTarget(subscription);
+  };
+
+  const handleOpenRestoreActive = (subscription: DistrictSubscription) => {
+    setRestoreActiveTarget(subscription);
   };
 
   return (
@@ -139,6 +212,8 @@ export const SubscriptionsPage: React.FC = () => {
           <DistrictSubscriptionDetailCard
             subscription={currentSubscription}
             onEdit={() => handleOpenEdit(currentSubscription)}
+            onStartGrace={() => handleOpenStartGrace(currentSubscription)}
+            onRestoreActive={() => handleOpenRestoreActive(currentSubscription)}
             onBack={handleBackToList}
             isOffline={isOffline}
           />
@@ -159,6 +234,8 @@ export const SubscriptionsPage: React.FC = () => {
             loading={isListLoading}
             onSelectDistrict={handleSelectDistrict}
             onEditSubscription={handleOpenEdit}
+            onStartGrace={handleOpenStartGrace}
+            onRestoreActive={handleOpenRestoreActive}
             isOffline={isOffline}
           />
         </Space>
@@ -172,6 +249,41 @@ export const SubscriptionsPage: React.FC = () => {
         onSuccess={handleEditSuccess}
         isOffline={isOffline}
       />
+
+      {/* Start Grace Consequence Modal */}
+      {startGraceTarget && (
+        <StartGraceModal
+          open={Boolean(startGraceTarget)}
+          districtId={startGraceTarget.districtId}
+          districtName={startGraceTarget.districtName}
+          isPending={startGraceMutation.isPending}
+          onConfirm={async (payload) => {
+            await startGraceMutation.mutateAsync({
+              districtId: startGraceTarget.districtId,
+              reason: payload.reason,
+            });
+          }}
+          onClose={() => setStartGraceTarget(null)}
+        />
+      )}
+
+      {/* Restore Active Consequence Modal */}
+      {restoreActiveTarget && (
+        <RestoreActiveModal
+          open={Boolean(restoreActiveTarget)}
+          districtId={restoreActiveTarget.districtId}
+          districtName={restoreActiveTarget.districtName}
+          currentStatus={restoreActiveTarget.status}
+          isPending={restoreActiveMutation.isPending}
+          onConfirm={async (payload) => {
+            await restoreActiveMutation.mutateAsync({
+              districtId: restoreActiveTarget.districtId,
+              reason: payload.reason,
+            });
+          }}
+          onClose={() => setRestoreActiveTarget(null)}
+        />
+      )}
     </div>
   );
 };

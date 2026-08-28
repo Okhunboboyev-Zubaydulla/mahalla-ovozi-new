@@ -13,6 +13,12 @@ export const TELEGRAM_SEMANTIC_RELEVANCE_QUEUE = 'telegram-semantic-relevance';
 export const TELEGRAM_TOPIC_ASSIGNMENT_QUEUE = 'telegram-topic-assignment';
 export const TELEGRAM_TOPIC_PROJECTION_QUEUE = 'telegram-topic-projection';
 export const TELEGRAM_TOPIC_RETENTION_QUEUE = 'telegram-topic-retention';
+export const DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE = 'district-subscription-expiry';
+export const DISTRICT_SUBSCRIPTION_EXPIRY_CRON_QUEUE = 'district-subscription-expiry-cron';
+
+export interface DistrictSubscriptionExpiryJobData {
+  districtId: string;
+}
 
 export interface TelegramContentQualificationJobData {
   intakeId: string;
@@ -96,6 +102,8 @@ export async function initBossQueues(boss: PgBoss): Promise<void> {
   await boss.createQueue(TELEGRAM_TOPIC_ASSIGNMENT_QUEUE);
   await boss.createQueue(TELEGRAM_TOPIC_PROJECTION_QUEUE);
   await boss.createQueue(TELEGRAM_TOPIC_RETENTION_QUEUE);
+  await boss.createQueue(DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE);
+  await boss.createQueue(DISTRICT_SUBSCRIPTION_EXPIRY_CRON_QUEUE);
 }
 
 /**
@@ -143,6 +151,13 @@ export const JobSingletonKeys = {
   forRetention(districtId?: string): string {
     return `retention:${districtId || 'global'}`;
   },
+
+  /**
+   * Deduplication key for District subscription Grace expiry.
+   */
+  forSubscriptionExpiry(districtId: string): string {
+    return `sub-expiry:${districtId}`;
+  },
 };
 
 export interface BossQueueMap {
@@ -151,6 +166,7 @@ export interface BossQueueMap {
   [TELEGRAM_TOPIC_ASSIGNMENT_QUEUE]: TelegramTopicAssignmentJobData;
   [TELEGRAM_TOPIC_PROJECTION_QUEUE]: TelegramTopicProjectionJobData;
   [TELEGRAM_TOPIC_RETENTION_QUEUE]: TelegramTopicRetentionJobData;
+  [DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE]: DistrictSubscriptionExpiryJobData;
 }
 
 export type BossQueueName = keyof BossQueueMap;
@@ -190,6 +206,13 @@ export const DEFAULT_QUEUE_CONFIGS: Record<string, Omit<PgBoss.SendOptions, 'db'
     retryBackoff: false,
     expireInMinutes: 30,
     retentionDays: 14,
+  },
+  [DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE]: {
+    retryLimit: 3,
+    retryDelay: 30,
+    retryBackoff: true,
+    expireInMinutes: 10,
+    retentionDays: 7,
   },
 };
 

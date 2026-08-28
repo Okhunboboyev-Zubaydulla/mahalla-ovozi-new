@@ -58,7 +58,7 @@ export function registerAllDomainRoutes(
   registerDistrictTopicsRoutes(server, ctx.db);
   registerGlobalAnalysisSettingsRoutes(server, ctx.db);
   registerDistrictAnalysisSettingsRoutes(server, ctx.db);
-  registerSubscriptionRoutes(server, ctx.db);
+  registerSubscriptionRoutes(server, { db: ctx.db, boss: ctx.boss });
 }
 
 export async function buildHttpServer(options?: {

@@ -1,7 +1,8 @@
+import { eq } from 'drizzle-orm';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { DbClient } from '../../adapters/db/client.js';
 import { COOKIE_NAME, validateAndTouchSession } from './session-manager.js';
-import { Account } from '../../adapters/db/schema/index.js';
+import { Account, districts } from '../../adapters/db/schema/index.js';
 
 // Augment FastifyRequest to include authenticated actor
 declare module 'fastify' {
@@ -71,15 +72,56 @@ export function createRequireAuth(db: DbClient, options: RequireAuthOptions = {}
       }
     }
 
-    // 2. District ID requirement (for DISTRICT_HOKIM)
-    if (options.requireDistrictId && !account.districtId) {
-      reply.status(403).send({
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Ушбу амални бажариш учун ҳуқуқ етарли эмас.',
-        },
-      });
-      return;
+    // 2. District ID requirement and live status check (for DISTRICT_HOKIM)
+    if (account.role === 'DISTRICT_HOKIM') {
+      if (!account.districtId) {
+        reply.status(403).send({
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Ушбу амални бажариш учун ҳуқуқ етарли эмас.',
+          },
+        });
+        return;
+      }
+
+      const [district] = await db
+        .select({
+          status: districts.status,
+          accessEligible: districts.accessEligible,
+        })
+        .from(districts)
+        .where(eq(districts.id, account.districtId))
+        .limit(1);
+
+      if (!district || district.accessEligible === false) {
+        reply.status(403).send({
+          error: {
+            code: 'DISTRICT_NOT_ACTIVE',
+            message: 'Ушбу туман хизмати фаол эмас.',
+          },
+        });
+        return;
+      }
+
+      if (district.status === 'SUSPENDED') {
+        reply.status(403).send({
+          error: {
+            code: 'DISTRICT_SUSPENDED',
+            message: 'Ушбу туман хизмати вақтинча тўхтатилган (Suspended).',
+          },
+        });
+        return;
+      }
+
+      if (district.status === 'CANCELLED' || district.status === 'SETUP_INCOMPLETE') {
+        reply.status(403).send({
+          error: {
+            code: 'DISTRICT_NOT_ACTIVE',
+            message: 'Ушбу туман хизмати фаол эмас.',
+          },
+        });
+        return;
+      }
     }
 
     // 3. Strict tenant matching if requested

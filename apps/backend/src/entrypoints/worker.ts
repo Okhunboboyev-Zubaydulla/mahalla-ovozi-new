@@ -11,6 +11,7 @@ import {
   TELEGRAM_TOPIC_ASSIGNMENT_QUEUE,
   TELEGRAM_TOPIC_PROJECTION_QUEUE,
   TELEGRAM_TOPIC_RETENTION_QUEUE,
+  DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE,
 } from '../adapters/jobs/boss-client.js';
 import { createDbPool, createDbClient, type DbClient } from '../adapters/db/client.js';
 import { ensureDefaultAiProfiles } from '../adapters/db/seeds.js';
@@ -25,6 +26,7 @@ import { registerSemanticRelevanceJobHandler } from '../modules/ai/jobs/semantic
 import { registerTopicAssignmentJobHandler } from '../modules/topics/jobs/topic-assignment-job-handler.js';
 import { registerTopicProjectionJobHandler } from '../modules/topics/jobs/topic-projection-job-handler.js';
 import { registerRetentionJobHandler } from '../modules/retention/jobs/retention-job-handler.js';
+import { registerSubscriptionExpiryJobHandler } from '../modules/subscriptions/jobs/subscription-expiry-job-handler.js';
 
 let activeBossInstance: PgBoss | null = null;
 let internalPool: pg.Pool | null = null;
@@ -103,6 +105,10 @@ export async function registerWorkerPipelines(
 
   if (shouldWork(TELEGRAM_TOPIC_RETENTION_QUEUE)) {
     await registerRetentionJobHandler(boss, { db: ctx.db, pool: ctx.pool, boss: ctx.boss });
+  }
+
+  if (shouldWork(DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE)) {
+    await registerSubscriptionExpiryJobHandler(boss, { db: ctx.db, boss: ctx.boss });
   }
 }
 
