@@ -4,11 +4,15 @@ import {
   UpdateDistrictSubscriptionRequestSchema,
   StartGraceRequestSchema,
   RestoreActiveRequestSchema,
+  CancelDistrictRequestSchema,
+  StartRecoveryRequestSchema,
   ListDistrictSubscriptionsResponse,
   GetDistrictSubscriptionResponse,
   UpdateDistrictSubscriptionResponse,
   StartGraceResponse,
   RestoreActiveResponse,
+  CancelDistrictResponse,
+  StartRecoveryResponse,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import { verifyStateChangingOrigin } from '../auth/origin-guard.js';
@@ -21,8 +25,12 @@ import {
   updateDistrictSubscriptionMetadata,
   startDistrictGrace,
   restoreDistrictActive,
+  cancelDistrict,
+  startDistrictRecovery,
   InvalidSubscriptionTransitionError,
   SubscriptionConcurrencyConflictError,
+  DistrictConfirmationMismatchError,
+  RecoveryWindowExpiredError,
 } from './subscriptions-service.js';
 
 export interface SubscriptionRoutesDeps {
@@ -254,5 +262,138 @@ export function registerSubscriptionRoutes(
         }
       },
     );
+
+    // 6. Cancel district
+    scope.post(
+      '/api/v1/districts/:districtId/subscription/cancel',
+      async (
+        req: FastifyRequest<{ Params: { districtId: string }; Body: unknown }>,
+        reply: FastifyReply,
+      ) => {
+        const { districtId } = req.params;
+        const parseResult = CancelDistrictRequestSchema.safeParse(req.body || {});
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: parseResult.error.errors[0]?.message || 'Бекор қилиш маълумотлари нотўғри.',
+              details: parseResult.error.errors,
+            },
+          });
+        }
+
+        try {
+          const subscription = await cancelDistrict(
+            db,
+            boss,
+            districtId,
+            parseResult.data,
+            req.actor,
+            {
+              ipAddress: req.ip || null,
+              userAgent: (req.headers['user-agent'] as string) || null,
+            },
+          );
+
+          const response: CancelDistrictResponse = {
+            subscription,
+            message: 'Туман муваффақиятли бекор қилинди (Cancelled).',
+          };
+          return reply.status(200).send(response);
+        } catch (err: unknown) {
+          if (err instanceof DistrictNotFoundError) {
+            return reply.status(404).send({
+              error: {
+                code: err.code,
+                message: err.message,
+              },
+            });
+          }
+          if (err instanceof DistrictConfirmationMismatchError) {
+            return reply.status(400).send({
+              error: {
+                code: err.code,
+                message: err.message,
+              },
+            });
+          }
+          if (
+            err instanceof InvalidSubscriptionTransitionError ||
+            err instanceof SubscriptionConcurrencyConflictError
+          ) {
+            return reply.status(409).send({
+              error: {
+                code: err.code,
+                message: err.message,
+              },
+            });
+          }
+          throw err;
+        }
+      },
+    );
+
+    // 7. Start district recovery
+    scope.post(
+      '/api/v1/districts/:districtId/subscription/start-recovery',
+      async (
+        req: FastifyRequest<{ Params: { districtId: string }; Body: unknown }>,
+        reply: FastifyReply,
+      ) => {
+        const { districtId } = req.params;
+        const parseResult = StartRecoveryRequestSchema.safeParse(req.body || {});
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: parseResult.error.errors[0]?.message || 'Тиклаш маълумотлари нотўғри.',
+              details: parseResult.error.errors,
+            },
+          });
+        }
+
+        try {
+          const subscription = await startDistrictRecovery(
+            db,
+            districtId,
+            parseResult.data,
+            req.actor,
+            {
+              ipAddress: req.ip || null,
+              userAgent: (req.headers['user-agent'] as string) || null,
+            },
+          );
+
+          const response: StartRecoveryResponse = {
+            subscription,
+            message: 'Туманни қайта тиклаш жараёни бошланди (Setup Incomplete).',
+          };
+          return reply.status(200).send(response);
+        } catch (err: unknown) {
+          if (err instanceof DistrictNotFoundError) {
+            return reply.status(404).send({
+              error: {
+                code: err.code,
+                message: err.message,
+              },
+            });
+          }
+          if (
+            err instanceof RecoveryWindowExpiredError ||
+            err instanceof InvalidSubscriptionTransitionError ||
+            err instanceof SubscriptionConcurrencyConflictError
+          ) {
+            return reply.status(409).send({
+              error: {
+                code: err.code,
+                message: err.message,
+              },
+            });
+          }
+          throw err;
+        }
+      },
+    );
   });
 }
+

@@ -113,11 +113,21 @@ export function createRequireAuth(db: DbClient, options: RequireAuthOptions = {}
         return;
       }
 
-      if (district.status === 'CANCELLED' || district.status === 'SETUP_INCOMPLETE') {
+      if (district.status === 'CANCELLED') {
+        reply.status(403).send({
+          error: {
+            code: 'DISTRICT_CANCELLED',
+            message: 'Ушбу туман бекор қилинган (Cancelled).',
+          },
+        });
+        return;
+      }
+
+      if (district.status === 'SETUP_INCOMPLETE') {
         reply.status(403).send({
           error: {
             code: 'DISTRICT_NOT_ACTIVE',
-            message: 'Ушбу туман хизмати фаол эмас.',
+            message: 'Ушбу туман хизмати фаол эмас (Setup Incomplete).',
           },
         });
         return;

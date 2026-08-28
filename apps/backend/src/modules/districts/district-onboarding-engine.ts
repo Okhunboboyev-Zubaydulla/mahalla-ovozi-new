@@ -422,6 +422,9 @@ export async function activateDistrict(
           set: {
             status: 'ACTIVE',
             statusStartedAt: now,
+            scheduledTransitionAt: null,
+            scheduledTransitionType: null,
+            updatedById: actor.id,
             updatedAt: now,
           },
         });
@@ -437,6 +440,9 @@ export async function activateDistrict(
         metadata: {
           districtId,
           districtName: updated.name,
+          previousStatus: 'SETUP_INCOMPLETE',
+          previousValues: { status: 'SETUP_INCOMPLETE' },
+          newValues: { status: 'ACTIVE' },
           passedPrerequisitesCount: readiness.passedCount,
           activatedAt: now.toISOString(),
         },

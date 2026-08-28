@@ -138,3 +138,71 @@ export const DistrictNotReadyErrorSchema = z.object({
 });
 export type DistrictNotReadyError = z.infer<typeof DistrictNotReadyErrorSchema>;
 
+export const CancelDistrictRequestSchema = z
+  .object({
+    reason: z
+      .string({ invalid_type_error: 'Бекор қилиш сабаби матн кўринишида бўлиши керак.' })
+      .trim()
+      .min(1, 'Бекор қилиш сабабини киритинг.')
+      .max(1000, 'Сабаб 1000 та белгидан ошмаслиги керак.'),
+    confirmationDistrictName: z
+      .string({ invalid_type_error: 'Туман номи матн кўринишида бўлиши керак.' })
+      .trim()
+      .min(1, 'Туман номини тасдиқлаш учун тўлиқ киритинг.')
+      .max(255, 'Туман номи 255 та белгидан ошмаслиги керак.'),
+  })
+  .superRefine((data, ctx) => {
+    if (data.reason && containsProhibitedSecrets(data.reason)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['reason'],
+        message: 'Махфий маълумотлар (бот токенлари, API калитлар ёки пароллар) кўрсатилиши мумкин эмас.',
+      });
+    }
+  });
+export type CancelDistrictRequest = z.infer<typeof CancelDistrictRequestSchema>;
+
+export const CancelDistrictResponseSchema = z.object({
+  subscription: DistrictSubscriptionSchema,
+  message: z.string(),
+});
+export type CancelDistrictResponse = z.infer<typeof CancelDistrictResponseSchema>;
+
+export const StartRecoveryRequestSchema = z
+  .object({
+    reason: z
+      .string({ invalid_type_error: 'Сабаб матн кўринишида бўлиши керак.' })
+      .trim()
+      .max(1000, 'Сабаб 1000 та белгидан ошмаслиги керак.')
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.reason && containsProhibitedSecrets(data.reason)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['reason'],
+        message: 'Махфий маълумотлар (бот токенлари, API калитлар ёки пароллар) кўрсатилиши мумкин эмас.',
+      });
+    }
+  });
+export type StartRecoveryRequest = z.infer<typeof StartRecoveryRequestSchema>;
+
+export const StartRecoveryResponseSchema = z.object({
+  subscription: DistrictSubscriptionSchema,
+  message: z.string(),
+});
+export type StartRecoveryResponse = z.infer<typeof StartRecoveryResponseSchema>;
+
+export const DistrictConfirmationMismatchErrorSchema = z.object({
+  code: z.literal('DISTRICT_CONFIRMATION_MISMATCH'),
+  message: z.string(),
+});
+export type DistrictConfirmationMismatchError = z.infer<typeof DistrictConfirmationMismatchErrorSchema>;
+
+export const RecoveryWindowExpiredErrorSchema = z.object({
+  code: z.literal('RECOVERY_WINDOW_EXPIRED'),
+  message: z.string(),
+});
+export type RecoveryWindowExpiredError = z.infer<typeof RecoveryWindowExpiredErrorSchema>;
+
+

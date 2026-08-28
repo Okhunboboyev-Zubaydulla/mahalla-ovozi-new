@@ -143,6 +143,8 @@ const ACTION_DISPLAY_NAMES_UZ: Record<string, string> = {
   DISTRICT_GRACE_STARTED: 'Имтиёзли давр (Grace) бошланди',
   DISTRICT_SUBSCRIPTION_SUSPENDED: 'Обуна тўхтатилди (Suspended)',
   DISTRICT_SERVICE_RESTORED_ACTIVE: 'Фаол ҳолат тикланди',
+  DISTRICT_CANCELLED: 'Туман бекор қилинди (Cancelled)',
+  DISTRICT_RECOVERY_STARTED: 'Туманни тиклаш бошланди (Recovery Started)',
 };
 
 export function getActionDisplayNameUz(action: string): string {
@@ -151,3 +153,16 @@ export function getActionDisplayNameUz(action: string): string {
   }
   return action.replace(/_/g, ' ');
 }
+
+export function formatScheduledTransitionType(type?: string | null): string {
+  if (!type) return '';
+  switch (type) {
+    case 'AUTOMATIC_SUSPENSION':
+      return 'Автоматик тўхтатиш';
+    case 'LIVE_DELETION':
+      return 'Тўлиқ ўчириш';
+    default:
+      return type;
+  }
+}
+

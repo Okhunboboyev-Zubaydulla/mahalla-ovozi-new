@@ -43,7 +43,7 @@ export async function processRetentionJobs(
 
         if (
           !district ||
-          (district.status !== 'ACTIVE' && district.status !== 'GRACE' && district.status !== 'SUSPENDED') ||
+          !['ACTIVE', 'GRACE', 'SUSPENDED', 'CANCELLED'].includes(district.status) ||
           district.accessEligible === false
         ) {
           const durationMs = Math.round(performance.now() - startTime);
@@ -74,13 +74,13 @@ export async function processRetentionJobs(
           }),
         );
       } else {
-        // Scheduled scan across all active, grace, and suspended districts (AC 13, FR30)
+        // Scheduled scan across all active, grace, suspended, and cancelled districts (AC 8, FR31, FR32)
         const eligibleDistricts = await db
           .select({ id: districts.id })
           .from(districts)
           .where(
             and(
-              inArray(districts.status, ['ACTIVE', 'GRACE', 'SUSPENDED']),
+              inArray(districts.status, ['ACTIVE', 'GRACE', 'SUSPENDED', 'CANCELLED']),
               not(eq(districts.accessEligible, false)),
             ),
           );

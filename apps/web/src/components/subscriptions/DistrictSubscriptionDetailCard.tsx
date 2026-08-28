@@ -1,9 +1,16 @@
 import React from 'react';
 import { Card, Typography, Descriptions, Alert, Button, Space, theme } from 'antd';
-import { EditOutlined, ArrowLeftOutlined, WarningOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import {
+  EditOutlined,
+  ArrowLeftOutlined,
+  WarningOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  SyncOutlined,
+} from '@ant-design/icons';
 import { DistrictSubscription } from '@mahalla-ovozi/api-contracts';
 import { SubscriptionStatusBadge } from './SubscriptionStatusBadge.js';
-import { formatTashkentDate } from '../../lib/formatters.js';
+import { formatTashkentDate, formatScheduledTransitionType } from '../../lib/formatters.js';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -12,6 +19,8 @@ export interface DistrictSubscriptionDetailCardProps {
   onEdit: () => void;
   onStartGrace?: () => void;
   onRestoreActive?: () => void;
+  onCancelDistrict?: () => void;
+  onStartRecovery?: () => void;
   onBack?: () => void;
   isOffline?: boolean;
 }
@@ -21,6 +30,8 @@ export const DistrictSubscriptionDetailCard: React.FC<DistrictSubscriptionDetail
   onEdit,
   onStartGrace,
   onRestoreActive,
+  onCancelDistrict,
+  onStartRecovery,
   onBack,
   isOffline = false,
 }) => {
@@ -79,6 +90,33 @@ export const DistrictSubscriptionDetailCard: React.FC<DistrictSubscriptionDetail
               </Button>
             )}
 
+            {['ACTIVE', 'GRACE', 'SUSPENDED'].includes(subscription.status) && onCancelDistrict && (
+              <Button
+                danger
+                icon={<ExclamationCircleOutlined />}
+                onClick={onCancelDistrict}
+                disabled={isOffline}
+              >
+                Туманни бекор қилиш (Cancel)
+              </Button>
+            )}
+
+            {subscription.status === 'CANCELLED' && onStartRecovery && (
+              <Button
+                type="primary"
+                icon={<SyncOutlined />}
+                onClick={onStartRecovery}
+                disabled={
+                  isOffline ||
+                  (subscription.scheduledTransitionAt
+                    ? new Date(subscription.scheduledTransitionAt) <= new Date()
+                    : true)
+                }
+              >
+                Туманни тиклашни бошлаш (Start Recovery)
+              </Button>
+            )}
+
             <Button
               icon={<EditOutlined />}
               onClick={onEdit}
@@ -121,6 +159,43 @@ export const DistrictSubscriptionDetailCard: React.FC<DistrictSubscriptionDetail
           />
         )}
 
+        {subscription.status === 'CANCELLED' && (() => {
+          const isExpired = subscription.scheduledTransitionAt
+            ? new Date(subscription.scheduledTransitionAt) <= new Date()
+            : true;
+          return (
+            <Alert
+              type="error"
+              showIcon
+              icon={<ExclamationCircleOutlined />}
+              message={
+                isExpired
+                  ? 'Туман бекор қилинган (Тиклаш муддати тугаган)'
+                  : 'Туман бекор қилинган (Cancelled)'
+              }
+              description={
+                <span>
+                  Янги Telegram қабули, AI таҳлили ва Ҳоким кириш ҳуқуқи тўхтатилган. Бот токени хавфсиз тарзда ўчирилган.
+                  {isExpired ? (
+                    <span> 30 кунлик тиклаш муддати тугаган. Туманни қайта тиклаш мумкин эмас.</span>
+                  ) : (
+                    <span>
+                      {' '}Тизимдан тўлиқ ўчирилиш муддати:{' '}
+                      <Text strong style={{ color: token.colorErrorText }}>
+                        {subscription.scheduledTransitionAt
+                          ? formatTashkentDate(subscription.scheduledTransitionAt)
+                          : '—'}
+                      </Text>
+                      . 30 кунлик муддат давомида туманни қайта тиклаш мумкин.
+                    </span>
+                  )}
+                </span>
+              }
+              style={{ borderRadius: token.borderRadius }}
+            />
+          );
+        })()}
+
         <Alert
           type="info"
           showIcon
@@ -147,13 +222,13 @@ export const DistrictSubscriptionDetailCard: React.FC<DistrictSubscriptionDetail
           <Descriptions.Item label="Кейинги режали ўзгариш">
             <Text style={{ wordBreak: 'break-word' }}>
               {subscription.scheduledTransitionAt
-                ? `${formatTashkentDate(subscription.scheduledTransitionAt)} ${
+                ? `${formatTashkentDate(subscription.scheduledTransitionAt)}${
                     subscription.scheduledTransitionType
-                      ? `(${subscription.scheduledTransitionType})`
+                      ? ` (${formatScheduledTransitionType(subscription.scheduledTransitionType)})`
                       : ''
                   }`
                 : subscription.scheduledTransitionType
-                ? `(${subscription.scheduledTransitionType})`
+                ? `(${formatScheduledTransitionType(subscription.scheduledTransitionType)})`
                 : '—'}
             </Text>
           </Descriptions.Item>

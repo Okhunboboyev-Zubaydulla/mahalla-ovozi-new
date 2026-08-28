@@ -32,7 +32,7 @@ const SENSITIVE_KEYS = new Set([
 
 export function redactStringValue(val: string): string {
   return val
-    .replace(/\b\d{8,10}:[A-Za-z0-9_-]{35}\b/g, '[BOT_TOKEN_REDACTED]')
+    .replace(/\b\d{7,12}:[A-Za-z0-9_-]{34,36}\b/g, '[BOT_TOKEN_REDACTED]')
     .replace(/sk-[A-Za-z0-9_-]{10,}/gi, 'sk-[REDACTED]')
     .replace(/AIza[A-Za-z0-9_-]{10,}/gi, 'AIza[REDACTED]')
     .replace(/bearer\s+[A-Za-z0-9_.-]+/gi, 'Bearer [REDACTED]');

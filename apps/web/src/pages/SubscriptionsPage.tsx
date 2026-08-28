@@ -13,6 +13,8 @@ import { DistrictSubscriptionDetailCard } from '../components/subscriptions/Dist
 import { EditSubscriptionDrawer } from '../components/subscriptions/EditSubscriptionDrawer.js';
 import { StartGraceModal } from '../components/subscriptions/StartGraceModal.js';
 import { RestoreActiveModal } from '../components/subscriptions/RestoreActiveModal.js';
+import { CancelDistrictModal } from '../components/subscriptions/CancelDistrictModal.js';
+import { StartRecoveryModal } from '../components/subscriptions/StartRecoveryModal.js';
 
 const { Title, Paragraph } = Typography;
 
@@ -30,6 +32,8 @@ export const SubscriptionsPage: React.FC = () => {
   // Lifecycle Modals State
   const [startGraceTarget, setStartGraceTarget] = useState<DistrictSubscription | null>(null);
   const [restoreActiveTarget, setRestoreActiveTarget] = useState<DistrictSubscription | null>(null);
+  const [cancelDistrictTarget, setCancelDistrictTarget] = useState<DistrictSubscription | null>(null);
+  const [startRecoveryTarget, setStartRecoveryTarget] = useState<DistrictSubscription | null>(null);
 
   // Synchronize when global DistrictSelector switches district
   useEffect(() => {
@@ -41,6 +45,8 @@ export const SubscriptionsPage: React.FC = () => {
     setEditingSubscription(null);
     setStartGraceTarget(null);
     setRestoreActiveTarget(null);
+    setCancelDistrictTarget(null);
+    setStartRecoveryTarget(null);
   }, [activeDistrictId]);
 
   // Effective district ID for detail view
@@ -74,6 +80,8 @@ export const SubscriptionsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: districtQueryKeys.district(districtId) }),
       queryClient.invalidateQueries({ queryKey: districtQueryKeys.details(districtId) }),
       queryClient.invalidateQueries({ queryKey: districtQueryKeys.readiness(districtId) }),
+      queryClient.invalidateQueries({ queryKey: districtQueryKeys.bot(districtId) }),
+      queryClient.invalidateQueries({ queryKey: districtQueryKeys.groups(districtId) }),
       queryClient.invalidateQueries({ queryKey: ['audit-history'] }),
       queryClient.invalidateQueries({ queryKey: ['health'] }),
     ]);
@@ -119,6 +127,47 @@ export const SubscriptionsPage: React.FC = () => {
     },
   });
 
+  // 4. Cancel District Mutation
+  const cancelDistrictMutation = useMutation({
+    mutationFn: async ({
+      districtId,
+      reason,
+      confirmationDistrictName,
+    }: {
+      districtId: string;
+      reason: string;
+      confirmationDistrictName: string;
+    }) => {
+      return subscriptionClient.cancelDistrict(districtId, {
+        reason,
+        confirmationDistrictName,
+      });
+    },
+    onSuccess: async (_data, variables) => {
+      message.success('Туман муваффақиятли бекор қилинди (Cancelled).');
+      setCancelDistrictTarget(null);
+      await invalidateSubscriptionQueries(variables.districtId);
+    },
+    onError: (err: Error) => {
+      message.error(err.message || 'Туманни бекор қилишда хатолик юз берди.');
+    },
+  });
+
+  // 5. Start Recovery Mutation
+  const startRecoveryMutation = useMutation({
+    mutationFn: async ({ districtId, reason }: { districtId: string; reason?: string }) => {
+      return subscriptionClient.startDistrictRecovery(districtId, { reason });
+    },
+    onSuccess: async (_data, variables) => {
+      message.success('Туманни қайта тиклаш жараёни бошланди (Setup Incomplete).');
+      setStartRecoveryTarget(null);
+      await invalidateSubscriptionQueries(variables.districtId);
+    },
+    onError: (err: Error) => {
+      message.error(err.message || 'Туманни тиклашда хатолик юз берди.');
+    },
+  });
+
   const handleSelectDistrict = (districtId: string) => {
     attemptTransition(() => {
       setSelectedDistrictId(districtId);
@@ -152,6 +201,14 @@ export const SubscriptionsPage: React.FC = () => {
 
   const handleOpenRestoreActive = (subscription: DistrictSubscription) => {
     setRestoreActiveTarget(subscription);
+  };
+
+  const handleOpenCancelDistrict = (subscription: DistrictSubscription) => {
+    setCancelDistrictTarget(subscription);
+  };
+
+  const handleOpenStartRecovery = (subscription: DistrictSubscription) => {
+    setStartRecoveryTarget(subscription);
   };
 
   return (
@@ -214,6 +271,8 @@ export const SubscriptionsPage: React.FC = () => {
             onEdit={() => handleOpenEdit(currentSubscription)}
             onStartGrace={() => handleOpenStartGrace(currentSubscription)}
             onRestoreActive={() => handleOpenRestoreActive(currentSubscription)}
+            onCancelDistrict={() => handleOpenCancelDistrict(currentSubscription)}
+            onStartRecovery={() => handleOpenStartRecovery(currentSubscription)}
             onBack={handleBackToList}
             isOffline={isOffline}
           />
@@ -236,6 +295,8 @@ export const SubscriptionsPage: React.FC = () => {
             onEditSubscription={handleOpenEdit}
             onStartGrace={handleOpenStartGrace}
             onRestoreActive={handleOpenRestoreActive}
+            onCancelDistrict={handleOpenCancelDistrict}
+            onStartRecovery={handleOpenStartRecovery}
             isOffline={isOffline}
           />
         </Space>
@@ -284,6 +345,43 @@ export const SubscriptionsPage: React.FC = () => {
           onClose={() => setRestoreActiveTarget(null)}
         />
       )}
+
+      {/* Cancel District High-Assurance Confirmation Modal */}
+      {cancelDistrictTarget && (
+        <CancelDistrictModal
+          open={Boolean(cancelDistrictTarget)}
+          districtId={cancelDistrictTarget.districtId}
+          districtName={cancelDistrictTarget.districtName}
+          region={cancelDistrictTarget.region}
+          isPending={cancelDistrictMutation.isPending}
+          onConfirm={async (payload) => {
+            await cancelDistrictMutation.mutateAsync({
+              districtId: cancelDistrictTarget.districtId,
+              reason: payload.reason,
+              confirmationDistrictName: payload.confirmationDistrictName,
+            });
+          }}
+          onClose={() => setCancelDistrictTarget(null)}
+        />
+      )}
+
+      {/* Start Recovery Consequence Confirmation Modal */}
+      {startRecoveryTarget && (
+        <StartRecoveryModal
+          open={Boolean(startRecoveryTarget)}
+          districtId={startRecoveryTarget.districtId}
+          districtName={startRecoveryTarget.districtName}
+          isPending={startRecoveryMutation.isPending}
+          onConfirm={async (payload) => {
+            await startRecoveryMutation.mutateAsync({
+              districtId: startRecoveryTarget.districtId,
+              reason: payload.reason,
+            });
+          }}
+          onClose={() => setStartRecoveryTarget(null)}
+        />
+      )}
     </div>
   );
 };
+

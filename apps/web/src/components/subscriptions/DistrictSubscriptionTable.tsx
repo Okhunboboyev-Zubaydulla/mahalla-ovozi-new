@@ -3,7 +3,7 @@ import { Table, Typography, Button, Empty, theme } from 'antd';
 import { EditOutlined, EyeOutlined } from '@ant-design/icons';
 import { DistrictSubscription } from '@mahalla-ovozi/api-contracts';
 import { SubscriptionStatusBadge } from './SubscriptionStatusBadge.js';
-import { formatTashkentDate } from '../../lib/formatters.js';
+import { formatTashkentDate, formatScheduledTransitionType } from '../../lib/formatters.js';
 
 const { Text } = Typography;
 
@@ -14,6 +14,8 @@ export interface DistrictSubscriptionTableProps {
   onEditSubscription?: (subscription: DistrictSubscription) => void;
   onStartGrace?: (subscription: DistrictSubscription) => void;
   onRestoreActive?: (subscription: DistrictSubscription) => void;
+  onCancelDistrict?: (subscription: DistrictSubscription) => void;
+  onStartRecovery?: (subscription: DistrictSubscription) => void;
   isOffline?: boolean;
 }
 
@@ -24,6 +26,8 @@ export const DistrictSubscriptionTable: React.FC<DistrictSubscriptionTableProps>
   onEditSubscription,
   onStartGrace,
   onRestoreActive,
+  onCancelDistrict,
+  onStartRecovery,
   isOffline = false,
 }) => {
   const { token } = theme.useToken();
@@ -69,10 +73,12 @@ export const DistrictSubscriptionTable: React.FC<DistrictSubscriptionTableProps>
         <Text style={{ wordBreak: 'break-word', whiteSpace: 'nowrap' }}>
           {record.scheduledTransitionAt
             ? `${formatTashkentDate(record.scheduledTransitionAt)}${
-                record.scheduledTransitionType ? ` (${record.scheduledTransitionType})` : ''
+                record.scheduledTransitionType
+                  ? ` (${formatScheduledTransitionType(record.scheduledTransitionType)})`
+                  : ''
               }`
             : record.scheduledTransitionType
-            ? `(${record.scheduledTransitionType})`
+            ? `(${formatScheduledTransitionType(record.scheduledTransitionType)})`
             : '—'}
         </Text>
       ),
@@ -122,6 +128,35 @@ export const DistrictSubscriptionTable: React.FC<DistrictSubscriptionTableProps>
               style={isOffline ? undefined : { color: token.colorSuccess }}
             >
               Фаоллаштириш
+            </Button>
+          )}
+
+          {['ACTIVE', 'GRACE', 'SUSPENDED'].includes(record.status) && onCancelDistrict && (
+            <Button
+              type="link"
+              size="small"
+              danger
+              onClick={() => onCancelDistrict(record)}
+              disabled={isOffline}
+            >
+              Бекор қилиш
+            </Button>
+          )}
+
+          {record.status === 'CANCELLED' && onStartRecovery && (
+            <Button
+              type="link"
+              size="small"
+              onClick={() => onStartRecovery(record)}
+              disabled={
+                isOffline ||
+                (record.scheduledTransitionAt
+                  ? new Date(record.scheduledTransitionAt) <= new Date()
+                  : true)
+              }
+              style={isOffline ? undefined : { color: token.colorPrimary }}
+            >
+              Тиклаш
             </Button>
           )}
 

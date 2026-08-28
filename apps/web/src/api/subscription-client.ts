@@ -12,6 +12,12 @@ import {
   RestoreActiveRequest,
   RestoreActiveResponse,
   RestoreActiveResponseSchema,
+  CancelDistrictRequest,
+  CancelDistrictResponse,
+  CancelDistrictResponseSchema,
+  StartRecoveryRequest,
+  StartRecoveryResponse,
+  StartRecoveryResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
 
@@ -77,4 +83,33 @@ export const subscriptionClient = {
       RestoreActiveResponseSchema,
     );
   },
+
+  cancelDistrict(
+    districtId: string,
+    payload: CancelDistrictRequest,
+  ): Promise<CancelDistrictResponse> {
+    return request<CancelDistrictResponse>(
+      `/api/v1/districts/${encodeURIComponent(districtId)}/subscription/cancel`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      CancelDistrictResponseSchema,
+    );
+  },
+
+  startDistrictRecovery(
+    districtId: string,
+    payload?: StartRecoveryRequest,
+  ): Promise<StartRecoveryResponse> {
+    return request<StartRecoveryResponse>(
+      `/api/v1/districts/${encodeURIComponent(districtId)}/subscription/start-recovery`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload || {}),
+      },
+      StartRecoveryResponseSchema,
+    );
+  },
 };
+

@@ -1,7 +1,12 @@
 import { eq, and, asc, sql } from 'drizzle-orm';
 import type PgBoss from 'pg-boss';
 import { DbClient, DbOrTx } from '../../adapters/db/client.js';
-import { districts, districtSubscriptions } from '../../adapters/db/schema/index.js';
+import {
+  districts,
+  districtSubscriptions,
+  districtTelegramBots,
+  districtTelegramGroups,
+} from '../../adapters/db/schema/index.js';
 import {
   DistrictSubscription,
   SubscriptionStatus,
@@ -9,6 +14,8 @@ import {
   UpdateDistrictSubscriptionRequest,
   StartGraceRequest,
   RestoreActiveRequest,
+  CancelDistrictRequest,
+  StartRecoveryRequest,
 } from '@mahalla-ovozi/api-contracts';
 import { DistrictNotFoundError } from '../districts/districts-service.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
@@ -48,6 +55,30 @@ export class SubscriptionConcurrencyConflictError extends Error {
       `Туман обунаси ҳолати бошқа жараён томонидан ўзгартирилган (ID: ${districtId}). Илтимос, саҳифани янгиланг.`,
     );
     this.name = 'SubscriptionConcurrencyConflictError';
+  }
+}
+
+export class DistrictConfirmationMismatchError extends Error {
+  readonly code = 'DISTRICT_CONFIRMATION_MISMATCH' as const;
+  readonly statusCode = 400;
+
+  constructor(expectedName: string, receivedName: string) {
+    super(
+      `Киритилган туман номи ("${receivedName}") ҳақиқий номга ("${expectedName}") мос келмади.`,
+    );
+    this.name = 'DistrictConfirmationMismatchError';
+  }
+}
+
+export class RecoveryWindowExpiredError extends Error {
+  readonly code = 'RECOVERY_WINDOW_EXPIRED' as const;
+  readonly statusCode = 409;
+  readonly districtId?: string;
+
+  constructor(districtId?: string) {
+    super('30 кунлик тиклаш муддати тугаган. Туманни тиклаш мумкин эмас.');
+    this.name = 'RecoveryWindowExpiredError';
+    this.districtId = districtId;
   }
 }
 
@@ -794,4 +825,314 @@ export async function processOverdueGraceSubscriptions(db: DbClient): Promise<nu
 
   return processedCount;
 }
+
+export async function cancelDistrict(
+  db: DbClient,
+  _boss: PgBoss | undefined,
+  districtId: string,
+  payload: CancelDistrictRequest,
+  actor?: { id: string; role: string },
+  context?: { ipAddress?: string | null; userAgent?: string | null },
+): Promise<DistrictSubscription> {
+  const [dist] = await db
+    .select()
+    .from(districts)
+    .where(eq(districts.id, districtId))
+    .limit(1);
+
+  if (!dist) {
+    throw new DistrictNotFoundError(districtId);
+  }
+
+  // Ensure record exists before cancel
+  await ensureDistrictSubscription(db, districtId, dist.status);
+
+  let updatedRow: typeof districtSubscriptions.$inferSelect | undefined;
+  let districtName = dist.name;
+
+  await db.transaction(async (tx) => {
+    const now = new Date();
+    const scheduledTransitionAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days in ms
+
+    // 1. Lock districts row first (consistent lock order: districts -> district_subscriptions)
+    const lockDistrictResult = await tx.execute<{
+      id: string;
+      name: string;
+      status: string;
+      region: string | null;
+    }>(sql`SELECT id, name, status, region FROM districts WHERE id = ${districtId} FOR UPDATE`);
+
+    const lockedDistrict = lockDistrictResult.rows[0];
+    if (!lockedDistrict) {
+      throw new DistrictNotFoundError(districtId);
+    }
+    districtName = lockedDistrict.name;
+
+    // 2. Lock district_subscriptions row second
+    const lockSubResult = await tx.execute<{
+      id: string;
+      district_id: string;
+      status: string;
+    }>(sql`SELECT id, district_id, status FROM district_subscriptions WHERE district_id = ${districtId} FOR UPDATE`);
+
+    const lockedSub = lockSubResult.rows[0];
+    if (!lockedSub) {
+      throw new DistrictNotFoundError(districtId);
+    }
+
+    // 3. Verify current status is ACTIVE, GRACE, or SUSPENDED
+    const eligibleStatuses = ['ACTIVE', 'GRACE', 'SUSPENDED'];
+    if (
+      !eligibleStatuses.includes(lockedSub.status) ||
+      !eligibleStatuses.includes(lockedDistrict.status)
+    ) {
+      throw new InvalidSubscriptionTransitionError(lockedSub.status, 'CANCELLED');
+    }
+
+    // 4. Verify typed district name match (case-sensitive trimmed, NFC normalized)
+    if (
+      payload.confirmationDistrictName.trim().normalize('NFC') !==
+      lockedDistrict.name.trim().normalize('NFC')
+    ) {
+      throw new DistrictConfirmationMismatchError(lockedDistrict.name, payload.confirmationDistrictName);
+    }
+
+    // 5. Delete active bot token credentials from district_telegram_bots
+    await tx
+      .delete(districtTelegramBots)
+      .where(eq(districtTelegramBots.districtId, districtId));
+
+    // 6. Transition associated telegram group mappings to PENDING and clear validation state
+    await tx
+      .update(districtTelegramGroups)
+      .set({
+        status: 'PENDING',
+        testMessageReceivedAt: null,
+        lastValidatedAt: null,
+        lastError: null,
+        updatedAt: now,
+      })
+      .where(eq(districtTelegramGroups.districtId, districtId));
+
+    // 7. Update district_subscriptions atomically
+    const [updatedSub] = await tx
+      .update(districtSubscriptions)
+      .set({
+        status: 'CANCELLED',
+        statusStartedAt: now,
+        scheduledTransitionAt,
+        scheduledTransitionType: 'LIVE_DELETION',
+        updatedAt: now,
+        updatedById: actor?.id ?? null,
+      })
+      .where(
+        and(
+          eq(districtSubscriptions.districtId, districtId),
+          sql`${districtSubscriptions.status} IN ('ACTIVE', 'GRACE', 'SUSPENDED')`,
+        ),
+      )
+      .returning();
+
+    if (!updatedSub) {
+      throw new SubscriptionConcurrencyConflictError(districtId);
+    }
+
+    // 8. Synchronize districts table status atomically
+    await tx
+      .update(districts)
+      .set({
+        status: 'CANCELLED',
+        updatedAt: now,
+      })
+      .where(eq(districts.id, districtId));
+
+    updatedRow = updatedSub;
+
+    // 9. Append-only audit logging
+    await recordAuditEvent(tx, {
+      districtId,
+      actorId: actor?.id ?? null,
+      actorRole: actor?.role ?? 'PRODUCT_OWNER',
+      action: 'DISTRICT_CANCELLED',
+      ipAddress: context?.ipAddress ?? null,
+      userAgent: context?.userAgent ?? null,
+      metadata: {
+        districtId,
+        districtName: lockedDistrict.name,
+        previousStatus: lockedSub.status,
+        previousValues: { status: lockedSub.status },
+        newValues: {
+          status: 'CANCELLED',
+          scheduledTransitionAt: scheduledTransitionAt.toISOString(),
+          scheduledTransitionType: 'LIVE_DELETION',
+        },
+        scheduledTransitionAt: scheduledTransitionAt.toISOString(),
+        scheduledTransitionType: 'LIVE_DELETION',
+        botTokenRemoved: true,
+        reason: payload.reason,
+      },
+    });
+  });
+
+  if (!updatedRow) {
+    throw new DistrictNotFoundError(districtId);
+  }
+
+  return formatDistrictSubscription({
+    id: updatedRow.id,
+    districtId,
+    districtName,
+    region: dist.region,
+    status: updatedRow.status,
+    statusStartedAt: updatedRow.statusStartedAt,
+    scheduledTransitionAt: updatedRow.scheduledTransitionAt,
+    scheduledTransitionType: updatedRow.scheduledTransitionType,
+    externalPaymentReference: updatedRow.externalPaymentReference,
+    internalNote: updatedRow.internalNote,
+    updatedById: updatedRow.updatedById,
+    createdAt: updatedRow.createdAt,
+    updatedAt: updatedRow.updatedAt,
+  });
+}
+
+export async function startDistrictRecovery(
+  db: DbClient,
+  districtId: string,
+  payload: StartRecoveryRequest,
+  actor?: { id: string; role: string },
+  context?: { ipAddress?: string | null; userAgent?: string | null },
+): Promise<DistrictSubscription> {
+  const [dist] = await db
+    .select()
+    .from(districts)
+    .where(eq(districts.id, districtId))
+    .limit(1);
+
+  if (!dist) {
+    throw new DistrictNotFoundError(districtId);
+  }
+
+  // Ensure record exists before recovery
+  await ensureDistrictSubscription(db, districtId, dist.status);
+
+  let updatedRow: typeof districtSubscriptions.$inferSelect | undefined;
+  let districtName = dist.name;
+
+  await db.transaction(async (tx) => {
+    const now = new Date();
+
+    // 1. Lock districts row first (consistent lock order: districts -> district_subscriptions)
+    const lockDistrictResult = await tx.execute<{
+      id: string;
+      name: string;
+      status: string;
+      region: string | null;
+    }>(sql`SELECT id, name, status, region FROM districts WHERE id = ${districtId} FOR UPDATE`);
+
+    const lockedDistrict = lockDistrictResult.rows[0];
+    if (!lockedDistrict) {
+      throw new DistrictNotFoundError(districtId);
+    }
+    districtName = lockedDistrict.name;
+
+    // 2. Lock district_subscriptions row second
+    const lockSubResult = await tx.execute<{
+      id: string;
+      district_id: string;
+      status: string;
+      scheduled_transition_at: Date | null;
+    }>(sql`SELECT id, district_id, status, scheduled_transition_at FROM district_subscriptions WHERE district_id = ${districtId} FOR UPDATE`);
+
+    const lockedSub = lockSubResult.rows[0];
+    if (!lockedSub) {
+      throw new DistrictNotFoundError(districtId);
+    }
+
+    // 3. Verify current status is CANCELLED
+    if (lockedSub.status !== 'CANCELLED' || lockedDistrict.status !== 'CANCELLED') {
+      throw new InvalidSubscriptionTransitionError(lockedSub.status, 'SETUP_INCOMPLETE');
+    }
+
+    // 4. Verify recovery window has not expired
+    const deadlineMs = lockedSub.scheduled_transition_at
+      ? new Date(lockedSub.scheduled_transition_at).getTime()
+      : NaN;
+    if (Number.isNaN(deadlineMs) || deadlineMs <= now.getTime()) {
+      throw new RecoveryWindowExpiredError(districtId);
+    }
+
+    // 5. Update district_subscriptions atomically
+    const [updatedSub] = await tx
+      .update(districtSubscriptions)
+      .set({
+        status: 'SETUP_INCOMPLETE',
+        statusStartedAt: now,
+        scheduledTransitionAt: null,
+        scheduledTransitionType: null,
+        updatedAt: now,
+        updatedById: actor?.id ?? null,
+      })
+      .where(
+        and(
+          eq(districtSubscriptions.districtId, districtId),
+          eq(districtSubscriptions.status, 'CANCELLED'),
+        ),
+      )
+      .returning();
+
+    if (!updatedSub) {
+      throw new SubscriptionConcurrencyConflictError(districtId);
+    }
+
+    // 6. Synchronize districts table status atomically
+    await tx
+      .update(districts)
+      .set({
+        status: 'SETUP_INCOMPLETE',
+        updatedAt: now,
+      })
+      .where(eq(districts.id, districtId));
+
+    updatedRow = updatedSub;
+
+    // 7. Append-only audit logging
+    await recordAuditEvent(tx, {
+      districtId,
+      actorId: actor?.id ?? null,
+      actorRole: actor?.role ?? 'PRODUCT_OWNER',
+      action: 'DISTRICT_RECOVERY_STARTED',
+      ipAddress: context?.ipAddress ?? null,
+      userAgent: context?.userAgent ?? null,
+      metadata: {
+        districtId,
+        districtName: lockedDistrict.name,
+        previousStatus: 'CANCELLED',
+        previousValues: { status: 'CANCELLED' },
+        newValues: { status: 'SETUP_INCOMPLETE' },
+        reason: payload.reason ?? null,
+      },
+    });
+  });
+
+  if (!updatedRow) {
+    throw new DistrictNotFoundError(districtId);
+  }
+
+  return formatDistrictSubscription({
+    id: updatedRow.id,
+    districtId,
+    districtName,
+    region: dist.region,
+    status: updatedRow.status,
+    statusStartedAt: updatedRow.statusStartedAt,
+    scheduledTransitionAt: updatedRow.scheduledTransitionAt,
+    scheduledTransitionType: updatedRow.scheduledTransitionType,
+    externalPaymentReference: updatedRow.externalPaymentReference,
+    internalNote: updatedRow.internalNote,
+    updatedById: updatedRow.updatedById,
+    createdAt: updatedRow.createdAt,
+    updatedAt: updatedRow.updatedAt,
+  });
+}
+
 
