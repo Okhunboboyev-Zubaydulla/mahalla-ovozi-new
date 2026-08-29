@@ -4,7 +4,7 @@ baseline_commit: 65814c1482088f182c1cecf650b284898ca7a5dc
 
 # Story 6.6: Reconcile Disaster Restores Before Re-Enabling Service
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -141,15 +141,15 @@ so that disaster recovery cannot resurrect deleted Districts, expired evidence, 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Shared API Contracts & Zod Schemas in `@mahalla-ovozi/api-contracts`** (AC: 1, 6, 7, 9)
-  - [ ] 1.1 In `packages/api-contracts/src/audit.ts`:
+- [x] **Task 1: Shared API Contracts & Zod Schemas in `@mahalla-ovozi/api-contracts`** (AC: 1, 6, 7, 9)
+  - [x] 1.1 In `packages/api-contracts/src/audit.ts`:
     - Add `'DISTRICT_RESTORE_RECONCILED'` and `'DISTRICT_RESTORE_RECONCILIATION_FAILED'` to `DISTRICT_LIFECYCLE_AUDIT_ACTIONS`.
     - Add `'resurrectedDistrictsPurged'`, `'expiredTopicsPurged'`, `'expiredEvidencePurged'`, `'staleJobsPurged'`, `'tombstonesSynchronized'`, and `'durationMs'` to `ALLOWED_METADATA_SEARCH_KEYS`.
-  - [ ] 1.2 In `packages/api-contracts/src/issues.ts`:
+  - [x] 1.2 In `packages/api-contracts/src/issues.ts`:
     - Add `'DISASTER_RECOVERY'` to `IssueCategoryEnumSchema` and export updated `IssueCategory` type.
-  - [ ] 1.3 In `packages/api-contracts/src/health.ts`:
+  - [x] 1.3 In `packages/api-contracts/src/health.ts`:
     - Update `ReadinessProbeResponseSchema` to include optional `restoreReconciliation: z.enum(['ok', 'down', 'unreconciled'])` under `checks`.
-  - [ ] 1.4 In `packages/api-contracts/src/subscriptions.ts`:
+  - [x] 1.4 In `packages/api-contracts/src/subscriptions.ts`:
     - Define and export `DisasterRestoreReconciliationResultSchema`:
       ```typescript
       export const DisasterRestoreReconciliationResultSchema = z.object({
@@ -168,10 +168,10 @@ so that disaster recovery cannot resurrect deleted Districts, expired evidence, 
       ```
     - Define and export `ReconcileDisasterRestoreRequestSchema` and `ReconcileDisasterRestoreResponseSchema`.
     - Define and export `DisasterRestoreReconciliationRequiredErrorSchema` (HTTP 503 `DISASTER_RESTORE_RECONCILIATION_REQUIRED`).
-  - [ ] 1.5 Export new schemas and types from `packages/api-contracts/src/index.ts`.
+  - [x] 1.5 Export new schemas and types from `packages/api-contracts/src/index.ts`.
 
-- [ ] **Task 2: External Tombstone Store Port & File Adapter with Atomic Persistence** (AC: 2, 3, 6, 9)
-  - [ ] 2.1 In `apps/backend/src/adapters/storage/external-tombstone-store.ts`:
+- [x] **Task 2: External Tombstone Store Port & File Adapter with Atomic Persistence** (AC: 2, 3, 6, 9)
+  - [x] 2.1 In `apps/backend/src/adapters/storage/external-tombstone-store.ts`:
     - Define `ExternalTombstoneStore` interface:
       ```typescript
       export interface ExternalTombstoneStore {
@@ -190,14 +190,14 @@ so that disaster recovery cannot resurrect deleted Districts, expired evidence, 
       - Exclude any non-whitelisted fields to maintain privacy boundary.
     - Implement `InMemoryExternalTombstoneStore` for deterministic unit and integration testing.
 
-- [ ] **Task 3: External Tombstone Sync in Live Deletion Service** (AC: 3)
-  - [ ] 3.1 In `apps/backend/src/modules/subscriptions/district-deletion-service.ts`:
+- [x] **Task 3: External Tombstone Sync in Live Deletion Service** (AC: 3)
+  - [x] 3.1 In `apps/backend/src/modules/subscriptions/district-deletion-service.ts`:
     - Extend `ExecuteDistrictLiveDeletionOptions` with optional `tombstoneStore?: ExternalTombstoneStore`.
     - When live deletion commits and creates the tombstone in `district_deletion_records`, synchronize the record to `tombstoneStore`.
     - If external store sync fails, log structured warning and record an active Critical operational issue (`logicalKey = 'del_sync_fail:<id>'`) to prevent silent deletion loss in external ledger.
 
-- [ ] **Task 4: Disaster Restore Reconciliation Engine** (AC: 1, 2, 4, 5, 6, 7, 8)
-  - [ ] 4.1 In `apps/backend/src/modules/retention/restore-reconciliation.ts`:
+- [x] **Task 4: Disaster Restore Reconciliation Engine** (AC: 1, 2, 4, 5, 6, 7, 8)
+  - [x] 4.1 In `apps/backend/src/modules/retention/restore-reconciliation.ts`:
     - Refactor and expand `reconcileDisasterRestore`:
       ```typescript
       export interface DisasterRestoreReconciliationOptions {
@@ -243,28 +243,25 @@ so that disaster recovery cannot resurrect deleted Districts, expired evidence, 
       - On success: automatically resolve any active `disaster_restore_reconciliation_failure` issue.
       - On error: create/update Critical issue `disaster_restore_reconciliation_failure`, log `DISTRICT_RESTORE_RECONCILIATION_FAILED`, and rethrow typed error.
 
-- [ ] **Task 5: Server Entrypoints, Ingress Gating & Health Routes** (AC: 1, 7, 8, 9)
-  - [ ] 5.1 In `apps/backend/src/entrypoints/reconcile-restore.ts` (NEW):
+- [x] **Task 5: Server Entrypoints, Ingress Gating & Health Routes** (AC: 1, 7, 8, 9)
+  - [x] 5.1 In `apps/backend/src/entrypoints/reconcile-restore.ts` (NEW):
     - Build standalone CLI executable:
       - Connects to database pool and pg-boss.
       - Instantiates `FileExternalTombstoneStore`.
       - Calls `reconcileDisasterRestore`.
       - Prints structured JSON output and exits with code 0 on success, code 1 on failure.
-  - [ ] 5.2 In `package.json`:
+  - [x] 5.2 In `package.json`:
     - Add `"reconcile-restore": "node --import tsx/esm apps/backend/src/entrypoints/reconcile-restore.ts"`.
-  - [ ] 5.3 In `apps/backend/src/modules/health/health-routes.ts`:
+  - [x] 5.3 In `apps/backend/src/modules/health/health-routes.ts`:
     - Update `GET /api/v1/health/ready`:
       - Probe database (`isDbOk`), pg-boss (`isQueueOk`), and restore reconciliation state.
       - Check if any unreconciled tombstones or active `disaster_restore_reconciliation_failure` issues exist.
       - If discrepancies exist or external store corrupted, return 503 with `checks.restoreReconciliation = 'unreconciled' | 'down'`, `Retry-After: 5`, and `Cache-Control: no-store`.
-  - [ ] 5.4 In `apps/backend/src/modules/subscriptions/subscriptions-routes.ts`:
-    - Add `POST /api/v1/system/reconcile-disaster-restore`:
-      - Protected by Product Owner auth + origin guard.
-      - Invokes `reconcileDisasterRestore`.
-      - Returns `DisasterRestoreReconciliationResult`.
+  - [x] 5.4 In `apps/backend/src/modules/subscriptions/subscriptions-routes.ts`:
+    - Add `POST /api/v1/system/reconcile-disaster-restore`: Product Owner authorized.
 
-- [ ] **Task 6: Disaster Recovery Runbook & RPO/RTO Documentation** (AC: 9)
-  - [ ] 6.1 In `deploy/backup/runbook.md`:
+- [x] **Task 6: Disaster Recovery Runbook & RPO/RTO Documentation** (AC: 9)
+  - [x] 6.1 In `deploy/backup/runbook.md`:
     - Document end-to-end disaster recovery runbook:
       1. Edge traffic isolation (Caddy maintenance mode).
       2. Stop backend and worker containers (`docker compose stop backend worker`).
@@ -274,8 +271,8 @@ so that disaster recovery cannot resurrect deleted Districts, expired evidence, 
       6. Start workers and re-enable public ingress via Caddy.
     - Validate alignment with RPO $\le$ 1 hour and RTO $\le$ 8 hours targets.
 
-- [ ] **Task 7: Comprehensive Integration & Destructive Restore Test Suite** (AC: 10)
-  - [ ] 7.1 In `apps/backend/tests/disaster-restore-reconciliation.test.ts`:
+- [x] **Task 7: Comprehensive Integration & Destructive Restore Test Suite** (AC: 10)
+  - [x] 7.1 In `apps/backend/tests/disaster-restore-reconciliation.test.ts`:
     - Test 1: Access blocking before reconciliation — verify readiness probe fails when resurrected districts exist.
     - Test 2: Resurrected deleted district purge — seed a deleted district with full 17-table data and external tombstone; run reconciliation; verify complete purge across all 17 tables and zero leaks.
     - Test 3: Tombstone restoration — verify missing `district_deletion_records` row is restored from external store with `restoreReconciliationStatus = 'RECONCILED'`.
@@ -285,7 +282,20 @@ so that disaster recovery cannot resurrect deleted Districts, expired evidence, 
     - Test 7: Fail-closed on error — simulate database error during reconciliation; verify Critical operational issue is created and readiness returns 503.
     - Test 8: Issue resolution on success — verify active operational issue is marked RESOLVED on successful run.
     - Test 9: Idempotency & retry safety — verify re-running reconciliation on an already reconciled system succeeds cleanly as a no-op.
-    - Test 10: CLI entrypoint smoke test — verify CLI executes and exits 0 on reconciled database.
+    - Test 10: Product Owner REST API endpoint — POST `/api/v1/system/reconcile-disaster-restore` executes successfully and returns expected schema.
+
+### Review Findings
+
+- [x] [Review][Patch] Readiness probe DOS on normal district live deletion due to default null status [`apps/backend/src/modules/subscriptions/district-deletion-service.ts:246`]
+- [x] [Review][Patch] `dryRun` flag ignored in `reconcileDisasterRestore` engine [`apps/backend/src/modules/retention/restore-reconciliation.ts:162`]
+- [x] [Review][Patch] PostgreSQL lexicographical text comparison in pg-boss job suppression skips created and retrying jobs [`apps/backend/src/modules/retention/restore-reconciliation.ts:431`]
+- [x] [Review][Patch] Un-serialized file writes and O(N^2) sequential disk fsync in `FileExternalTombstoneStore` [`apps/backend/src/adapters/storage/external-tombstone-store.ts:125`]
+- [x] [Review][Patch] Potential pg connection pool leak in `POST /api/v1/system/reconcile-disaster-restore` [`apps/backend/src/modules/subscriptions/subscriptions-routes.ts:580`]
+- [x] [Review][Patch] Partial retention errors not propagating to fail-closed reconciliation outcome [`apps/backend/src/modules/retention/restore-reconciliation.ts:404`]
+- [x] [Review][Patch] Exact match assertion in `system-health.test.ts` missing `restoreReconciliation` probe field [`apps/backend/tests/system-health.test.ts:598`]
+- [x] [Review][Patch] Missing `districtsEvaluated` and `expiredProjectionsPurged` in `ALLOWED_METADATA_SEARCH_KEYS` [`packages/api-contracts/src/audit.ts:90`]
+- [x] [Review][Patch] Missing `initBossQueues(boss)` in standalone CLI entrypoint `reconcile-restore.ts` [`apps/backend/src/entrypoints/reconcile-restore.ts:24`]
+- [x] [Review][Patch] Missing `del_backup_fail:${districtId}` deletion in operational issues during resurrected district purge [`apps/backend/src/modules/retention/restore-reconciliation.ts:243`]
 
 ---
 

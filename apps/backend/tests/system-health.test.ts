@@ -598,6 +598,7 @@ describe('Story 4.1: Backend Health HTTP Routes & Security Integration Tests', (
     expect(body.checks).toEqual({
       database: 'ok',
       queue: 'ok',
+      restoreReconciliation: 'ok',
     });
     expect(body).toHaveProperty('timestamp');
   });

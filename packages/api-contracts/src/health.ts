@@ -115,6 +115,7 @@ export const ReadinessProbeResponseSchema = z.object({
   checks: z.object({
     database: z.enum(['ok', 'down']),
     queue: z.enum(['ok', 'down']),
+    restoreReconciliation: z.enum(['ok', 'down', 'unreconciled']).optional(),
   }),
 });
 export type ReadinessProbeResponse = z.infer<typeof ReadinessProbeResponseSchema>;

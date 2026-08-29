@@ -15,6 +15,18 @@ import { verifyStateChangingOrigin } from '../auth/origin-guard.js';
 import { healthService, DistrictNotFoundError } from './health-service.js';
 import { HealthConfig } from './health-checker.js';
 
+import { eq, and, or, inArray, sql } from 'drizzle-orm';
+import {
+  districts,
+  districtDeletionRecords,
+  operationalIssues,
+} from '../../adapters/db/schema/index.js';
+import {
+  ExternalTombstoneStore,
+  FileExternalTombstoneStore,
+  TombstoneStoreCorruptedError,
+} from '../../adapters/storage/external-tombstone-store.js';
+
 const DistrictHealthParamsSchema = z.object({
   districtId: z.string().min(1, 'Туман ID киритилиши шарт.'),
 });
@@ -45,6 +57,72 @@ async function checkBossLiveness(boss?: PgBoss): Promise<boolean> {
   }
 }
 
+async function checkRestoreReconciliationHealth(
+  db: DbClient,
+  tombstoneStore?: ExternalTombstoneStore,
+): Promise<'ok' | 'down' | 'unreconciled'> {
+  try {
+    // 1. Check if an active disaster_restore_reconciliation_failure issue exists in DB
+    const [activeIssue] = await db
+      .select({ id: operationalIssues.id })
+      .from(operationalIssues)
+      .where(
+        and(
+          eq(operationalIssues.logicalKey, 'disaster_restore_reconciliation_failure'),
+          eq(operationalIssues.status, 'ACTIVE'),
+        ),
+      )
+      .limit(1);
+
+    if (activeIssue) {
+      return 'down';
+    }
+
+    // 2. Load tombstones from external store
+    const store = tombstoneStore || new FileExternalTombstoneStore();
+    const extTombstones = await store.loadAllTombstones();
+
+    if (extTombstones.length > 0) {
+      const extDistrictIds = extTombstones.map((t) => t.districtId);
+
+      // Check if any deleted district from external tombstone store exists in districts table (resurrected!)
+      const resurrected = await db
+        .select({ id: districts.id })
+        .from(districts)
+        .where(inArray(districts.id, extDistrictIds))
+        .limit(1);
+
+      if (resurrected.length > 0) {
+        return 'unreconciled';
+      }
+    }
+
+    // 3. Check if any tombstone in DB has unreconciled status (PENDING, FAILED, or null)
+    const [unreconciledDbRow] = await db
+      .select({ id: districtDeletionRecords.id })
+      .from(districtDeletionRecords)
+      .where(
+        or(
+          eq(districtDeletionRecords.restoreReconciliationStatus, 'PENDING'),
+          eq(districtDeletionRecords.restoreReconciliationStatus, 'FAILED'),
+          sql`${districtDeletionRecords.restoreReconciliationStatus} IS NULL`,
+        ),
+      )
+      .limit(1);
+
+    if (unreconciledDbRow) {
+      return 'unreconciled';
+    }
+
+    return 'ok';
+  } catch (err) {
+    if (err instanceof TombstoneStoreCorruptedError) {
+      return 'down';
+    }
+    return 'down';
+  }
+}
+
 export function registerHealthRoutes(
   server: FastifyInstance,
   deps: {
@@ -52,6 +130,7 @@ export function registerHealthRoutes(
     pool: pg.Pool;
     boss?: PgBoss;
     config?: HealthConfig;
+    tombstoneStore?: ExternalTombstoneStore;
   },
 ): void {
   /**
@@ -82,7 +161,7 @@ export function registerHealthRoutes(
 
   /**
    * GET /api/v1/health/ready
-   * Deep dependency readiness probe for DB pool and pg-boss queue capability.
+   * Deep dependency readiness probe for DB pool, pg-boss queue capability, and restore reconciliation.
    */
   server.get(
     '/api/v1/health/ready',
@@ -100,8 +179,20 @@ export function registerHealthRoutes(
       const isDbOk = dbProbe.isHealthy;
       const isQueueOk = await checkBossLiveness(deps.boss);
 
-      const isReady = isDbOk && isQueueOk;
+      let restoreStatus: 'ok' | 'down' | 'unreconciled' = 'ok';
+      if (isDbOk) {
+        restoreStatus = await checkRestoreReconciliationHealth(deps.db, deps.tombstoneStore);
+      } else {
+        restoreStatus = 'down';
+      }
+
+      const isReady = isDbOk && isQueueOk && restoreStatus === 'ok';
       const statusCode = isReady ? 200 : 503;
+
+      if (!isReady) {
+        reply.header('Retry-After', '5');
+        reply.header('Cache-Control', 'no-store');
+      }
 
       return reply.status(statusCode).send({
         status: isReady ? 'ready' : 'unready',
@@ -109,6 +200,7 @@ export function registerHealthRoutes(
         checks: {
           database: isDbOk ? 'ok' : 'down',
           queue: isQueueOk ? 'ok' : 'down',
+          restoreReconciliation: restoreStatus,
         },
       });
     },

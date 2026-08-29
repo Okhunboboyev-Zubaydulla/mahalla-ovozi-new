@@ -43,6 +43,7 @@ export const IssueCategoryEnumSchema = z.enum([
   'OPERATIONAL_MAINTENANCE_NOTICE',
   'BACKUP_EXPIRY_DELAY',
   'LIFECYCLE_DELETION',
+  'DISASTER_RECOVERY',
 ]);
 export type IssueCategory = z.infer<typeof IssueCategoryEnumSchema>;
 

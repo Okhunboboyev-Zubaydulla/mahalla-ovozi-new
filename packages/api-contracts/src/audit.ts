@@ -101,6 +101,14 @@ export const ALLOWED_METADATA_SEARCH_KEYS = [
   'verificationMethod',
   'backupExpiryDeadline',
   'protectedBackupExpiryDeadline',
+  'resurrectedDistrictsPurged',
+  'districtsEvaluated',
+  'expiredTopicsPurged',
+  'expiredEvidencePurged',
+  'expiredProjectionsPurged',
+  'staleJobsPurged',
+  'tombstonesSynchronized',
+  'durationMs',
 ] as const;
 
 export const DISTRICT_LIFECYCLE_AUDIT_ACTIONS = [
@@ -112,5 +120,7 @@ export const DISTRICT_LIFECYCLE_AUDIT_ACTIONS = [
   'DISTRICT_LIVE_DELETED',
   'DISTRICT_BACKUP_EXPIRY_VERIFIED',
   'DISTRICT_BACKUP_EXPIRY_FAILED',
+  'DISTRICT_RESTORE_RECONCILED',
+  'DISTRICT_RESTORE_RECONCILIATION_FAILED',
 ] as const;
 

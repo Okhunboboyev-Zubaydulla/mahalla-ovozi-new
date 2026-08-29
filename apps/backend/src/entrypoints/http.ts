@@ -21,6 +21,7 @@ import { registerGlobalAnalysisSettingsRoutes } from '../modules/ai/global-analy
 import { registerDistrictAnalysisSettingsRoutes } from '../modules/ai/district-analysis-settings-routes.js';
 import { registerSubscriptionRoutes } from '../modules/subscriptions/subscriptions-routes.js';
 import type { BackupRetentionVerifier } from '../modules/subscriptions/ports/backup-retention-verifier.js';
+import type { ExternalTombstoneStore } from '../adapters/storage/external-tombstone-store.js';
 import { createBossClient, initBossQueues } from '../adapters/jobs/boss-client.js';
 import type PgBoss from 'pg-boss';
 import pg from 'pg';
@@ -37,6 +38,7 @@ export interface HttpServerContext {
   pool: pg.Pool;
   boss: PgBoss;
   backupVerifier?: BackupRetentionVerifier;
+  tombstoneStore?: ExternalTombstoneStore;
 }
 
 /**
@@ -54,7 +56,12 @@ export function registerAllDomainRoutes(
   registerTelegramIntakeRoutes(server, { pool: ctx.pool, boss: ctx.boss });
   registerAiOperationsRoutes(server, ctx.db);
   registerHokimTopicsRoutes(server, ctx.db);
-  registerHealthRoutes(server, { db: ctx.db, pool: ctx.pool, boss: ctx.boss });
+  registerHealthRoutes(server, {
+    db: ctx.db,
+    pool: ctx.pool,
+    boss: ctx.boss,
+    tombstoneStore: ctx.tombstoneStore,
+  });
   registerIssueRoutes(server, { db: ctx.db, pool: ctx.pool, boss: ctx.boss });
   registerAuditRoutes(server, ctx.db);
   registerDistrictTopicsRoutes(server, ctx.db);
@@ -62,8 +69,10 @@ export function registerAllDomainRoutes(
   registerDistrictAnalysisSettingsRoutes(server, ctx.db);
   registerSubscriptionRoutes(server, {
     db: ctx.db,
+    pool: ctx.pool,
     boss: ctx.boss,
     backupVerifier: ctx.backupVerifier,
+    tombstoneStore: ctx.tombstoneStore,
   });
 }
 
@@ -72,6 +81,7 @@ export async function buildHttpServer(options?: {
   pool?: pg.Pool;
   boss?: PgBoss;
   backupVerifier?: BackupRetentionVerifier;
+  tombstoneStore?: ExternalTombstoneStore;
 }): Promise<FastifyInstance> {
   const server = Fastify({
     logger: false, // Logging controlled via telemetry adapter
@@ -221,6 +231,7 @@ export async function buildHttpServer(options?: {
     pool,
     boss,
     backupVerifier: options?.backupVerifier,
+    tombstoneStore: options?.tombstoneStore,
   };
   registerAllDomainRoutes(server, context);
 

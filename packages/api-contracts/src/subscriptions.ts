@@ -263,5 +263,36 @@ export const BackupExpiryVerificationDetailsSchema = z.object({
 });
 export type BackupExpiryVerificationDetails = z.infer<typeof BackupExpiryVerificationDetailsSchema>;
 
+export const DisasterRestoreReconciliationResultSchema = z.object({
+  success: z.boolean(),
+  resurrectedDistrictsPurged: z.array(z.string()),
+  districtsEvaluated: z.number().int().nonnegative(),
+  expiredTopicsPurged: z.number().int().nonnegative(),
+  expiredEvidencePurged: z.number().int().nonnegative(),
+  expiredProjectionsPurged: z.number().int().nonnegative(),
+  staleJobsPurged: z.number().int().nonnegative(),
+  tombstonesSynchronized: z.number().int().nonnegative(),
+  errors: z.array(z.object({ scope: z.string(), error: z.string() })),
+  durationMs: z.number().int().nonnegative(),
+});
+export type DisasterRestoreReconciliationResult = z.infer<typeof DisasterRestoreReconciliationResultSchema>;
+
+export const ReconcileDisasterRestoreRequestSchema = z.object({
+  dryRun: z.boolean().optional(),
+});
+export type ReconcileDisasterRestoreRequest = z.infer<typeof ReconcileDisasterRestoreRequestSchema>;
+
+export const ReconcileDisasterRestoreResponseSchema = z.object({
+  result: DisasterRestoreReconciliationResultSchema,
+  message: z.string(),
+});
+export type ReconcileDisasterRestoreResponse = z.infer<typeof ReconcileDisasterRestoreResponseSchema>;
+
+export const DisasterRestoreReconciliationRequiredErrorSchema = z.object({
+  code: z.literal('DISASTER_RESTORE_RECONCILIATION_REQUIRED'),
+  message: z.string(),
+});
+export type DisasterRestoreReconciliationRequiredError = z.infer<typeof DisasterRestoreReconciliationRequiredErrorSchema>;
+
 
 

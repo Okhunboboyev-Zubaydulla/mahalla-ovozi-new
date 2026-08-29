@@ -33,6 +33,10 @@ import {
 import { DistrictNotFoundError } from '../districts/districts-service.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
 import type { BackupRetentionVerifier } from './ports/backup-retention-verifier.js';
+import {
+  ExternalTombstoneStore,
+  FileExternalTombstoneStore,
+} from '../../adapters/storage/external-tombstone-store.js';
 
 export class DeletionRecordNotFoundError extends Error {
   readonly code = 'DELETION_RECORD_NOT_FOUND' as const;
@@ -134,6 +138,7 @@ export interface ExecuteDistrictLiveDeletionOptions {
   actor?: { id?: string | null; role?: string | null };
   context?: { ipAddress?: string | null; userAgent?: string | null };
   boss?: PgBoss;
+  tombstoneStore?: ExternalTombstoneStore;
 }
 
 export async function executeDistrictLiveDeletion(
@@ -251,6 +256,8 @@ export async function executeDistrictLiveDeletion(
         liveDeletionStatus: 'COMPLETED',
         protectedBackupExpiryDeadline,
         backupExpiryStatus: 'PENDING',
+        restoreReconciliationStatus: 'RECONCILED',
+        restoreReconciliationVerifiedAt: now,
         createdAt: now,
         updatedAt: now,
       })
@@ -351,6 +358,69 @@ export async function executeDistrictLiveDeletion(
 
     finalRecord = createdTombstone;
   });
+
+  if (finalRecord) {
+    const formattedRecord = formatDistrictDeletionRecord(finalRecord);
+    const store = options?.tombstoneStore || new FileExternalTombstoneStore();
+    try {
+      await store.saveTombstone(formattedRecord);
+    } catch (syncErr) {
+      console.error(
+        JSON.stringify({
+          event: 'SYNC_EXTERNAL_TOMBSTONE_FAILED',
+          districtId,
+          error: (syncErr as Error).message,
+        }),
+      );
+      const now = new Date();
+      await db
+        .insert(operationalIssues)
+        .values({
+          id: `issue_${crypto.randomUUID()}`,
+          logicalKey: `del_sync_fail:${districtId}`,
+          scope: 'GLOBAL',
+          districtId: null,
+          component: 'scheduled_deletion',
+          issueCategory: 'STORAGE_UNAVAILABLE',
+          severity: 'Critical',
+          status: 'ACTIVE',
+          healthStatus: 'UNAVAILABLE',
+          sanitizedTitle: 'Ташқи ўчирилганлик маълумотномасини сақлашда хатолик',
+          sanitizedDescription: `Туман маълумотлари жонли тизимдан ўчирилди, лекин ташқи маълумотнома омборига ёзишда хатолик юз берди: ${(syncErr as Error).message}`,
+          recommendedAction: 'Ташқи маълумотнома омборини (tombstones.json) ва диск рухсатларини текширинг.',
+          targetRoute: `/subscriptions/${districtId}`,
+          startedAt: now,
+          latestCheckAt: now,
+          resolvedAt: null,
+          metadata: {
+            districtId,
+            districtName: finalRecord.districtName,
+            error: (syncErr as Error).message,
+          },
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: operationalIssues.logicalKey,
+          targetWhere: sql`${operationalIssues.status} = 'ACTIVE'`,
+          set: {
+            status: 'ACTIVE',
+            healthStatus: 'UNAVAILABLE',
+            latestCheckAt: now,
+            updatedAt: now,
+          },
+        })
+        .catch((issueErr) => {
+          console.error(
+            JSON.stringify({
+              event: 'CREATE_DEL_SYNC_FAIL_ISSUE_FAILED',
+              districtId,
+              error: (issueErr as Error).message,
+            }),
+          );
+        });
+    }
+  }
 
   if (finalRecord && options?.boss) {
     try {
