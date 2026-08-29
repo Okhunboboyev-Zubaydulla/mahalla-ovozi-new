@@ -6,6 +6,8 @@ import {
   TELEGRAM_TOPIC_ASSIGNMENT_QUEUE,
   TELEGRAM_TOPIC_PROJECTION_QUEUE,
   TELEGRAM_TOPIC_RETENTION_QUEUE,
+  DISTRICT_LIVE_DELETION_QUEUE,
+  DISTRICT_BACKUP_EXPIRY_QUEUE,
 } from '../../adapters/jobs/boss-client.js';
 
 export const RETRY_ELIGIBLE_CATEGORIES: ReadonlySet<IssueCategory> = new Set([
@@ -14,6 +16,8 @@ export const RETRY_ELIGIBLE_CATEGORIES: ReadonlySet<IssueCategory> = new Set([
   'AI_SERVICE_DEGRADED',
   'RETENTION_JOB_DELAY',
   'DISTRICT_RETENTION_DELAY',
+  'LIFECYCLE_DELETION',
+  'BACKUP_EXPIRY_DELAY',
 ]);
 
 export interface RetryJobSpec {
@@ -230,6 +234,54 @@ export function deriveRetryJobSpec(issue: IssueSpecInput): RetryJobSpec | null {
       };
     }
     return null;
+  }
+
+  if (cat === 'LIFECYCLE_DELETION') {
+    const targetDistrictId =
+      issue.districtId ||
+      (issue.metadata?.deletedDistrictId
+        ? String(issue.metadata.deletedDistrictId)
+        : '') ||
+      (issue.metadata?.districtId ? String(issue.metadata.districtId) : '');
+
+    if (!targetDistrictId || targetDistrictId === 'global') {
+      return null;
+    }
+
+    return {
+      queueName: DISTRICT_LIVE_DELETION_QUEUE,
+      payload: {
+        districtId: targetDistrictId,
+        issueId: issue.id,
+      },
+      singletonKey: JobSingletonKeys.forLiveDeletion(targetDistrictId),
+      operationType: 'DISTRICT_LIVE_DELETION',
+      targetId: targetDistrictId,
+    };
+  }
+
+  if (cat === 'BACKUP_EXPIRY_DELAY') {
+    const targetDistrictId =
+      issue.districtId ||
+      (issue.metadata?.deletedDistrictId
+        ? String(issue.metadata.deletedDistrictId)
+        : '') ||
+      (issue.metadata?.districtId ? String(issue.metadata.districtId) : '');
+
+    if (!targetDistrictId || targetDistrictId === 'global') {
+      return null;
+    }
+
+    return {
+      queueName: DISTRICT_BACKUP_EXPIRY_QUEUE,
+      payload: {
+        districtId: targetDistrictId,
+        issueId: issue.id,
+      },
+      singletonKey: JobSingletonKeys.forBackupExpiry(targetDistrictId),
+      operationType: 'DISTRICT_BACKUP_EXPIRY',
+      targetId: targetDistrictId,
+    };
   }
 
   return null;

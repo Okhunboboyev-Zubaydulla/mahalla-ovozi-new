@@ -1,6 +1,6 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
-  AuditEvent,
+  AuditHistoryItem,
   AuditEventDetailSchema,
   AuditHistoryPage,
   AuditHistoryPageSchema,
@@ -21,6 +21,9 @@ export async function fetchAuditEvents(
   }
   if (query.direction) {
     searchParams.set('direction', query.direction);
+  }
+  if (query.recordType) {
+    searchParams.set('recordType', query.recordType);
   }
   if (query.districtId) {
     searchParams.set('districtId', query.districtId);
@@ -59,8 +62,8 @@ export async function fetchAuditEvents(
   );
 }
 
-export async function fetchAuditEventDetail(id: string): Promise<AuditEvent> {
-  return request<AuditEvent>(
+export async function fetchAuditEventDetail(id: string): Promise<AuditHistoryItem> {
+  return request<AuditHistoryItem>(
     `/api/v1/audit/events/${encodeURIComponent(id)}`,
     { method: 'GET' },
     AuditEventDetailSchema,

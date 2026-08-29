@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ConfigProvider, App as AntdApp } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
+  AuditHistoryItem,
   AuditEvent,
   AuditHistoryPage as AuditHistoryPageType,
 } from '@mahalla-ovozi/api-contracts';
@@ -35,6 +36,7 @@ beforeAll(() => {
 const mockAuditEvents: AuditEvent[] = [
   {
     id: 'aud_evt_101',
+    recordType: 'AUDIT_EVENT',
     districtId: null,
     districtName: null,
     actorId: 'acc_po_1',
@@ -52,6 +54,7 @@ const mockAuditEvents: AuditEvent[] = [
   },
   {
     id: 'aud_evt_102',
+    recordType: 'AUDIT_EVENT',
     districtId: 'dist_yunusobod',
     districtName: 'Юнусобод тумани',
     actorId: 'acc_po_1',
@@ -69,6 +72,7 @@ const mockAuditEvents: AuditEvent[] = [
   },
   {
     id: 'aud_evt_103',
+    recordType: 'AUDIT_EVENT',
     districtId: 'dist_yunusobod',
     districtName: 'Юнусобод тумани',
     actorId: 'system:evaluator',
@@ -286,6 +290,7 @@ describe('Story 4.4: AuditHistoryPage Component Tests (AC 1, 2, 4, 6, 10, 11)', 
           limit: 25,
           cursor: undefined,
           direction: 'forward',
+          recordType: 'ALL',
           districtId: undefined,
           startDate: undefined,
           endDate: undefined,
@@ -316,6 +321,59 @@ describe('Story 4.4: AuditHistoryPage Component Tests (AC 1, 2, 4, 6, 10, 11)', 
       expect(
         screen.getByText(/Кўрсатилаётган маълумотлар кэшдан олинган/),
       ).toBeTruthy();
+    });
+  });
+
+  it('renders 3-milestone lifecycle steps and privacy guarantee for PermanentDeletionProof items (AC 5, AC 6)', async () => {
+    const mockDeletionProof: AuditHistoryItem = {
+      id: 'del_rec_test_proof_1',
+      recordType: 'PERMANENT_DELETION_PROOF',
+      districtId: 'dist_proof_1',
+      districtName: 'Мирзо Улуғбек тумани',
+      cancelledAt: '2026-08-26T08:00:00.000Z',
+      cancelledById: 'acc_po_1',
+      cancellationReason: 'Синов ўчириш',
+      scheduledLiveDeletionAt: '2026-08-26T08:30:00.000Z',
+      actualLiveDeletionAt: '2026-08-26T08:30:00.000Z',
+      liveDeletionStatus: 'COMPLETED',
+      protectedBackupExpiryDeadline: '2026-09-25T08:30:00.000Z',
+      backupExpiryStatus: 'PENDING',
+      backupExpiryVerifiedAt: null,
+      restoreReconciliationStatus: 'RECONCILED',
+      restoreReconciliationVerifiedAt: '2026-08-26T08:30:00.000Z',
+      lifecycleComplete: false,
+      createdAt: '2026-08-26T08:30:00.000Z',
+    };
+
+    vi.spyOn(auditClient, 'fetchAuditEvents').mockResolvedValue({
+      items: [mockDeletionProof],
+      pagination: {
+        limit: 25,
+        hasNextPage: false,
+        hasPrevPage: false,
+        nextCursor: null,
+        prevCursor: null,
+      },
+    });
+
+    renderWithProviders(<AuditHistoryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Ўчирилганлик маълумотномаси')).toBeTruthy();
+      expect(screen.getByText('Мирзо Улуғбек тумани')).toBeTruthy();
+    });
+
+    // Open detail drawer
+    const detailButton = screen.getByRole('button', { name: 'Тафсилот: del_rec_test_proof_1' });
+    fireEvent.click(detailButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Ўчирилганлик маълумотномаси тафсилоти')).toBeTruthy();
+      expect(screen.getByText(/Ўчириш жараёни босқичлари/)).toBeTruthy();
+      expect(screen.getByText(/1-босқич: Жонли тизимдан ўчириш/)).toBeTruthy();
+      expect(screen.getByText(/2-босқич: Ҳимояланган заҳира нусхалари муддати/)).toBeTruthy();
+      expect(screen.getByText(/3-босқич: Фалокатдан сўнг тикланишни мувофиқлаштириш/)).toBeTruthy();
+      expect(screen.getByText('Шахсий маълумотлар дахлсизлиги кафолати')).toBeTruthy();
     });
   });
 });

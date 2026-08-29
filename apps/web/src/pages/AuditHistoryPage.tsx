@@ -23,7 +23,7 @@ import {
   CloseCircleOutlined,
 } from '@ant-design/icons';
 import {
-  AuditEvent,
+  AuditHistoryItem,
   AuditActorRole,
   AuditHistoryQuery,
 } from '@mahalla-ovozi/api-contracts';
@@ -50,7 +50,7 @@ export const AuditHistoryPage: React.FC = () => {
   });
 
   // Selected event for detail drawer
-  const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<AuditHistoryItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const lastActiveElementRef = useRef<HTMLElement | null>(null);
 
@@ -60,6 +60,7 @@ export const AuditHistoryPage: React.FC = () => {
       limit: 25,
       cursor: paginationState.cursor,
       direction: paginationState.direction,
+      recordType: filters.recordType || 'ALL',
       districtId: filters.districtId,
       startDate: filters.startDate,
       endDate: filters.endDate,
@@ -120,7 +121,7 @@ export const AuditHistoryPage: React.FC = () => {
   };
 
   // Open detail drawer with focus save
-  const handleOpenDetail = (event: AuditEvent, e: React.MouseEvent<HTMLElement>) => {
+  const handleOpenDetail = (event: AuditHistoryItem, e: React.MouseEvent<HTMLElement>) => {
     lastActiveElementRef.current = e.currentTarget;
     setSelectedEvent(event);
     setDrawerOpen(true);
@@ -174,23 +175,45 @@ export const AuditHistoryPage: React.FC = () => {
       title: 'Бажарувчи (Актор)',
       key: 'actor',
       width: 190,
-      render: (_: unknown, record: AuditEvent) => (
-        <Space direction="vertical" size={2}>
-          {getActorRoleTag(record.actorRole)}
-          {record.actorId && (
-            <Text type="secondary" code style={{ fontSize: 11 }}>
-              {record.actorId}
-            </Text>
-          )}
-        </Space>
-      ),
+      render: (_: unknown, record: AuditHistoryItem) => {
+        if (record.recordType === 'PERMANENT_DELETION_PROOF') {
+          return (
+            <Space direction="vertical" size={2}>
+              {record.cancelledById ? (
+                <Tag color="blue" icon={<SafetyCertificateOutlined />}>
+                  Маҳсулот эгаси
+                </Tag>
+              ) : (
+                <Tag color="purple" icon={<GlobalOutlined />}>
+                  Тизим
+                </Tag>
+              )}
+              {record.cancelledById && (
+                <Text type="secondary" code style={{ fontSize: 11 }}>
+                  {record.cancelledById}
+                </Text>
+              )}
+            </Space>
+          );
+        }
+        return (
+          <Space direction="vertical" size={2}>
+            {getActorRoleTag(record.actorRole)}
+            {record.actorId && (
+              <Text type="secondary" code style={{ fontSize: 11 }}>
+                {record.actorId}
+              </Text>
+            )}
+          </Space>
+        );
+      },
     },
     {
       title: 'Туман',
       dataIndex: 'districtName',
       key: 'district',
       width: 180,
-      render: (name: string | null, record: AuditEvent) =>
+      render: (name: string | null, record: AuditHistoryItem) =>
         name ? (
           <Text strong>{name}</Text>
         ) : record.districtId ? (
@@ -202,22 +225,55 @@ export const AuditHistoryPage: React.FC = () => {
     {
       title: 'Ҳаракат ва Тоифа',
       key: 'action',
-      render: (_: unknown, record: AuditEvent) => (
-        <Space direction="vertical" size={2}>
-          <Text strong>{getActionDisplayNameUz(record.action)}</Text>
-          <Text type="secondary" code style={{ fontSize: 11 }}>
-            {record.action}
-          </Text>
-        </Space>
-      ),
+      render: (_: unknown, record: AuditHistoryItem) => {
+        if (record.recordType === 'PERMANENT_DELETION_PROOF') {
+          return (
+            <Space direction="vertical" size={2}>
+              <Tag color="purple" icon={<SafetyCertificateOutlined />}>
+                Ўчирилганлик маълумотномаси
+              </Tag>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                {record.lifecycleComplete
+                  ? 'Тўлиқ якунланган'
+                  : record.backupExpiryStatus === 'FAILED' ||
+                      record.restoreReconciliationStatus === 'FAILED'
+                    ? 'Хатолик юз берган'
+                    : 'Заҳира муддати кутилмоқда'}
+              </Text>
+            </Space>
+          );
+        }
+        return (
+          <Space direction="vertical" size={2}>
+            <Text strong>{getActionDisplayNameUz(record.action)}</Text>
+            <Text type="secondary" code style={{ fontSize: 11 }}>
+              {record.action}
+            </Text>
+          </Space>
+        );
+      },
     },
     {
       title: 'Натижа',
-      dataIndex: 'outcome',
       key: 'outcome',
       width: 140,
-      render: (outcome: string) =>
-        outcome === 'SUCCESS' ? (
+      render: (_: unknown, record: AuditHistoryItem) => {
+        if (record.recordType === 'PERMANENT_DELETION_PROOF') {
+          const isFailed =
+            record.liveDeletionStatus === 'FAILED' ||
+            record.backupExpiryStatus === 'FAILED' ||
+            record.restoreReconciliationStatus === 'FAILED';
+          return !isFailed && record.liveDeletionStatus === 'COMPLETED' ? (
+            <Tag color="success" icon={<CheckCircleOutlined />}>
+              Ўчирилган
+            </Tag>
+          ) : (
+            <Tag color="error" icon={<CloseCircleOutlined />}>
+              Хатолик
+            </Tag>
+          );
+        }
+        return record.outcome === 'SUCCESS' ? (
           <Tag color="success" icon={<CheckCircleOutlined />}>
             Муваффақиятли
           </Tag>
@@ -225,13 +281,14 @@ export const AuditHistoryPage: React.FC = () => {
           <Tag color="error" icon={<CloseCircleOutlined />}>
             Хатолик
           </Tag>
-        ),
+        );
+      },
     },
     {
       title: 'Амаллар',
       key: 'actions',
       width: 110,
-      render: (_: unknown, record: AuditEvent) => (
+      render: (_: unknown, record: AuditHistoryItem) => (
         <Button
           type="link"
           size="small"

@@ -118,7 +118,11 @@ export const retryService = {
         }
 
         // 3.1. Validate district lifecycle and access eligibility (AC 8 / DISTRICT_ACCESS_REVOKED)
-        if (issue.districtId) {
+        const isDeletionLifecycleIssue =
+          issue.issueCategory === 'LIFECYCLE_DELETION' ||
+          issue.issueCategory === 'BACKUP_EXPIRY_DELAY';
+
+        if (issue.districtId && !isDeletionLifecycleIssue) {
           const [district] = await tx
             .select({
               id: districts.id,
@@ -175,10 +179,10 @@ export const retryService = {
         }
 
         // 7. Persist audit record atomically (AC 3, AC 9)
-        const auditId = crypto.randomUUID();
+        const auditId = `aud_${crypto.randomUUID()}`;
         await tx.insert(auditEvents).values({
           id: auditId,
-          districtId: issue.districtId,
+          districtId: isDeletionLifecycleIssue ? null : issue.districtId,
           actorId: actor.id,
           actorRole: actor.role,
           action: 'OPERATIONAL_RETRY_TRIGGERED',
@@ -316,7 +320,7 @@ export const retryService = {
           );
         }
 
-        const auditId = crypto.randomUUID();
+        const auditId = `aud_${crypto.randomUUID()}`;
         await tx.insert(auditEvents).values({
           id: auditId,
           districtId: districtIdForAudit,

@@ -1,6 +1,8 @@
-export function formatTashkentDate(isoString: string): string {
+export function formatTashkentDate(isoString: string | null | undefined): string {
+  if (!isoString) return '—';
   try {
     const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return isoString;
     return new Intl.DateTimeFormat('uz-UZ', {
       timeZone: 'Asia/Tashkent',
       year: 'numeric',
@@ -14,9 +16,11 @@ export function formatTashkentDate(isoString: string): string {
   }
 }
 
-export function formatTashkentTime(isoString: string): string {
+export function formatTashkentTime(isoString: string | null | undefined): string {
+  if (!isoString) return '';
   try {
     const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return '';
     return new Intl.DateTimeFormat('uz-UZ', {
       timeZone: 'Asia/Tashkent',
       hour: '2-digit',
@@ -146,8 +150,12 @@ const ACTION_DISPLAY_NAMES_UZ: Record<string, string> = {
   DISTRICT_CANCELLED: 'Туман бекор қилинди (Cancelled)',
   DISTRICT_RECOVERY_STARTED: 'Туманни тиклаш бошланди (Recovery Started)',
   DISTRICT_LIVE_DELETED: 'Туман жонли тизимдан бутунлай ўчирилди (Live Deletion Completed)',
+  DISTRICT_LIVE_DELETION_FAILED: 'Туманни жонли тизимдан ўчиришда хатолик',
   DISTRICT_BACKUP_EXPIRY_VERIFIED: 'Туманнинг заҳира нусхалари муддати муваффақиятли тасдиқланди',
   DISTRICT_BACKUP_EXPIRY_FAILED: 'Туманнинг заҳира нусхалари муддатини тасдиқлашда хатолик юз берди',
+  DISTRICT_RESTORE_RECONCILED: 'Фалокатдан тикланиш мувофиқлаштирилди',
+  DISTRICT_RESTORE_RECONCILIATION_FAILED: 'Фалокатдан тикланишни мувофиқлаштиришда хатолик',
+  DISTRICT_PERMANENT_DELETION_PROOF: 'Ўчирилганлик маълумотномаси',
 };
 
 export function getActionDisplayNameUz(action: string): string {
@@ -178,6 +186,37 @@ export function formatBackupExpiryStatus(status?: string | null): string {
       return 'Заҳира муддати муваффақиятли тасдиқланди (Verified)';
     case 'FAILED':
       return 'Заҳира муддатини тасдиқлашда хатолик (Failed)';
+    default:
+      return status;
+  }
+}
+
+export function getRecordTypeDisplayNameUz(type?: string | null): string {
+  if (type === 'PERMANENT_DELETION_PROOF') {
+    return 'Ўчирилганлик маълумотномаси';
+  }
+  return 'Аудит ҳодисаси';
+}
+
+export function getLiveDeletionStatusDisplayNameUz(status?: string | null): string {
+  if (status === 'COMPLETED') {
+    return 'Якунланган';
+  }
+  if (status === 'FAILED') {
+    return 'Хатолик';
+  }
+  return status || '—';
+}
+
+export function getRestoreReconciliationStatusDisplayNameUz(status?: string | null): string {
+  if (!status) return '—';
+  switch (status) {
+    case 'PENDING':
+      return 'Кутилмоқда (Pending)';
+    case 'RECONCILED':
+      return 'Тасдиқланган (Reconciled)';
+    case 'FAILED':
+      return 'Хатолик (Failed)';
     default:
       return status;
   }

@@ -15,6 +15,7 @@ import { getTashkentToday } from '../../lib/formatters.js';
 const { RangePicker } = DatePicker;
 
 export interface AuditFilters {
+  recordType?: 'ALL' | 'AUDIT_EVENT' | 'PERMANENT_DELETION_PROOF';
   districtId?: string;
   startDate?: string;
   endDate?: string;
@@ -70,6 +71,12 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
     queryFn: districtClient.listDistricts,
     staleTime: 60_000,
   });
+
+  const recordTypeOptions = [
+    { label: 'Барча ёзувлар', value: 'ALL' },
+    { label: 'Аудит ҳодисалари', value: 'AUDIT_EVENT' },
+    { label: 'Ўчирилганлик маълумотномалари', value: 'PERMANENT_DELETION_PROOF' },
+  ];
 
   const districtOptions = [
     { label: 'Барча туманлар', value: '' },
@@ -132,7 +139,8 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
   ];
 
   const hasActiveFilters = Boolean(
-    filters.districtId ||
+    (filters.recordType && filters.recordType !== 'ALL') ||
+      filters.districtId ||
       filters.startDate ||
       filters.endDate ||
       filters.category ||
@@ -154,6 +162,20 @@ export const AuditFilterBar: React.FC<AuditFilterBarProps> = ({
         border: `1px solid ${token.colorBorderSecondary}`,
       }}
     >
+      <Select
+        placeholder="Ёзув тури"
+        value={filters.recordType || 'ALL'}
+        options={recordTypeOptions}
+        onChange={(val) =>
+          onChange({
+            ...filters,
+            recordType: val as 'ALL' | 'AUDIT_EVENT' | 'PERMANENT_DELETION_PROOF',
+          })
+        }
+        style={{ minWidth: 200 }}
+        aria-label="Ёзув турини танлаш"
+      />
+
       <Select
         placeholder="Туман"
         value={filters.districtId || ''}

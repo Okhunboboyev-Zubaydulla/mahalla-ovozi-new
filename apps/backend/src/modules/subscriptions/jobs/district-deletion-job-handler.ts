@@ -19,6 +19,7 @@ import {
 import type { BackupRetentionVerifier } from '../ports/backup-retention-verifier.js';
 import { SystemBackupRetentionVerifier } from '../../../adapters/backup/system-backup-verifier.js';
 import { operationalIssues } from '../../../adapters/db/schema/index.js';
+import { clearPendingRetryFlag } from '../../issues/retry-service.js';
 
 export interface DistrictDeletionJobDeps {
   db: DbClient;
@@ -31,6 +32,8 @@ export async function processDistrictDeletionJobs(
   deps: DistrictDeletionJobDeps,
 ): Promise<void> {
   const { db, boss } = deps;
+  const errors: Error[] = [];
+
   for (const job of jobs) {
     const { districtId } = job.data;
     try {
@@ -49,7 +52,7 @@ export async function processDistrictDeletionJobs(
         }),
       );
 
-      // Record or update Critical operational issue for System Health diagnostics (AC 11)
+      // Record or update Critical operational issue for System Health diagnostics (AC 3, AC 11)
       try {
         const now = new Date();
         const logicalKey = `del_fail:${districtId}`;
@@ -72,6 +75,13 @@ export async function processDistrictDeletionJobs(
               latestCheckAt: now,
               sanitizedDescription: `Туманни ўчириш жараёнида хатолик юз берди: ${errorMsg}`,
               updatedAt: now,
+              metadata: {
+                ...((existingIssue.metadata as Record<string, unknown>) || {}),
+                districtId,
+                deletedDistrictId: districtId,
+                error: errorMsg,
+                errorCode: 'LIVE_DELETION_FAILED',
+              },
             })
             .where(eq(operationalIssues.id, existingIssue.id));
         } else {
@@ -82,16 +92,18 @@ export async function processDistrictDeletionJobs(
               logicalKey,
               scope: 'GLOBAL',
               districtId: null, // Scoped to system since district row might be mid-state or deleted
-              component: 'SUBSCRIPTION_LIFECYCLE',
+              component: 'scheduled_deletion',
               issueCategory: 'LIFECYCLE_DELETION',
               severity: 'Critical',
               status: 'ACTIVE',
-              healthStatus: 'DEGRADED',
-              sanitizedTitle: 'Туманни жонли тизимдан ўчиришда хатолик',
+              healthStatus: 'UNAVAILABLE',
+              sanitizedTitle: 'Туманни жонли тизимдан ўчиришда хатолик юз берди',
               sanitizedDescription: `Туманни ўчириш жараёнида хатолик юз берди (ID: ${districtId}): ${errorMsg}`,
-              recommendedAction: 'Маълумотлар базаси ва тизим ҳолатини текшириб, ўчиришни қайта ишга туширинг.',
+              recommendedAction: 'Ўчириш жараёнини журналлар орқали текшириб, қайта ишга туширинг.',
               metadata: {
                 districtId,
+                deletedDistrictId: districtId,
+                error: errorMsg,
                 errorCode: 'LIVE_DELETION_FAILED',
               },
               startedAt: now,
@@ -105,6 +117,12 @@ export async function processDistrictDeletionJobs(
               set: {
                 latestCheckAt: now,
                 sanitizedDescription: `Туманни ўчириш жараёнида хатолик юз берди: ${errorMsg}`,
+                metadata: {
+                  districtId,
+                  deletedDistrictId: districtId,
+                  error: errorMsg,
+                  errorCode: 'LIVE_DELETION_FAILED',
+                },
                 updatedAt: now,
               },
             });
@@ -119,8 +137,16 @@ export async function processDistrictDeletionJobs(
         );
       }
 
-      throw err;
+      errors.push(err as Error);
+    } finally {
+      if (job.data.issueId) {
+        await clearPendingRetryFlag(db, job.data.issueId);
+      }
     }
+  }
+
+  if (errors.length > 0) {
+    throw errors[0];
   }
 }
 
@@ -148,6 +174,10 @@ export async function processDistrictBackupExpiryJobs(
         }),
       );
       errors.push(err as Error);
+    } finally {
+      if (job.data.issueId) {
+        await clearPendingRetryFlag(db, job.data.issueId);
+      }
     }
   }
 

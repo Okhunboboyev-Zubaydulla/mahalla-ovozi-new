@@ -102,14 +102,14 @@ development_status:
   epic-5-retrospective: optional
 
   # ── Epic 6: Subscription Lifecycle, Recovery & Verified Deletion ──
-  epic-6: in-progress
+  epic-6: done
   6-1-review-and-maintain-district-subscription-records: done
   6-2-manage-active-grace-and-suspended-district-service: done
   6-3-cancel-and-recover-a-district-before-live-deletion: done
   6-4-execute-permanent-live-system-district-deletion: done
   6-5-verify-protected-backup-expiry: done
   6-6-reconcile-disaster-restores-before-re-enabling-service: done
-  6-7-review-and-diagnose-the-district-deletion-lifecycle: ready-for-dev
+  6-7-review-and-diagnose-the-district-deletion-lifecycle: done
   epic-6-retrospective: optional
 
 action_items:

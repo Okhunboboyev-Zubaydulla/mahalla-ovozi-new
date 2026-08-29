@@ -7,3 +7,8 @@
 ## Deferred from: code review of 6-4-execute-permanent-live-system-district-deletion.md (2026-08-28)
 
 - **Inflight intake qualification worker error handling on purged records**: `apps/backend/src/modules/intake/` — Pre-existing intake qualification handler throws unhandled error if intake record row is deleted before checking district lifecycle status.
+
+## Deferred from: code review of 6-7-review-and-diagnose-the-district-deletion-lifecycle.md (2026-08-29)
+
+- **Unhandled operational issue creation in overdue cancelled district live-deletion sweep**: `apps/backend/src/modules/subscriptions/district-deletion-service.ts:795-812` — Pre-existing `processOverdueCancelledDistricts` cron sweep logs error to console instead of creating a Critical operational issue.
+

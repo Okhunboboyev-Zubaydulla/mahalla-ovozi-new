@@ -394,7 +394,11 @@ describe('Story 4.4: Backend Audit History Database & HTTP Integration Tests', (
       });
       expect(catRes.statusCode).toBe(200);
       const catJson = JSON.parse(catRes.payload) as AuditHistoryPage;
-      expect(catJson.items.every((i) => i.category === 'AUTH_SECURITY')).toBe(true);
+      expect(
+        catJson.items.every(
+          (i) => i.recordType === 'AUDIT_EVENT' && i.category === 'AUTH_SECURITY',
+        ),
+      ).toBe(true);
 
       // Actor role filter
       const roleRes = await server.inject({
@@ -407,7 +411,13 @@ describe('Story 4.4: Backend Audit History Database & HTTP Integration Tests', (
       });
       expect(roleRes.statusCode).toBe(200);
       const roleJson = JSON.parse(roleRes.payload) as AuditHistoryPage;
-      expect(roleJson.items.every((i) => i.actorRole === 'SYSTEM')).toBe(true);
+      expect(
+        roleJson.items.every((i) =>
+          i.recordType === 'PERMANENT_DELETION_PROOF'
+            ? !i.cancelledById
+            : i.actorRole === 'SYSTEM',
+        ),
+      ).toBe(true);
 
       // Outcome filter
       const outcomeRes = await server.inject({
@@ -420,7 +430,13 @@ describe('Story 4.4: Backend Audit History Database & HTTP Integration Tests', (
       });
       expect(outcomeRes.statusCode).toBe(200);
       const outcomeJson = JSON.parse(outcomeRes.payload) as AuditHistoryPage;
-      expect(outcomeJson.items.every((i) => i.outcome === 'FAILURE')).toBe(true);
+      expect(
+        outcomeJson.items.every((i) =>
+          i.recordType === 'PERMANENT_DELETION_PROOF'
+            ? i.liveDeletionStatus === 'FAILED'
+            : i.outcome === 'FAILURE',
+        ),
+      ).toBe(true);
 
       // Action filter
       const actionRes = await server.inject({
@@ -433,7 +449,11 @@ describe('Story 4.4: Backend Audit History Database & HTTP Integration Tests', (
       });
       expect(actionRes.statusCode).toBe(200);
       const actionJson = JSON.parse(actionRes.payload) as AuditHistoryPage;
-      expect(actionJson.items.every((i) => i.action === 'DISTRICT_CREATED')).toBe(true);
+      expect(
+        actionJson.items.every(
+          (i) => i.recordType === 'AUDIT_EVENT' && i.action === 'DISTRICT_CREATED',
+        ),
+      ).toBe(true);
     });
   });
 
@@ -497,7 +517,13 @@ describe('Story 4.4: Backend Audit History Database & HTTP Integration Tests', (
 
       expect(res.statusCode).toBe(200);
       const json = JSON.parse(res.payload) as AuditHistoryPage;
-      expect(json.items.some((i) => i.action === 'OPERATIONAL_ISSUE_DETECTED')).toBe(true);
+      expect(
+        json.items.some(
+          (i) =>
+            i.recordType === 'AUDIT_EVENT' &&
+            i.action === 'OPERATIONAL_ISSUE_DETECTED',
+        ),
+      ).toBe(true);
     });
 
     it('properly escapes SQL wildcard characters (%, _) in search term without crashing', async () => {
@@ -563,7 +589,13 @@ describe('Story 4.4: Backend Audit History Database & HTTP Integration Tests', (
       expect(res.statusCode).toBe(200);
       const json = JSON.parse(res.payload) as AuditHistoryPage;
       expect(json.items.length).toBeGreaterThan(0);
-      expect(json.items.every((i) => i.outcome === 'SUCCESS')).toBe(true);
+      expect(
+        json.items.every((i) =>
+          i.recordType === 'PERMANENT_DELETION_PROOF'
+            ? i.liveDeletionStatus === 'COMPLETED'
+            : i.outcome === 'SUCCESS',
+        ),
+      ).toBe(true);
     });
   });
 

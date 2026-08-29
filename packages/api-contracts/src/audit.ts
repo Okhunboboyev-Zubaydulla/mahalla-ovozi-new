@@ -20,8 +20,33 @@ export const AuditActorRoleEnumSchema = z.enum([
 ]);
 export type AuditActorRole = z.infer<typeof AuditActorRoleEnumSchema>;
 
+export const PermanentDeletionProofSchema = z.object({
+  id: z.string(),
+  recordType: z.literal('PERMANENT_DELETION_PROOF').default('PERMANENT_DELETION_PROOF'),
+  districtId: z.string(),
+  districtName: z.string(),
+  cancelledAt: z.string().datetime().nullable().optional(),
+  cancelledById: z.string().nullable().optional(),
+  cancellationReason: z.string().nullable().optional(),
+  scheduledLiveDeletionAt: z.string().datetime(),
+  actualLiveDeletionAt: z.string().datetime(),
+  liveDeletionStatus: z.enum(['COMPLETED', 'FAILED']),
+  protectedBackupExpiryDeadline: z.string().datetime(),
+  backupExpiryStatus: z.enum(['PENDING', 'VERIFIED', 'FAILED']),
+  backupExpiryVerifiedAt: z.string().datetime().nullable().optional(),
+  restoreReconciliationStatus: z
+    .enum(['PENDING', 'RECONCILED', 'FAILED'])
+    .nullable()
+    .optional(),
+  restoreReconciliationVerifiedAt: z.string().datetime().nullable().optional(),
+  lifecycleComplete: z.boolean(),
+  createdAt: z.string().datetime(),
+});
+export type PermanentDeletionProof = z.infer<typeof PermanentDeletionProofSchema>;
+
 export const AuditEventSchema = z.object({
   id: z.string(),
+  recordType: z.literal('AUDIT_EVENT').default('AUDIT_EVENT'),
   districtId: z.string().nullable(),
   districtName: z.string().nullable().optional(),
   actorId: z.string().nullable(),
@@ -39,7 +64,13 @@ export const AuditEventSchema = z.object({
 });
 export type AuditEvent = z.infer<typeof AuditEventSchema>;
 
-export const AuditEventDetailSchema = AuditEventSchema;
+export const AuditHistoryItemSchema = z.discriminatedUnion('recordType', [
+  AuditEventSchema,
+  PermanentDeletionProofSchema,
+]);
+export type AuditHistoryItem = z.infer<typeof AuditHistoryItemSchema>;
+
+export const AuditEventDetailSchema = AuditHistoryItemSchema;
 export type AuditEventDetail = z.infer<typeof AuditEventDetailSchema>;
 
 export const AuditHistoryQuerySchema = z
@@ -47,6 +78,10 @@ export const AuditHistoryQuerySchema = z
     limit: z.coerce.number().int().min(1).max(100).default(50),
     cursor: z.preprocess((val) => (val === '' ? undefined : val), z.string().min(1).optional()),
     direction: z.enum(['forward', 'backward']).default('forward'),
+    recordType: z.preprocess(
+      (val) => (val === '' ? undefined : val),
+      z.enum(['ALL', 'AUDIT_EVENT', 'PERMANENT_DELETION_PROOF']).default('ALL'),
+    ),
     districtId: z.preprocess((val) => (val === '' ? undefined : val), z.string().optional()),
     startDate: z.preprocess(
       (val) => (val === '' ? undefined : val),
@@ -79,8 +114,8 @@ export const AuditHistoryQuerySchema = z
   );
 export type AuditHistoryQuery = z.infer<typeof AuditHistoryQuerySchema>;
 
-export const AuditHistoryPageSchema = createKeysetPageSchema(AuditEventSchema);
-export type AuditHistoryPage = KeysetPage<AuditEvent>;
+export const AuditHistoryPageSchema = createKeysetPageSchema(AuditHistoryItemSchema);
+export type AuditHistoryPage = KeysetPage<AuditHistoryItem>;
 
 export interface AuditKeysetCursorPayload extends KeysetCursorPayload {
   id: string;
@@ -90,11 +125,15 @@ export interface AuditKeysetCursorPayload extends KeysetCursorPayload {
 export const ALLOWED_METADATA_SEARCH_KEYS = [
   'reason',
   'errorCode',
+  'error',
   'issueId',
   'botUsername',
   'groupId',
   'chatId',
   'retryTrackingId',
+  'districtId',
+  'districtName',
+  'mahallaName',
   'deletedDistrictId',
   'deletedDistrictName',
   'oldestActiveBackupTimestamp',

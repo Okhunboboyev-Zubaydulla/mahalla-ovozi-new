@@ -659,7 +659,7 @@ describe('Story 6.4: Execute Permanent Live-System District Deletion Integration
       expect(issues.length).toBe(1);
       expect(issues[0]?.severity).toBe('Critical');
       expect(issues[0]?.issueCategory).toBe('LIFECYCLE_DELETION');
-      expect(issues[0]?.healthStatus).toBe('DEGRADED');
+      expect(issues[0]?.healthStatus).toBe('UNAVAILABLE');
     });
 
     it('validates district scope and rejects empty/blank districtId (AC 3)', async () => {

@@ -12,6 +12,7 @@ import {
   theme,
   Empty,
   Skeleton,
+  Alert,
 } from 'antd';
 import {
   SafetyCertificateOutlined,
@@ -19,16 +20,25 @@ import {
   UserOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
-import { AuditEvent, AuditActorRole } from '@mahalla-ovozi/api-contracts';
-import { formatTashkentDate, getActionDisplayNameUz } from '../../lib/formatters.js';
+import {
+  AuditHistoryItem,
+  AuditEvent,
+  PermanentDeletionProof,
+  AuditActorRole,
+} from '@mahalla-ovozi/api-contracts';
+import {
+  formatTashkentDate,
+  getActionDisplayNameUz,
+} from '../../lib/formatters.js';
 
 const { Text, Paragraph } = Typography;
 const { useBreakpoint } = Grid;
 
 interface AuditEventDetailDrawerProps {
   open: boolean;
-  event: AuditEvent | null;
+  event: AuditHistoryItem | null;
   loading?: boolean;
   onClose: () => void;
 }
@@ -59,6 +69,12 @@ export const AuditEventDetailDrawer: React.FC<AuditEventDetailDrawerProps> = ({
 }) => {
   const screens = useBreakpoint();
   const { token } = theme.useToken();
+
+  const isDeletionProof = event?.recordType === 'PERMANENT_DELETION_PROOF';
+  const deletionProof = isDeletionProof
+    ? (event as PermanentDeletionProof)
+    : null;
+  const auditEvent = !isDeletionProof ? (event as AuditEvent | null) : null;
 
   const getActorRoleTag = (role: AuditActorRole | null | undefined) => {
     switch (role) {
@@ -103,9 +119,9 @@ export const AuditEventDetailDrawer: React.FC<AuditEventDetailDrawerProps> = ({
   };
 
   const diffData = useMemo<ValueDiffRow[]>(() => {
-    if (!event) return [];
-    const prev = event.previousValues || {};
-    const curr = event.newValues || {};
+    if (!auditEvent) return [];
+    const prev = auditEvent.previousValues || {};
+    const curr = auditEvent.newValues || {};
 
     const allKeys = Array.from(
       new Set([...Object.keys(prev), ...Object.keys(curr)]),
@@ -132,36 +148,36 @@ export const AuditEventDetailDrawer: React.FC<AuditEventDetailDrawerProps> = ({
         changeType,
       };
     });
-  }, [event]);
+  }, [auditEvent]);
 
   const customMetadataKeys = useMemo(() => {
-    if (!event || !event.metadata) return {};
-    const meta = { ...event.metadata };
+    if (!auditEvent || !auditEvent.metadata) return {};
+    const meta = { ...auditEvent.metadata };
     delete meta.reason;
     delete meta.previousState;
     delete meta.previousValues;
     delete meta.newState;
     delete meta.newValues;
     return meta;
-  }, [event]);
+  }, [auditEvent]);
 
-  const descriptionItems = useMemo<DescriptionsProps['items']>(() => {
-    if (!event) return [];
+  const standardDescriptionItems = useMemo<DescriptionsProps['items']>(() => {
+    if (!auditEvent) return [];
     return [
       {
         key: 'createdAt',
         label: 'Сана ва вақт (Тошкент)',
-        children: formatTashkentDate(event.createdAt),
+        children: formatTashkentDate(auditEvent.createdAt),
       },
       {
         key: 'actor',
         label: 'Бажарувчи (Актор)',
         children: (
           <Space wrap size="small">
-            {getActorRoleTag(event.actorRole)}
-            {event.actorId && (
+            {getActorRoleTag(auditEvent.actorRole)}
+            {auditEvent.actorId && (
               <Text code style={{ fontSize: 12 }}>
-                {event.actorId}
+                {auditEvent.actorId}
               </Text>
             )}
           </Space>
@@ -170,10 +186,10 @@ export const AuditEventDetailDrawer: React.FC<AuditEventDetailDrawerProps> = ({
       {
         key: 'district',
         label: 'Туман / Ҳудуд',
-        children: event.districtName ? (
-          <Text strong>{event.districtName}</Text>
-        ) : event.districtId ? (
-          <Text code>{event.districtId}</Text>
+        children: auditEvent.districtName ? (
+          <Text strong>{auditEvent.districtName}</Text>
+        ) : auditEvent.districtId ? (
+          <Text code>{auditEvent.districtId}</Text>
         ) : (
           <Tag color="purple">Глобал (Платформа)</Tag>
         ),
@@ -183,9 +199,9 @@ export const AuditEventDetailDrawer: React.FC<AuditEventDetailDrawerProps> = ({
         label: 'Ҳаракат номи',
         children: (
           <Space direction="vertical" size={0}>
-            <Text strong>{getActionDisplayNameUz(event.action)}</Text>
+            <Text strong>{getActionDisplayNameUz(auditEvent.action)}</Text>
             <Text type="secondary" code style={{ fontSize: 11 }}>
-              {event.action}
+              {auditEvent.action}
             </Text>
           </Space>
         ),
@@ -193,13 +209,13 @@ export const AuditEventDetailDrawer: React.FC<AuditEventDetailDrawerProps> = ({
       {
         key: 'category',
         label: 'Ҳаракат тоифаси',
-        children: getCategoryTag(event.category),
+        children: getCategoryTag(auditEvent.category),
       },
       {
         key: 'outcome',
         label: 'Натижа',
         children:
-          event.outcome === 'SUCCESS' ? (
+          auditEvent.outcome === 'SUCCESS' ? (
             <Tag color="success" icon={<CheckCircleOutlined />}>
               Муваффақиятли
             </Tag>
@@ -212,12 +228,16 @@ export const AuditEventDetailDrawer: React.FC<AuditEventDetailDrawerProps> = ({
       {
         key: 'ipAddress',
         label: 'IP манзил',
-        children: event.ipAddress ? <Text code>{event.ipAddress}</Text> : '—',
+        children: auditEvent.ipAddress ? (
+          <Text code>{auditEvent.ipAddress}</Text>
+        ) : (
+          '—'
+        ),
       },
       {
         key: 'userAgent',
         label: 'User Agent',
-        children: event.userAgent ? (
+        children: auditEvent.userAgent ? (
           <Text
             style={{
               fontSize: 11,
@@ -225,21 +245,95 @@ export const AuditEventDetailDrawer: React.FC<AuditEventDetailDrawerProps> = ({
               wordBreak: 'break-all',
             }}
           >
-            {event.userAgent}
+            {auditEvent.userAgent}
           </Text>
         ) : (
           '—'
         ),
       },
     ];
-  }, [event, token]);
+  }, [auditEvent, token]);
+
+  const deletionProofDescriptionItems = useMemo<
+    DescriptionsProps['items']
+  >(() => {
+    if (!deletionProof) return [];
+    return [
+      {
+        key: 'districtName',
+        label: 'Ўчирилган туман',
+        children: <Text strong>{deletionProof.districtName}</Text>,
+      },
+      {
+        key: 'districtId',
+        label: 'Туман ID',
+        children: <Text code>{deletionProof.districtId}</Text>,
+      },
+      {
+        key: 'lifecycleStatus',
+        label: 'Ўчириш жараёни ҳолати',
+        children: deletionProof.lifecycleComplete ? (
+          <Tag color="success" icon={<CheckCircleOutlined />}>
+            Тўлиқ якунланган (Lifecycle Complete)
+          </Tag>
+        ) : deletionProof.liveDeletionStatus === 'FAILED' ||
+          deletionProof.backupExpiryStatus === 'FAILED' ||
+          deletionProof.restoreReconciliationStatus === 'FAILED' ? (
+          <Tag color="error" icon={<CloseCircleOutlined />}>
+            Хатолик юз берган (Action Required)
+          </Tag>
+        ) : (
+          <Tag color="processing" icon={<ClockCircleOutlined />}>
+            Жараёнда (30 кунлик заҳира кутилмоқда)
+          </Tag>
+        ),
+      },
+      {
+        key: 'cancelledBy',
+        label: 'Бекор қилувчи',
+        children: deletionProof.cancelledById ? (
+          <Space size="small">
+            <Tag color="blue" icon={<SafetyCertificateOutlined />}>
+              Маҳсулот эгаси
+            </Tag>
+            <Text code style={{ fontSize: 12 }}>
+              {deletionProof.cancelledById}
+            </Text>
+          </Space>
+        ) : (
+          <Tag color="purple" icon={<GlobalOutlined />}>
+            Тизим (Автоматик)
+          </Tag>
+        ),
+      },
+      {
+        key: 'cancelledAt',
+        label: 'Бекор қилинган вақт',
+        children: deletionProof.cancelledAt
+          ? formatTashkentDate(deletionProof.cancelledAt)
+          : '—',
+      },
+      {
+        key: 'cancellationReason',
+        label: 'Бекор қилиш сабаби / изоҳ',
+        children: deletionProof.cancellationReason || '—',
+      },
+      {
+        key: 'createdAt',
+        label: 'Маълумотнома яратилган вақт',
+        children: formatTashkentDate(deletionProof.createdAt),
+      },
+    ];
+  }, [deletionProof]);
 
   return (
     <Drawer
       title={
         <Space direction="vertical" size={2} style={{ width: '100%' }}>
           <Text strong style={{ fontSize: 16 }}>
-            Аудит ёзуви тафсилоти
+            {isDeletionProof
+              ? 'Ўчирилганлик маълумотномаси тафсилоти'
+              : 'Аудит ёзуви тафсилоти'}
           </Text>
           {event && (
             <Paragraph
@@ -253,27 +347,164 @@ export const AuditEventDetailDrawer: React.FC<AuditEventDetailDrawerProps> = ({
         </Space>
       }
       placement="right"
-      width={screens.md ? 640 : '100%'}
+      width={screens.md ? 680 : '100%'}
       onClose={onClose}
       open={open}
       destroyOnClose={true}
-      aria-label="Аудит ёзуви тафсилоти панели"
+      aria-label={
+        isDeletionProof
+          ? 'Ўчирилганлик маълумотномаси тафсилоти панели'
+          : 'Аудит ёзуви тафсилоти панели'
+      }
     >
       {loading ? (
         <Skeleton active paragraph={{ rows: 10 }} />
       ) : !event ? (
         <Empty description="Маълумот топилмади" />
-      ) : (
-        <Space direction="vertical" size="large" style={{ width: '100%', display: 'flex' }}>
+      ) : isDeletionProof && deletionProof ? (
+        <Space
+          direction="vertical"
+          size="large"
+          style={{ width: '100%', display: 'flex' }}
+        >
           <Descriptions
             bordered
             size="small"
             column={1}
-            items={descriptionItems}
+            items={deletionProofDescriptionItems}
+            styles={{ label: { width: '38%', fontWeight: 600 } }}
+          />
+
+          {/* 3-Milestone Deletion Lifecycle Verification Card */}
+          <Card
+            size="small"
+            title={
+              <Space>
+                <SafetyCertificateOutlined style={{ color: token.colorPrimary }} />
+                <Text strong>Ўчириш жараёни босқичлари (3-Milestone Lifecycle)</Text>
+              </Space>
+            }
+            style={{
+              borderColor: token.colorBorderSecondary,
+              background: token.colorBgContainer,
+            }}
+          >
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              {/* Milestone 1: Live Deletion */}
+              <div style={{ padding: token.paddingSM, background: token.colorFillAlter, borderRadius: token.borderRadiusSM }}>
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text strong style={{ fontSize: 13 }}>
+                      1-босқич: Жонли тизимдан ўчириш (Live Deletion)
+                    </Text>
+                    {deletionProof.liveDeletionStatus === 'COMPLETED' ? (
+                      <Tag color="success" icon={<CheckCircleOutlined />}>
+                        Якунланган
+                      </Tag>
+                    ) : (
+                      <Tag color="error" icon={<CloseCircleOutlined />}>
+                        Хатолик
+                      </Tag>
+                    )}
+                  </div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Режадаги вақт: {formatTashkentDate(deletionProof.scheduledLiveDeletionAt)} | Амалда: {formatTashkentDate(deletionProof.actualLiveDeletionAt)}
+                  </Text>
+                  <Text style={{ fontSize: 12 }}>
+                    Барча 17 та маълумотлар базаси жадваллари ва маҳаллий хотирадан маълумотлар тўлиқ тозаланган.
+                  </Text>
+                </Space>
+              </div>
+
+              {/* Milestone 2: Protected Backup Expiry */}
+              <div style={{ padding: token.paddingSM, background: token.colorFillAlter, borderRadius: token.borderRadiusSM }}>
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text strong style={{ fontSize: 13 }}>
+                      2-босқич: Ҳимояланган заҳира нусхалари муддати (Protected Backup Expiry)
+                    </Text>
+                    {deletionProof.backupExpiryStatus === 'VERIFIED' ? (
+                      <Tag color="success" icon={<CheckCircleOutlined />}>
+                        Тасдиқланган (Verified)
+                      </Tag>
+                    ) : deletionProof.backupExpiryStatus === 'FAILED' ? (
+                      <Tag color="error" icon={<CloseCircleOutlined />}>
+                        Хатолик / Муддати ўтган
+                      </Tag>
+                    ) : (
+                      <Tag color="processing" icon={<ClockCircleOutlined />}>
+                        Кутилмоқда (30 кунлик муддат)
+                      </Tag>
+                    )}
+                  </div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    30 кунлик заҳира тугаш муддати: {formatTashkentDate(deletionProof.protectedBackupExpiryDeadline)}
+                    {deletionProof.backupExpiryVerifiedAt && ` | Текширилган: ${formatTashkentDate(deletionProof.backupExpiryVerifiedAt)}`}
+                  </Text>
+                  <Text style={{ fontSize: 12 }}>
+                    pgBackRest заҳира омборидаги шифрланган WAL ва тўлиқ тизим нусхаларининг табиий муддати ўтиб тозаланиши.
+                  </Text>
+                </Space>
+              </div>
+
+              {/* Milestone 3: Disaster Restore Reconciliation */}
+              <div style={{ padding: token.paddingSM, background: token.colorFillAlter, borderRadius: token.borderRadiusSM }}>
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text strong style={{ fontSize: 13 }}>
+                      3-босқич: Фалокатдан сўнг тикланишни мувофиқлаштириш (Disaster Restore Reconciliation)
+                    </Text>
+                    {deletionProof.restoreReconciliationStatus === 'RECONCILED' ? (
+                      <Tag color="success" icon={<CheckCircleOutlined />}>
+                        Тасдиқланган (Reconciled)
+                      </Tag>
+                    ) : deletionProof.restoreReconciliationStatus === 'FAILED' ? (
+                      <Tag color="error" icon={<CloseCircleOutlined />}>
+                        Хатолик
+                      </Tag>
+                    ) : (
+                      <Tag color="default">
+                        {deletionProof.restoreReconciliationStatus === 'PENDING'
+                          ? 'Кутилмоқда (Pending)'
+                          : deletionProof.restoreReconciliationStatus || '—'}
+                      </Tag>
+                    )}
+                  </div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Текширилган вақт: {deletionProof.restoreReconciliationVerifiedAt ? formatTashkentDate(deletionProof.restoreReconciliationVerifiedAt) : '—'}
+                  </Text>
+                  <Text style={{ fontSize: 12 }}>
+                    Тизим фалокатдан тикланганда ўчирилганлик маълумотномаси қайта қўлланилади ва тикланган маълумотлар қайта жонланмайди.
+                  </Text>
+                </Space>
+              </div>
+            </Space>
+          </Card>
+
+          {/* Privacy Guarantee Banner */}
+          <Alert
+            type="info"
+            showIcon
+            icon={<SafetyCertificateOutlined style={{ color: token.colorInfo }} />}
+            message="Шахсий маълумотлар дахлсизлиги кафолати"
+            description="Ушбу маълумотнома фақат хавфсиз операцион метамаълумотларни ўз ичига олади. Фуқароларнинг Телеграм хабарлари, шахсий маълумотлари, бот токенлари ва ҳисоб маълумотлари тўлиқ тозаланган ва сақланмайди."
+          />
+        </Space>
+      ) : auditEvent ? (
+        <Space
+          direction="vertical"
+          size="large"
+          style={{ width: '100%', display: 'flex' }}
+        >
+          <Descriptions
+            bordered
+            size="small"
+            column={1}
+            items={standardDescriptionItems}
             styles={{ label: { width: '35%', fontWeight: 600 } }}
           />
 
-          {event.reason && (
+          {auditEvent.reason && (
             <Card
               size="small"
               title={<Text strong>Кўрсатилган сабаб / изоҳ</Text>}
@@ -282,7 +513,7 @@ export const AuditEventDetailDrawer: React.FC<AuditEventDetailDrawerProps> = ({
                 borderColor: token.colorBorderSecondary,
               }}
             >
-              <Paragraph style={{ margin: 0 }}>{event.reason}</Paragraph>
+              <Paragraph style={{ margin: 0 }}>{auditEvent.reason}</Paragraph>
             </Card>
           )}
 
@@ -308,7 +539,10 @@ export const AuditEventDetailDrawer: React.FC<AuditEventDetailDrawerProps> = ({
                     dataIndex: 'previousValue',
                     key: 'previousValue',
                     render: (v: string) => (
-                      <Text type="secondary" style={{ wordBreak: 'break-all' }}>
+                      <Text
+                        type="secondary"
+                        style={{ wordBreak: 'break-all' }}
+                      >
                         {v}
                       </Text>
                     ),
@@ -369,7 +603,8 @@ export const AuditEventDetailDrawer: React.FC<AuditEventDetailDrawerProps> = ({
             </Card>
           )}
         </Space>
-      )}
+      ) : null}
     </Drawer>
   );
 };
+

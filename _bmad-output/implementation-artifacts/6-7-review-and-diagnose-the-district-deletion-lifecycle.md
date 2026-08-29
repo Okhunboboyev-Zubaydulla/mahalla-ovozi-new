@@ -4,7 +4,7 @@ baseline_commit: 7dff36279ea62e01839aa684ff85a38c9a388328
 
 # Story 6.7: Review and Diagnose the District Deletion Lifecycle
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -136,49 +136,49 @@ so that I can verify permanent offboarding without exposing or recreating delete
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Shared API Contracts & Zod Schemas in `@mahalla-ovozi/api-contracts`** (AC: 1, 2, 6)
-  - [ ] 1.1 In `packages/api-contracts/src/audit.ts`:
-    - Define `PermanentDeletionProofSchema` and export `PermanentDeletionProof` type with all privacy-safe tombstone fields (`id`, `recordType: 'PERMANENT_DELETION_PROOF'`, `districtId`, `districtName`, `cancelledAt`, `cancelledById`, `cancellationReason`, `scheduledLiveDeletionAt`, `actualLiveDeletionAt`, `liveDeletionStatus`, `protectedBackupExpiryDeadline`, `backupExpiryStatus`, `backupExpiryVerifiedAt`, `restoreReconciliationStatus`, `restoreReconciliationVerifiedAt`, `lifecycleComplete`, `createdAt`).
-    - Extend `AuditEventSchema` with `recordType: z.literal('AUDIT_EVENT').default('AUDIT_EVENT')`.
-    - Define `AuditHistoryItemSchema = z.discriminatedUnion('recordType', [AuditEventSchema.extend({ recordType: z.literal('AUDIT_EVENT') }), PermanentDeletionProofSchema])` and export `AuditHistoryItem` type.
-    - Update `AuditEventDetailSchema = AuditHistoryItemSchema` and export `AuditEventDetail = AuditHistoryItem`.
-    - Update `AuditHistoryQuerySchema` to include `recordType: z.enum(['ALL', 'AUDIT_EVENT', 'PERMANENT_DELETION_PROOF']).default('ALL')`.
-    - Update `AuditHistoryPageSchema = createKeysetPageSchema(AuditHistoryItemSchema)` and export updated `AuditHistoryPage` type.
-  - [ ] 1.2 In `packages/api-contracts/src/issues.ts`:
-    - Ensure `LIFECYCLE_DELETION`, `BACKUP_EXPIRY_DELAY`, and `DISASTER_RECOVERY` are in `IssueCategoryEnumSchema`.
-  - [ ] 1.3 In `packages/api-contracts/src/index.ts`:
-    - Re-export `PermanentDeletionProof`, `PermanentDeletionProofSchema`, `AuditHistoryItem`, and `AuditHistoryItemSchema`.
+- [x] **Task 1: Shared API Contracts & Zod Schemas in `@mahalla-ovozi/api-contracts`** (AC: 1, 2, 6)
+  - [x] 1.1 In `packages/api-contracts/src/audit.ts`:
+    - Defined `PermanentDeletionProofSchema` and exported `PermanentDeletionProof` type with all privacy-safe tombstone fields (`id`, `recordType: 'PERMANENT_DELETION_PROOF'`, `districtId`, `districtName`, `cancelledAt`, `cancelledById`, `cancellationReason`, `scheduledLiveDeletionAt`, `actualLiveDeletionAt`, `liveDeletionStatus`, `protectedBackupExpiryDeadline`, `backupExpiryStatus`, `backupExpiryVerifiedAt`, `restoreReconciliationStatus`, `restoreReconciliationVerifiedAt`, `lifecycleComplete`, `createdAt`).
+    - Extended `AuditEventSchema` with `recordType: z.literal('AUDIT_EVENT').default('AUDIT_EVENT')`.
+    - Defined `AuditHistoryItemSchema = z.discriminatedUnion('recordType', [AuditEventSchema.extend({ recordType: z.literal('AUDIT_EVENT') }), PermanentDeletionProofSchema])` and exported `AuditHistoryItem` type.
+    - Updated `AuditEventDetailSchema = AuditHistoryItemSchema` and exported `AuditEventDetail = AuditHistoryItem`.
+    - Updated `AuditHistoryQuerySchema` to include `recordType: z.enum(['ALL', 'AUDIT_EVENT', 'PERMANENT_DELETION_PROOF']).default('ALL')`.
+    - Updated `AuditHistoryPageSchema = createKeysetPageSchema(AuditHistoryItemSchema)` and exported updated `AuditHistoryPage` type.
+  - [x] 1.2 In `packages/api-contracts/src/issues.ts`:
+    - Ensured `LIFECYCLE_DELETION`, `BACKUP_EXPIRY_DELAY`, and `DISASTER_RECOVERY` are in `IssueCategoryEnumSchema`.
+  - [x] 1.3 In `packages/api-contracts/src/index.ts`:
+    - Re-exported `PermanentDeletionProof`, `PermanentDeletionProofSchema`, `AuditHistoryItem`, and `AuditHistoryItemSchema`.
 
-- [ ] **Task 2: Backend Audit Query Service & Routing Integration** (AC: 1, 2, 7)
-  - [ ] 2.1 In `apps/backend/src/modules/audit/audit-query-service.ts`:
-    - Update `queryAuditEvents` to support querying and interleaving `district_deletion_records` when `recordType` is `'ALL'` or `'PERMANENT_DELETION_PROOF'`.
-    - Prescribe PostgreSQL `UNION ALL` subquery structure with unified projection `(id, district_id, record_type, created_at, ...)` to ensure deterministic keyset pagination tuple comparisons `(created_at, id) < (cursorDate, cursorId)` in forward and backward directions.
-    - Map `district_deletion_records` rows to `PermanentDeletionProof` objects with `recordType: 'PERMANENT_DELETION_PROOF'` and computed `lifecycleComplete = (row.liveDeletionStatus === 'COMPLETED' && row.backupExpiryStatus === 'VERIFIED')`.
-    - Implement free-text search on `district_deletion_records` matching `districtName`, `districtId`, `cancellationReason`, and `cancelledById`.
-    - Update `getAuditEventById` to check `district_deletion_records` by `id = :id OR district_id = :id` if not found in `audit_events`, returning the formatted `PermanentDeletionProof`.
-  - [ ] 2.2 In `apps/backend/src/modules/audit/audit-routes.ts`:
-    - Verify schema validation accepts `recordType` in query parameters.
-    - Ensure Product Owner authorization guard protects deletion proof queries.
-    - Return `AuditHistoryItemSchema` for both `/api/v1/audit/events` and `/api/v1/audit/events/:id`.
+- [x] **Task 2: Backend Audit Query Service & Routing Integration** (AC: 1, 2, 7)
+  - [x] 2.1 In `apps/backend/src/modules/audit/audit-query-service.ts`:
+    - Updated `queryAuditEvents` to support querying and interleaving `district_deletion_records` when `recordType` is `'ALL'` or `'PERMANENT_DELETION_PROOF'`.
+    - Implemented PostgreSQL `UNION ALL` subquery structure with unified projection `(id, district_id, record_type, created_at, ...)` ensuring deterministic keyset pagination tuple comparisons `(created_at, id) < (cursorDate, cursorId)` in forward and backward directions.
+    - Mapped `district_deletion_records` rows to `PermanentDeletionProof` objects with `recordType: 'PERMANENT_DELETION_PROOF'` and computed `lifecycleComplete = (row.liveDeletionStatus === 'COMPLETED' && row.backupExpiryStatus === 'VERIFIED')`.
+    - Implemented free-text search on `district_deletion_records` matching `districtName`, `districtId`, `cancellationReason`, and `cancelledById`.
+    - Updated `getAuditEventById` to check `district_deletion_records` by `id = :id OR district_id = :id` if not found in `audit_events`, returning the formatted `PermanentDeletionProof`.
+  - [x] 2.2 In `apps/backend/src/modules/audit/audit-routes.ts`:
+    - Verified schema validation accepts `recordType` in query parameters.
+    - Ensured Product Owner authorization guard protects deletion proof queries.
+    - Returned `AuditHistoryItemSchema` for both `/api/v1/audit/events` and `/api/v1/audit/events/:id`.
 
-- [ ] **Task 3: Operational Issues & Safe Retry Routing for Deletion Lifecycle** (AC: 3, 4, 5, 6)
-  - [ ] 3.1 In `apps/backend/src/modules/issues/retry-evaluator.ts`:
-    - Add `'LIFECYCLE_DELETION'` and `'BACKUP_EXPIRY_DELAY'` to `RETRY_ELIGIBLE_CATEGORIES`.
+- [x] **Task 3: Operational Issues & Safe Retry Routing for Deletion Lifecycle** (AC: 3, 4, 5, 6)
+  - [x] 3.1 In `apps/backend/src/modules/issues/retry-evaluator.ts`:
+    - Added `'LIFECYCLE_DELETION'` and `'BACKUP_EXPIRY_DELAY'` to `RETRY_ELIGIBLE_CATEGORIES`.
     - In `deriveRetryJobSpec`:
-      - Extract target district ID from `issue.districtId || (issue.metadata?.deletedDistrictId as string) || (issue.metadata?.districtId as string)`.
-      - For `LIFECYCLE_DELETION`: map to `DISTRICT_LIVE_DELETION_QUEUE`, payload `{ districtId: targetDistrictId, issueId: issue.id }`, singletonKey `JobSingletonKeys.forLiveDeletion(targetDistrictId)`, operationType `'DISTRICT_LIVE_DELETION'`.
-      - For `BACKUP_EXPIRY_DELAY`: map to `DISTRICT_BACKUP_EXPIRY_QUEUE`, payload `{ districtId: targetDistrictId, issueId: issue.id }`, singletonKey `JobSingletonKeys.forBackupExpiry(targetDistrictId)`, operationType `'DISTRICT_BACKUP_EXPIRY'`.
-  - [ ] 3.2 In `apps/backend/src/modules/issues/retry-service.ts`:
-    - In `retryOperationalIssue`: bypass the active district access check (`district.status !== 'ACTIVE' && district.status !== 'GRACE'`) when the issue category is `LIFECYCLE_DELETION` or `BACKUP_EXPIRY_DELAY` (since the district is cancelled or its parent row is already purged).
-  - [ ] 3.3 In `apps/backend/src/modules/subscriptions/district-deletion-service.ts`:
-    - Ensure `executeDistrictLiveDeletion` creates an active `Critical` operational issue (`logicalKey = 'del_fail:${districtId}'`, `issueCategory = 'LIFECYCLE_DELETION'`) on uncaught purge/transaction failures.
-  - [ ] 3.4 In `apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts`:
-    - In `processDistrictDeletionJobs` and `processDistrictBackupExpiryJobs`: call `clearPendingRetryFlag(deps.db, job.data.issueId)` in `finally` blocks upon job completion or error so `pendingRetry` does not remain stuck `true`.
+      - Extracted target district ID from `issue.districtId || (issue.metadata?.deletedDistrictId as string) || (issue.metadata?.districtId as string)`.
+      - For `LIFECYCLE_DELETION`: mapped to `DISTRICT_LIVE_DELETION_QUEUE`, payload `{ districtId: targetDistrictId, issueId: issue.id }`, singletonKey `JobSingletonKeys.forLiveDeletion(targetDistrictId)`, operationType `'DISTRICT_LIVE_DELETION'`.
+      - For `BACKUP_EXPIRY_DELAY`: mapped to `DISTRICT_BACKUP_EXPIRY_QUEUE`, payload `{ districtId: targetDistrictId, issueId: issue.id }`, singletonKey `JobSingletonKeys.forBackupExpiry(targetDistrictId)`, operationType `'DISTRICT_BACKUP_EXPIRY'`.
+  - [x] 3.2 In `apps/backend/src/modules/issues/retry-service.ts`:
+    - In `retryOperationalIssue`: bypassed the active district access check (`district.status !== 'ACTIVE' && district.status !== 'GRACE'`) when the issue category is `LIFECYCLE_DELETION` or `BACKUP_EXPIRY_DELAY` (since the district is cancelled or its parent row is already purged).
+  - [x] 3.3 In `apps/backend/src/modules/subscriptions/district-deletion-service.ts`:
+    - Ensured `executeDistrictLiveDeletion` creates an active `Critical` operational issue (`logicalKey = 'del_fail:${districtId}'`, `issueCategory = 'LIFECYCLE_DELETION'`) on uncaught purge/transaction failures.
+  - [x] 3.4 In `apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts`:
+    - In `processDistrictDeletionJobs` and `processDistrictBackupExpiryJobs`: called `clearPendingRetryFlag(deps.db, job.data.issueId)` in `finally` blocks upon job completion or error so `pendingRetry` does not remain stuck `true`.
 
-- [ ] **Task 4: Frontend Audit History & Proof Detail Presentation** (AC: 1, 2, 7)
-  - [ ] 4.1 In `apps/web/src/components/audit/AuditEventDetailDrawer.tsx`:
-    - Support rendering `AuditHistoryItem` (discriminating on `item.recordType === 'PERMANENT_DELETION_PROOF'`).
-    - For permanent deletion proofs, display:
+- [x] **Task 4: Frontend Audit History & Proof Detail Presentation** (AC: 1, 2, 7)
+  - [x] 4.1 In `apps/web/src/components/audit/AuditEventDetailDrawer.tsx`:
+    - Supported rendering `AuditHistoryItem` (discriminating on `item.recordType === 'PERMANENT_DELETION_PROOF'`).
+    - For permanent deletion proofs, displayed:
       - Clean summary header with District Name and ID.
       - 3-Milestone progress visualization:
         1. **Live Deletion:** Actual deletion timestamp, status tag, cancellation details (`cancelledById` or 'Тизим (Автоматик)', `cancelledAt`).
@@ -188,27 +188,43 @@ so that I can verify permanent offboarding without exposing or recreating delete
       - Semantic status tags with icons (`CheckCircleOutlined`, `ClockCircleOutlined`, `CloseCircleOutlined`) and clear text labels ("Якунланган", "Кутилмоқда (30 кунлик муддат)", "Хатолик / Муддати ўтган", "Тасдиқланган").
       - Graceful fallback for optional cancellation and restore reconciliation fields.
       - Absence of edit/delete action buttons.
-  - [ ] 4.2 In `apps/web/src/components/audit/AuditFilterBar.tsx` & `apps/web/src/pages/AuditHistoryPage.tsx`:
-    - Add filter option for `recordType` (Барчаси / Аудит ҳодисалари / Ўчирилганлик маълумотномалари).
-    - Render polymorphic table columns discriminating on `record.recordType`:
+  - [x] 4.2 In `apps/web/src/components/audit/AuditFilterBar.tsx` & `apps/web/src/pages/AuditHistoryPage.tsx`:
+    - Added filter option for `recordType` (Барчаси / Аудит ҳодисалари / Ўчирилганлик маълумотномалари).
+    - Rendered polymorphic table columns discriminating on `record.recordType`:
       - For `PERMANENT_DELETION_PROOF`: Purple badge (`Ўчирилганлик маълумотномаси` with `SafetyCertificateOutlined`), Product Owner tag / approver ID, `liveDeletionStatus` outcome tag.
-      - For `AUDIT_EVENT`: Existing standard action/outcome rendering.
-  - [ ] 4.3 In `apps/web/src/lib/formatters.ts`:
-    - Add Uzbek Cyrillic formatters for deletion milestones and record types.
-  - [ ] 4.4 In `apps/web/src/api/audit-client.ts`:
-    - Update `fetchAuditEventDetail` to return `Promise<AuditHistoryItem>` validated by `AuditEventDetailSchema`.
+      - For `AUDIT_EVENT`: Standard action/outcome rendering.
+  - [x] 4.3 In `apps/web/src/lib/formatters.ts`:
+    - Added Uzbek Cyrillic formatters for deletion milestones and record types.
+  - [x] 4.4 In `apps/web/src/api/audit-client.ts`:
+    - Updated `fetchAuditEventDetail` to return `Promise<AuditHistoryItem>` validated by `AuditEventDetailSchema`.
 
-- [ ] **Task 5: Comprehensive Backend & Frontend Verification Suite** (AC: 8)
-  - [ ] 5.1 Create `apps/backend/tests/deletion-lifecycle-diagnostics.test.ts`:
+- [x] **Task 5: Comprehensive Backend & Frontend Verification Suite** (AC: 8)
+  - [x] 5.1 Created `apps/backend/tests/deletion-lifecycle-diagnostics.test.ts`:
     - Test 1: Query audit events including permanent deletion proofs via `AuditQueryService` and REST route with keyset pagination.
     - Test 2: Query single deletion proof by ID (`del_rec_*` and `districtId`) via `GET /api/v1/audit/events/:id`.
-    - Test 3: Verify content-free guarantee (proof schema strictly excludes resident text, bot tokens, or credentials).
+    - Test 3: Verified content-free guarantee (proof schema strictly excludes resident text, bot tokens, or credentials).
     - Test 4: Critical issue creation and retry handling for live deletion failure (`LIFECYCLE_DELETION`).
     - Test 5: Critical issue creation and retry handling for overdue backup expiry (`BACKUP_EXPIRY_DELAY`).
-    - Test 6: Verify `retryService` executes retries for cancelled/deleted district issues without access revocation rejections and resets `pendingRetry` flag.
-  - [ ] 5.2 Run verification gates:
-    - Run `pnpm typecheck` across all monorepo packages.
-    - Run `pnpm test` for backend test suites against `mahalla_ovozi_test`.
+    - Test 6: Verified `retryService` executes retries for cancelled/deleted district issues without access revocation rejections and resets `pendingRetry` flag.
+  - [x] 5.2 Ran verification gates:
+    - Ran `pnpm -r typecheck` across all monorepo packages (0 errors).
+    - Ran `pnpm test` for backend test suites against `mahalla_ovozi_test` (100% passing).
+    - Ran `pnpm --filter @mahalla-ovozi/web test` and `build` (282/282 passing unit tests, clean production bundle).
+
+### Review Findings
+
+- [x] [Review][Patch] HealthStatus Value Mismatch for Live-Deletion Operational Issues [`apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts:97`]
+- [x] [Review][Patch] Premature Batch Abortion in `processDistrictDeletionJobs` [`apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts:35-139`]
+- [x] [Review][Patch] Nullable `cancelledAt` in `PermanentDeletionProofSchema` [`packages/api-contracts/src/audit.ts:28`]
+- [x] [Review][Patch] Invalid `'global'` Target Fallback in `deriveRetryJobSpec` [`apps/backend/src/modules/issues/retry-evaluator.ts:240-277`]
+- [x] [Review][Patch] Bypassed Audit ID Prefix Convention and Foreign Key Safety in `retry-service.ts` [`apps/backend/src/modules/issues/retry-service.ts:182-198`]
+- [x] [Review][Patch] Keyset Cursor Pushdown Optimization in `queryUnifiedHistory` [`apps/backend/src/modules/audit/audit-query-service.ts:286-297`]
+- [x] [Review][Patch] Outcome Filter Matching for Multi-Milestone Deletion Records [`apps/backend/src/modules/audit/audit-query-service.ts:644-654`]
+- [x] [Review][Patch] Status Rendering & Fallback in `AuditHistoryPage` and `AuditEventDetailDrawer` [`apps/web/src/pages/AuditHistoryPage.tsx:236-268`, `apps/web/src/components/audit/AuditEventDetailDrawer.tsx:279-284, 465-467`]
+- [x] [Review][Patch] Date Formatter Null Date Guard in `formatTashkentDate` [`apps/web/src/lib/formatters.ts:1-29`]
+- [x] [Review][Patch] Action Display Names & Allowed Metadata Search Keys Extension [`apps/web/src/lib/formatters.ts:117-151`, `packages/api-contracts/src/audit.ts:125-147`]
+- [x] [Review][Patch] Read-Then-Write Metadata Incomplete Update in `district-deletion-job-handler.ts` [`apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts:115-120`]
+- [x] [Review][Defer] Unhandled operational issue creation in overdue cancelled district live-deletion sweep [`apps/backend/src/modules/subscriptions/district-deletion-service.ts:795-812`] — deferred, pre-existing
 
 ---
 
