@@ -12,6 +12,7 @@ import {
   TELEGRAM_TOPIC_PROJECTION_QUEUE,
   TELEGRAM_TOPIC_RETENTION_QUEUE,
   DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE,
+  DISTRICT_LIVE_DELETION_QUEUE,
 } from '../adapters/jobs/boss-client.js';
 import { createDbPool, createDbClient, type DbClient } from '../adapters/db/client.js';
 import { ensureDefaultAiProfiles } from '../adapters/db/seeds.js';
@@ -27,6 +28,7 @@ import { registerTopicAssignmentJobHandler } from '../modules/topics/jobs/topic-
 import { registerTopicProjectionJobHandler } from '../modules/topics/jobs/topic-projection-job-handler.js';
 import { registerRetentionJobHandler } from '../modules/retention/jobs/retention-job-handler.js';
 import { registerSubscriptionExpiryJobHandler } from '../modules/subscriptions/jobs/subscription-expiry-job-handler.js';
+import { registerDistrictDeletionJobHandler } from '../modules/subscriptions/jobs/district-deletion-job-handler.js';
 
 let activeBossInstance: PgBoss | null = null;
 let internalPool: pg.Pool | null = null;
@@ -109,6 +111,10 @@ export async function registerWorkerPipelines(
 
   if (shouldWork(DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE)) {
     await registerSubscriptionExpiryJobHandler(boss, { db: ctx.db, boss: ctx.boss });
+  }
+
+  if (shouldWork(DISTRICT_LIVE_DELETION_QUEUE)) {
+    await registerDistrictDeletionJobHandler(boss, { db: ctx.db, boss: ctx.boss });
   }
 }
 

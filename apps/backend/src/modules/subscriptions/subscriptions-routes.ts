@@ -6,13 +6,14 @@ import {
   RestoreActiveRequestSchema,
   CancelDistrictRequestSchema,
   StartRecoveryRequestSchema,
-  ListDistrictSubscriptionsResponse,
-  GetDistrictSubscriptionResponse,
-  UpdateDistrictSubscriptionResponse,
-  StartGraceResponse,
-  RestoreActiveResponse,
-  CancelDistrictResponse,
-  StartRecoveryResponse,
+  type ListDistrictSubscriptionsResponse,
+  type GetDistrictSubscriptionResponse,
+  type UpdateDistrictSubscriptionResponse,
+  type StartGraceResponse,
+  type RestoreActiveResponse,
+  type CancelDistrictResponse,
+  type StartRecoveryResponse,
+  type ExecuteLiveDeletionResponse,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import { verifyStateChangingOrigin } from '../auth/origin-guard.js';
@@ -32,6 +33,12 @@ import {
   DistrictConfirmationMismatchError,
   RecoveryWindowExpiredError,
 } from './subscriptions-service.js';
+import {
+  executeDistrictLiveDeletion,
+  getDistrictDeletionRecord,
+  DistrictAlreadyDeletedError,
+  DistrictNotEligibleForDeletionError,
+} from './district-deletion-service.js';
 
 export interface SubscriptionRoutesDeps {
   db: DbClient;
@@ -380,6 +387,7 @@ export function registerSubscriptionRoutes(
           }
           if (
             err instanceof RecoveryWindowExpiredError ||
+            err instanceof DistrictAlreadyDeletedError ||
             err instanceof InvalidSubscriptionTransitionError ||
             err instanceof SubscriptionConcurrencyConflictError
           ) {
@@ -392,6 +400,84 @@ export function registerSubscriptionRoutes(
           }
           throw err;
         }
+      },
+    );
+
+    // 8. Execute live deletion immediately (Product Owner authorized)
+    scope.post(
+      '/api/v1/districts/:districtId/subscription/execute-live-deletion',
+      async (
+        req: FastifyRequest<{ Params: { districtId: string }; Body: unknown }>,
+        reply: FastifyReply,
+      ) => {
+        const { districtId } = req.params;
+        try {
+          const deletionRecord = await executeDistrictLiveDeletion(db, districtId, {
+            bypassDeadlineCheck: false,
+            actor: req.actor ? { id: req.actor.id, role: req.actor.role } : undefined,
+            context: {
+              ipAddress: req.ip || null,
+              userAgent: (req.headers['user-agent'] as string) || null,
+            },
+          });
+
+          if (!deletionRecord) {
+            return reply.status(409).send({
+              error: {
+                code: 'DISTRICT_NOT_ELIGIBLE_FOR_DELETION',
+                message: 'Туман ўчириш талабларига жавоб бермайди ёки ҳолати ўзгарган.',
+              },
+            });
+          }
+
+          const response: ExecuteLiveDeletionResponse = {
+            deletionRecord,
+            message: 'Туман маълумотлари жонли тизимдан бутунлай ўчирилди.',
+          };
+          return reply.status(200).send(response);
+        } catch (err: unknown) {
+          if (err instanceof DistrictNotFoundError) {
+            return reply.status(404).send({
+              error: {
+                code: err.code,
+                message: err.message,
+              },
+            });
+          }
+          if (
+            err instanceof DistrictNotEligibleForDeletionError ||
+            err instanceof DistrictAlreadyDeletedError
+          ) {
+            return reply.status(409).send({
+              error: {
+                code: err.code,
+                message: err.message,
+              },
+            });
+          }
+          throw err;
+        }
+      },
+    );
+
+    // 9. Get surviving deletion record tombstone
+    scope.get(
+      '/api/v1/districts/:districtId/deletion-record',
+      async (
+        req: FastifyRequest<{ Params: { districtId: string } }>,
+        reply: FastifyReply,
+      ) => {
+        const { districtId } = req.params;
+        const deletionRecord = await getDistrictDeletionRecord(db, districtId);
+        if (!deletionRecord) {
+          return reply.status(404).send({
+            error: {
+              code: 'DELETION_RECORD_NOT_FOUND',
+              message: 'Туман ўчирилганлик маълумотномаси топилмади.',
+            },
+          });
+        }
+        return reply.status(200).send({ deletionRecord });
       },
     );
   });

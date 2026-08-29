@@ -18,6 +18,10 @@ import {
   StartRecoveryRequest,
   StartRecoveryResponse,
   StartRecoveryResponseSchema,
+  ExecuteLiveDeletionResponse,
+  ExecuteLiveDeletionResponseSchema,
+  GetDistrictDeletionRecordResponse,
+  GetDistrictDeletionRecordResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
 
@@ -109,6 +113,30 @@ export const subscriptionClient = {
         body: JSON.stringify(payload || {}),
       },
       StartRecoveryResponseSchema,
+    );
+  },
+
+  executeDistrictLiveDeletion(
+    districtId: string,
+  ): Promise<ExecuteLiveDeletionResponse> {
+    return request<ExecuteLiveDeletionResponse>(
+      `/api/v1/districts/${encodeURIComponent(districtId)}/subscription/execute-live-deletion`,
+      {
+        method: 'POST',
+      },
+      ExecuteLiveDeletionResponseSchema,
+    );
+  },
+
+  getDistrictDeletionRecord(
+    districtId: string,
+  ): Promise<GetDistrictDeletionRecordResponse> {
+    return request<GetDistrictDeletionRecordResponse>(
+      `/api/v1/districts/${encodeURIComponent(districtId)}/deletion-record`,
+      {
+        method: 'GET',
+      },
+      GetDistrictDeletionRecordResponseSchema,
     );
   },
 };

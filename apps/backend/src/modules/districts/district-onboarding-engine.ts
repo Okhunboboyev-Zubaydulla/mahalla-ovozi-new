@@ -3,6 +3,7 @@ import { DbClient, DbOrTx } from '../../adapters/db/client.js';
 import {
   districts,
   districtSubscriptions,
+  districtDeletionRecords,
   districtTelegramBots,
   districtTelegramGroups,
   accounts,
@@ -16,6 +17,7 @@ import {
 } from '@mahalla-ovozi/api-contracts';
 import { recordAuditEvent } from '../audit/audit-service.js';
 import { formatDistrict } from './districts-service.js';
+import { DistrictAlreadyDeletedError } from '../subscriptions/district-deletion-service.js';
 
 /* ── Domain Errors ── */
 
@@ -370,6 +372,15 @@ export async function activateDistrict(
 
       const lockedDistrict = lockResult.rows[0];
       if (!lockedDistrict) {
+        const [tombstone] = await tx
+          .select()
+          .from(districtDeletionRecords)
+          .where(eq(districtDeletionRecords.districtId, districtId))
+          .limit(1);
+
+        if (tombstone && tombstone.liveDeletionStatus === 'COMPLETED') {
+          throw new DistrictAlreadyDeletedError(districtId);
+        }
         throw new DistrictNotFoundError(districtId);
       }
 

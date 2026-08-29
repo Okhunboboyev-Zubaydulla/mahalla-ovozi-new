@@ -66,6 +66,18 @@ export const SubscriptionsPage: React.FC = () => {
 
   const subscriptions = listData?.subscriptions || [];
 
+  // If in detail view but the selected district no longer exists (e.g. deleted), revert gracefully to list
+  useEffect(() => {
+    if (viewMode === 'detail' && selectedDistrictId && !isListLoading) {
+      const exists = subscriptions.some((s) => s.districtId === selectedDistrictId);
+      if (!exists) {
+        setViewMode('list');
+        setSelectedDistrictId(null);
+        message.info('Танланган туман тизимдан ўчирилган ёки мавжуд эмас.');
+      }
+    }
+  }, [viewMode, selectedDistrictId, isListLoading, subscriptions]);
+
   // Find active subscription from list
   const currentSubscription = currentDistrictId
     ? subscriptions.find((s) => s.districtId === currentDistrictId) || null
@@ -73,6 +85,12 @@ export const SubscriptionsPage: React.FC = () => {
 
   // Cache invalidation helper
   const invalidateSubscriptionQueries = async (districtId: string) => {
+    // 1. Remove district-scoped cache queries to prevent background 404 refetches on deletion
+    queryClient.removeQueries({
+      predicate: (query) => Array.isArray(query.queryKey) && query.queryKey.includes(districtId),
+    });
+
+    // 2. Invalidate top-level lists and global tracking queries
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['subscriptions'] }),
       queryClient.invalidateQueries({ queryKey: districtQueryKeys.list() }),
@@ -82,6 +100,8 @@ export const SubscriptionsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: districtQueryKeys.readiness(districtId) }),
       queryClient.invalidateQueries({ queryKey: districtQueryKeys.bot(districtId) }),
       queryClient.invalidateQueries({ queryKey: districtQueryKeys.groups(districtId) }),
+      queryClient.invalidateQueries({ queryKey: ['topics', districtId] }),
+      queryClient.invalidateQueries({ queryKey: ['evidence', districtId] }),
       queryClient.invalidateQueries({ queryKey: ['audit-history'] }),
       queryClient.invalidateQueries({ queryKey: ['health'] }),
     ]);

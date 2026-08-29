@@ -145,6 +145,7 @@ const ACTION_DISPLAY_NAMES_UZ: Record<string, string> = {
   DISTRICT_SERVICE_RESTORED_ACTIVE: 'Фаол ҳолат тикланди',
   DISTRICT_CANCELLED: 'Туман бекор қилинди (Cancelled)',
   DISTRICT_RECOVERY_STARTED: 'Туманни тиклаш бошланди (Recovery Started)',
+  DISTRICT_LIVE_DELETED: 'Туман жонли тизимдан бутунлай ўчирилди (Live Deletion Completed)',
 };
 
 export function getActionDisplayNameUz(action: string): string {

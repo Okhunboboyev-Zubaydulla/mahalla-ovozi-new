@@ -4,7 +4,7 @@ baseline_commit: 853c3c4b92b6732f7a01d672ea4c9ce93bdfbc13
 
 # Story 6.4: Execute Permanent Live-System District Deletion
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -137,29 +137,29 @@ so that offboarded District data cannot remain accessible or recoverable through
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Database Schema & Migration for `district_deletion_records`** (AC: 2, 4, 5, 10)
-  - [ ] 1.1 In `apps/backend/src/adapters/db/schema/district-deletion-records.ts`, create the `district_deletion_records` table:
+- [x] **Task 1: Database Schema & Migration for `district_deletion_records`** (AC: 2, 4, 5, 10)
+  - [x] 1.1 In `apps/backend/src/adapters/db/schema/district-deletion-records.ts`, create the `district_deletion_records` table:
     - Columns: `id` (text, PK), `districtId` (text, not null, unique index), `districtName` (text, not null), `cancelledAt` (timestamp with tz), `cancelledById` (text), `cancellationReason` (text), `scheduledLiveDeletionAt` (timestamp with tz, not null), `actualLiveDeletionAt` (timestamp with tz, not null, defaultNow), `liveDeletionStatus` (text, not null, default 'COMPLETED'), `protectedBackupExpiryDeadline` (timestamp with tz, not null), `backupExpiryStatus` (text, not null, default 'PENDING'), `backupExpiryVerifiedAt` (timestamp with tz), `restoreReconciliationStatus` (text), `restoreReconciliationVerifiedAt` (timestamp with tz), `createdAt` (timestamp with tz, not null, defaultNow), `updatedAt` (timestamp with tz, not null, defaultNow).
     - Constraints: Check constraint for `live_deletion_status IN ('COMPLETED', 'FAILED')`, check constraint for `backup_expiry_status IN ('PENDING', 'VERIFIED', 'FAILED')`, check constraint for `restore_reconciliation_status IS NULL OR restore_reconciliation_status IN ('PENDING', 'RECONCILED', 'FAILED')`.
     - Indexes: `uniqueIndex('district_deletion_records_district_id_uidx')`, `index('district_deletion_records_live_deletion_status_idx')`, `index('district_deletion_records_backup_expiry_status_idx')`, `index('district_deletion_records_restore_reconciliation_status_idx')`, `index('district_deletion_records_backup_expiry_deadline_idx')`.
-  - [ ] 1.2 Export `districtDeletionRecords` from `apps/backend/src/adapters/db/schema/index.ts`.
-  - [ ] 1.3 Generate and apply the Drizzle migration for `district_deletion_records` (`pnpm --filter @mahalla-ovozi/backend db:generate`).
+  - [x] 1.2 Export `districtDeletionRecords` from `apps/backend/src/adapters/db/schema/index.ts`.
+  - [x] 1.3 Generate and apply the Drizzle migration for `district_deletion_records` (`pnpm --filter @mahalla-ovozi/backend db:generate`).
 
-- [ ] **Task 2: Shared API Contracts & Zod Schemas in `@mahalla-ovozi/api-contracts`** (AC: 5, 6, 10)
-  - [ ] 2.1 In `packages/api-contracts/src/subscriptions.ts` (or `packages/api-contracts/src/deletion.ts`), define and export:
+- [x] **Task 2: Shared API Contracts & Zod Schemas in `@mahalla-ovozi/api-contracts`** (AC: 5, 6, 10)
+  - [x] 2.1 In `packages/api-contracts/src/subscriptions.ts` (or `packages/api-contracts/src/deletion.ts`), define and export:
     - `DistrictDeletionRecordSchema`: Zod schema matching `district_deletion_records` table fields, with `restoreReconciliationStatus: z.enum(['PENDING', 'RECONCILED', 'FAILED']).nullable().optional()`.
     - `ExecuteLiveDeletionResponseSchema`: `z.object({ deletionRecord: DistrictDeletionRecordSchema, message: z.string() })`.
     - `DistrictAlreadyDeletedErrorSchema`: `z.object({ code: z.literal('DISTRICT_ALREADY_DELETED'), message: z.string() })`.
     - `DistrictNotEligibleForDeletionErrorSchema`: `z.object({ code: z.literal('DISTRICT_NOT_ELIGIBLE_FOR_DELETION'), message: z.string() })`.
-  - [ ] 2.2 In `packages/api-contracts/src/audit.ts`, add `'DISTRICT_LIVE_DELETED'` to `DISTRICT_LIFECYCLE_AUDIT_ACTIONS`.
-  - [ ] 2.3 Build `@mahalla-ovozi/api-contracts` package (`pnpm --filter @mahalla-ovozi/api-contracts build`).
+  - [x] 2.2 In `packages/api-contracts/src/audit.ts`, add `'DISTRICT_LIVE_DELETED'` to `DISTRICT_LIFECYCLE_AUDIT_ACTIONS`.
+  - [x] 2.3 Build `@mahalla-ovozi/api-contracts` package (`pnpm --filter @mahalla-ovozi/api-contracts build`).
 
-- [ ] **Task 3: Backend District Deletion Service & Topological Cascading Engine** (AC: 1, 2, 3, 4, 5, 6, 7, 10, 11)
-  - [ ] 3.1 In `apps/backend/src/modules/subscriptions/district-deletion-service.ts`, implement domain errors and serializers:
+- [x] **Task 3: Backend District Deletion Service & Topological Cascading Engine** (AC: 1, 2, 3, 4, 5, 6, 7, 10, 11)
+  - [x] 3.1 In `apps/backend/src/modules/subscriptions/district-deletion-service.ts`, implement domain errors and serializers:
     - `DistrictAlreadyDeletedError`: 409 Conflict, code `'DISTRICT_ALREADY_DELETED'`.
     - `DistrictNotEligibleForDeletionError`: 409 Conflict, code `'DISTRICT_NOT_ELIGIBLE_FOR_DELETION'`.
     - `formatDistrictDeletionRecord(row: DistrictDeletionRecordEntity): DistrictDeletionRecord` converting Date fields to ISO-8601 UTC strings.
-  - [ ] 3.2 Implement `executeDistrictLiveDeletion(db, districtId, options?)`:
+  - [x] 3.2 Implement `executeDistrictLiveDeletion(db, districtId, options?)`:
     - Fast-path idempotency check: query `district_deletion_records` where `districtId = $1`. If exists and `liveDeletionStatus === 'COMPLETED'`, return existing formatted record.
     - Acquire row locks in consistent order inside transaction (`districts` first, then `district_subscriptions` second via `SELECT ... FOR UPDATE`).
     - **Lock-unblocking concurrency protection:** If `districts` row is not found under lock (e.g. concurrent worker deleted it and committed while waiting for lock), check `district_deletion_records`. If completed tombstone exists, return existing record idempotently. If no tombstone exists, throw `DistrictNotFoundError(districtId)`.
@@ -188,30 +188,30 @@ so that offboarded District data cannot remain accessible or recoverable through
       17. `DELETE FROM districts WHERE id = districtId`
     - Record global audit event `DISTRICT_LIVE_DELETED` (`districtId: null`, `actorRole: options?.actor?.role ?? 'SYSTEM'`, `actorId: options?.actor?.id ?? null`, metadata with safe IDs/timestamps).
     - Return formatted `DistrictDeletionRecord`.
-  - [ ] 3.3 Implement `processOverdueCancelledDistricts(db)`:
+  - [x] 3.3 Implement `processOverdueCancelledDistricts(db)`:
     - Query `district_subscriptions` where `status = 'CANCELLED' AND scheduled_transition_at <= NOW() AND scheduled_transition_type = 'LIVE_DELETION'` with `.orderBy(asc(districtSubscriptions.scheduledTransitionAt))` and `.limit(100)`.
     - Iterate and invoke `executeDistrictLiveDeletion` for each overdue District within its own isolated transaction boundary with structured error logging.
-  - [ ] 3.4 In `apps/backend/src/modules/subscriptions/subscriptions-service.ts`:
+  - [x] 3.4 In `apps/backend/src/modules/subscriptions/subscriptions-service.ts`:
     - In `startDistrictRecovery` and `activateDistrict`, if `districts` row is not found or before mutation, check `district_deletion_records`. If a tombstone exists, throw `DistrictAlreadyDeletedError(districtId)` (HTTP 409).
 
-- [ ] **Task 4: pg-boss Deletion Worker Pipeline & Cron Sweeper Registration** (AC: 1, 4, 9, 11)
-  - [ ] 4.1 In `apps/backend/src/adapters/jobs/boss-client.ts`:
+- [x] **Task 4: pg-boss Deletion Worker Pipeline & Cron Sweeper Registration** (AC: 1, 4, 9, 11)
+  - [x] 4.1 In `apps/backend/src/adapters/jobs/boss-client.ts`:
     - Add queue constants: `DISTRICT_LIVE_DELETION_QUEUE = 'district-live-deletion'`, `DISTRICT_LIVE_DELETION_CRON_QUEUE = 'district-live-deletion-cron'`.
     - Add job interface `DistrictLiveDeletionJobData`: `{ districtId: string; issueId?: string }`.
     - Add helper in `JobSingletonKeys`: `forLiveDeletion(districtId: string): string => 'live-del:' + districtId`.
     - Register default queue configs and update `initBossQueues`.
-  - [ ] 4.2 Create `apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts`:
+  - [x] 4.2 Create `apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts`:
     - Implement `processDistrictDeletionJobs` and `registerDistrictDeletionJobHandler`.
     - Configure delayed job consumer for `DISTRICT_LIVE_DELETION_QUEUE` and 1-minute recurring cron sweep for `DISTRICT_LIVE_DELETION_CRON_QUEUE`.
     - If `executeDistrictLiveDeletion` returns `null` (stale/recovered district), complete job gracefully as safe no-op.
     - On unrecoverable failure, record or update Critical operational issue in `operational_issues`.
-  - [ ] 4.3 In `apps/backend/src/entrypoints/worker.ts`:
+  - [x] 4.3 In `apps/backend/src/entrypoints/worker.ts`:
     - Register `registerDistrictDeletionJobHandler` within `registerWorkerPipelines`.
-  - [ ] 4.4 In `apps/backend/src/modules/subscriptions/subscriptions-service.ts`:
+  - [x] 4.4 In `apps/backend/src/modules/subscriptions/subscriptions-service.ts`:
     - In `cancelDistrict`, when `boss` is provided, enqueue delayed job to `DISTRICT_LIVE_DELETION_QUEUE` with `startAfter: 30 * 24 * 60 * 60` (30 days in seconds) and singleton key `JobSingletonKeys.forLiveDeletion(districtId)`.
 
-- [ ] **Task 5: Fastify REST API Routes & Access Guard Enforcement** (AC: 1, 5, 6)
-  - [ ] 5.1 In `apps/backend/src/modules/subscriptions/subscriptions-routes.ts`:
+- [x] **Task 5: Fastify REST API Routes & Access Guard Enforcement** (AC: 1, 5, 6)
+  - [x] 5.1 In `apps/backend/src/modules/subscriptions/subscriptions-routes.ts`:
     - Register `POST /api/v1/districts/:districtId/subscription/execute-live-deletion`:
       - Protected by Product Owner authentication and CSRF.
       - Calls `executeDistrictLiveDeletion` passing `req.actor`.
@@ -220,20 +220,20 @@ so that offboarded District data cannot remain accessible or recoverable through
       - Protected by Product Owner authentication.
       - Returns 200 with `DistrictDeletionRecord` or 404 if not found.
 
-- [ ] **Task 6: Frontend UI Expiry Feedback, State Invalidation & Access Denial Handling** (AC: 6, 8)
-  - [ ] 6.1 In `apps/web/src/api/subscription-client.ts`:
+- [x] **Task 6: Frontend UI Expiry Feedback, State Invalidation & Access Denial Handling** (AC: 6, 8)
+  - [x] 6.1 In `apps/web/src/api/subscription-client.ts`:
     - Add `executeDistrictLiveDeletion(districtId)` and `getDistrictDeletionRecord(districtId)`.
-  - [ ] 6.2 In `apps/web/src/lib/formatters.ts`:
+  - [x] 6.2 In `apps/web/src/lib/formatters.ts`:
     - Add localized string for `DISTRICT_LIVE_DELETED: 'Туман жонли тизимдан бутунлай ўчирилди (Live Deletion Completed)'`.
-  - [ ] 6.3 Update `apps/web/src/components/subscriptions/DistrictSubscriptionDetailCard.tsx`:
+  - [x] 6.3 Update `apps/web/src/components/subscriptions/DistrictSubscriptionDetailCard.tsx`:
     - Display explicit alert banner when recovery window has expired (`scheduledTransitionAt <= now`), indicating permanent live-system deletion is scheduled/in-progress.
     - Disable Start Recovery button with clear Uzbek Cyrillic explanation when 30-day window has expired.
-  - [ ] 6.4 Update `apps/web/src/pages/SubscriptionsPage.tsx`:
+  - [x] 6.4 Update `apps/web/src/pages/SubscriptionsPage.tsx`:
     - Invalidate TanStack query cache on deletion operations across `['subscriptions']`, `['districts']`, `['health']`, and `['audit-history']`.
     - Handle 404 on current detail card gracefully by clearing selection and returning to list view with informational notification.
 
-- [ ] **Task 7: Comprehensive Automated Verification Suite** (AC: 1 to 12)
-  - [ ] 7.1 Create backend integration test suite `apps/backend/tests/district-live-deletion.test.ts`:
+- [x] **Task 7: Comprehensive Automated Verification Suite** (AC: 1 to 12)
+  - [x] 7.1 Create backend integration test suite `apps/backend/tests/district-live-deletion.test.ts`:
     - Test 1: Successful live deletion of a cancelled district after 30-day deadline. Verify complete purging across all 17 tables (`topics`, `evidence`, `intakes`, `ai_operations`, `accounts`, `sessions`, `groups`, `subscriptions`, `districts`, etc.).
     - Test 2: Foreign key dependency resolution test — ensure `onDelete: 'restrict'` tables (`topic_projections -> accepted_evidence`, `accepted_evidence -> topics`) delete smoothly without foreign key violation.
     - Test 3: Multi-tenant isolation test — ensure other districts' topics, evidence, accounts, groups, and subscriptions are completely unaffected.
@@ -244,10 +244,22 @@ so that offboarded District data cannot remain accessible or recoverable through
     - Test 8: Background cron sweep test — verify `processOverdueCancelledDistricts` automatically finds and purges overdue cancelled districts.
     - Test 9: Global audit logging test — verify `DISTRICT_LIVE_DELETED` is logged with `districtId = null` and `actorRole = 'SYSTEM'`.
     - Test 10: Critical System Health issue test — verify failed deletion creates/updates a Critical operational issue.
-  - [ ] 7.2 Create frontend unit test suite `apps/web/tests/unit/DistrictLiveDeletion.test.tsx`:
+  - [x] 7.2 Create frontend unit test suite `apps/web/tests/unit/DistrictLiveDeletion.test.tsx`:
     - Test expired recovery window banner and disabled recovery action.
     - Test TanStack query cache invalidation on live deletion.
-  - [ ] 7.3 Run monorepo typecheck (`pnpm typecheck`) and verify zero errors across all packages.
+  - [x] 7.3 Run monorepo typecheck (`pnpm typecheck`) and verify zero errors across all packages.
+
+### Review Findings
+
+- [x] [Review][Patch] Enforce validateDistrictScope check at deletion service entrypoints [apps/backend/src/modules/subscriptions/district-deletion-service.ts:87]
+- [x] [Review][Patch] Resolve and purge active Global Operational Issues on successful live deletion [apps/backend/src/modules/subscriptions/district-deletion-service.ts:251]
+- [x] [Review][Patch] Require scheduled_transition_at in deletion eligibility guard when bypassDeadlineCheck is false [apps/backend/src/modules/subscriptions/district-deletion-service.ts:174]
+- [x] [Review][Patch] Store cancellation reason in district_subscriptions during cancelDistrict [apps/backend/src/modules/subscriptions/subscriptions-service.ts:930]
+- [x] [Review][Patch] Clear selectedDistrictId and viewMode in SubscriptionsPage when subscriptions list is empty [apps/web/src/pages/SubscriptionsPage.tsx:71]
+- [x] [Review][Patch] Invalidate standalone topics and evidence query keys on subscription/district deletion [apps/web/src/pages/SubscriptionsPage.tsx:87]
+- [x] [Review][Patch] Add deletedDistrictId and deletedDistrictName to ALLOWED_METADATA_SEARCH_KEYS [packages/api-contracts/src/audit.ts:90]
+- [x] [Review][Patch] Harden operational issue creation against concurrent insert race conditions [apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts:69]
+- [x] [Review][Defer] Inflight intake qualification worker error handling on purged records [apps/backend/src/modules/intake/] — deferred, pre-existing
 
 ---
 
@@ -445,10 +457,48 @@ export type DistrictNotEligibleForDeletionError = z.infer<typeof DistrictNotElig
 
 ### Agent Model Used
 
-Gemini 3.7 Flash (High)
+Gemini 3.7 Flash
 
 ### Debug Log References
 
+- Integration Test Suite: `apps/backend/tests/district-live-deletion.test.ts` (10 passed)
+- Frontend Unit Test Suite: `apps/web/tests/unit/DistrictLiveDeletion.test.tsx` (3 passed)
+- Monorepo Full Typecheck: `pnpm typecheck` (zero errors across 3 packages)
+- Full Backend Test Suite: 57 test files, 824 tests passed
+- Full Web Test Suite: 48 test files, 277 tests passed
+
 ### Completion Notes List
 
+1. Implemented `district_deletion_records` table and schema with check constraints and index definitions in `apps/backend/src/adapters/db/schema/district-deletion-records.ts` and migration `0018_silent_amphibian.sql`.
+2. Created shared API contracts in `@mahalla-ovozi/api-contracts` including `DistrictDeletionRecordSchema`, `ExecuteLiveDeletionResponseSchema`, and `DISTRICT_LIVE_DELETED` audit action.
+3. Implemented topological live data cascading deletion service `apps/backend/src/modules/subscriptions/district-deletion-service.ts` enforcing strict order across 17 database tables, row locking (`districts` -> `district_subscriptions`), lock-unblocking tombstone verification, 30-day deadline enforcement, stale job protections, and global audit logging.
+4. Integrated pg-boss delayed deletion jobs (`DISTRICT_LIVE_DELETION_QUEUE`) and 1-minute fallback recurring cron sweep (`DISTRICT_LIVE_DELETION_CRON_QUEUE`) in `district-deletion-job-handler.ts` and `worker.ts`.
+5. Registered Fastify REST endpoints `POST /api/v1/districts/:districtId/subscription/execute-live-deletion` and `GET /api/v1/districts/:districtId/deletion-record`.
+6. Updated frontend UI with expired recovery window warning banners, disabled recovery action buttons, and TanStack query cache invalidation.
+7. Verified all 12 Acceptance Criteria with automated tests across backend and web packages against isolated PostgreSQL test database `mahalla_ovozi_test`.
+
 ### File List
+
+#### Files Created [NEW]
+1. `apps/backend/src/adapters/db/schema/district-deletion-records.ts`
+2. `apps/backend/drizzle/0018_silent_amphibian.sql`
+3. `apps/backend/src/modules/subscriptions/district-deletion-service.ts`
+4. `apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts`
+5. `apps/backend/tests/district-live-deletion.test.ts`
+6. `apps/web/tests/unit/DistrictLiveDeletion.test.tsx`
+
+#### Files Modified [UPDATE]
+1. `apps/backend/src/adapters/db/schema/index.ts`
+2. `packages/api-contracts/src/subscriptions.ts`
+3. `packages/api-contracts/src/audit.ts`
+4. `apps/backend/src/adapters/jobs/boss-client.ts`
+5. `apps/backend/src/modules/subscriptions/subscriptions-service.ts`
+6. `apps/backend/src/modules/subscriptions/subscriptions-routes.ts`
+7. `apps/backend/src/modules/districts/district-onboarding-engine.ts`
+8. `apps/backend/src/modules/districts/districts-routes.ts`
+9. `apps/backend/src/entrypoints/worker.ts`
+10. `apps/web/src/api/subscription-client.ts`
+11. `apps/web/src/lib/formatters.ts`
+12. `apps/web/src/components/subscriptions/DistrictSubscriptionDetailCard.tsx`
+13. `apps/web/src/pages/SubscriptionsPage.tsx`
+14. `_bmad-output/implementation-artifacts/sprint-status.yaml`

@@ -22,6 +22,7 @@ import {
   DistrictNotReadyForActivationError,
   DistrictInvalidStatusError,
 } from './district-onboarding-engine.js';
+import { DistrictAlreadyDeletedError } from '../subscriptions/district-deletion-service.js';
 
 export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): void {
   // P3-D & P3-E: Encapsulate district routes in a plugin scope so requireProductOwner only applies here
@@ -234,7 +235,8 @@ function handleDistrictError(err: unknown, reply: FastifyReply) {
 
   if (
     err instanceof DistrictAlreadyActiveError ||
-    err instanceof DistrictInvalidStatusError
+    err instanceof DistrictInvalidStatusError ||
+    err instanceof DistrictAlreadyDeletedError
   ) {
     return reply.status(err.statusCode).send({
       error: { code: err.code, message: err.message },

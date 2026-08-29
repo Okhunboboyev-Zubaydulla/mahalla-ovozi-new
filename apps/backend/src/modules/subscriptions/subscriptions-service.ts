@@ -4,6 +4,7 @@ import { DbClient, DbOrTx } from '../../adapters/db/client.js';
 import {
   districts,
   districtSubscriptions,
+  districtDeletionRecords,
   districtTelegramBots,
   districtTelegramGroups,
 } from '../../adapters/db/schema/index.js';
@@ -23,8 +24,10 @@ import {
   getOnboardingReadiness,
   DistrictNotReadyForActivationError,
 } from '../districts/district-onboarding-engine.js';
+import { DistrictAlreadyDeletedError } from './district-deletion-service.js';
 import {
   DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE,
+  DISTRICT_LIVE_DELETION_QUEUE,
   JobSingletonKeys,
   sendQueueJob,
 } from '../../adapters/jobs/boss-client.js';
@@ -136,6 +139,15 @@ export async function ensureDistrictSubscription(
     .limit(1);
 
   if (!dist) {
+    const [tombstone] = await db
+      .select()
+      .from(districtDeletionRecords)
+      .where(eq(districtDeletionRecords.districtId, districtId))
+      .limit(1);
+
+    if (tombstone && tombstone.liveDeletionStatus === 'COMPLETED') {
+      throw new DistrictAlreadyDeletedError(districtId);
+    }
     throw new DistrictNotFoundError(districtId);
   }
 
@@ -828,7 +840,7 @@ export async function processOverdueGraceSubscriptions(db: DbClient): Promise<nu
 
 export async function cancelDistrict(
   db: DbClient,
-  _boss: PgBoss | undefined,
+  boss: PgBoss | undefined,
   districtId: string,
   payload: CancelDistrictRequest,
   actor?: { id: string; role: string },
@@ -873,7 +885,8 @@ export async function cancelDistrict(
       id: string;
       district_id: string;
       status: string;
-    }>(sql`SELECT id, district_id, status FROM district_subscriptions WHERE district_id = ${districtId} FOR UPDATE`);
+      internal_note: string | null;
+    }>(sql`SELECT id, district_id, status, internal_note FROM district_subscriptions WHERE district_id = ${districtId} FOR UPDATE`);
 
     const lockedSub = lockSubResult.rows[0];
     if (!lockedSub) {
@@ -922,6 +935,7 @@ export async function cancelDistrict(
         statusStartedAt: now,
         scheduledTransitionAt,
         scheduledTransitionType: 'LIVE_DELETION',
+        internalNote: payload.reason ?? lockedSub.internal_note,
         updatedAt: now,
         updatedById: actor?.id ?? null,
       })
@@ -978,6 +992,29 @@ export async function cancelDistrict(
     throw new DistrictNotFoundError(districtId);
   }
 
+  // 10. Enqueue delayed live deletion job in pg-boss (30 days delay)
+  if (boss) {
+    try {
+      await sendQueueJob(
+        boss,
+        DISTRICT_LIVE_DELETION_QUEUE,
+        { districtId },
+        {
+          singletonKey: JobSingletonKeys.forLiveDeletion(districtId),
+          startAfter: 30 * 24 * 60 * 60, // 30 days in seconds
+        },
+      );
+    } catch (err) {
+      console.error(
+        JSON.stringify({
+          event: 'CANCEL_DISTRICT_ENQUEUE_LIVE_DELETION_FAILED',
+          districtId,
+          error: (err as Error).message,
+        }),
+      );
+    }
+  }
+
   return formatDistrictSubscription({
     id: updatedRow.id,
     districtId,
@@ -1009,6 +1046,15 @@ export async function startDistrictRecovery(
     .limit(1);
 
   if (!dist) {
+    const [tombstone] = await db
+      .select()
+      .from(districtDeletionRecords)
+      .where(eq(districtDeletionRecords.districtId, districtId))
+      .limit(1);
+
+    if (tombstone && tombstone.liveDeletionStatus === 'COMPLETED') {
+      throw new DistrictAlreadyDeletedError(districtId);
+    }
     throw new DistrictNotFoundError(districtId);
   }
 
@@ -1031,6 +1077,15 @@ export async function startDistrictRecovery(
 
     const lockedDistrict = lockDistrictResult.rows[0];
     if (!lockedDistrict) {
+      const [tombstone] = await tx
+        .select()
+        .from(districtDeletionRecords)
+        .where(eq(districtDeletionRecords.districtId, districtId))
+        .limit(1);
+
+      if (tombstone && tombstone.liveDeletionStatus === 'COMPLETED') {
+        throw new DistrictAlreadyDeletedError(districtId);
+      }
       throw new DistrictNotFoundError(districtId);
     }
     districtName = lockedDistrict.name;

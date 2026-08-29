@@ -95,6 +95,8 @@ export const ALLOWED_METADATA_SEARCH_KEYS = [
   'groupId',
   'chatId',
   'retryTrackingId',
+  'deletedDistrictId',
+  'deletedDistrictName',
 ] as const;
 
 export const DISTRICT_LIFECYCLE_AUDIT_ACTIONS = [
@@ -103,5 +105,6 @@ export const DISTRICT_LIFECYCLE_AUDIT_ACTIONS = [
   'DISTRICT_SERVICE_RESTORED_ACTIVE',
   'DISTRICT_CANCELLED',
   'DISTRICT_RECOVERY_STARTED',
+  'DISTRICT_LIVE_DELETED',
 ] as const;
 

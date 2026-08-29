@@ -205,4 +205,47 @@ export const RecoveryWindowExpiredErrorSchema = z.object({
 });
 export type RecoveryWindowExpiredError = z.infer<typeof RecoveryWindowExpiredErrorSchema>;
 
+export const DistrictDeletionRecordSchema = z.object({
+  id: z.string().min(1),
+  districtId: z.string().min(1),
+  districtName: z.string().min(1),
+  cancelledAt: z.string().datetime().nullable().optional(),
+  cancelledById: z.string().nullable().optional(),
+  cancellationReason: z.string().nullable().optional(),
+  scheduledLiveDeletionAt: z.string().datetime(),
+  actualLiveDeletionAt: z.string().datetime(),
+  liveDeletionStatus: z.enum(['COMPLETED', 'FAILED']),
+  protectedBackupExpiryDeadline: z.string().datetime(),
+  backupExpiryStatus: z.enum(['PENDING', 'VERIFIED', 'FAILED']),
+  backupExpiryVerifiedAt: z.string().datetime().nullable().optional(),
+  restoreReconciliationStatus: z.enum(['PENDING', 'RECONCILED', 'FAILED']).nullable().optional(),
+  restoreReconciliationVerifiedAt: z.string().datetime().nullable().optional(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type DistrictDeletionRecord = z.infer<typeof DistrictDeletionRecordSchema>;
+
+export const GetDistrictDeletionRecordResponseSchema = z.object({
+  deletionRecord: DistrictDeletionRecordSchema,
+});
+export type GetDistrictDeletionRecordResponse = z.infer<typeof GetDistrictDeletionRecordResponseSchema>;
+
+export const ExecuteLiveDeletionResponseSchema = z.object({
+  deletionRecord: DistrictDeletionRecordSchema,
+  message: z.string(),
+});
+export type ExecuteLiveDeletionResponse = z.infer<typeof ExecuteLiveDeletionResponseSchema>;
+
+export const DistrictAlreadyDeletedErrorSchema = z.object({
+  code: z.literal('DISTRICT_ALREADY_DELETED'),
+  message: z.string(),
+});
+export type DistrictAlreadyDeletedError = z.infer<typeof DistrictAlreadyDeletedErrorSchema>;
+
+export const DistrictNotEligibleForDeletionErrorSchema = z.object({
+  code: z.literal('DISTRICT_NOT_ELIGIBLE_FOR_DELETION'),
+  message: z.string(),
+});
+export type DistrictNotEligibleForDeletionError = z.infer<typeof DistrictNotEligibleForDeletionErrorSchema>;
+
 

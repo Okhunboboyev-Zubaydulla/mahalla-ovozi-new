@@ -13,5 +13,6 @@ export * from './topic-projections.js';
 export * from './user-visits.js';
 export * from './operational-issues.js';
 export * from './district-subscriptions.js';
+export * from './district-deletion-records.js';
 
 
