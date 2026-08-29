@@ -108,7 +108,7 @@ development_status:
   6-3-cancel-and-recover-a-district-before-live-deletion: done
   6-4-execute-permanent-live-system-district-deletion: done
   6-5-verify-protected-backup-expiry: done
-  6-6-reconcile-disaster-restores-before-re-enabling-service: backlog
+  6-6-reconcile-disaster-restores-before-re-enabling-service: ready-for-dev
   6-7-review-and-diagnose-the-district-deletion-lifecycle: backlog
   epic-6-retrospective: optional
 
