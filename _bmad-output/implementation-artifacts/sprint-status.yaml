@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-08-16
-last_updated: 2026-08-28
+last_updated: 2026-08-29
 project: Mahalla-Ovozi
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
@@ -107,7 +107,7 @@ development_status:
   6-2-manage-active-grace-and-suspended-district-service: done
   6-3-cancel-and-recover-a-district-before-live-deletion: done
   6-4-execute-permanent-live-system-district-deletion: done
-  6-5-verify-protected-backup-expiry: backlog
+  6-5-verify-protected-backup-expiry: ready-for-dev
   6-6-reconcile-disaster-restores-before-re-enabling-service: backlog
   6-7-review-and-diagnose-the-district-deletion-lifecycle: backlog
   epic-6-retrospective: optional
