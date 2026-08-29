@@ -248,4 +248,20 @@ export const DistrictNotEligibleForDeletionErrorSchema = z.object({
 });
 export type DistrictNotEligibleForDeletionError = z.infer<typeof DistrictNotEligibleForDeletionErrorSchema>;
 
+export const VerifyBackupExpiryResponseSchema = z.object({
+  deletionRecord: DistrictDeletionRecordSchema,
+  isExpired: z.boolean(),
+  message: z.string(),
+});
+export type VerifyBackupExpiryResponse = z.infer<typeof VerifyBackupExpiryResponseSchema>;
+
+export const BackupExpiryVerificationDetailsSchema = z.object({
+  isExpired: z.boolean(),
+  oldestActiveBackupTimestamp: z.string().datetime().nullable().optional(),
+  verificationMethod: z.string(),
+  rawDetails: z.record(z.unknown()).optional(),
+});
+export type BackupExpiryVerificationDetails = z.infer<typeof BackupExpiryVerificationDetailsSchema>;
+
+
 

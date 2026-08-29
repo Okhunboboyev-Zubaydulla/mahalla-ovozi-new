@@ -17,12 +17,19 @@ export const DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE = 'district-subscription-expiry'
 export const DISTRICT_SUBSCRIPTION_EXPIRY_CRON_QUEUE = 'district-subscription-expiry-cron';
 export const DISTRICT_LIVE_DELETION_QUEUE = 'district-live-deletion';
 export const DISTRICT_LIVE_DELETION_CRON_QUEUE = 'district-live-deletion-cron';
+export const DISTRICT_BACKUP_EXPIRY_QUEUE = 'district-backup-expiry';
+export const DISTRICT_BACKUP_EXPIRY_CRON_QUEUE = 'district-backup-expiry-cron';
 
 export interface DistrictSubscriptionExpiryJobData {
   districtId: string;
 }
 
 export interface DistrictLiveDeletionJobData {
+  districtId: string;
+  issueId?: string;
+}
+
+export interface DistrictBackupExpiryJobData {
   districtId: string;
   issueId?: string;
 }
@@ -113,6 +120,8 @@ export async function initBossQueues(boss: PgBoss): Promise<void> {
   await boss.createQueue(DISTRICT_SUBSCRIPTION_EXPIRY_CRON_QUEUE);
   await boss.createQueue(DISTRICT_LIVE_DELETION_QUEUE);
   await boss.createQueue(DISTRICT_LIVE_DELETION_CRON_QUEUE);
+  await boss.createQueue(DISTRICT_BACKUP_EXPIRY_QUEUE);
+  await boss.createQueue(DISTRICT_BACKUP_EXPIRY_CRON_QUEUE);
 }
 
 /**
@@ -174,6 +183,13 @@ export const JobSingletonKeys = {
   forLiveDeletion(districtId: string): string {
     return `live-del:${districtId}`;
   },
+
+  /**
+   * Deduplication key for District protected-backup expiry.
+   */
+  forBackupExpiry(districtId: string): string {
+    return `backup-exp:${districtId}`;
+  },
 };
 
 export interface BossQueueMap {
@@ -184,6 +200,7 @@ export interface BossQueueMap {
   [TELEGRAM_TOPIC_RETENTION_QUEUE]: TelegramTopicRetentionJobData;
   [DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE]: DistrictSubscriptionExpiryJobData;
   [DISTRICT_LIVE_DELETION_QUEUE]: DistrictLiveDeletionJobData;
+  [DISTRICT_BACKUP_EXPIRY_QUEUE]: DistrictBackupExpiryJobData;
 }
 
 export type BossQueueName = keyof BossQueueMap;
@@ -232,6 +249,13 @@ export const DEFAULT_QUEUE_CONFIGS: Record<string, Omit<PgBoss.SendOptions, 'db'
     retentionDays: 7,
   },
   [DISTRICT_LIVE_DELETION_QUEUE]: {
+    retryLimit: 3,
+    retryDelay: 60,
+    retryBackoff: true,
+    expireInMinutes: 15,
+    retentionDays: 7,
+  },
+  [DISTRICT_BACKUP_EXPIRY_QUEUE]: {
     retryLimit: 3,
     retryDelay: 60,
     retryBackoff: true,

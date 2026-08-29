@@ -20,6 +20,7 @@ import { registerDistrictTopicsRoutes } from '../modules/districts/district-topi
 import { registerGlobalAnalysisSettingsRoutes } from '../modules/ai/global-analysis-settings-routes.js';
 import { registerDistrictAnalysisSettingsRoutes } from '../modules/ai/district-analysis-settings-routes.js';
 import { registerSubscriptionRoutes } from '../modules/subscriptions/subscriptions-routes.js';
+import type { BackupRetentionVerifier } from '../modules/subscriptions/ports/backup-retention-verifier.js';
 import { createBossClient, initBossQueues } from '../adapters/jobs/boss-client.js';
 import type PgBoss from 'pg-boss';
 import pg from 'pg';
@@ -35,6 +36,7 @@ export interface HttpServerContext {
   db: DbClient;
   pool: pg.Pool;
   boss: PgBoss;
+  backupVerifier?: BackupRetentionVerifier;
 }
 
 /**
@@ -58,13 +60,18 @@ export function registerAllDomainRoutes(
   registerDistrictTopicsRoutes(server, ctx.db);
   registerGlobalAnalysisSettingsRoutes(server, ctx.db);
   registerDistrictAnalysisSettingsRoutes(server, ctx.db);
-  registerSubscriptionRoutes(server, { db: ctx.db, boss: ctx.boss });
+  registerSubscriptionRoutes(server, {
+    db: ctx.db,
+    boss: ctx.boss,
+    backupVerifier: ctx.backupVerifier,
+  });
 }
 
 export async function buildHttpServer(options?: {
   db?: DbClient;
   pool?: pg.Pool;
   boss?: PgBoss;
+  backupVerifier?: BackupRetentionVerifier;
 }): Promise<FastifyInstance> {
   const server = Fastify({
     logger: false, // Logging controlled via telemetry adapter
@@ -209,7 +216,12 @@ export async function buildHttpServer(options?: {
   });
 
   // Register domain module routes via unified context
-  const context: HttpServerContext = { db, pool, boss };
+  const context: HttpServerContext = {
+    db,
+    pool,
+    boss,
+    backupVerifier: options?.backupVerifier,
+  };
   registerAllDomainRoutes(server, context);
 
   return server;

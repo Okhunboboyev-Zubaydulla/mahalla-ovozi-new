@@ -4,7 +4,7 @@ baseline_commit: 517b01ea37a67e93af18d93c85dfb427ae3cafc9
 
 # Story 6.5: Verify Protected-Backup Expiry
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -90,13 +90,13 @@ so that live deletion is not undermined by indefinitely restorable backup copies
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Shared API Contracts & Zod Schemas in `@mahalla-ovozi/api-contracts`** (AC: 1, 2, 3, 5, 7)
-  - [ ] 1.1 In `packages/api-contracts/src/audit.ts`:
+- [x] **Task 1: Shared API Contracts & Zod Schemas in `@mahalla-ovozi/api-contracts`** (AC: 1, 2, 3, 5, 7)
+  - [x] 1.1 In `packages/api-contracts/src/audit.ts`:
     - Add `'DISTRICT_BACKUP_EXPIRY_VERIFIED'` and `'DISTRICT_BACKUP_EXPIRY_FAILED'` to `DISTRICT_LIFECYCLE_AUDIT_ACTIONS`.
     - Add `'oldestActiveBackupTimestamp'`, `'verificationMethod'`, and `'backupExpiryDeadline'` to `ALLOWED_METADATA_SEARCH_KEYS`.
-  - [ ] 1.2 In `packages/api-contracts/src/issues.ts`:
+  - [x] 1.2 In `packages/api-contracts/src/issues.ts`:
     - Add `'BACKUP_EXPIRY_DELAY'` and `'LIFECYCLE_DELETION'` to `IssueCategoryEnumSchema` and export updated `IssueCategory` type.
-  - [ ] 1.3 In `packages/api-contracts/src/subscriptions.ts`:
+  - [x] 1.3 In `packages/api-contracts/src/subscriptions.ts`:
     - Define and export `VerifyBackupExpiryResponseSchema`:
       ```ts
       export const VerifyBackupExpiryResponseSchema = z.object({
@@ -116,12 +116,12 @@ so that live deletion is not undermined by indefinitely restorable backup copies
       });
       export type BackupExpiryVerificationDetails = z.infer<typeof BackupExpiryVerificationDetailsSchema>;
       ```
-  - [ ] 1.4 In `packages/api-contracts/src/index.ts`:
+  - [x] 1.4 In `packages/api-contracts/src/index.ts`:
     - Re-export all schemas and types added in 1.1–1.3.
-  - [ ] 1.5 Build `@mahalla-ovozi/api-contracts` (`pnpm --filter @mahalla-ovozi/api-contracts build`).
+  - [x] 1.5 Build `@mahalla-ovozi/api-contracts` (`pnpm --filter @mahalla-ovozi/api-contracts build`).
 
-- [ ] **Task 2: Backup Repository Verifier Port & Adapters (Hexagonal Architecture)** (AC: 2, 4, 5)
-  - [ ] 2.1 Create `apps/backend/src/modules/subscriptions/ports/backup-retention-verifier.ts`:
+- [x] **Task 2: Backup Repository Verifier Port & Adapters (Hexagonal Architecture)** (AC: 2, 4, 5)
+  - [x] 2.1 Create `apps/backend/src/modules/subscriptions/ports/backup-retention-verifier.ts`:
     - Define interface `BackupVerificationResult`:
       ```ts
       export interface BackupVerificationResult {
@@ -143,7 +143,7 @@ so that live deletion is not undermined by indefinitely restorable backup copies
         }): Promise<BackupVerificationResult>;
       }
       ```
-  - [ ] 2.2 Create `apps/backend/src/adapters/backup/system-backup-verifier.ts`:
+  - [x] 2.2 Create `apps/backend/src/adapters/backup/system-backup-verifier.ts`:
     - Implement `SystemBackupRetentionVerifier` implementing `BackupRetentionVerifier`.
     - Define and parse pgBackRest JSON metadata structures:
       ```ts
@@ -167,15 +167,15 @@ so that live deletion is not undermined by indefinitely restorable backup copies
     - Rule: `isExpired = true` if and only if `totalBackupsCount === 0` OR all active backups have `b.timestamp.start * 1000 > actualLiveDeletionAt.getTime()`.
     - Convert `timestamp.start` to `Date` using `new Date(b.timestamp.start * 1000)`.
     - Supports environment configuration (`PGBACKREST_STANZA`, `PGBACKREST_REPO_PATH`, `BACKUP_INFO_COMMAND`) with safe fallback for environments without pgBackRest installed.
-  - [ ] 2.3 Create `apps/backend/src/adapters/backup/mock-backup-verifier.ts` for deterministic testing:
+  - [x] 2.3 Create `apps/backend/src/adapters/backup/mock-backup-verifier.ts` for deterministic testing:
     - Configurable mock verifier supporting:
       - Case A: Oldest backup newer than `actualLiveDeletionAt` -> `isExpired: true`.
       - Case B: Oldest backup older than `actualLiveDeletionAt` (pre-deadline) -> `isExpired: false`.
       - Case C: Oldest backup older than `actualLiveDeletionAt` (post-deadline) -> `isExpired: false`.
       - Case D: Repository error (e.g. storage unreachable / command error) -> throws error or returns error result.
 
-- [ ] **Task 3: Backend Backup Expiry Verification Service & Health Issue Manager Integration** (AC: 1, 2, 3, 4, 5, 7)
-  - [ ] 3.1 In `apps/backend/src/modules/subscriptions/district-deletion-service.ts`:
+- [x] **Task 3: Backend Backup Expiry Verification Service & Health Issue Manager Integration** (AC: 1, 2, 3, 4, 5, 7)
+  - [x] 3.1 In `apps/backend/src/modules/subscriptions/district-deletion-service.ts`:
     - Export `verifyDistrictBackupExpiry(db: DbClient, verifier: BackupRetentionVerifier, districtId: string, options?: { actor?: { id?: string | null; role?: string | null }; context?: { ipAddress?: string | null; userAgent?: string | null } })`:
       - Validate `districtId` using `validateDistrictScope(districtId)`.
       - Precondition check: In a transaction, select tombstone row with `FOR UPDATE` from `district_deletion_records` where `districtId = $1`. If not found, throw `DistrictNotFoundError` or `DeletionRecordNotFoundError`. If `liveDeletionStatus !== 'COMPLETED'`, throw `DistrictNotEligibleForDeletionError`.
@@ -208,20 +208,20 @@ so that live deletion is not undermined by indefinitely restorable backup copies
             - `metadata: { deletedDistrictId: districtId, deletedDistrictName: row.districtName, protectedBackupExpiryDeadline: row.protectedBackupExpiryDeadline.toISOString(), actualLiveDeletionAt: row.actualLiveDeletionAt.toISOString(), oldestActiveBackupTimestamp: result.oldestActiveBackupTimestamp?.toISOString() ?? null }`
           - Record global audit event `'DISTRICT_BACKUP_EXPIRY_FAILED'` (`districtId: null`, `actorRole: 'SYSTEM'`, safe metadata).
           - Return updated deletion record, `isExpired: false`, and localized error message.
-  - [ ] 3.2 Export `processOverdueBackupExpiries(db: DbClient, verifier: BackupRetentionVerifier)`:
+  - [x] 3.2 Export `processOverdueBackupExpiries(db: DbClient, verifier: BackupRetentionVerifier)`:
     - Query `district_deletion_records` where `live_deletion_status = 'COMPLETED' AND backup_expiry_status IN ('PENDING', 'FAILED')` ordered by `protectedBackupExpiryDeadline ASC` limit 100.
     - Process each pending/failed deletion record in its own isolated transaction and `try-catch` boundary with structured logging.
 
-- [ ] **Task 4: pg-boss Worker Pipeline & Fallback Cron Sweeper Registration** (AC: 4, 5, 6)
-  - [ ] 4.1 In `apps/backend/src/adapters/jobs/boss-client.ts`:
+- [x] **Task 4: pg-boss Worker Pipeline & Fallback Cron Sweeper Registration** (AC: 4, 5, 6)
+  - [x] 4.1 In `apps/backend/src/adapters/jobs/boss-client.ts`:
     - Add queue constants: `DISTRICT_BACKUP_EXPIRY_QUEUE = 'district-backup-expiry'`, `DISTRICT_BACKUP_EXPIRY_CRON_QUEUE = 'district-backup-expiry-cron'`.
     - Add job interface `DistrictBackupExpiryJobData`: `{ districtId: string; issueId?: string }`.
     - Add helper in `JobSingletonKeys`: `forBackupExpiry(districtId: string): string => 'backup-exp:' + districtId`.
     - Register default queue configs in `DEFAULT_QUEUE_CONFIGS` and update `initBossQueues`.
-  - [ ] 4.2 In `apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts`:
+  - [x] 4.2 In `apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts`:
     - Implement `processDistrictBackupExpiryJobs` and register workers for `DISTRICT_BACKUP_EXPIRY_QUEUE`.
     - Register 5-minute recurring cron sweep for `DISTRICT_BACKUP_EXPIRY_CRON_QUEUE` calling `processOverdueBackupExpiries`.
-  - [ ] 4.3 In `apps/backend/src/modules/subscriptions/district-deletion-service.ts`:
+  - [x] 4.3 In `apps/backend/src/modules/subscriptions/district-deletion-service.ts`:
     - In `executeDistrictLiveDeletion`, accept optional `boss?: PgBoss` in `ExecuteDistrictLiveDeletionOptions`.
     - When `boss` is provided, enqueue delayed job to `DISTRICT_BACKUP_EXPIRY_QUEUE` with:
       ```ts
@@ -231,36 +231,36 @@ so that live deletion is not undermined by indefinitely restorable backup copies
         singletonKey: JobSingletonKeys.forBackupExpiry(districtId),
       });
       ```
-  - [ ] 4.4 In `apps/backend/src/entrypoints/worker.ts`:
+  - [x] 4.4 In `apps/backend/src/entrypoints/worker.ts`:
     - Add `backupVerifier: BackupRetentionVerifier` to `WorkerPipelineContext`.
     - Instantiate `SystemBackupRetentionVerifier` (or use injected verifier) and pass to `registerDistrictDeletionJobHandler`.
 
-- [ ] **Task 5: Fastify REST API Routes & Access Guard Enforcement** (AC: 1, 3, 8)
-  - [ ] 5.1 In `apps/backend/src/modules/subscriptions/subscriptions-routes.ts`:
+- [x] **Task 5: Fastify REST API Routes & Access Guard Enforcement** (AC: 1, 3, 8)
+  - [x] 5.1 In `apps/backend/src/modules/subscriptions/subscriptions-routes.ts`:
     - Register `POST /api/v1/districts/:districtId/deletion-record/verify-backup-expiry`:
       - Protected by Product Owner authentication (`createRequireProductOwner(db)`) and CSRF guard (`verifyStateChangingOrigin`).
       - Calls `verifyDistrictBackupExpiry` with injected verifier and actor context.
       - Returns 200 with `VerifyBackupExpiryResponse`.
     - Ensure `GET /api/v1/districts/:districtId/deletion-record` returns up-to-date `backupExpiryStatus`, `backupExpiryVerifiedAt`, and `protectedBackupExpiryDeadline`.
 
-- [ ] **Task 6: Frontend UI Deletion Milestone Feedback & Expiry Presentation** (AC: 3, 8)
-  - [ ] 6.1 In `apps/web/src/api/subscription-client.ts`:
+- [x] **Task 6: Frontend UI Deletion Milestone Feedback & Expiry Presentation** (AC: 3, 8)
+  - [x] 6.1 In `apps/web/src/api/subscription-client.ts`:
     - Add `verifyDistrictBackupExpiry(districtId: string): Promise<VerifyBackupExpiryResponse>` using `VerifyBackupExpiryResponseSchema`.
-  - [ ] 6.2 In `apps/web/src/lib/formatters.ts`:
+  - [x] 6.2 In `apps/web/src/lib/formatters.ts`:
     - Add localized Uzbek Cyrillic formatting for backup expiry statuses and actions:
       - `BACKUP_EXPIRY_PENDING: 'Заҳира муддати кутилмоқда (Pending)'`
       - `BACKUP_EXPIRY_VERIFIED: 'Заҳира муддати муваффақиятли тасдиқланди (Verified)'`
       - `BACKUP_EXPIRY_FAILED: 'Заҳира муддатини тасдиқлашда хатолик (Failed)'`
       - `DISTRICT_BACKUP_EXPIRY_VERIFIED: 'Туманнинг заҳира нусхалари муддати муваффақиятли тасдиқланди'`
       - `DISTRICT_BACKUP_EXPIRY_FAILED: 'Туманнинг заҳира нусхалари муддатини тасдиқлашда хатолик юз берди'`
-  - [ ] 6.3 In `apps/web/src/components/subscriptions/DistrictSubscriptionDetailCard.tsx` (and dedicated deletion card):
+  - [x] 6.3 In `apps/web/src/components/subscriptions/DistrictSubscriptionDetailCard.tsx` (and dedicated deletion card):
     - Render deletion proof summary showing both milestones:
       1. Live Deletion Milestone: `COMPLETED` (`actualLiveDeletionAt`).
       2. Protected-Backup Expiry Milestone: `PENDING` / `VERIFIED` / `FAILED` (`protectedBackupExpiryDeadline`, `backupExpiryVerifiedAt`).
     - Provide "Заҳирани текшириш" (Verify Backup Expiry) button with loading state, feedback alerts, and offline protection (`disabled={isOffline}`).
 
-- [ ] **Task 7: Comprehensive Automated Verification Suite** (AC: 1 to 9)
-  - [ ] 7.1 Create backend integration test suite `apps/backend/tests/district-backup-expiry.test.ts`:
+- [x] **Task 7: Comprehensive Automated Verification Suite** (AC: 1 to 9)
+  - [x] 7.1 Create backend integration test suite `apps/backend/tests/district-backup-expiry.test.ts`:
     - **Database Isolation Invariant:** Runs strictly against `mahalla_ovozi_test`.
     - Test 1: Successful backup expiry verification when repository confirms pre-deletion snapshots aged out -> `backupExpiryStatus = 'VERIFIED'`, `backupExpiryVerifiedAt = now`.
     - Test 2: Non-inference test: reaching deadline alone does NOT mark status VERIFIED if backups still exist -> status remains `FAILED` / `PENDING`.
@@ -271,10 +271,23 @@ so that live deletion is not undermined by indefinitely restorable backup copies
     - Test 7: Recurring cron sweeper test — verify `processOverdueBackupExpiries` scans and processes pending deletion records.
     - Test 8: Global audit logging test — verify `DISTRICT_BACKUP_EXPIRY_VERIFIED` and `DISTRICT_BACKUP_EXPIRY_FAILED` are logged with `districtId = null` and `actorRole = 'SYSTEM'`.
     - Test 9: Privacy boundary test — verify surviving tombstone contains zero resident messages, credentials, or private notes.
-  - [ ] 7.2 Create frontend unit test suite `apps/web/tests/unit/DistrictBackupExpiry.test.tsx`:
+  - [x] 7.2 Create frontend unit test suite `apps/web/tests/unit/DistrictBackupExpiry.test.tsx`:
     - Test deletion milestone status display (`PENDING`, `VERIFIED`, `FAILED`).
     - Test manual verification button interaction and feedback.
-  - [ ] 7.3 Run monorepo typecheck (`pnpm typecheck`) and verify zero errors across all packages.
+  - [x] 7.3 Run monorepo typecheck (`pnpm typecheck`) and verify zero errors across all packages.
+
+### Review Findings
+
+- [x] [Review][Patch] Move backup verifier external I/O execution outside database transaction to prevent holding locks during subprocess inspection [`apps/backend/src/modules/subscriptions/district-deletion-service.ts:456`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/subscriptions/district-deletion-service.ts#L456)
+- [x] [Review][Patch] Fix operationalIssues conflict handling to prevent PostgreSQL 25P02 transaction abortion on insert collision [`apps/backend/src/modules/subscriptions/district-deletion-service.ts:588`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/subscriptions/district-deletion-service.ts#L588)
+- [x] [Review][Patch] Prevent false-positive expiration on empty stanzas, missing stanza, or stanza error status in pgBackRest adapter [`apps/backend/src/adapters/backup/system-backup-verifier.ts:136`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/adapters/backup/system-backup-verifier.ts#L136)
+- [x] [Review][Patch] Validate backup timestamp start number to prevent NaN comparison bugs [`apps/backend/src/adapters/backup/system-backup-verifier.ts:165`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/adapters/backup/system-backup-verifier.ts#L165)
+- [x] [Review][Patch] Pass boss instance into executeDistrictLiveDeletion in route handlers and jobs to enqueue delayed backup expiry jobs [`apps/backend/src/modules/subscriptions/subscriptions-routes.ts:421`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/subscriptions/subscriptions-routes.ts#L421), [`apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts:38`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts#L38)
+- [x] [Review][Patch] Add protectedBackupExpiryDeadline to ALLOWED_METADATA_SEARCH_KEYS in audit contract [`packages/api-contracts/src/audit.ts:102`](file:///c:/codevision-works/mahalla-ovozi-trial-2/packages/api-contracts/src/audit.ts#L102)
+- [x] [Review][Patch] Deduplicate DISTRICT_BACKUP_EXPIRY_FAILED audit events on recurring 5-minute cron sweeps [`apps/backend/src/modules/subscriptions/district-deletion-service.ts:634`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/subscriptions/district-deletion-service.ts#L634)
+- [x] [Review][Patch] Process all jobs in batch before throwing in processDistrictBackupExpiryJobs [`apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts:139`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/backend/src/modules/subscriptions/jobs/district-deletion-job-handler.ts#L139)
+- [x] [Review][Patch] Connect DistrictDeletionRecordCard in SubscriptionsPage to allow inspecting deleted district tombstones [`apps/web/src/pages/SubscriptionsPage.tsx:286`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/pages/SubscriptionsPage.tsx#L286)
+- [x] [Review][Patch] Remove duplicate loading indicator on button in DistrictDeletionRecordCard [`apps/web/src/components/subscriptions/DistrictDeletionRecordCard.tsx:104`](file:///c:/codevision-works/mahalla-ovozi-trial-2/apps/web/src/components/subscriptions/DistrictDeletionRecordCard.tsx#L104)
 
 ---
 

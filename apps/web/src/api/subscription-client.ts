@@ -22,6 +22,8 @@ import {
   ExecuteLiveDeletionResponseSchema,
   GetDistrictDeletionRecordResponse,
   GetDistrictDeletionRecordResponseSchema,
+  VerifyBackupExpiryResponse,
+  VerifyBackupExpiryResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
 
@@ -137,6 +139,18 @@ export const subscriptionClient = {
         method: 'GET',
       },
       GetDistrictDeletionRecordResponseSchema,
+    );
+  },
+
+  verifyDistrictBackupExpiry(
+    districtId: string,
+  ): Promise<VerifyBackupExpiryResponse> {
+    return request<VerifyBackupExpiryResponse>(
+      `/api/v1/districts/${encodeURIComponent(districtId)}/deletion-record/verify-backup-expiry`,
+      {
+        method: 'POST',
+      },
+      VerifyBackupExpiryResponseSchema,
     );
   },
 };

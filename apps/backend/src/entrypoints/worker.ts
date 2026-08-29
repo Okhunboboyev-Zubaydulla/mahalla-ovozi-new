@@ -13,6 +13,7 @@ import {
   TELEGRAM_TOPIC_RETENTION_QUEUE,
   DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE,
   DISTRICT_LIVE_DELETION_QUEUE,
+  DISTRICT_BACKUP_EXPIRY_QUEUE,
 } from '../adapters/jobs/boss-client.js';
 import { createDbPool, createDbClient, type DbClient } from '../adapters/db/client.js';
 import { ensureDefaultAiProfiles } from '../adapters/db/seeds.js';
@@ -21,6 +22,8 @@ import { SemanticRelevanceEvaluator } from '../modules/ai/semantic-relevance-eva
 import { TopicMatchingEvaluator } from '../modules/topics/topic-matching-evaluator.js';
 import { TopicProjectionEvaluator } from '../modules/topics/topic-projection-evaluator.js';
 import type { AcceptedEvidenceItem } from '../modules/ai/context-snapshot.js';
+import type { BackupRetentionVerifier } from '../modules/subscriptions/ports/backup-retention-verifier.js';
+import { SystemBackupRetentionVerifier } from '../adapters/backup/system-backup-verifier.js';
 
 import { registerQualificationJobHandler } from '../modules/telegram-intake/jobs/qualification-job-handler.js';
 import { registerSemanticRelevanceJobHandler } from '../modules/ai/jobs/semantic-relevance-job-handler.js';
@@ -38,6 +41,7 @@ export interface StartWorkerOptions {
   db?: DbClient;
   pool?: pg.Pool;
   aiGateway?: AiGatewayPort;
+  backupVerifier?: BackupRetentionVerifier;
   queues?: string[];
   injectedEvidenceResolver?: (
     districtId: string,
@@ -54,6 +58,7 @@ export interface WorkerPipelineContext {
   relevanceEvaluator: SemanticRelevanceEvaluator;
   topicMatchingEvaluator: TopicMatchingEvaluator;
   topicProjectionEvaluator: TopicProjectionEvaluator;
+  backupVerifier: BackupRetentionVerifier;
   injectedEvidenceResolver?: (
     districtId: string,
     mahallaName: string,
@@ -113,8 +118,15 @@ export async function registerWorkerPipelines(
     await registerSubscriptionExpiryJobHandler(boss, { db: ctx.db, boss: ctx.boss });
   }
 
-  if (shouldWork(DISTRICT_LIVE_DELETION_QUEUE)) {
-    await registerDistrictDeletionJobHandler(boss, { db: ctx.db, boss: ctx.boss });
+  if (
+    shouldWork(DISTRICT_LIVE_DELETION_QUEUE) ||
+    shouldWork(DISTRICT_BACKUP_EXPIRY_QUEUE)
+  ) {
+    await registerDistrictDeletionJobHandler(boss, {
+      db: ctx.db,
+      boss: ctx.boss,
+      backupVerifier: ctx.backupVerifier,
+    });
   }
 }
 
@@ -148,6 +160,8 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
   const relevanceEvaluator = new SemanticRelevanceEvaluator(aiGateway);
   const topicMatchingEvaluator = new TopicMatchingEvaluator(aiGateway);
   const topicProjectionEvaluator = new TopicProjectionEvaluator(aiGateway);
+  const backupVerifier: BackupRetentionVerifier =
+    options?.backupVerifier || new SystemBackupRetentionVerifier();
 
   const context: WorkerPipelineContext = {
     db,
@@ -157,6 +171,7 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
     relevanceEvaluator,
     topicMatchingEvaluator,
     topicProjectionEvaluator,
+    backupVerifier,
     injectedEvidenceResolver: options?.injectedEvidenceResolver,
   };
 

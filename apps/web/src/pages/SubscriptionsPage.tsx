@@ -10,6 +10,7 @@ import { districtQueryKeys } from '../district/query-keys.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { DistrictSubscriptionTable } from '../components/subscriptions/DistrictSubscriptionTable.js';
 import { DistrictSubscriptionDetailCard } from '../components/subscriptions/DistrictSubscriptionDetailCard.js';
+import { DistrictDeletionRecordCard } from '../components/subscriptions/DistrictDeletionRecordCard.js';
 import { EditSubscriptionDrawer } from '../components/subscriptions/EditSubscriptionDrawer.js';
 import { StartGraceModal } from '../components/subscriptions/StartGraceModal.js';
 import { RestoreActiveModal } from '../components/subscriptions/RestoreActiveModal.js';
@@ -66,22 +67,49 @@ export const SubscriptionsPage: React.FC = () => {
 
   const subscriptions = listData?.subscriptions || [];
 
-  // If in detail view but the selected district no longer exists (e.g. deleted), revert gracefully to list
+  // Effective district ID for detail view
+  const currentSubscription = currentDistrictId
+    ? subscriptions.find((s) => s.districtId === currentDistrictId) || null
+    : null;
+
+  // Fetch deletion record tombstone if selected district is deleted (Story 6.5 AC 8)
+  const {
+    data: deletionRecordData,
+    isLoading: isDeletionRecordLoading,
+  } = useQuery({
+    queryKey: ['district-deletion-record', selectedDistrictId],
+    queryFn: () => subscriptionClient.getDistrictDeletionRecord(selectedDistrictId!),
+    enabled: Boolean(selectedDistrictId && !currentSubscription && viewMode === 'detail'),
+    retry: false,
+  });
+
+  // Verify Backup Expiry Mutation (Story 6.5)
+  const verifyBackupExpiryMutation = useMutation({
+    mutationFn: async (districtId: string) => {
+      return subscriptionClient.verifyDistrictBackupExpiry(districtId);
+    },
+    onSuccess: async (data, districtId) => {
+      message.success(data.message || 'Заҳира муддати муваффақиятли тасдиқланди.');
+      queryClient.invalidateQueries({ queryKey: ['district-deletion-record', districtId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-history'] });
+      queryClient.invalidateQueries({ queryKey: ['health'] });
+    },
+    onError: (err: Error) => {
+      message.error(err.message || 'Заҳира муддатини текширишда хатолик юз берди.');
+    },
+  });
+
+  // If in detail view but the selected district no longer exists (e.g. deleted), revert gracefully to list if no tombstone
   useEffect(() => {
-    if (viewMode === 'detail' && selectedDistrictId && !isListLoading) {
+    if (viewMode === 'detail' && selectedDistrictId && !isListLoading && !isDeletionRecordLoading) {
       const exists = subscriptions.some((s) => s.districtId === selectedDistrictId);
-      if (!exists) {
+      if (!exists && !deletionRecordData?.deletionRecord) {
         setViewMode('list');
         setSelectedDistrictId(null);
         message.info('Танланган туман тизимдан ўчирилган ёки мавжуд эмас.');
       }
     }
-  }, [viewMode, selectedDistrictId, isListLoading, subscriptions]);
-
-  // Find active subscription from list
-  const currentSubscription = currentDistrictId
-    ? subscriptions.find((s) => s.districtId === currentDistrictId) || null
-    : null;
+  }, [viewMode, selectedDistrictId, isListLoading, isDeletionRecordLoading, subscriptions, deletionRecordData]);
 
   // Cache invalidation helper
   const invalidateSubscriptionQueries = async (districtId: string) => {
@@ -293,6 +321,17 @@ export const SubscriptionsPage: React.FC = () => {
             onRestoreActive={() => handleOpenRestoreActive(currentSubscription)}
             onCancelDistrict={() => handleOpenCancelDistrict(currentSubscription)}
             onStartRecovery={() => handleOpenStartRecovery(currentSubscription)}
+            onBack={handleBackToList}
+            isOffline={isOffline}
+          />
+        </Space>
+      ) : viewMode === 'detail' && deletionRecordData?.deletionRecord ? (
+        /* Single District Deletion Record Tombstone View (Story 6.5 AC 8) */
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <DistrictDeletionRecordCard
+            deletionRecord={deletionRecordData.deletionRecord}
+            onVerifyBackupExpiry={() => selectedDistrictId && verifyBackupExpiryMutation.mutate(selectedDistrictId)}
+            isVerifying={verifyBackupExpiryMutation.isPending}
             onBack={handleBackToList}
             isOffline={isOffline}
           />

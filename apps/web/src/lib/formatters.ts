@@ -146,6 +146,8 @@ const ACTION_DISPLAY_NAMES_UZ: Record<string, string> = {
   DISTRICT_CANCELLED: 'Туман бекор қилинди (Cancelled)',
   DISTRICT_RECOVERY_STARTED: 'Туманни тиклаш бошланди (Recovery Started)',
   DISTRICT_LIVE_DELETED: 'Туман жонли тизимдан бутунлай ўчирилди (Live Deletion Completed)',
+  DISTRICT_BACKUP_EXPIRY_VERIFIED: 'Туманнинг заҳира нусхалари муддати муваффақиятли тасдиқланди',
+  DISTRICT_BACKUP_EXPIRY_FAILED: 'Туманнинг заҳира нусхалари муддатини тасдиқлашда хатолик юз берди',
 };
 
 export function getActionDisplayNameUz(action: string): string {
@@ -164,6 +166,20 @@ export function formatScheduledTransitionType(type?: string | null): string {
       return 'Тўлиқ ўчириш';
     default:
       return type;
+  }
+}
+
+export function formatBackupExpiryStatus(status?: string | null): string {
+  if (!status) return '';
+  switch (status) {
+    case 'PENDING':
+      return 'Заҳира муддати кутилмоқда (Pending)';
+    case 'VERIFIED':
+      return 'Заҳира муддати муваффақиятли тасдиқланди (Verified)';
+    case 'FAILED':
+      return 'Заҳира муддатини тасдиқлашда хатолик (Failed)';
+    default:
+      return status;
   }
 }
 

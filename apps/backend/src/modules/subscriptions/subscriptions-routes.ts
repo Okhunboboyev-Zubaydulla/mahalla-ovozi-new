@@ -14,6 +14,7 @@ import {
   type CancelDistrictResponse,
   type StartRecoveryResponse,
   type ExecuteLiveDeletionResponse,
+  type VerifyBackupExpiryResponse,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import { verifyStateChangingOrigin } from '../auth/origin-guard.js';
@@ -36,13 +37,18 @@ import {
 import {
   executeDistrictLiveDeletion,
   getDistrictDeletionRecord,
+  verifyDistrictBackupExpiry,
   DistrictAlreadyDeletedError,
   DistrictNotEligibleForDeletionError,
+  DeletionRecordNotFoundError,
 } from './district-deletion-service.js';
+import type { BackupRetentionVerifier } from './ports/backup-retention-verifier.js';
+import { SystemBackupRetentionVerifier } from '../../adapters/backup/system-backup-verifier.js';
 
 export interface SubscriptionRoutesDeps {
   db: DbClient;
   boss?: PgBoss;
+  backupVerifier?: BackupRetentionVerifier;
 }
 
 export function registerSubscriptionRoutes(
@@ -414,6 +420,7 @@ export function registerSubscriptionRoutes(
         try {
           const deletionRecord = await executeDistrictLiveDeletion(db, districtId, {
             bypassDeadlineCheck: false,
+            boss,
             actor: req.actor ? { id: req.actor.id, role: req.actor.role } : undefined,
             context: {
               ipAddress: req.ip || null,
@@ -478,6 +485,58 @@ export function registerSubscriptionRoutes(
           });
         }
         return reply.status(200).send({ deletionRecord });
+      },
+    );
+
+    // 10. Verify protected-backup expiry (Story 6.5)
+    scope.post(
+      '/api/v1/districts/:districtId/deletion-record/verify-backup-expiry',
+      async (
+        req: FastifyRequest<{ Params: { districtId: string } }>,
+        reply: FastifyReply,
+      ) => {
+        const { districtId } = req.params;
+        const verifier =
+          ('backupVerifier' in depsOrDb && depsOrDb.backupVerifier) ||
+          new SystemBackupRetentionVerifier();
+
+        try {
+          const result = await verifyDistrictBackupExpiry(db, verifier, districtId, {
+            actor: req.actor ? { id: req.actor.id, role: req.actor.role } : undefined,
+            context: {
+              ipAddress: req.ip || null,
+              userAgent: (req.headers['user-agent'] as string) || null,
+            },
+          });
+
+          const response: VerifyBackupExpiryResponse = {
+            deletionRecord: result.deletionRecord,
+            isExpired: result.isExpired,
+            message: result.message,
+          };
+          return reply.status(200).send(response);
+        } catch (err: unknown) {
+          if (
+            err instanceof DistrictNotFoundError ||
+            err instanceof DeletionRecordNotFoundError
+          ) {
+            return reply.status(404).send({
+              error: {
+                code: err.code,
+                message: err.message,
+              },
+            });
+          }
+          if (err instanceof DistrictNotEligibleForDeletionError) {
+            return reply.status(409).send({
+              error: {
+                code: err.code,
+                message: err.message,
+              },
+            });
+          }
+          throw err;
+        }
       },
     );
   });

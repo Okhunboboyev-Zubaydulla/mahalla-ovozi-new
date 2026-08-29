@@ -97,6 +97,10 @@ export const ALLOWED_METADATA_SEARCH_KEYS = [
   'retryTrackingId',
   'deletedDistrictId',
   'deletedDistrictName',
+  'oldestActiveBackupTimestamp',
+  'verificationMethod',
+  'backupExpiryDeadline',
+  'protectedBackupExpiryDeadline',
 ] as const;
 
 export const DISTRICT_LIFECYCLE_AUDIT_ACTIONS = [
@@ -106,5 +110,7 @@ export const DISTRICT_LIFECYCLE_AUDIT_ACTIONS = [
   'DISTRICT_CANCELLED',
   'DISTRICT_RECOVERY_STARTED',
   'DISTRICT_LIVE_DELETED',
+  'DISTRICT_BACKUP_EXPIRY_VERIFIED',
+  'DISTRICT_BACKUP_EXPIRY_FAILED',
 ] as const;
 
