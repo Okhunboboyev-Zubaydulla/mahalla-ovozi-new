@@ -109,7 +109,7 @@ development_status:
   6-4-execute-permanent-live-system-district-deletion: done
   6-5-verify-protected-backup-expiry: done
   6-6-reconcile-disaster-restores-before-re-enabling-service: done
-  6-7-review-and-diagnose-the-district-deletion-lifecycle: backlog
+  6-7-review-and-diagnose-the-district-deletion-lifecycle: ready-for-dev
   epic-6-retrospective: optional
 
 action_items:
