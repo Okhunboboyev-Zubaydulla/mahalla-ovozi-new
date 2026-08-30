@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useMemo,
   useRef,
   ReactNode,
 } from 'react';
@@ -131,21 +132,35 @@ export function DistrictProvider({ children }: { children: ReactNode }) {
     setPendingTransition(null);
   }, []);
 
+  const contextValue = useMemo(
+    (): DistrictContextValue => ({
+      activeDistrictId,
+      switchDistrict,
+      setActiveDistrictDirectly,
+      registerDirty,
+      clearDirty,
+      hasDirtyForms,
+      pendingTransition,
+      confirmDiscard,
+      cancelTransition,
+      attemptTransition,
+    }),
+    [
+      activeDistrictId,
+      switchDistrict,
+      setActiveDistrictDirectly,
+      registerDirty,
+      clearDirty,
+      hasDirtyForms,
+      pendingTransition,
+      confirmDiscard,
+      cancelTransition,
+      attemptTransition,
+    ]
+  );
+
   return (
-    <DistrictContext.Provider
-      value={{
-        activeDistrictId,
-        switchDistrict,
-        setActiveDistrictDirectly,
-        registerDirty,
-        clearDirty,
-        hasDirtyForms,
-        pendingTransition,
-        confirmDiscard,
-        cancelTransition,
-        attemptTransition,
-      }}
-    >
+    <DistrictContext.Provider value={contextValue}>
       {children}
     </DistrictContext.Provider>
   );

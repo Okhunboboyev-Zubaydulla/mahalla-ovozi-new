@@ -66,6 +66,8 @@ export const aiOperations = pgTable(
       table.operationType,
       table.targetId,
     ),
+    index('ai_ops_final_status_idx').on(table.finalStatus),
+    index('ai_ops_district_target_idx').on(table.districtId, table.targetId),
   ],
 );
 

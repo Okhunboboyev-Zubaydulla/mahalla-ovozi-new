@@ -52,21 +52,21 @@ describe('JobSingletonKeys and Queue Architecture (AD-3)', () => {
       retryDelay: 5,
       retryBackoff: true,
       expireInMinutes: 10,
-      retentionDays: 7,
+      retentionDays: 1,
     });
     expect(DEFAULT_QUEUE_CONFIGS[TELEGRAM_SEMANTIC_RELEVANCE_QUEUE]).toEqual({
       retryLimit: 3,
       retryDelay: 5,
       retryBackoff: true,
       expireInMinutes: 10,
-      retentionDays: 7,
+      retentionDays: 1,
     });
     expect(DEFAULT_QUEUE_CONFIGS[TELEGRAM_TOPIC_RETENTION_QUEUE]).toEqual({
       retryLimit: 2,
       retryDelay: 30,
       retryBackoff: false,
       expireInMinutes: 30,
-      retentionDays: 14,
+      retentionDays: 3,
     });
   });
 
@@ -98,7 +98,7 @@ describe('JobSingletonKeys and Queue Architecture (AD-3)', () => {
       retryDelay: 5,
       retryBackoff: true,
       expireInMinutes: 10,
-      retentionDays: 7,
+      retentionDays: 1,
       singletonKey: 'msg:1',
     });
   });

@@ -166,6 +166,7 @@ export const SaveGlobalAnalysisSettingsDraftSchema = z.object({
   globalServiceVocabulary: z
     .array(GlobalServiceVocabularyItemSchema)
     .min(1, 'Камида 1 та хизмат луғати атамаси киритилиши керак.')
+    .max(1000, 'Максимал атамалар сони 1000 тадан ошмаслиги керак.')
     .superRefine((items, ctx) => {
       const seen = new Set<string>();
       for (let i = 0; i < items.length; i++) {

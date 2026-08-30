@@ -34,6 +34,11 @@ export const topics = pgTable(
     index('topics_district_status_idx').on(table.districtId, table.status),
     // Scoped index for retention scans and expiry cleanups (Story 2.6 / FR-12)
     index('topics_district_retention_idx').on(table.districtId, table.retentionExpiresAt),
+    // Query index for sorted topic retrieval by latest evidence timestamp (H-3)
+    index('topics_district_latest_evidence_ts_idx').on(
+      table.districtId,
+      table.latestRelevantEvidenceTimestamp,
+    ),
   ],
 );
 

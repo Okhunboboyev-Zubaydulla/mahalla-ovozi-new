@@ -94,63 +94,68 @@ export async function resolveDistrictBotAndGroup(
   botId: string,
   chatId: string,
 ): Promise<AuthorizationResult> {
-  // 1. Look up bot by public botId
-  const [bot] = await db
-    .select()
+  // Consolidated 1-round-trip relational query (H-1 performance optimization)
+  const [record] = await db
+    .select({
+      botId: districtTelegramBots.botId,
+      botDistrictId: districtTelegramBots.districtId,
+      botStatus: districtTelegramBots.status,
+      districtId: districts.id,
+      districtStatus: districts.status,
+      districtAccessEligible: districts.accessEligible,
+      groupId: districtTelegramGroups.id,
+      groupDistrictId: districtTelegramGroups.districtId,
+      groupStatus: districtTelegramGroups.status,
+      mahallaName: districtTelegramGroups.mahallaName,
+    })
     .from(districtTelegramBots)
+    .leftJoin(districts, eq(districts.id, districtTelegramBots.districtId))
+    .leftJoin(
+      districtTelegramGroups,
+      eq(districtTelegramGroups.telegramChatId, chatId),
+    )
     .where(eq(districtTelegramBots.botId, botId))
     .limit(1);
 
-  if (!bot) {
+  // 1. Look up bot by public botId
+  if (!record) {
     return { authorized: false, reason: 'BOT_NOT_FOUND' };
   }
 
   // 1.1 Verify bot is in VALID status
-  if (bot.status !== 'VALID') {
+  if (record.botStatus !== 'VALID') {
     return { authorized: false, reason: 'BOT_NOT_VALID' };
   }
 
   // 2. Authoritatively verify associated District is in ACTIVE status
-  const [district] = await db
-    .select()
-    .from(districts)
-    .where(eq(districts.id, bot.districtId))
-    .limit(1);
-
   if (
-    !district ||
-    (district.status !== 'ACTIVE' && district.status !== 'GRACE') ||
-    district.accessEligible === false
+    !record.districtId ||
+    (record.districtStatus !== 'ACTIVE' && record.districtStatus !== 'GRACE') ||
+    record.districtAccessEligible === false
   ) {
     return { authorized: false, reason: 'DISTRICT_NOT_ACTIVE' };
   }
 
   // 3. Look up source group mapping by telegramChatId
-  const [group] = await db
-    .select()
-    .from(districtTelegramGroups)
-    .where(eq(districtTelegramGroups.telegramChatId, chatId))
-    .limit(1);
-
-  if (!group) {
+  if (!record.groupId || !record.mahallaName) {
     return { authorized: false, reason: 'GROUP_NOT_APPROVED' };
   }
 
   // 4. Verify group belongs to the exact same District as the bot
-  if (group.districtId !== bot.districtId) {
+  if (record.groupDistrictId !== record.botDistrictId) {
     return { authorized: false, reason: 'CROSS_DISTRICT_MISMATCH' };
   }
 
   // 5. Verify group is in VALID approved status
-  if (group.status !== 'VALID') {
+  if (record.groupStatus !== 'VALID') {
     return { authorized: false, reason: 'GROUP_NOT_APPROVED' };
   }
 
   return {
     authorized: true,
-    districtId: district.id,
-    mahallaName: group.mahallaName,
-    botId: bot.botId,
+    districtId: record.districtId,
+    mahallaName: record.mahallaName,
+    botId: record.botId,
   };
 }
 

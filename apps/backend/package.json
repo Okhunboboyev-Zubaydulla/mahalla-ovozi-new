@@ -18,6 +18,7 @@
     "reconcile-restore": "node --import tsx/esm src/entrypoints/reconcile-restore.ts"
   },
   "dependencies": {
+    "@fastify/compress": "^9.2.0",
     "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.0.0",
     "@mahalla-ovozi/api-contracts": "workspace:*",

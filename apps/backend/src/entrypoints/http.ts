@@ -3,6 +3,7 @@ import path from 'node:path';
 import Fastify, { FastifyInstance } from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
+import fastifyCompress from '@fastify/compress';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { createDbPool, createDbClient, DbClient } from '../adapters/db/client.js';
 import { registerAuthRoutes } from '../modules/auth/auth-routes.js';
@@ -110,6 +111,12 @@ export async function buildHttpServer(options?: {
 
   // Register cookie support
   await server.register(fastifyCookie);
+
+  // Register response compression (brotli/gzip/deflate for payloads >= 1KB) (M-1)
+  await server.register(fastifyCompress, {
+    global: true,
+    threshold: 1024,
+  });
 
   // B11: Restrict CORS to explicitly configured APP_ORIGIN, not all origins.
   // Allowing all origins with credentials: true leaks session info to any site.

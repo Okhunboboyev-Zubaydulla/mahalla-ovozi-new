@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import {
   Layout,
@@ -26,6 +26,7 @@ import { useAuth } from '../auth/auth-context.js';
 import { useDistrict } from '../district/district-context.js';
 import { DistrictSelector } from './DistrictSelector.js';
 import { UnsavedChangesModal } from './UnsavedChangesModal.js';
+import { FullPageLoader } from './FullPageLoader.js';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -197,7 +198,9 @@ export const ConsoleLayout: React.FC = () => {
 
         {/* Content Outlet for Nested Routes */}
         <Content style={{ padding: 24, minHeight: 'calc(100vh - 64px)' }}>
-          <Outlet />
+          <Suspense fallback={<FullPageLoader />}>
+            <Outlet />
+          </Suspense>
         </Content>
       </Layout>
 

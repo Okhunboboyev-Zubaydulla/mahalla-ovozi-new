@@ -4,13 +4,21 @@ import * as schema from './schema/index.js';
 
 const { Pool } = pg;
 
-export function createDbPool(connectionString?: string) {
+export function createDbPool(
+  connectionString?: string,
+  options?: Partial<pg.PoolConfig>,
+) {
   const url = connectionString || process.env.DATABASE_URL || 'postgresql://mahalla_user:mahalla_dev_password@localhost:5433/mahalla_ovozi';
+  const rawTimeout = process.env.DB_STATEMENT_TIMEOUT_MS;
+  const parsedTimeout = rawTimeout !== undefined ? Number(rawTimeout) : NaN;
+  const statementTimeout = !Number.isNaN(parsedTimeout) && parsedTimeout >= 0 ? parsedTimeout : 15000;
   return new Pool({
     connectionString: url,
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
+    statement_timeout: statementTimeout,
+    ...options,
   });
 }
 

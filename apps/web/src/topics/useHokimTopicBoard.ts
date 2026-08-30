@@ -372,7 +372,7 @@ export function useHokimTopicBoard(
 
   const loadMore = useCallback(
     async (lane: QualifyingLane) => {
-      const currentLane = lanesState[lane];
+      const currentLane = lanesStateRef.current[lane];
       if (
         !currentLane ||
         !currentLane.hasNextPage ||
@@ -505,7 +505,7 @@ export function useHokimTopicBoard(
         }
       }
     },
-    [lanesState, filterState, trimmedSearch, boardQuery.isFetching, boardQuery.isPlaceholderData, boardQuery.refetch],
+    [filterState, trimmedSearch, boardQuery.isFetching, boardQuery.isPlaceholderData, boardQuery.refetch],
   );
 
   const manualRefresh = useCallback(() => {

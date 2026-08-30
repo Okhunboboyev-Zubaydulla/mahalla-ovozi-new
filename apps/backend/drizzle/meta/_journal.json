@@ -134,6 +134,13 @@
       "when": 1787915645753,
       "tag": "0018_silent_amphibian",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788048998181,
+      "tag": "0019_cute_puma",
+      "breakpoints": true
     }
   ]
 }

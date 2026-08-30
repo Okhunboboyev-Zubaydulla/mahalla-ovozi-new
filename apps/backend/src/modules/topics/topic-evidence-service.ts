@@ -169,21 +169,59 @@ export class TopicEvidenceService {
       throw new TopicNotFoundError('Мавзу топилмади ёки сақлаш муддати тугаган.');
     }
 
-    // 2. Query topic projection
-    const projectionRow = await this.db.query.topicProjections.findFirst({
-      where: eq(topicProjections.topicId, topicId),
-    });
+    // 2. Build Keyset Cursor Predicate (Oldest to newest: ASC, ASC, ASC)
+    let cursorPredicate = sql``;
+    if (query.cursor) {
+      const decoded = decodeEvidenceKeysetCursor(query.cursor);
+      if (!decoded) {
+        throw new Error('Курсор нотўғри ёки муддати ўтган.');
+      }
+      const cursorDate = new Date(decoded.t);
+      cursorPredicate = sql`AND (
+        ae.original_timestamp > ${cursorDate}
+        OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id > ${decoded.msgId})
+        OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id = ${decoded.msgId} AND ae.id > ${decoded.id})
+      )`;
+    }
 
-    // 3. Count total evidence items for this topic
-    const countResult = await this.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(acceptedEvidence)
-      .where(
-        and(
-          eq(acceptedEvidence.topicId, topicId),
-          eq(acceptedEvidence.districtId, actorContext.districtId),
+    const limit = query.limit ?? 50;
+
+    // 3. Parallelize independent queries: projection, total count, and evidence rows (M-3)
+    const [projectionRow, countResult, rawEvidenceRows] = await Promise.all([
+      this.db.query.topicProjections.findFirst({
+        where: eq(topicProjections.topicId, topicId),
+      }),
+      this.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(acceptedEvidence)
+        .where(
+          and(
+            eq(acceptedEvidence.topicId, topicId),
+            eq(acceptedEvidence.districtId, actorContext.districtId),
+          ),
         ),
-      );
+      this.db.execute<RawEvidenceRow>(sql`
+        SELECT 
+          ae.id,
+          ae.topic_id AS "topicId",
+          ae.verbatim_text AS "verbatimText",
+          ae.content_type AS "contentType",
+          ae.original_timestamp AS "originalTimestamp",
+          ae.telegram_chat_id AS "telegramChatId",
+          ae.telegram_message_id AS "telegramMessageId",
+          ae.user_metadata AS "userMetadata",
+          dtg.telegram_chat_username AS "telegramChatUsername"
+        FROM accepted_evidence ae
+        LEFT JOIN district_telegram_groups dtg 
+          ON dtg.district_id = ae.district_id AND dtg.telegram_chat_id = ae.telegram_chat_id
+        WHERE ae.topic_id = ${topicId}
+          AND ae.district_id = ${actorContext.districtId}
+          ${cursorPredicate}
+        ORDER BY ae.original_timestamp ASC, ae.telegram_message_id ASC, ae.id ASC
+        LIMIT ${limit + 1};
+      `),
+    ]);
+
     const totalCount = countResult[0]?.count ?? 0;
 
     // 4. Build TopicCardItem
@@ -209,45 +247,6 @@ export class TopicEvidenceService {
       createdAt: topicRow.createdAt.toISOString(),
       updatedAt: topicRow.updatedAt.toISOString(),
     };
-
-    // 5. Build Keyset Cursor Predicate (Oldest to newest: ASC, ASC, ASC)
-    let cursorPredicate = sql``;
-    if (query.cursor) {
-      const decoded = decodeEvidenceKeysetCursor(query.cursor);
-      if (!decoded) {
-        throw new Error('Курсор нотўғри ёки муддати ўтган.');
-      }
-      const cursorDate = new Date(decoded.t);
-      cursorPredicate = sql`AND (
-        ae.original_timestamp > ${cursorDate}
-        OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id > ${decoded.msgId})
-        OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id = ${decoded.msgId} AND ae.id > ${decoded.id})
-      )`;
-    }
-
-    const limit = query.limit ?? 50;
-
-    // 6. Query evidence batch with JOIN on district_telegram_groups for group username
-    const rawEvidenceRows = await this.db.execute<RawEvidenceRow>(sql`
-      SELECT 
-        ae.id,
-        ae.topic_id AS "topicId",
-        ae.verbatim_text AS "verbatimText",
-        ae.content_type AS "contentType",
-        ae.original_timestamp AS "originalTimestamp",
-        ae.telegram_chat_id AS "telegramChatId",
-        ae.telegram_message_id AS "telegramMessageId",
-        ae.user_metadata AS "userMetadata",
-        dtg.telegram_chat_username AS "telegramChatUsername"
-      FROM accepted_evidence ae
-      LEFT JOIN district_telegram_groups dtg 
-        ON dtg.district_id = ae.district_id AND dtg.telegram_chat_id = ae.telegram_chat_id
-      WHERE ae.topic_id = ${topicId}
-        AND ae.district_id = ${actorContext.districtId}
-        ${cursorPredicate}
-      ORDER BY ae.original_timestamp ASC, ae.telegram_message_id ASC, ae.id ASC
-      LIMIT ${limit + 1};
-    `);
 
     const rows = (rawEvidenceRows.rows || rawEvidenceRows) as unknown as RawEvidenceRow[];
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Card,
   Typography,
@@ -30,13 +30,17 @@ const { Title, Paragraph } = Typography;
 export const DistrictsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [drawerOpen, setDrawerOpen] = useState(searchParams.get('action') === 'create');
-  const [editingDistrict, setEditingDistrict] = useState<District | null>(null);
   const { activeDistrictId, switchDistrict, attemptTransition } = useDistrict();
 
+  const [drawerOpen, setDrawerOpen] = useState(searchParams.get('action') === 'create');
+  const [editingDistrict, setEditingDistrict] = useState<District | null>(null);
+
+  // Sync drawer state with URL search param
   useEffect(() => {
     if (searchParams.get('action') === 'create') {
       setDrawerOpen(true);
+    } else {
+      setDrawerOpen(false);
     }
   }, [searchParams]);
 
@@ -58,24 +62,32 @@ export const DistrictsPage: React.FC = () => {
 
   const activeTab = searchParams.get('tab') === 'topics' ? 'topics' : 'list';
 
-  const handleTabChange = (key: string) => {
-    const nextParams = new URLSearchParams(searchParams);
-    if (key === 'topics') {
-      nextParams.set('tab', 'topics');
-    } else {
-      nextParams.delete('tab');
-    }
-    setSearchParams(nextParams);
-  };
+  const handleTabChange = useCallback(
+    (key: string) => {
+      setSearchParams((prev) => {
+        const nextParams = new URLSearchParams(prev);
+        if (key === 'topics') {
+          nextParams.set('tab', 'topics');
+        } else {
+          nextParams.delete('tab');
+        }
+        return nextParams;
+      });
+    },
+    [setSearchParams]
+  );
 
-  const handleViewTopics = (districtId: string) => {
-    attemptTransition(async () => {
-      if (activeDistrictId !== districtId) {
-        await switchDistrict(districtId);
-      }
-      handleTabChange('topics');
-    });
-  };
+  const handleViewTopics = useCallback(
+    (districtId: string) => {
+      attemptTransition(async () => {
+        if (activeDistrictId !== districtId) {
+          await switchDistrict(districtId);
+        }
+        handleTabChange('topics');
+      });
+    },
+    [activeDistrictId, attemptTransition, switchDistrict, handleTabChange]
+  );
 
   const activeDistrict = districts.find((d) => d.id === activeDistrictId);
 
@@ -177,7 +189,7 @@ export const DistrictsPage: React.FC = () => {
         },
       },
     ],
-    [activeDistrictId, switchDistrict, attemptTransition, navigate, searchParams]
+    [activeDistrictId, switchDistrict, attemptTransition, navigate, handleViewTopics]
   );
 
   const tabItems = [
