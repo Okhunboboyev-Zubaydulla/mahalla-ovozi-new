@@ -28,6 +28,11 @@ export function createDbClient(pool: pg.Pool) {
 
 export type DbClient = ReturnType<typeof createDbClient>;
 export type DbOrTx = DbClient | Parameters<Parameters<DbClient['transaction']>[0]>[0];
+// DbTransaction is the transaction-only type (the `tx` parameter inside db.transaction()).
+// Use this when a function MUST run inside a caller-provided transaction.
+// Use DbOrTx when a function can run against either a client or an active transaction.
+export type DbTransaction = Parameters<Parameters<DbClient['transaction']>[0]>[0];
+
 
 export interface DbHealthResult {
   isHealthy: boolean;

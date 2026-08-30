@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { eq, and, or, asc, inArray, sql } from 'drizzle-orm';
+import { eq, and, asc, inArray, sql } from 'drizzle-orm';
 import type PgBoss from 'pg-boss';
 import { DbClient } from '../../adapters/db/client.js';
 import {
@@ -11,19 +11,7 @@ import {
   districts,
   districtSubscriptions,
   districtDeletionRecords,
-  topicProjections,
-  acceptedEvidence,
-  topics,
-  aiOperations,
-  districtAnalysisSettingsDrafts,
-  districtAnalysisSettingsVersions,
-  telegramIntakeRecords,
   operationalIssues,
-  userDashboardVisits,
-  accounts,
-  districtTelegramGroups,
-  districtTelegramBots,
-  auditEvents,
   DistrictDeletionRecordEntity,
 } from '../../adapters/db/schema/index.js';
 import {
@@ -33,10 +21,22 @@ import {
 import { DistrictNotFoundError } from '../districts/districts-service.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
 import type { BackupRetentionVerifier } from './ports/backup-retention-verifier.js';
+import type { DistrictDataCleaner } from './ports/district-data-cleaner.js';
+import { createTopicsDataCleaner } from '../topics/topics-data-cleaner.js';
+import { createAiDataCleaner } from '../ai/ai-data-cleaner.js';
+import { createTelegramIntakeDataCleaner } from '../telegram-intake/telegram-intake-data-cleaner.js';
+import { createAnalysisSettingsDataCleaner } from '../ai/district-analysis-settings-data-cleaner.js';
+import { createIssuesDataCleaner } from '../issues/issues-data-cleaner.js';
+import { createAuthDataCleaner } from '../auth/auth-data-cleaner.js';
+import { createTelegramGroupsDataCleaner } from '../telegram-groups/telegram-groups-data-cleaner.js';
+import { createTelegramBotsDataCleaner } from '../telegram-bot/telegram-bot-data-cleaner.js';
+import { createAuditDataCleaner } from '../audit/audit-data-cleaner.js';
+import { createSubscriptionsDataCleaner } from './subscriptions-data-cleaner.js';
 import {
   ExternalTombstoneStore,
   FileExternalTombstoneStore,
 } from '../../adapters/storage/external-tombstone-store.js';
+
 
 export class DeletionRecordNotFoundError extends Error {
   readonly code = 'DELETION_RECORD_NOT_FOUND' as const;
@@ -139,6 +139,7 @@ export interface ExecuteDistrictLiveDeletionOptions {
   context?: { ipAddress?: string | null; userAgent?: string | null };
   boss?: PgBoss;
   tombstoneStore?: ExternalTombstoneStore;
+  cleaners?: DistrictDataCleaner[];
 }
 
 export async function executeDistrictLiveDeletion(
@@ -263,73 +264,46 @@ export async function executeDistrictLiveDeletion(
       })
       .onConflictDoNothing({ target: districtDeletionRecords.districtId });
 
-    // 8. Execute comprehensive multi-table live data purge in strict topological dependency order
-    // 1. topic_projections
-    await tx.delete(topicProjections).where(eq(topicProjections.districtId, districtId));
+    // 8. Execute comprehensive multi-table live data purge in strict topological dependency order.
+    //
+    // Module cleaners (ADR-001): each module owns its own schema cleanup.
+    // FK order is encoded by array position — do NOT reorder without verifying FK constraints.
+    //
+    //   1.  topics:            topic_projections -> accepted_evidence -> topics
+    //   2.  ai:                ai_provider_attempts -> ai_operations
+    //   3.  telegram-intake:   telegram_intake_records
+    //   4.  analysis-settings: district_analysis_settings_drafts -> district_analysis_settings_versions
+    //   5.  issues:            operational_issues (district-scoped)
+    //   6.  auth:              sessions -> user_dashboard_visits -> accounts
+    //   7.  telegram-groups:   district_telegram_groups
+    //   8.  telegram-bots:     district_telegram_bots
+    //   9.  audit:             audit_events (district-scoped)
+    //   10. subscriptions:     district_subscriptions
+    const defaultCleaners: DistrictDataCleaner[] = [
+      createTopicsDataCleaner(),
+      createAiDataCleaner(),
+      createTelegramIntakeDataCleaner(),
+      createAnalysisSettingsDataCleaner(),
+      createIssuesDataCleaner(),
+      createAuthDataCleaner(),
+      createTelegramGroupsDataCleaner(),
+      createTelegramBotsDataCleaner(),
+      createAuditDataCleaner(),
+      createSubscriptionsDataCleaner(),
+    ];
 
-    // 2. accepted_evidence
-    await tx.delete(acceptedEvidence).where(eq(acceptedEvidence.districtId, districtId));
+    const cleaners = options?.cleaners ?? defaultCleaners;
 
-    // 3. topics
-    await tx.delete(topics).where(eq(topics.districtId, districtId));
+    for (const cleaner of cleaners) {
+      await cleaner.deleteDistrictData(tx, districtId);
+    }
 
-    // 4. ai_provider_attempts
-    await tx.execute(
-      sql`DELETE FROM ai_provider_attempts WHERE operation_id IN (SELECT id FROM ai_operations WHERE district_id = ${districtId})`,
-    );
-
-    // 5. ai_operations
-    await tx.delete(aiOperations).where(eq(aiOperations.districtId, districtId));
-
-    // 6. telegram_intake_records
-    await tx.delete(telegramIntakeRecords).where(eq(telegramIntakeRecords.districtId, districtId));
-
-    // 7. district_analysis_settings_drafts
-    await tx
-      .delete(districtAnalysisSettingsDrafts)
-      .where(eq(districtAnalysisSettingsDrafts.districtId, districtId));
-
-    // 8. district_analysis_settings_versions
-    await tx
-      .delete(districtAnalysisSettingsVersions)
-      .where(eq(districtAnalysisSettingsVersions.districtId, districtId));
-
-    // 9. operational_issues (both district-scoped and global failure tracking issues)
+    // Inline cleanup: deletion failure lifecycle tracking issues (owned by deletion orchestrator)
     await tx
       .delete(operationalIssues)
-      .where(
-        or(
-          eq(operationalIssues.districtId, districtId),
-          eq(operationalIssues.logicalKey, `del_fail:${districtId}`),
-        ),
-      );
+      .where(eq(operationalIssues.logicalKey, `del_fail:${districtId}`));
 
-    // 10. user_dashboard_visits
-    await tx.delete(userDashboardVisits).where(eq(userDashboardVisits.districtId, districtId));
-
-    // 11. sessions (Hokim user accounts assigned to this district)
-    await tx.execute(
-      sql`DELETE FROM sessions WHERE account_id IN (SELECT id FROM accounts WHERE district_id = ${districtId})`,
-    );
-
-    // 12. accounts (Hokim user accounts assigned to this district)
-    await tx.delete(accounts).where(eq(accounts.districtId, districtId));
-
-    // 13. district_telegram_groups
-    await tx.delete(districtTelegramGroups).where(eq(districtTelegramGroups.districtId, districtId));
-
-    // 14. district_telegram_bots
-    await tx.delete(districtTelegramBots).where(eq(districtTelegramBots.districtId, districtId));
-
-    // 15. audit_events (District-scoped audit history)
-    await tx.delete(auditEvents).where(eq(auditEvents.districtId, districtId));
-
-    // 16. district_subscriptions
-    await tx
-      .delete(districtSubscriptions)
-      .where(eq(districtSubscriptions.districtId, districtId));
-
-    // 17. districts (parent district row)
+    // 17. districts (parent district row - lifecycle termination owned by deletion orchestrator)
     await tx.delete(districts).where(eq(districts.id, districtId));
 
     // 9. Append global system audit log with privacy-safe metadata

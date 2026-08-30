@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { eq, and, or, lte, sql } from 'drizzle-orm';
+import { eq, and, or, lte, inArray, sql } from 'drizzle-orm';
 import type { DbClient } from '../../adapters/db/client.js';
 import {
   districts,
@@ -11,12 +11,14 @@ import {
   acceptedEvidence,
   topics,
   aiOperations,
+  aiProviderAttempts,
   telegramIntakeRecords,
   districtAnalysisSettingsDrafts,
   districtAnalysisSettingsVersions,
   operationalIssues,
   userDashboardVisits,
   accounts,
+  sessions,
   districtTelegramGroups,
   districtTelegramBots,
   auditEvents,
@@ -290,9 +292,17 @@ export async function reconcileDisasterRestore(
           await tx.delete(topics).where(eq(topics.districtId, extTombstone.districtId));
 
           // 4. ai_provider_attempts
-          await tx.execute(
-            sql`DELETE FROM ai_provider_attempts WHERE operation_id IN (SELECT id FROM ai_operations WHERE district_id = ${extTombstone.districtId})`,
-          );
+          await tx
+            .delete(aiProviderAttempts)
+            .where(
+              inArray(
+                aiProviderAttempts.operationId,
+                tx
+                  .select({ id: aiOperations.id })
+                  .from(aiOperations)
+                  .where(eq(aiOperations.districtId, extTombstone.districtId)),
+              ),
+            );
 
           // 5. ai_operations
           await tx
@@ -332,9 +342,17 @@ export async function reconcileDisasterRestore(
             .where(eq(userDashboardVisits.districtId, extTombstone.districtId));
 
           // 11. sessions (Hokim user accounts assigned to this district)
-          await tx.execute(
-            sql`DELETE FROM sessions WHERE account_id IN (SELECT id FROM accounts WHERE district_id = ${extTombstone.districtId})`,
-          );
+          await tx
+            .delete(sessions)
+            .where(
+              inArray(
+                sessions.accountId,
+                tx
+                  .select({ id: accounts.id })
+                  .from(accounts)
+                  .where(eq(accounts.districtId, extTombstone.districtId)),
+              ),
+            );
 
           // 12. accounts (Hokim user accounts assigned to this district)
           await tx.delete(accounts).where(eq(accounts.districtId, extTombstone.districtId));
