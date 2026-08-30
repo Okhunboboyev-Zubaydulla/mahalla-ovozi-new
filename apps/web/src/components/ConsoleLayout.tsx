@@ -31,6 +31,49 @@ import { FullPageLoader } from './FullPageLoader.js';
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
+const MENU_ITEMS = [
+  {
+    key: '/',
+    icon: <AppstoreOutlined />,
+    label: 'Умумий кўриниш',
+  },
+  {
+    key: '/system-health',
+    icon: <HeartOutlined />,
+    label: 'Тизим ҳолати',
+  },
+  {
+    key: '/districts',
+    icon: <ApartmentOutlined />,
+    label: 'Туманлар',
+  },
+  {
+    key: '/telegram-setup',
+    icon: <SendOutlined />,
+    label: 'Телеграм созламалари',
+  },
+  {
+    key: '/subscriptions',
+    icon: <CreditCardOutlined />,
+    label: 'Обуналар',
+  },
+  {
+    key: '/hokim-accounts',
+    icon: <UserOutlined />,
+    label: 'Ҳоким ҳисоблари',
+  },
+  {
+    key: '/ai-operations',
+    icon: <RobotOutlined />,
+    label: 'АИ операциялари',
+  },
+  {
+    key: '/audit-history',
+    icon: <HistoryOutlined />,
+    label: 'Аудит тарихи',
+  },
+];
+
 export const ConsoleLayout: React.FC = () => {
   const { token } = theme.useToken();
   const { actor, signOut } = useAuth();
@@ -39,49 +82,6 @@ export const ConsoleLayout: React.FC = () => {
   const location = useLocation();
 
   const isOffline = useOnlineStatus();
-
-  const menuItems = [
-    {
-      key: '/',
-      icon: <AppstoreOutlined />,
-      label: 'Умумий кўриниш',
-    },
-    {
-      key: '/system-health',
-      icon: <HeartOutlined />,
-      label: 'Тизим ҳолати',
-    },
-    {
-      key: '/districts',
-      icon: <ApartmentOutlined />,
-      label: 'Туманлар',
-    },
-    {
-      key: '/telegram-setup',
-      icon: <SendOutlined />,
-      label: 'Телеграм созламалари',
-    },
-    {
-      key: '/subscriptions',
-      icon: <CreditCardOutlined />,
-      label: 'Обуналар',
-    },
-    {
-      key: '/hokim-accounts',
-      icon: <UserOutlined />,
-      label: 'Ҳоким ҳисоблари',
-    },
-    {
-      key: '/ai-operations',
-      icon: <RobotOutlined />,
-      label: 'АИ операциялари',
-    },
-    {
-      key: '/audit-history',
-      icon: <HistoryOutlined />,
-      label: 'Аудит тарихи',
-    },
-  ];
 
   const handleMenuClick = ({ key }: { key: string }) => {
     if (key !== location.pathname) {
@@ -99,7 +99,7 @@ export const ConsoleLayout: React.FC = () => {
   };
 
   // Determine current active menu key
-  const selectedKey = menuItems.some((item) => item.key === location.pathname)
+  const selectedKey = MENU_ITEMS.some((item) => item.key === location.pathname)
     ? location.pathname
     : '/';
 
@@ -191,7 +191,7 @@ export const ConsoleLayout: React.FC = () => {
             mode="inline"
             selectedKeys={[selectedKey]}
             onClick={handleMenuClick}
-            items={menuItems}
+            items={MENU_ITEMS}
             style={{ borderRight: 0, padding: '12px 0' }}
           />
         </Sider>

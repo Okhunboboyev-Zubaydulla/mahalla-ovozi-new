@@ -208,8 +208,8 @@ export class DistrictTopicsService {
       }
       const cursorDate = new Date(decoded.t);
       cursorPredicate = sql`AND (
-        date_trunc('milliseconds', tp.latest_meaningful_activity_timestamp) < ${cursorDate}
-        OR (date_trunc('milliseconds', tp.latest_meaningful_activity_timestamp) = ${cursorDate} AND t.id < ${decoded.id})
+        tp.latest_meaningful_activity_timestamp < ${cursorDate}
+        OR (tp.latest_meaningful_activity_timestamp = ${cursorDate} AND t.id < ${decoded.id})
       )`;
     }
 
@@ -241,12 +241,12 @@ export class DistrictTopicsService {
         ${cursorPredicate}
         ${searchPredicate}
       GROUP BY t.id, tp.id
-      ORDER BY date_trunc('milliseconds', tp.latest_meaningful_activity_timestamp) DESC, t.id DESC
+      ORDER BY tp.latest_meaningful_activity_timestamp DESC, t.id DESC
       LIMIT ${limit + 1};
     `;
 
     const countQuery = sql<{ count: number }>`
-      SELECT COUNT(DISTINCT t.id)::int AS count
+      SELECT COUNT(t.id)::int AS count
       FROM topics t
       JOIN topic_projections tp ON tp.topic_id = t.id
       WHERE t.district_id = ${districtId}

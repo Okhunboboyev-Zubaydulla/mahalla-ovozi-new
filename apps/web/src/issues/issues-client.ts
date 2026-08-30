@@ -13,6 +13,8 @@ export interface GetIssuesParams {
   districtId?: string | null;
   status?: string;
   severity?: string;
+  limit?: number;
+  offset?: number;
 }
 
 export const issuesClient = {
@@ -31,6 +33,12 @@ export const issuesClient = {
     }
     if (params.severity) {
       query.set('severity', params.severity);
+    }
+    if (params.limit !== undefined) {
+      query.set('limit', String(params.limit));
+    }
+    if (params.offset !== undefined) {
+      query.set('offset', String(params.offset));
     }
 
     const queryString = query.toString();

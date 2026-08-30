@@ -454,6 +454,24 @@ describe('Story 4.2: Backend Operational Issues Database & HTTP Integration Test
       expect(rawText).not.toContain('bot_token_secret');
     });
 
+    it('GET /api/v1/issues respects limit and offset pagination parameters', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: '/api/v1/issues?limit=1&offset=0',
+        headers: {
+          cookie: poCookie,
+          ...SAME_ORIGIN_HEADERS,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json<OperationalIssuesListResponse>();
+      expect(body.issues.length).toBeLessThanOrEqual(1);
+      expect(body.limit).toBe(1);
+      expect(body.offset).toBe(0);
+      expect(body.total).toBeGreaterThanOrEqual(1);
+    });
+
     it('GET /api/v1/issues/:issueId returns issue detail and audit timeline', async () => {
       const res = await server.inject({
         method: 'GET',

@@ -510,7 +510,7 @@ export function useHokimTopicBoard(
 
   const manualRefresh = useCallback(() => {
     return boardQuery.refetch();
-  }, [boardQuery]);
+  }, [boardQuery.refetch]);
 
   const newTopicsPerLane: Record<QualifyingLane, number> = {
     HOKIM_RELATED: lanesState.HOKIM_RELATED.newItemsCount,

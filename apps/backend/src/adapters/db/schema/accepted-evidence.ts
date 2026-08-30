@@ -56,6 +56,14 @@ export const acceptedEvidence = pgTable(
       table.telegramMessageId,
       table.id,
     ),
+    // Composite index for TopicEvidence keyset pagination
+    index('accepted_evidence_topic_keyset_idx').on(
+      table.topicId,
+      table.districtId,
+      table.originalTimestamp,
+      table.telegramMessageId,
+      table.id,
+    ),
   ],
 );
 

@@ -31,6 +31,8 @@ export interface GetIssuesOptions {
   districtId?: string;
   status?: 'ACTIVE' | 'RESOLVED';
   severity?: IssueSeverity;
+  limit?: number;
+  offset?: number;
 }
 
 export const issueService = {
@@ -94,12 +96,19 @@ export const issueService = {
       else if (r.severity === 'Information') infoCount++;
     }
 
+    const limit = options.limit !== undefined ? Math.max(1, options.limit) : 50;
+    const offset = options.offset !== undefined ? Math.max(0, options.offset) : 0;
+    const paginatedIssues = sortedIssues.slice(offset, offset + limit);
+
     return {
-      issues: sortedIssues,
+      issues: paginatedIssues,
       totalActive: activeRows.length,
       criticalCount,
       warningCount,
       infoCount,
+      total: sortedIssues.length,
+      limit,
+      offset,
       evaluatedAt,
     };
   },

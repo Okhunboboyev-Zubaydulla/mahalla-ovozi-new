@@ -11,6 +11,7 @@ import {
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import { districts } from '../../adapters/db/schema/index.js';
+import { mapConcurrent } from '../../utils/concurrency.js';
 import {
   aggregateComponentStatuses,
   aggregateOverallSystemHealth,
@@ -109,9 +110,11 @@ export const healthService = {
       .from(districts)
       .orderBy(districts.createdAt);
 
-    // 3. Run per-district component checks in parallel with error isolation (AC 6)
-    const districtSummaries: DistrictHealthSummary[] = await Promise.all(
-      allDistricts.map(async (district) => {
+    // 3. Run per-district component checks with bounded concurrency (limit: 3) and error isolation (AC 6)
+    const districtSummaries: DistrictHealthSummary[] = await mapConcurrent(
+      allDistricts,
+      3,
+      async (district) => {
         const districtSettled = await Promise.allSettled([
           checkDistrictBotHealth(db, district.id, config),
           checkDistrictGroupsHealth(db, district.id, config),
@@ -147,7 +150,7 @@ export const healthService = {
           components: enrichedComponents,
           lifecycleStatus: district.status,
         };
-      }),
+      },
     );
 
     // 4. Synchronize operational issues across global and all district scopes

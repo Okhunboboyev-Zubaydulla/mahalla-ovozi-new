@@ -54,6 +54,8 @@ export const OperationalIssuesQuerySchema = z.object({
   districtId: z.string().optional(),
   status: IssueStatusEnumSchema.optional(),
   severity: IssueSeverityEnumSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50).optional(),
+  offset: z.coerce.number().int().min(0).default(0).optional(),
 });
 export type OperationalIssuesQuery = z.infer<typeof OperationalIssuesQuerySchema>;
 
@@ -95,6 +97,9 @@ export const OperationalIssuesListResponseSchema = z.object({
   criticalCount: z.number().int().nonnegative(),
   warningCount: z.number().int().nonnegative(),
   infoCount: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative().optional(),
+  limit: z.number().int().nonnegative().optional(),
+  offset: z.number().int().nonnegative().optional(),
   evaluatedAt: z.string().datetime(),
 });
 export type OperationalIssuesListResponse = z.infer<

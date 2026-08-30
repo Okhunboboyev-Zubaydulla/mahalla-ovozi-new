@@ -223,9 +223,9 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
               loadMoreError={laneData.loadMoreError}
               selectedTopicId={selectedTopicId}
               searchQuery={searchQuery}
-              onLoadMore={() => onLoadMore(laneKey)}
+              onLoadMore={onLoadMore}
               onSelectTopic={onSelectTopic}
-              onRevealNewItems={() => onRevealNewTopics?.(laneKey)}
+              onRevealNewItems={onRevealNewTopics}
             />
           );
         })}

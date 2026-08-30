@@ -18,12 +18,12 @@ export interface LaneColumnProps {
   loadMoreError: string | null;
   selectedTopicId?: string | null;
   searchQuery?: string;
-  onLoadMore: () => void;
+  onLoadMore: (lane: QualifyingLane) => void;
   onSelectTopic?: (topic: TopicCardItem) => void;
-  onRevealNewItems?: () => void;
+  onRevealNewItems?: (lane: QualifyingLane) => void;
 }
 
-export const LaneColumn: React.FC<LaneColumnProps> = ({
+const LaneColumnComponent: React.FC<LaneColumnProps> = ({
   lane,
   topics,
   totalCount,
@@ -71,7 +71,7 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
   }, [topics, laneLabel, liveAnnouncer]);
 
   const handleReveal = () => {
-    onRevealNewItems?.();
+    onRevealNewItems?.(lane);
     if (scrollContainerRef.current) {
       if (typeof scrollContainerRef.current.scrollTo === 'function') {
         scrollContainerRef.current.scrollTo({
@@ -244,7 +244,7 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
                   icon={<ReloadOutlined />}
                   onClick={(e) => {
                     isKeyboardTriggerRef.current = e.detail === 0;
-                    onLoadMore();
+                    onLoadMore(lane);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -267,7 +267,7 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
               block
               onClick={(e) => {
                 isKeyboardTriggerRef.current = e.detail === 0;
-                onLoadMore();
+                onLoadMore(lane);
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -304,3 +304,6 @@ export const LaneColumn: React.FC<LaneColumnProps> = ({
     </section>
   );
 };
+
+export const LaneColumn = React.memo(LaneColumnComponent);
+

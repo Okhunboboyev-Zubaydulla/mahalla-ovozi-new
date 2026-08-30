@@ -13,6 +13,17 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-antd': ['antd', '@ant-design/icons'],
+          'vendor-query': ['@tanstack/react-query'],
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

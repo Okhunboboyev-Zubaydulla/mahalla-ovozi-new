@@ -34,7 +34,7 @@ export interface TopicCardProps {
   onClick?: () => void;
 }
 
-export const TopicCard: React.FC<TopicCardProps> = ({
+const TopicCardComponent: React.FC<TopicCardProps> = ({
   topic,
   currentLane: _currentLane,
   isSelected = false,
@@ -251,3 +251,6 @@ export const TopicCard: React.FC<TopicCardProps> = ({
     </article>
   );
 };
+
+export const TopicCard = React.memo(TopicCardComponent);
+

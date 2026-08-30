@@ -155,17 +155,20 @@ export const HokimDashboardPage: React.FC = () => {
     }, 50);
   }, [returnFocus]);
 
-  const handleSelectTopic = (topic: TopicCardItem) => {
-    setOriginatingLane(topic.primaryLane);
-    setHelpDrawerOpen(false);
-    if (window.innerWidth < 1024) {
-      navigate(`/topics/${topic.id}/evidence`);
-    } else {
-      setSelectedTopicId(topic.id);
-    }
-  };
+  const handleSelectTopic = useCallback(
+    (topic: TopicCardItem) => {
+      setOriginatingLane(topic.primaryLane);
+      setHelpDrawerOpen(false);
+      if (window.innerWidth < 1024) {
+        navigate(`/topics/${topic.id}/evidence`);
+      } else {
+        setSelectedTopicId(topic.id);
+      }
+    },
+    [navigate],
+  );
 
-  const handleCloseDrawer = () => {
+  const handleCloseDrawer = useCallback(() => {
     const prevTopicId = selectedTopicId;
     const prevLane = originatingLane;
     setSelectedTopicId(null);
@@ -177,7 +180,7 @@ export const HokimDashboardPage: React.FC = () => {
         returnFocus(prevLane);
       }
     }, 50);
-  };
+  }, [selectedTopicId, originatingLane, returnFocus]);
 
   const formattedRefreshTime = lastRefreshedAt ? formatTashkentTime(lastRefreshedAt) : null;
 
