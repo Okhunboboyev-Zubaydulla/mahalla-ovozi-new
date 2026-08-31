@@ -225,6 +225,7 @@ export async function buildHttpServer(options?: {
   const boss = options?.boss || createBossClient();
 
   // Ensure pg-boss queues are bootstrapped
+  await boss.start();
   await initBossQueues(boss);
 
   // Teardown hook for Fastify graceful close

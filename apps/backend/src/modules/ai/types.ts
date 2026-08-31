@@ -50,7 +50,7 @@ export interface GenerateStructuredOptions<T> {
   profileId?: string;
   systemPrompt: string;
   userPrompt: string;
-  schema: ZodType<T>;
+  schema: ZodType<T, any, any>;
   schemaName: string;
   deadlineMs?: number;
 }

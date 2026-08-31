@@ -8,6 +8,8 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "test:e2e": "pnpm --filter @mahalla-ovozi/web test:e2e",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @mahalla-ovozi/backend db:migrate",
     "reconcile-restore": "pnpm --filter @mahalla-ovozi/backend reconcile-restore"
   },

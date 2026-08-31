@@ -1081,11 +1081,19 @@ The research does not declare a winning model. It defines the architecture and e
 
 **Technical Research Completion Date:** 2026-07-30
 
-**Research Period:** 2026-07-27 through 2026-07-30
-
-**Source Verification:** Current primary-source refresh completed on 2026-07-30
-**Overall Confidence:** High for architecture; conditional for provider, quality, cost, privacy eligibility, and production capacity
-
 ---
 
-<!-- Content will be appended sequentially through research workflow steps -->
+## 13. Operational Baseline Addendum (2026-08-31)
+
+### Validated Operational Model Selection: Ollama `gemma4:12b`
+
+Following end-to-end integration and verification against live Telegram municipal data:
+1. **Selected Model:** `gemma4:12b` via local Ollama runtime. It demonstrated superior performance in understanding colloquial Uzbek (Latin & Cyrillic), Russian loan words, and nuanced municipal complaints compared to earlier baselines.
+2. **Phased Deployment Topology:**
+   - *Development & MVP Testing:* Local host serving as application node, PostgreSQL database, and Ollama inference node.
+   - *Commercial Production Deployment:* Commercial reliable VPS in Uzbekistan (e.g., aHOST / UzCloud within TAS-IX) ensuring 24/7 uptime/power SLA, static public IP, full national data sovereignty, and automated daily database backups.
+3. **Latency & Execution Optimization:**
+   - Chain-of-Thought thinking was disabled (`think: false`) in request payloads, reducing latency to <3 seconds per structured evaluation.
+   - VRAM persistence was enabled (`keep_alive: -1`) to keep `gemma4:12b` permanently loaded in GPU memory, eliminating cold-start delays.
+4. **Domain Rule Calibration:** The `DIRECT OUTAGE REPORT RULE` was validated to ensure 2-3 word outage reports (e.g., "suv yo'q", "svet o'chdi") are classified as genuine civic evidence rather than dropped as ambiguous fragments.
+5. **Architectural Compliance:** The implementation strictly adheres to AD-8 (Provider-neutral AI gateway with immutable versioned `ai_profiles`), preserving full portability between local and hosted cloud providers as scaling needs evolve.

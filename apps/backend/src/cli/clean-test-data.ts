@@ -38,6 +38,12 @@ export async function cleanTestData() {
     );
     console.log(`Deleted ${delDistricts.rowCount} test districts.`);
 
+    // 6. Delete stale pending test jobs from pg-boss queue
+    const delJobs = await pool.query(
+      "DELETE FROM pgboss.job WHERE state IN ('created', 'retry')"
+    );
+    console.log(`Deleted ${delJobs.rowCount} stale test queue jobs.`);
+
     // 6. Verify final counts
     const finalDistricts = await pool.query('SELECT count(*) FROM districts');
     const finalAccounts = await pool.query('SELECT count(*) FROM accounts');

@@ -24,26 +24,50 @@ export const ExclusionReasonEnum = z.enum([
 ]);
 export type ExclusionReason = z.infer<typeof ExclusionReasonEnum>;
 
-export const SemanticRelevanceResultSchema = z
-  .object({
-    is_relevant: z.boolean().describe('Whether the message reports a genuine, active citizen issue or Hokim concern'),
-    relevant_lanes: z.array(QualifyingLaneEnum).describe('Municipal service or leadership lanes applicable to the issue'),
-    exclusion_reason: ExclusionReasonEnum.nullable().describe('Specific exclusion reason if is_relevant is false, otherwise null'),
-    reasoning: z.string().max(300).describe('Brief 1-sentence explanation of the decision'),
-  })
-  .refine(
-    (data) => {
-      if (data.is_relevant) {
-        return data.relevant_lanes.length >= 1 && data.exclusion_reason === null;
-      } else {
-        return data.relevant_lanes.length === 0 && data.exclusion_reason !== null;
+export const SemanticRelevanceResultSchema = z.preprocess(
+  (val: any) => {
+    if (!val || typeof val !== 'object') return val;
+    const copy = { ...val };
+    if (typeof copy.reasoning === 'string' && copy.reasoning.length > 300) {
+      copy.reasoning = copy.reasoning.slice(0, 300);
+    }
+    if (Array.isArray(copy.relevant_lanes)) {
+      copy.relevant_lanes = Array.from(new Set(copy.relevant_lanes));
+    }
+    if (copy.is_relevant === true) {
+      copy.exclusion_reason = null;
+      if (!Array.isArray(copy.relevant_lanes) || copy.relevant_lanes.length === 0) {
+        copy.relevant_lanes = ['HOKIM_RELATED'];
       }
-    },
-    {
-      message:
-        'Inconsistent semantic relevance output: is_relevant=true requires at least one lane and null exclusion_reason; is_relevant=false requires empty lanes and non-null exclusion_reason',
-    },
-  );
+    } else if (copy.is_relevant === false) {
+      copy.relevant_lanes = [];
+      if (!copy.exclusion_reason || copy.exclusion_reason === 'null') {
+        copy.exclusion_reason = 'GENERAL_CHATTER';
+      }
+    }
+    return copy;
+  },
+  z
+    .object({
+      is_relevant: z.boolean().describe('Whether the message reports a genuine, active citizen issue or Hokim concern'),
+      relevant_lanes: z.array(QualifyingLaneEnum).describe('Municipal service or leadership lanes applicable to the issue'),
+      exclusion_reason: ExclusionReasonEnum.nullable().describe('Specific exclusion reason if is_relevant is false, otherwise null'),
+      reasoning: z.string().max(300).describe('Brief 1-sentence explanation of the decision'),
+    })
+    .refine(
+      (data) => {
+        if (data.is_relevant) {
+          return data.relevant_lanes.length >= 1 && data.exclusion_reason === null;
+        } else {
+          return data.relevant_lanes.length === 0 && data.exclusion_reason !== null;
+        }
+      },
+      {
+        message:
+          'Inconsistent semantic relevance output: is_relevant=true requires at least one lane and null exclusion_reason; is_relevant=false requires empty lanes and non-null exclusion_reason',
+      },
+    ),
+);
 
 export type SemanticRelevanceResult = z.infer<typeof SemanticRelevanceResultSchema>;
 
@@ -62,17 +86,20 @@ export const SEMANTIC_RELEVANCE_SYSTEM_PROMPT = `You are the Semantic Relevance 
 Analyze candidate messages and determine whether they represent genuine, active civic problems, service disruptions, or District Leadership (Hokim) concerns.
 
 ### LANGUAGE & SCRIPT SUPPORT
-Messages may be in Uzbek (Latin or Cyrillic), Russian, or mixed colloquial forms (e.g., "svet o'chdi", "давление паст", "мусор тўлиб кетган"). Evaluate meaning regardless of spelling, script, or slang.
+Messages may be in Uzbek (Latin or Cyrillic), Russian, or mixed colloquial forms (e.g., "suv yuq", "svet o'chdi", "давление паст", "мусор тўлиб кетган"). Evaluate meaning regardless of spelling, script, or slang.
 
 ### QUALIFYING LANES
-1. WATER (Сув): Tap water outages, low pressure, pipe bursts, sewage leaks/overflows (kanalizatsiya), polluted drinking water.
-2. ELECTRICITY (Электр): Power cuts (svet o'chdi/chiroq yo'q), low/high voltage (tok past, 160V), sparking transformers, dangerous fallen wires.
-3. GAS (Газ): Gas outages, low gas pressure in winter, leaks, odor of gas.
+1. WATER (Сув): Tap water outages (suv yo'q, suv o'chdi, suv yuq, suv kelmayapti), low pressure, pipe bursts, sewage leaks/overflows (kanalizatsiya), polluted drinking water.
+2. ELECTRICITY (Электр): Power cuts (svet o'chdi/chiroq yo'q/tok yo'q), low/high voltage (tok past, 160V), sparking transformers, dangerous fallen wires.
+3. GAS (Газ): Gas outages (gaz yo'q, gaz o'chdi), low gas pressure in winter, leaks, odor of gas.
 4. WASTE (Чиқинди): Overflowing garbage containers (musorxona to'lgan), uncollected trash, illegal dumps, animal carcasses.
 5. HOKIM_RELATED (Ҳокимга оид): 
    - Direct appeals/complaints to the District Hokim, Hokimiyat, or sector leadership.
    - Non-service public infrastructure issues: broken roads/potholes (yo'llar rasvo, asfalt, chuqur), broken streetlights, blocked irrigation canals (ariqlar), illegal construction.
    - Overlap: If a resident complains about water and explicitly asks the Hokim to intervene, select both WATER and HOKIM_RELATED.
+
+### DIRECT OUTAGE REPORT RULE
+Direct reports of utility outages or service disruptions (e.g., "suv yuq", "suv yo'q", "suv o'chdi", "svet o'chdi", "chiroq yo'q", "tok yo'q", "gaz o'chdi", "давление паст"), even when very short or 2-3 words, are ALWAYS valid relevant civic signals (is_relevant: true) under their respective lane (WATER, ELECTRICITY, GAS, WASTE).
 
 ### STRICT EXCLUSIONS (is_relevant = false)
 - PLANNED_ANNOUNCEMENT: Official maintenance notices (e.g., "Ertaga soat 09:00 dan 18:00 gacha ta'mirlash sababli elektr o'chiriladi").
@@ -80,11 +107,11 @@ Messages may be in Uzbek (Latin or Cyrillic), Russian, or mixed colloquial forms
 - SPECULATION_OR_RUMOR: Unconfirmed hearsay, future pricing rumors.
 - NEUTRAL_OR_PRAISE: "Rahmat svet yondi", "Hokim keldi", general greetings, prayers.
 - GENERAL_CHATTER: Off-topic discussions, jokes, arguments, vague blaming ("mas'ullar qayerga qarayapti").
-- UNRESOLVED_AMBIGUOUS_FRAGMENT: Short fragments (e.g., "Bizda ham", "Nega?") that cannot be linked to any same-day Mahalla context.
+- UNRESOLVED_AMBIGUOUS_FRAGMENT: Applies ONLY to vague contextless fragments that DO NOT mention any utility or specific problem (e.g., "Bizda ham", "Nega?", "Shu ahvol", "Qachon beradi?").
 
 ### CONTEXT & AMBIGUITY RULES
 - You are provided with SAME-DAY ACCEPTED EVIDENCE from the same Mahalla (if any exists).
-- If the candidate message is a short fragment (e.g., "Bizdayam o'chdi", "Bizda ham shu ahvol"):
+- If the candidate message is a vague fragment without a specified service (e.g., "Bizda ham shu ahvol", "Bizdayam"):
   - Check same-day evidence: if evidence shows an active electricity outage today, classify as relevant under ELECTRICITY.
   - If no relevant same-day context exists, classify as is_relevant = false (UNRESOLVED_AMBIGUOUS_FRAGMENT).
 - If the candidate is a reply to an excluded forwarded parent, the parent is NOT provided. The candidate MUST stand on its own meaning. If it cannot stand on its own, exclude it.

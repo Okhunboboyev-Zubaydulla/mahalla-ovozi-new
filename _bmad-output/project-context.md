@@ -61,6 +61,16 @@ Package manifests (`package.json`) and `pnpm-lock.yaml` are the single authorita
   public API contracts.
 - Do not hold database transactions open across AI/provider/network calls.
 
+### AI & Infrastructure Baseline
+
+- **Model:** Ollama `gemma4:12b` as local baseline with provider-neutral switching (`ai_profiles`).
+- **GPU Optimization:** `think: false` (fast JSON throughput) and `keep_alive: -1` (permanent VRAM persistence).
+- **Deployment Strategy:**
+  - *Dev / MVP Test:* Local host with Ollama and Docker PostgreSQL.
+  - *Production Target:* Commercial VPS in Uzbekistan (e.g., aHOST / UzCloud in TAS-IX) ensuring 24/7 SLA, local data sovereignty, static IP, and automated daily backups.
+- **Direct Outages:** 2-3 word utility outage reports (e.g., "suv yo'q", "svet o'chdi") are always relevant signals (`is_relevant: true`).
+- **Schema Safety:** Evaluator boundaries use `z.preprocess()` to sanitize local LLM outputs.
+
 ### Testing Rules
 
 - Add the smallest set of tests that materially proves the changed behavior.

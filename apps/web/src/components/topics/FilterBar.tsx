@@ -60,7 +60,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         <DashboardSearchInput
           value={searchQuery}
           onChange={(val) => onSearchChange?.(val)}
-          disabled={isLoading}
         />
 
         <div style={{ width: 1, height: 24, backgroundColor: '#E2E8F0', flexShrink: 0 }} />
@@ -77,7 +76,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               dateTo: scope.dateTo,
             });
           }}
-          disabled={isLoading}
         />
 
         <div style={{ width: 1, height: 24, backgroundColor: '#E2E8F0', flexShrink: 0 }} />
@@ -86,14 +84,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         <MahallaSelect
           value={filters.mahallaName}
           onChange={(mahallaName) => onFilterChange({ mahallaName })}
-          disabled={isLoading}
         />
 
         {/* Lane Multi-Select */}
         <LaneMultiSelect
           value={filters.lanes}
           onChange={(lanes) => onFilterChange({ lanes })}
-          disabled={isLoading}
         />
 
         {/* Loading / Transition Spinner */}

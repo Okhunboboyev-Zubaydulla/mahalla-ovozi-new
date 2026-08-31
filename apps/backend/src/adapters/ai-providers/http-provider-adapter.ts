@@ -125,6 +125,8 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
             num_predict: payload.maxOutputTokens,
           },
           format: payload.compiledSchema,
+          think: false,
+          keep_alive: -1,
         };
         break;
       }

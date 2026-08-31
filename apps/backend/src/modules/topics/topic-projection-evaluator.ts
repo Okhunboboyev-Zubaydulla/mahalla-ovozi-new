@@ -29,57 +29,68 @@ export function isUzbekCyrillic(text: string): boolean {
   return cyrillicMatches.length / alphabeticMatches.length >= 0.7;
 }
 
-export const TopicProjectionResultSchema = z
-  .object({
-    summary: z
-      .string()
-      .min(1)
-      .describe(
-        'Concise 1-3 sentence cautious Uzbek Cyrillic summary of the situation preserving reported status, disagreements, or recurrences',
-      ),
-    lanes: z
-      .array(QualifyingLaneEnum)
-      .min(1)
-      .transform((l) => Array.from(new Set(l)))
-      .describe(
-        'Non-empty array of applicable municipal/governance lanes. Must include the immutable primaryLane of the target Topic.',
-      ),
-    anchor_evidence_id: z
-      .string()
-      .min(1)
-      .describe(
-        'The evidence ID of the latest self-contained meaningful report belonging strictly to the target Topic',
-      ),
-    anchor_quote: z
-      .string()
-      .min(1)
-      .describe('Exact quotation or key excerpt from the anchor evidence item'),
-    latest_meaningful_activity_timestamp: z
-      .string()
-      .datetime()
-      .describe(
-        'ISO-8601 timestamp strictly matching the originalTimestamp of an Accepted Evidence item belonging to the target Topic',
-      ),
-    attribution: z
-      .string()
-      .min(1)
-      .describe(
-        'Neutral, cautious attribution (e.g. "Маҳалла аҳолиси хабарига кўра" or permitted resident username/display name)',
-      ),
-    is_hokim_related: z
-      .boolean()
-      .describe(
-        'Must be true if and only if HOKIM_RELATED is present in the lanes array',
-      ),
-  })
-  .refine(
-    (data) => data.is_hokim_related === data.lanes.includes('HOKIM_RELATED'),
-    {
-      message:
-        'is_hokim_related must be true if and only if HOKIM_RELATED is present in lanes',
-      path: ['is_hokim_related'],
-    },
-  );
+export const TopicProjectionResultSchema = z.preprocess(
+  (val: any) => {
+    if (!val || typeof val !== 'object') return val;
+    const copy = { ...val };
+    if (Array.isArray(copy.lanes)) {
+      copy.lanes = Array.from(new Set(copy.lanes));
+      copy.is_hokim_related = copy.lanes.includes('HOKIM_RELATED');
+    }
+    return copy;
+  },
+  z
+    .object({
+      summary: z
+        .string()
+        .min(1)
+        .describe(
+          'Concise 1-3 sentence cautious Uzbek Cyrillic summary of the situation preserving reported status, disagreements, or recurrences',
+        ),
+      lanes: z
+        .array(QualifyingLaneEnum)
+        .min(1)
+        .transform((l) => Array.from(new Set(l)))
+        .describe(
+          'Non-empty array of applicable municipal/governance lanes. Must include the immutable primaryLane of the target Topic.',
+        ),
+      anchor_evidence_id: z
+        .string()
+        .min(1)
+        .describe(
+          'The evidence ID of the latest self-contained meaningful report belonging strictly to the target Topic',
+        ),
+      anchor_quote: z
+        .string()
+        .min(1)
+        .describe('Exact quotation or key excerpt from the anchor evidence item'),
+      latest_meaningful_activity_timestamp: z
+        .string()
+        .datetime()
+        .describe(
+          'ISO-8601 timestamp strictly matching the originalTimestamp of an Accepted Evidence item belonging to the target Topic',
+        ),
+      attribution: z
+        .string()
+        .min(1)
+        .describe(
+          'Neutral, cautious attribution (e.g. "Маҳалла аҳолиси хабарига кўра" or permitted resident username/display name)',
+        ),
+      is_hokim_related: z
+        .boolean()
+        .describe(
+          'Must be true if and only if HOKIM_RELATED is present in the lanes array',
+        ),
+    })
+    .refine(
+      (data) => data.is_hokim_related === data.lanes.includes('HOKIM_RELATED'),
+      {
+        message:
+          'is_hokim_related must be true if and only if HOKIM_RELATED is present in lanes',
+        path: ['is_hokim_related'],
+      },
+    ),
+);
 
 export type TopicProjectionResult = z.infer<typeof TopicProjectionResultSchema>;
 
