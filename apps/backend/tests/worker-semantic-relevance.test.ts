@@ -338,11 +338,13 @@ describe('Story 2.3: Worker Semantic Relevance 25-Row Verification Matrix Integr
       .select()
       .from(telegramIntakeRecords)
       .where(eq(telegramIntakeRecords.id, intakeId));
-    expect(intake!.rawPayload).toEqual({
+    expect(intake!.rawPayload).toMatchObject({
       status: 'EXCLUDED',
       exclusionReason: 'GENERAL_CHATTER',
-      purgedAt: expect.any(String),
+      verbatimText: "Mas'ullar qayerga qarayapti o'zi, nima bo'lyapti?",
+      reasoning: 'Vague complaint without specific municipal issue',
     });
+    expect((intake!.rawPayload as any).expiresAt).toBeDefined();
 
     // 3. No downstream topic assignment job enqueued
     const jobs = await boss.fetch<TelegramTopicAssignmentJobData>(TELEGRAM_TOPIC_ASSIGNMENT_QUEUE, {

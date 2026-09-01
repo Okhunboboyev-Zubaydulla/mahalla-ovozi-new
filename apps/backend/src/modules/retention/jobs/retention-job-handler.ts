@@ -8,6 +8,7 @@ import {
   type TelegramTopicRetentionJobData,
 } from '../../../adapters/jobs/boss-client.js';
 import { TopicRetentionService } from '../topic-retention-service.js';
+import { purgeExpiredDebugIntakePayloads } from '../debug-payload-retention.js';
 
 import { clearPendingRetryFlag } from '../../issues/retry-service.js';
 
@@ -111,6 +112,25 @@ export async function processRetentionJobs(
               }),
             );
           }
+        }
+
+        try {
+          const debugPurge = await purgeExpiredDebugIntakePayloads(db);
+          if (debugPurge.purgedCount > 0) {
+            console.log(
+              JSON.stringify({
+                event: 'DEBUG_INTAKE_PAYLOADS_PURGED',
+                purgedCount: debugPurge.purgedCount,
+              }),
+            );
+          }
+        } catch (debugErr) {
+          console.error(
+            JSON.stringify({
+              event: 'DEBUG_INTAKE_PAYLOADS_PURGE_ERROR',
+              error: debugErr instanceof Error ? debugErr.message : String(debugErr),
+            }),
+          );
         }
 
         const durationMs = Math.round(performance.now() - startTime);

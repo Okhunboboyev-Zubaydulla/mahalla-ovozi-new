@@ -158,7 +158,7 @@ describe('Story 2.7: AI Operation Traceability and Failure State Verification Ma
     ]);
 
     // 5. Seed Test AI Operations and Attempts
-    const now = new Date();
+    const now = new Date('2026-08-23T12:00:00.000Z');
     const calendarDay = '2026-08-23';
 
     // Op 1: Semantic Relevance Completed Relevant

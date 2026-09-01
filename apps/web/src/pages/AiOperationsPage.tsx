@@ -25,6 +25,7 @@ import { GlobalSettingsDraftForm } from '../components/ai/GlobalSettingsDraftFor
 import { ActiveDistrictSettingsCard } from '../components/ai/ActiveDistrictSettingsCard.js';
 import { DistrictSettingsDraftForm } from '../components/ai/DistrictSettingsDraftForm.js';
 import { AnalysisSettingsHistoryPanel } from '../components/ai/AnalysisSettingsHistoryPanel.js';
+import { SignalMonitoringTable } from '../components/ai/SignalMonitoringTable.js';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -208,20 +209,7 @@ export const AiOperationsPage: React.FC = () => {
           Операциялар мониторинги
         </span>
       ),
-      children: (
-        <Card
-          variant="borderless"
-          style={{
-            borderRadius: token.borderRadiusLG,
-            background: token.colorBgContainer,
-          }}
-        >
-          <Title level={4}>АИ операциялари мониторинги</Title>
-          <Paragraph type="secondary">
-            Кирувчи хабарларнинг долзарблиги ва мавзу бирлаштириш операцияларининг реал вақтдаги ҳолати.
-          </Paragraph>
-        </Card>
-      ),
+      children: <SignalMonitoringTable initialDistrictId={activeDistrictId} />,
     },
   ];
 

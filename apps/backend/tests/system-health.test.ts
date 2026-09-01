@@ -13,7 +13,7 @@ import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/clien
 import { createBossClient, initBossQueues } from '../src/adapters/jobs/boss-client.js';
 import type PgBoss from 'pg-boss';
 import { buildHttpServer } from '../src/entrypoints/http.js';
-import { accounts, districts } from '../src/adapters/db/schema/index.js';
+import { accounts, districts, districtDeletionRecords } from '../src/adapters/db/schema/index.js';
 import { createOrResetProductOwner } from '../src/modules/auth/account-service.js';
 import { hashPassword } from '../src/adapters/crypto/argon2.js';
 import {
@@ -27,6 +27,7 @@ import {
   TOPIC_DELAY_THRESHOLD_MS,
 } from '../src/modules/health/health-evaluator.js';
 import { checkScheduledDeletionHealth } from '../src/modules/health/health-checker.js';
+import { InMemoryExternalTombstoneStore } from '../src/adapters/storage/external-tombstone-store.js';
 
 const SAME_ORIGIN_HEADERS = {
   origin: 'http://localhost:5173',
@@ -370,8 +371,16 @@ describe('Story 4.1: Backend Health HTTP Routes & Security Integration Tests', (
     await boss.start();
     await initBossQueues(boss);
 
-    server = await buildHttpServer({ db, pool, boss });
+    server = await buildHttpServer({
+      db,
+      pool,
+      boss,
+      tombstoneStore: new InMemoryExternalTombstoneStore(),
+    });
     await server.ready();
+
+    // Clean any leftover deletion records in test DB
+    await db.delete(districtDeletionRecords);
 
     // 1. Seed Product Owner
     const poUsername = `po_health_test_${Date.now()}`;

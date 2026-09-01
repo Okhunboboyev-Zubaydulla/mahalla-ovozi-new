@@ -311,11 +311,13 @@ export async function processSemanticRelevanceJobs(
                 retryBackoff: true,
               });
             } else {
-              // 4. Sanitize raw_payload in DB and purge verbatimText from memory (AC 7, 8 / AD-11)
+              // 4. Retain bounded debug payload in DB for 14 days and purge memory (Decision 1 / Bounded Debug Retention)
               const allIntakeIds =
                 burstMessages && burstMessages.length > 0
                   ? burstMessages.map((m) => m.intakeId)
                   : [intakeId];
+
+              const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
               await tx
                 .update(telegramIntakeRecords)
@@ -323,7 +325,10 @@ export async function processSemanticRelevanceJobs(
                   rawPayload: {
                     status: 'EXCLUDED',
                     exclusionReason: aiResult.data.exclusion_reason,
-                    purgedAt: new Date().toISOString(),
+                    verbatimText,
+                    reasoning: aiResult.data.reasoning,
+                    expiresAt,
+                    purgedAt: null,
                   },
                   updatedAt: new Date(),
                 })
