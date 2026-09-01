@@ -12,9 +12,11 @@ import {
 } from '../../adapters/db/schema/index.js';
 import {
   withTransactionalIntake,
+  TELEGRAM_BURST_DEBOUNCE_QUEUE,
   TELEGRAM_CONTENT_QUALIFICATION_QUEUE,
   JobSingletonKeys,
 } from '../../adapters/jobs/boss-client.js';
+import { qualifyTelegramContent } from './telegram-content-qualification.js';
 import { getTashkentCalendarDay } from './timezone-util.js';
 
 export interface TelegramUpdate {
@@ -262,26 +264,66 @@ export async function processTelegramWebhookUpdate(
       };
     }
 
-    // Enqueue downstream content qualification job with scoped deduplication singleton key
-    const singletonKey = JobSingletonKeys.forContentQualification(auth.districtId, chatId, messageId);
-    const jobId = await enqueueJob(
-      TELEGRAM_CONTENT_QUALIFICATION_QUEUE,
-      {
-        intakeId: record.id,
-        districtId: auth.districtId,
-        mahallaName: auth.mahallaName,
-        calendarDay: record.calendarDay,
-        telegramChatId: record.telegramChatId,
-        telegramMessageId: record.telegramMessageId,
-        originalTimestamp: record.originalTimestamp.toISOString(),
-      },
-      {
-        singletonKey,
-        retryLimit: 3,
-        retryDelay: 5,
-        retryBackoff: true,
-      },
-    );
+    // Structural pre-check for debouncing vs direct exclusion
+    const qualResult = qualifyTelegramContent({
+      id: record.id,
+      districtId: auth.districtId,
+      mahallaName: auth.mahallaName,
+      calendarDay: record.calendarDay,
+      telegramBotId: auth.botId,
+      telegramChatId: chatId,
+      telegramMessageId: messageId,
+      updateId,
+      telegramUserId: userId,
+      originalTimestamp: record.originalTimestamp,
+      rawPayload: update,
+    });
+
+    let jobId: string | null = null;
+    if (qualResult.status === 'SUPPORTED') {
+      // Schedule burst debouncing (25 seconds sliding window)
+      const singletonKey = JobSingletonKeys.forBurstDebounce(auth.districtId, chatId, userId);
+      jobId = await enqueueJob(
+        TELEGRAM_BURST_DEBOUNCE_QUEUE,
+        {
+          districtId: auth.districtId,
+          mahallaName: auth.mahallaName,
+          calendarDay: record.calendarDay,
+          telegramChatId: record.telegramChatId,
+          telegramUserId: record.telegramUserId,
+          telegramBotId: auth.botId,
+          firstMessageTimestamp: record.originalTimestamp.toISOString(),
+        },
+        {
+          singletonKey,
+          startAfter: 25,
+          retryLimit: 3,
+          retryDelay: 5,
+          retryBackoff: true,
+        },
+      );
+    } else {
+      // Enqueue standard qualification job to log structural exclusion cleanly
+      const singletonKey = JobSingletonKeys.forContentQualification(auth.districtId, chatId, messageId);
+      jobId = await enqueueJob(
+        TELEGRAM_CONTENT_QUALIFICATION_QUEUE,
+        {
+          intakeId: record.id,
+          districtId: auth.districtId,
+          mahallaName: auth.mahallaName,
+          calendarDay: record.calendarDay,
+          telegramChatId: record.telegramChatId,
+          telegramMessageId: record.telegramMessageId,
+          originalTimestamp: record.originalTimestamp.toISOString(),
+        },
+        {
+          singletonKey,
+          retryLimit: 3,
+          retryDelay: 5,
+          retryBackoff: true,
+        },
+      );
+    }
 
     return {
       status: 'ACCEPTED',

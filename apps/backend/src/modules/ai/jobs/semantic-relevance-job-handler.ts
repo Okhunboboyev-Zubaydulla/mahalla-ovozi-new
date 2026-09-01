@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import type { DbClient } from '../../../adapters/db/client.js';
 import {
   districts,
@@ -55,6 +55,7 @@ export async function processSemanticRelevanceJobs(
           contentType,
           verbatimText,
           replyMetadata,
+          burstMessages,
         } = job.data;
 
         const startTime = performance.now();
@@ -299,6 +300,7 @@ export async function processSemanticRelevanceJobs(
                 aiOperationId,
                 relevantLanes: aiResult.data.relevant_lanes,
                 reasoning: aiResult.data.reasoning,
+                burstMessages,
               };
 
               const singletonKey = JobSingletonKeys.forTopicAssignment(districtId, telegramChatId, telegramMessageId);
@@ -310,6 +312,11 @@ export async function processSemanticRelevanceJobs(
               });
             } else {
               // 4. Sanitize raw_payload in DB and purge verbatimText from memory (AC 7, 8 / AD-11)
+              const allIntakeIds =
+                burstMessages && burstMessages.length > 0
+                  ? burstMessages.map((m) => m.intakeId)
+                  : [intakeId];
+
               await tx
                 .update(telegramIntakeRecords)
                 .set({
@@ -320,7 +327,7 @@ export async function processSemanticRelevanceJobs(
                   },
                   updatedAt: new Date(),
                 })
-                .where(eq(telegramIntakeRecords.id, intakeId));
+                .where(inArray(telegramIntakeRecords.id, allIntakeIds));
 
               verbatimText = ''; // Memory purge
             }

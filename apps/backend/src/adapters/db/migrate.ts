@@ -33,7 +33,7 @@ export async function runMigrations(connectionString?: string) {
 }
 
 if (process.argv[1] === __filename) {
-  runMigrations().catch((err) => {
+  runMigrations(process.argv[2]).catch((err) => {
     console.error('[db:migrate] Migration failed:', err);
     process.exit(1);
   });

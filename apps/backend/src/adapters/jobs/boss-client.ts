@@ -8,6 +8,7 @@ import type {
 } from '@mahalla-ovozi/api-contracts';
 export type { TelegramReplyMetadata };
 
+export const TELEGRAM_BURST_DEBOUNCE_QUEUE = 'telegram-burst-debounce';
 export const TELEGRAM_CONTENT_QUALIFICATION_QUEUE = 'telegram-content-qualification';
 export const TELEGRAM_SEMANTIC_RELEVANCE_QUEUE = 'telegram-semantic-relevance';
 export const TELEGRAM_TOPIC_ASSIGNMENT_QUEUE = 'telegram-topic-assignment';
@@ -19,6 +20,26 @@ export const DISTRICT_LIVE_DELETION_QUEUE = 'district-live-deletion';
 export const DISTRICT_LIVE_DELETION_CRON_QUEUE = 'district-live-deletion-cron';
 export const DISTRICT_BACKUP_EXPIRY_QUEUE = 'district-backup-expiry';
 export const DISTRICT_BACKUP_EXPIRY_CRON_QUEUE = 'district-backup-expiry-cron';
+
+export interface BurstMessageItem {
+  intakeId: string;
+  telegramMessageId: string;
+  originalTimestamp: string;
+  verbatimText: string;
+  contentType: 'TEXT' | 'MEDIA_CAPTION';
+  replyMetadata?: TelegramReplyMetadata | null;
+}
+
+export interface TelegramBurstDebounceJobData {
+  districtId: string;
+  mahallaName: string;
+  calendarDay: string;
+  telegramChatId: string;
+  telegramUserId?: string | null;
+  telegramBotId: string;
+  firstMessageTimestamp: string;
+  issueId?: string;
+}
 
 export interface DistrictSubscriptionExpiryJobData {
   districtId: string;
@@ -57,6 +78,7 @@ export interface TelegramSemanticRelevanceJobData {
   contentType: 'TEXT' | 'MEDIA_CAPTION';
   verbatimText: string;
   replyMetadata: TelegramReplyMetadata | null;
+  burstMessages?: BurstMessageItem[];
   issueId?: string;
 }
 
@@ -75,6 +97,7 @@ export interface TelegramTopicAssignmentJobData {
   aiOperationId: string;
   relevantLanes: QualifyingLane[];
   reasoning: string;
+  burstMessages?: BurstMessageItem[];
   issueId?: string;
 }
 
@@ -111,6 +134,7 @@ export function createBossClient(options?: { connectionString?: string; schema?:
  * This operation is idempotent.
  */
 export async function initBossQueues(boss: PgBoss): Promise<void> {
+  await boss.createQueue(TELEGRAM_BURST_DEBOUNCE_QUEUE);
   await boss.createQueue(TELEGRAM_CONTENT_QUALIFICATION_QUEUE);
   await boss.createQueue(TELEGRAM_SEMANTIC_RELEVANCE_QUEUE);
   await boss.createQueue(TELEGRAM_TOPIC_ASSIGNMENT_QUEUE);
@@ -128,6 +152,13 @@ export async function initBossQueues(boss: PgBoss): Promise<void> {
  * Standard singleton key generators for pg-boss deduplication and ordering.
  */
 export const JobSingletonKeys = {
+  /**
+   * Deduplication key for Telegram burst debounce aggregation.
+   */
+  forBurstDebounce(districtId: string, chatId: string, userId?: string | null): string {
+    return `burst:${districtId}:${chatId}:${userId || 'anon'}`;
+  },
+
   /**
    * Deduplication key for Telegram message intake qualification.
    */
@@ -193,6 +224,7 @@ export const JobSingletonKeys = {
 };
 
 export interface BossQueueMap {
+  [TELEGRAM_BURST_DEBOUNCE_QUEUE]: TelegramBurstDebounceJobData;
   [TELEGRAM_CONTENT_QUALIFICATION_QUEUE]: TelegramContentQualificationJobData;
   [TELEGRAM_SEMANTIC_RELEVANCE_QUEUE]: TelegramSemanticRelevanceJobData;
   [TELEGRAM_TOPIC_ASSIGNMENT_QUEUE]: TelegramTopicAssignmentJobData;
@@ -206,6 +238,13 @@ export interface BossQueueMap {
 export type BossQueueName = keyof BossQueueMap;
 
 export const DEFAULT_QUEUE_CONFIGS: Record<string, Omit<PgBoss.SendOptions, 'db'>> = {
+  [TELEGRAM_BURST_DEBOUNCE_QUEUE]: {
+    retryLimit: 3,
+    retryDelay: 5,
+    retryBackoff: true,
+    expireInMinutes: 10,
+    retentionDays: 1,
+  },
   [TELEGRAM_CONTENT_QUALIFICATION_QUEUE]: {
     retryLimit: 3,
     retryDelay: 5,

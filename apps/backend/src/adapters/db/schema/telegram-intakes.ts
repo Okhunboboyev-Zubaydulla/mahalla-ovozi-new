@@ -17,6 +17,8 @@ export const telegramIntakeRecords = pgTable(
     originalTimestamp: timestamp('original_timestamp', { withTimezone: true }).notNull(),
     calendarDay: text('calendar_day').notNull(), // 'YYYY-MM-DD' in Asia/Tashkent
     rawPayload: jsonb('raw_payload').notNull(),
+    batchId: text('batch_id'),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -37,6 +39,13 @@ export const telegramIntakeRecords = pgTable(
     index('telegram_intakes_district_created_idx').on(
       table.districtId,
       table.createdAt,
+    ),
+    // Query index for burst buffer lookups
+    index('telegram_intakes_burst_unprocessed_idx').on(
+      table.districtId,
+      table.telegramChatId,
+      table.telegramUserId,
+      table.processedAt,
     ),
   ],
 );

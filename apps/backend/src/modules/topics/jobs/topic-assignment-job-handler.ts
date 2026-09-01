@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import type { DbClient } from '../../../adapters/db/client.js';
 import {
   districts,
@@ -68,6 +68,7 @@ export async function processTopicAssignmentJobs(
             aiOperationId,
             relevantLanes,
             reasoning,
+            burstMessages,
           } = job.data;
 
           const startTime = performance.now();
@@ -375,6 +376,35 @@ export async function processTopicAssignmentJobs(
                 }
               }
 
+              const evidenceItems =
+                burstMessages && burstMessages.length > 0
+                  ? burstMessages.map((m) => ({
+                      intakeRecordId: m.intakeId,
+                      telegramMessageId: m.telegramMessageId,
+                      originalTimestamp: new Date(m.originalTimestamp),
+                      verbatimText: m.verbatimText,
+                      contentType: m.contentType,
+                      replyMetadata: m.replyMetadata || null,
+                    }))
+                  : [
+                      {
+                        intakeRecordId: intakeId,
+                        telegramMessageId,
+                        originalTimestamp: candidateDate,
+                        verbatimText,
+                        contentType,
+                        replyMetadata,
+                      },
+                    ];
+
+              const latestCandidateTimestamp = evidenceItems.reduce(
+                (max, item) =>
+                  item.originalTimestamp.getTime() > max.getTime()
+                    ? item.originalTimestamp
+                    : max,
+                candidateDate,
+              );
+
               if (matchingDecision.decision === 'MATCH_EXISTING_TOPIC') {
                 const targetTopicId = matchingDecision.matched_topic_id!;
 
@@ -391,11 +421,11 @@ export async function processTopicAssignmentJobs(
                   );
                 }
 
-                // Arithmetic for retention & generation
+                // Arithmetic for retention & generation using latestCandidateTimestamp
                 const latestEvidenceTime = new Date(
                   Math.max(
                     existingTopic.latestRelevantEvidenceTimestamp.getTime(),
-                    candidateDate.getTime(),
+                    latestCandidateTimestamp.getTime(),
                   ),
                 );
                 const retentionExpiresAt = calculateRetentionDeadline(latestEvidenceTime);
@@ -412,25 +442,27 @@ export async function processTopicAssignmentJobs(
                   })
                   .where(eq(topics.id, targetTopicId));
 
-                // Insert Accepted Evidence
-                const evidenceId = `evi_${crypto.randomUUID()}`;
-                await tx.insert(acceptedEvidence).values({
-                  id: evidenceId,
-                  topicId: targetTopicId,
-                  districtId,
-                  mahallaName,
-                  calendarDay,
-                  intakeRecordId: intakeId,
-                  telegramChatId,
-                  telegramMessageId,
-                  telegramUserId,
-                  originalTimestamp: candidateDate,
-                  verbatimText,
-                  contentType,
-                  userMetadata,
-                  replyMetadata,
-                  aiOperationId: linkedAiOpId,
-                });
+                // Insert Accepted Evidence for each message in the burst
+                for (const item of evidenceItems) {
+                  const evidenceId = `evi_${crypto.randomUUID()}`;
+                  await tx.insert(acceptedEvidence).values({
+                    id: evidenceId,
+                    topicId: targetTopicId,
+                    districtId,
+                    mahallaName,
+                    calendarDay,
+                    intakeRecordId: item.intakeRecordId,
+                    telegramChatId,
+                    telegramMessageId: item.telegramMessageId,
+                    telegramUserId,
+                    originalTimestamp: item.originalTimestamp,
+                    verbatimText: item.verbatimText,
+                    contentType: item.contentType,
+                    userMetadata,
+                    replyMetadata: item.replyMetadata,
+                    aiOperationId: linkedAiOpId,
+                  });
+                }
 
                 // Enqueue downstream projection job (AC 17)
                 const projectionJobData: TelegramTopicProjectionJobData = {
@@ -449,7 +481,7 @@ export async function processTopicAssignmentJobs(
                 });
               } else if (matchingDecision.decision === 'NEW_TOPIC') {
                 const newTopicId = `top_${crypto.randomUUID()}`;
-                const retentionExpiresAt = calculateRetentionDeadline(candidateDate);
+                const retentionExpiresAt = calculateRetentionDeadline(latestCandidateTimestamp);
 
                 // Insert new Topic record
                 await tx.insert(topics).values({
@@ -459,31 +491,33 @@ export async function processTopicAssignmentJobs(
                   calendarDay,
                   primaryLane: matchingDecision.primary_lane!,
                   status: 'ACTIVE',
-                  latestRelevantEvidenceTimestamp: candidateDate,
+                  latestRelevantEvidenceTimestamp: latestCandidateTimestamp,
                   retentionExpiresAt,
                   requiredDerivedGeneration: 1,
                   appliedDerivedGeneration: 0,
                 });
 
-                // Insert Accepted Evidence record
-                const evidenceId = `evi_${crypto.randomUUID()}`;
-                await tx.insert(acceptedEvidence).values({
-                  id: evidenceId,
-                  topicId: newTopicId,
-                  districtId,
-                  mahallaName,
-                  calendarDay,
-                  intakeRecordId: intakeId,
-                  telegramChatId,
-                  telegramMessageId,
-                  telegramUserId,
-                  originalTimestamp: candidateDate,
-                  verbatimText,
-                  contentType,
-                  userMetadata,
-                  replyMetadata,
-                  aiOperationId: linkedAiOpId,
-                });
+                // Insert Accepted Evidence for each message in the burst
+                for (const item of evidenceItems) {
+                  const evidenceId = `evi_${crypto.randomUUID()}`;
+                  await tx.insert(acceptedEvidence).values({
+                    id: evidenceId,
+                    topicId: newTopicId,
+                    districtId,
+                    mahallaName,
+                    calendarDay,
+                    intakeRecordId: item.intakeRecordId,
+                    telegramChatId,
+                    telegramMessageId: item.telegramMessageId,
+                    telegramUserId,
+                    originalTimestamp: item.originalTimestamp,
+                    verbatimText: item.verbatimText,
+                    contentType: item.contentType,
+                    userMetadata,
+                    replyMetadata: item.replyMetadata,
+                    aiOperationId: linkedAiOpId,
+                  });
+                }
 
                 // Enqueue downstream projection job (AC 17)
                 const projectionJobData: TelegramTopicProjectionJobData = {
@@ -502,6 +536,7 @@ export async function processTopicAssignmentJobs(
                 });
               } else if (matchingDecision.decision === 'UNASSIGNABLE_VAGUE') {
                 // Sanitize raw payload in DB and purge verbatimText from memory (AC 7 / AD-11)
+                const allIntakeIds = evidenceItems.map((i) => i.intakeRecordId);
                 await tx
                   .update(telegramIntakeRecords)
                   .set({
@@ -512,7 +547,7 @@ export async function processTopicAssignmentJobs(
                     },
                     updatedAt: new Date(),
                   })
-                  .where(eq(telegramIntakeRecords.id, intakeId));
+                  .where(inArray(telegramIntakeRecords.id, allIntakeIds));
 
                 verbatimText = ''; // Memory purge
               }

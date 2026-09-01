@@ -6,6 +6,7 @@ import type PgBoss from 'pg-boss';
 import {
   createBossClient,
   initBossQueues,
+  TELEGRAM_BURST_DEBOUNCE_QUEUE,
   TELEGRAM_CONTENT_QUALIFICATION_QUEUE,
   TELEGRAM_SEMANTIC_RELEVANCE_QUEUE,
   TELEGRAM_TOPIC_ASSIGNMENT_QUEUE,
@@ -25,6 +26,7 @@ import type { AcceptedEvidenceItem } from '../modules/ai/context-snapshot.js';
 import type { BackupRetentionVerifier } from '../modules/subscriptions/ports/backup-retention-verifier.js';
 import { SystemBackupRetentionVerifier } from '../adapters/backup/system-backup-verifier.js';
 
+import { registerBurstDebounceJobHandler } from '../modules/telegram-intake/jobs/burst-debounce-job-handler.js';
 import { registerQualificationJobHandler } from '../modules/telegram-intake/jobs/qualification-job-handler.js';
 import { registerSemanticRelevanceJobHandler } from '../modules/ai/jobs/semantic-relevance-job-handler.js';
 import { registerTopicAssignmentJobHandler } from '../modules/topics/jobs/topic-assignment-job-handler.js';
@@ -75,6 +77,10 @@ export async function registerWorkerPipelines(
   activeQueues?: string[],
 ): Promise<void> {
   const shouldWork = (queueName: string) => !activeQueues || activeQueues.includes(queueName);
+
+  if (shouldWork(TELEGRAM_BURST_DEBOUNCE_QUEUE)) {
+    await registerBurstDebounceJobHandler(boss, { db: ctx.db, boss: ctx.boss });
+  }
 
   if (shouldWork(TELEGRAM_CONTENT_QUALIFICATION_QUEUE)) {
     await registerQualificationJobHandler(boss, { db: ctx.db, boss: ctx.boss });
