@@ -129,12 +129,12 @@ describe('Context Snapshot Kernel & Cryptographic Integrity Tests (AD-5, AD-6)',
       );
     });
 
-    it('formats flat evidence list correctly', () => {
+    it('formats flat evidence list correctly with relative time offsets', () => {
       const list = formatSnapshotEvidenceList(sampleEvidence.slice(0, 2), {
         includeLane: true,
       });
       expect(list).toContain('[#1] Timestamp: 2026-08-25T10:00:00.000Z | MsgID: 1001 | Lane: [ELECTRICITY]');
-      expect(list).toContain('[#2] Timestamp: 2026-08-25T10:05:00.000Z | MsgID: 1002 | Lane: [ELECTRICITY]');
+      expect(list).toContain('[#2] Timestamp: 2026-08-25T10:05:00.000Z (+5m from previous) | MsgID: 1002 | Lane: [ELECTRICITY]');
     });
 
     it('groups evidence deterministically by topicId', () => {
@@ -153,7 +153,7 @@ describe('Context Snapshot Kernel & Cryptographic Integrity Tests (AD-5, AD-6)',
       expect(topicMap.get('top_2')?.items.length).toBe(1);
     });
 
-    it('formats semantic relevance context section', () => {
+    it('formats semantic relevance context section with relative time offsets', () => {
       const snapshot: MahallaDailySnapshot = {
         districtId: 'dist_1',
         mahallaName: 'Navbahor',
@@ -166,8 +166,8 @@ describe('Context Snapshot Kernel & Cryptographic Integrity Tests (AD-5, AD-6)',
       const formatted = formatSnapshotForSemanticRelevance(snapshot);
       expect(formatted).toContain('### SAME-DAY ACCEPTED EVIDENCE CONTEXT (Mahalla: Navbahor, Day: 2026-08-25)');
       expect(formatted).toContain('[#1] Timestamp: 2026-08-25T10:00:00.000Z | MsgID: 1001 | Lane: [ELECTRICITY] | Text: "Elektr ta`minotida uzilishlar bo`lyapti"');
-      expect(formatted).toContain('[#2] Timestamp: 2026-08-25T10:05:00.000Z | MsgID: 1002 | Lane: [ELECTRICITY] | Text: "Yo`l ta`mirlash ishlari to`xtab qoldi"');
-      expect(formatted).toContain('[#3] Timestamp: 2026-08-25T10:10:00.000Z | MsgID: 1003 | Lane: [WATER] | Text: "Suv quvuri yorildi"');
+      expect(formatted).toContain('[#2] Timestamp: 2026-08-25T10:05:00.000Z (+5m from previous) | MsgID: 1002 | Lane: [ELECTRICITY] | Text: "Yo`l ta`mirlash ishlari to`xtab qoldi"');
+      expect(formatted).toContain('[#3] Timestamp: 2026-08-25T10:10:00.000Z (+5m from previous) | MsgID: 1003 | Lane: [WATER] | Text: "Suv quvuri yorildi"');
     });
 
     it('formats semantic relevance context for empty snapshot', () => {

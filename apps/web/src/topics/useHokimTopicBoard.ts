@@ -129,8 +129,8 @@ export function useHokimTopicBoard(
       }
       return previousData;
     },
-    staleTime: 5_000,
-    refetchInterval: 10_000,
+    staleTime: 2_000,
+    refetchInterval: 4_000,
     refetchIntervalInBackground: false,
     networkMode: 'online',
     retry: false,

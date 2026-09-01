@@ -247,7 +247,7 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
       });
 
       expect(prompt).toContain('[#1] Timestamp: 2026-08-22T08:00:00.000Z | MsgID: 101 | Lane: [ELECTRICITY] | Text: "Svet o\'chdi 14-domda"');
-      expect(prompt).toContain('[#2] Timestamp: 2026-08-22T08:15:00.000Z | MsgID: 102 | Lane: [ELECTRICITY] | Text: "Bizda ham chiroq yoq"');
+      expect(prompt).toContain('[#2] Timestamp: 2026-08-22T08:15:00.000Z (+15m from previous) | MsgID: 102 | Lane: [ELECTRICITY] | Text: "Bizda ham chiroq yoq"');
       expect(prompt).toContain('[elektr, chiroq, svet]');
     });
 
@@ -274,6 +274,84 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
       expect(result.data.is_relevant).toBe(true);
       expect(result.data.relevant_lanes).toEqual(['WATER']);
       expect(result.data.exclusion_reason).toBeNull();
+    });
+
+    it('builds prompt containing Uzbek contracted suffix message', () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Guliston',
+        calendarDay: '2026-09-01',
+        contextRevision: 2,
+        snapshotFingerprint: 'mock_hash',
+        evidence: [
+          {
+            id: 'ev_1',
+            telegramMessageId: '101',
+            originalTimestamp: '2026-09-01T13:43:00.000Z',
+            verbatimText: 'salom mahalladoshlar! svet hammada ucdimi yoki bizdami faqat?',
+            lane: 'ELECTRICITY',
+          },
+          {
+            id: 'ev_2',
+            telegramMessageId: '102',
+            originalTimestamp: '2026-09-01T13:44:00.000Z',
+            verbatimText: 'Cherez den uciroriw odat bub qoldi ln.',
+            lane: 'ELECTRICITY',
+          },
+        ],
+      };
+
+      const prompt = evaluator.buildUserPrompt({
+        candidateText: 'Suvam ucdi mana. Xalq cidoradi',
+        telegramMessageId: '103',
+        originalTimestamp: '2026-09-01T14:36:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+      });
+
+      expect(prompt).toContain('Suvam ucdi mana. Xalq cidoradi');
+      expect(prompt).toContain('103');
+      expect(prompt).toContain('[#2] Timestamp: 2026-09-01T13:44:00.000Z (+1m from previous) | MsgID: 102 | Lane: [ELECTRICITY]');
+    });
+
+    it('injects explicit Immediate Preceding Message (N-1) block for subjectless follow-up', () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Guliston',
+        calendarDay: '2026-09-01',
+        contextRevision: 2,
+        snapshotFingerprint: 'mock_hash_seq',
+        evidence: [
+          {
+            id: 'ev_1',
+            telegramMessageId: '101',
+            originalTimestamp: '2026-09-01T15:50:00.000Z',
+            verbatimText: 'salom mahalladoshlar! gaz hammada ucdimi yoki bizdami faqat?',
+            lane: 'GAS',
+          },
+          {
+            id: 'ev_2',
+            telegramMessageId: '102',
+            originalTimestamp: '2026-09-01T15:50:30.000Z',
+            verbatimText: 'kamiga svetam yu',
+            lane: 'ELECTRICITY',
+          },
+        ],
+      };
+
+      const prompt = evaluator.buildUserPrompt({
+        candidateText: 'Cherez den uciroriw odat bub qoldi ln. Remon diyiladi.',
+        telegramMessageId: '103',
+        originalTimestamp: '2026-09-01T15:51:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+      });
+
+      expect(prompt).toContain('### IMMEDIATE PRECEDING MESSAGE (N-1 IN CHAT)');
+      expect(prompt).toContain('Message ID: 102 (+1m before candidate) (Lane: [ELECTRICITY])');
+      expect(prompt).toContain('Text: "kamiga svetam yu"');
     });
   });
 });

@@ -410,5 +410,145 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
       expect(result.data.primary_lane).toBeNull();
       expect(result.profileId).toBe('prof_match_2026_08_v1');
     });
+
+    it('builds prompt highlighting relative time delta and domain shift message', () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Guliston',
+        calendarDay: '2026-09-01',
+        contextRevision: 2,
+        snapshotFingerprint: 'abc_fingerprint',
+        evidence: [
+          {
+            id: 'evi_1',
+            topicId: 'top_elec_1',
+            telegramMessageId: '101',
+            originalTimestamp: '2026-09-01T13:43:00.000Z',
+            verbatimText: 'salom mahalladoshlar! svet hammada ucdimi yoki bizdami faqat?',
+            lane: 'ELECTRICITY',
+          },
+          {
+            id: 'evi_2',
+            topicId: 'top_elec_1',
+            telegramMessageId: '102',
+            originalTimestamp: '2026-09-01T13:44:00.000Z',
+            verbatimText: 'Cherez den uciroriw odat bub qoldi ln. Remon diyiladi.',
+            lane: 'ELECTRICITY',
+          },
+        ],
+      };
+
+      const prompt = evaluator.buildUserPrompt({
+        candidateText: 'Suvam ucdi mana. Xalq cidoradi',
+        telegramMessageId: '103',
+        originalTimestamp: '2026-09-01T14:36:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['WATER'],
+        relevanceReasoning: 'Water outage reported with contracted suffix',
+        snapshot,
+      });
+
+      expect(prompt).toContain('Suvam ucdi mana. Xalq cidoradi');
+      expect(prompt).toContain('Relevant Lanes: [WATER]');
+      expect(prompt).toContain('Nearest Earlier Same-Day Message in Mahalla: MsgID 102 (+52m before candidate)');
+      expect(prompt).toContain('top_elec_1 (Primary Lane: ELECTRICITY)');
+    });
+
+    it('executes AI evaluation creating NEW_TOPIC for distinct utility domain shift', async () => {
+      const expectedOutput: TopicMatchingResult = {
+        decision: 'NEW_TOPIC',
+        matched_topic_id: null,
+        primary_lane: 'WATER',
+        reasoning: 'Explicit water domain outage reports distinct utility incident from electricity',
+      };
+
+      mockAdapter.setNextResponse(expectedOutput);
+
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Guliston',
+        calendarDay: '2026-09-01',
+        contextRevision: 2,
+        snapshotFingerprint: 'abc_fingerprint',
+        evidence: [
+          {
+            id: 'evi_1',
+            topicId: 'top_elec_1',
+            telegramMessageId: '101',
+            originalTimestamp: '2026-09-01T13:43:00.000Z',
+            verbatimText: 'salom mahalladoshlar! svet hammada ucdimi yoki bizdami faqat?',
+            lane: 'ELECTRICITY',
+          },
+        ],
+      };
+
+      const result = await evaluator.evaluateTopicAssignment({
+        candidateText: 'Suvam ucdi mana. Xalq cidoradi',
+        telegramMessageId: '103',
+        originalTimestamp: '2026-09-01T14:36:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['WATER'],
+        snapshot,
+        profileId: 'prof_match_2026_08_v1',
+      });
+
+      expect(result.data.decision).toBe('NEW_TOPIC');
+      expect(result.data.matched_topic_id).toBeNull();
+      expect(result.data.primary_lane).toBe('WATER');
+    });
+
+    it('matches N-1 electricity topic for subjectless follow-up in rapid multi-topic sequence', async () => {
+      const expectedOutput: TopicMatchingResult = {
+        decision: 'MATCH_EXISTING_TOPIC',
+        matched_topic_id: 'top_elec_1',
+        primary_lane: null,
+        reasoning: 'Subjectless maintenance complaint binds strictly to immediate preceding electricity topic (N-1)',
+      };
+
+      mockAdapter.setNextResponse(expectedOutput);
+
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Guliston',
+        calendarDay: '2026-09-01',
+        contextRevision: 2,
+        snapshotFingerprint: 'seq_hash_123',
+        evidence: [
+          {
+            id: 'evi_1',
+            topicId: 'top_gas_1',
+            telegramMessageId: '101',
+            originalTimestamp: '2026-09-01T15:50:00.000Z',
+            verbatimText: 'salom mahalladoshlar! gaz hammada ucdimi yoki bizdami faqat?',
+            lane: 'GAS',
+          },
+          {
+            id: 'evi_2',
+            topicId: 'top_elec_1',
+            telegramMessageId: '102',
+            originalTimestamp: '2026-09-01T15:50:30.000Z',
+            verbatimText: 'kamiga svetam yu',
+            lane: 'ELECTRICITY',
+          },
+        ],
+      };
+
+      const result = await evaluator.evaluateTopicAssignment({
+        candidateText: 'Cherez den uciroriw odat bub qoldi ln. Remon diyiladi.',
+        telegramMessageId: '103',
+        originalTimestamp: '2026-09-01T15:51:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['ELECTRICITY'],
+        snapshot,
+        profileId: 'prof_match_2026_08_v1',
+      });
+
+      expect(result.data.decision).toBe('MATCH_EXISTING_TOPIC');
+      expect(result.data.matched_topic_id).toBe('top_elec_1');
+      expect(result.data.primary_lane).toBeNull();
+    });
   });
 });

@@ -73,17 +73,27 @@ Analyze candidate messages and determine whether they represent genuine, active 
 - They MUST ALWAYS be classified as relevant (is_relevant: true) under the corresponding lane (WATER, ELECTRICITY, GAS, WASTE, HOKIM_RELATED), even if phrased as a question, exclamation, or colloquial inquiry.
 
 ### LANGUAGE & SCRIPT SUPPORT
-Messages may be in Uzbek (Latin or Cyrillic), Russian, or mixed colloquial forms (e.g., "suv yuq", "svet o'chdi", "давление паст", "мусор тўлиб кетган", "ток 160V"). Evaluate meaning regardless of spelling, script, or slang.
+Messages may be in Uzbek (Latin or Cyrillic), Russian, or mixed colloquial forms (e.g., "suv yuq", "svet o'chdi", "давление паст", "мусор тўлиб кетган", "ток 160V", "suvam o'chdi").
+CRITICAL: Recognize Uzbek colloquial contracted suffixes ('-am', '-yam', '-ham' meaning "also/too") and fused particles:
+- Water: "suvam" (= suv ham), "suvom", "nasosam", "trubayam", "kanalizatsiyam", "suvimizam"
+- Electricity: "svetam" (= svet ham), "tokam", "chiroqam", "fazayam", "transformatoram"
+- Gas: "gazam" (= gaz ham), "bosimam", "issiqligam", "otopleniyayam"
+- Waste: "musoram" (= musor ham), "axlatam", "chiqindiyam"
+- Hokim / Infrastructure: "yo'lam", "chuquram", "asfaltam", "ariqam", "lyukam"
 
 ### QUALIFYING LANES
-1. WATER (Сув): Tap water outages (suv yo'q, suv o'chdi, suv yuq, suv kelmayapti, suv keldimi?), low pressure, pipe bursts (truba yorildi), sewage leaks/overflows (kanalizatsiya), polluted drinking water.
-2. ELECTRICITY (Электр): Power cuts (svet o'chdi/chiroq yo'q/tok yo'q, svet keldimi?, chiroq yondimi?), low/high voltage (tok past, 160V), sparking transformers, dangerous fallen wires.
-3. GAS (Газ): Gas outages (gaz yo'q, gaz o'chdi, gaz bormi?), low gas pressure in winter (davlenie past), leaks, odor of gas.
-4. WASTE (Чиқинди): Overflowing garbage containers (musorxona to'lgan), uncollected trash, illegal dumps, animal carcasses.
+1. WATER (Сув): Tap water outages (suv yo'q, suv o'chdi, suv yuq, suvam o'chdi, suv kelmayapti, suv keldimi?), low pressure, pipe bursts (truba yorildi), sewage leaks/overflows (kanalizatsiya), polluted drinking water.
+2. ELECTRICITY (Электр): Power cuts (svet o'chdi/chiroq yo'q/tok yo'q/svetam o'chdi, svet keldimi?, chiroq yondimi?), low/high voltage (tok past, 160V), sparking transformers, dangerous fallen wires.
+3. GAS (Газ): Gas outages (gaz yo'q, gaz o'chdi, gazam o'chdi, gaz bormi?), low gas pressure in winter (davlenie past), leaks, odor of gas.
+4. WASTE (Чиқинди): Overflowing garbage containers (musorxona to'lgan, musoram olinmadi), uncollected trash, illegal dumps, animal carcasses.
 5. HOKIM_RELATED (Ҳокимга оид): 
    - Direct appeals/complaints to the District Hokim, Hokimiyat, or sector leadership.
-   - Non-service public infrastructure issues: broken roads/potholes (yo'llar rasvo, asfalt, chuqur), broken streetlights, blocked irrigation canals (ariqlar), illegal construction.
+   - Non-service public infrastructure issues: broken roads/potholes (yo'llar rasvo, asfalt, chuqur, yo'lam rasvo), broken streetlights, blocked irrigation canals (ariqlar), illegal construction.
    - Overlap: If a resident complains about water and explicitly asks the Hokim to intervene, select both WATER and HOKIM_RELATED.
+
+### COMPOUND & CAUSAL MESSAGES (MULTI-LANE EXTRACTION)
+- Compound / Co-occurring Outages: If a message mentions multiple independent utility outages (e.g. "suvam yo'q, gazam yo'q", "svet ham suv ham o'chdi"), return ALL applicable lanes in relevant_lanes (e.g. ['WATER', 'GAS'] or ['ELECTRICITY', 'WATER']).
+- Causal Chains: If a message indicates a disruption caused another service failure (e.g. "svet o'chgani sababli suv nasosi to'xtadi", "gaz yo'qligiga svetda isitgich yoqdik"), include both the root cause and the impacted lane in relevant_lanes (e.g. ['ELECTRICITY', 'WATER']).
 
 ### STRICT EXCLUSIONS (is_relevant = false)
 - PLANNED_ANNOUNCEMENT: Official maintenance notices (e.g., "Ertaga soat 09:00 dan 18:00 gacha ta'mirlash sababli elektr o'chiriladi").
@@ -91,14 +101,17 @@ Messages may be in Uzbek (Latin or Cyrillic), Russian, or mixed colloquial forms
 - SPECULATION_OR_RUMOR: Unconfirmed hearsay, future pricing rumors.
 - NEUTRAL_OR_PRAISE: "Rahmat svet yondi", "Hokim keldi", general greetings, prayers.
 - GENERAL_CHATTER: Off-topic discussions, jokes, arguments, political debates, vague blaming ("mas'ullar qayerga qarayapti").
-- UNRESOLVED_AMBIGUOUS_FRAGMENT: Applies ONLY to ultra-short, empty conversational fragments that contain NO reference or implication of any utility or civic issue (e.g., literally just "ha", "yo'q", "rahmat", "ok", "tushunarli", "qayerda?"). If a utility or civic issue is mentioned or implied (e.g. "svet keldimi?", "suv bormi?"), it is NOT an ambiguous fragment — it is RELEVANT.
+- UNRESOLVED_AMBIGUOUS_FRAGMENT: Applies ONLY to ultra-short, empty conversational fragments that contain NO reference or implication of any utility or civic issue (e.g., literally just "ha", "yo'q", "rahmat", "ok", "tushunarli", "qayerda?"). If a utility or civic issue is mentioned or implied (e.g. "svet keldimi?", "suv bormi?", "suvam o'chdi"), it is NOT an ambiguous fragment — it is RELEVANT.
 
 ### CONTEXT & TEMPORAL THREAD CONTINUITY RULES
-- You are provided with SAME-DAY ACCEPTED EVIDENCE from the same Mahalla (ordered chronologically).
-- CONVERSATIONAL THREAD CONTINUITY (IMMEDIATE PRECEDING CONTEXT):
-  - When a message is a context-dependent continuation, reaction, confirmation, or opinion without explicitly repeating the service name (e.g., "manimcha berishmasa kere", "ha nimayam qilardik ertaga keb qolar", "bizda ham shu ahvol", "yana o'chdimi?"):
-  - You MUST evaluate it in the context of the IMMEDIATE PRECEDING MESSAGE (the nearest recent active discussion in the chat from 1-5 minutes ago).
-  - If the nearest preceding message discussed WATER ("suvni berisharmikan bugun", "manimcha berishmasa kere"), the continuation belongs to WATER! Do NOT jump back to older, earlier topics from 15-30 minutes ago.
+- You are provided with SAME-DAY ACCEPTED EVIDENCE from the same Mahalla (ordered chronologically) and the explicit IMMEDIATE PRECEDING MESSAGE (N-1 IN CHAT).
+- DOMAIN SPECIFICITY OVERRIDES CONTINUITY:
+  - When a message explicitly mentions a distinct utility category or its contracted form (e.g. "Suvam ucdi mana", "Gazam o'chdi"), the explicit service lane (e.g. WATER) MUST take precedence. NEVER inherit or overwrite the lane with an earlier different utility topic (e.g. ELECTRICITY).
+- STRICT N-1 CONTINUITY FOR SUBJECTLESS FOLLOW-UPS:
+  - When a candidate message is a continuation, reaction, confirmation, or complaint without an explicit utility keyword (e.g. "Cherez den uciroriw odat bub qoldi ln. Remon diyiladi...", "manimcha berishmasa kere", "ha nimayam qilardik ertaga keb qolar", "bizda ham shu ahvol", "haliyam kelmadi", "yana o'chdimi?"):
+  - You MUST evaluate it strictly in the context of the IMMEDIATE PRECEDING MESSAGE (N-1 IN CHAT).
+  - If the Immediate Preceding Message (N-1) is ELECTRICITY (e.g. "kamiga svetam yu"), the candidate's relevant_lanes MUST be ['ELECTRICITY']!
+  - You MUST NOT skip the immediate preceding message (N-1) to latch onto older conversation starters (N-2, N-3, such as an earlier gas inquiry) unless the candidate explicitly names that other service.
 - If no relevant same-day context exists at all to resolve a fragment (e.g., standalone "ha", "ok", "rahmat"), classify as is_relevant: false (UNRESOLVED_AMBIGUOUS_FRAGMENT).
 - If the candidate is a reply to an excluded forwarded parent, the parent is NOT provided. The candidate MUST stand on its own meaning. If it cannot stand on its own, exclude it.
 
@@ -134,6 +147,29 @@ export class SemanticRelevanceEvaluator {
       } else {
         sections.push(`### REPLY CONTEXT
 - Reply To Message ID: ${input.replyMetadata.replyToMessageId}`);
+      }
+    }
+
+    // Extract Immediate Preceding Message (N-1 in Chat)
+    if (input.snapshot.evidence.length > 0) {
+      const candidateTime = new Date(input.originalTimestamp).getTime();
+      const earlierItems = input.snapshot.evidence.filter(
+        (e) => new Date(e.originalTimestamp).getTime() <= candidateTime,
+      );
+      const nearestEarlier = earlierItems[earlierItems.length - 1];
+
+      if (nearestEarlier) {
+        const prevTime = new Date(nearestEarlier.originalTimestamp).getTime();
+        const diffMinutes =
+          !Number.isNaN(prevTime) && !Number.isNaN(candidateTime)
+            ? Math.round((candidateTime - prevTime) / 60000)
+            : null;
+        const diffText = diffMinutes !== null ? ` (+${diffMinutes}m before candidate)` : '';
+        const laneText = nearestEarlier.lane ? ` (Lane: [${nearestEarlier.lane}])` : '';
+        sections.push(`### IMMEDIATE PRECEDING MESSAGE (N-1 IN CHAT)
+- Message ID: ${nearestEarlier.telegramMessageId}${diffText}${laneText}
+- Timestamp: ${nearestEarlier.originalTimestamp}
+- Text: "${nearestEarlier.verbatimText}"`);
       }
     }
 

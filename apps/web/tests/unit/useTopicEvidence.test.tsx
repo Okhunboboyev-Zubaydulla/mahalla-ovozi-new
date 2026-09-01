@@ -131,4 +131,69 @@ describe('Story 3.3: useTopicEvidence Synchronization & Invalidation Tests', () 
     expect(result.current.isInvalidated).toBe(true);
     expect(onInvalidatedMock).toHaveBeenCalledTimes(1);
   });
+
+  it('Test 3: Synchronizes active board query evidenceCount immediately in React Query cache', async () => {
+    // Seed existing board data with old evidenceCount = 1
+    queryClient.setQueryData(['hokim-board', 'dist_yakka_1', 'today', null, null, null, 'WATER,ELECTRICITY,GAS,WASTE,HOKIM_RELATED', null], {
+      districtId: 'dist_yakka_1',
+      districtName: 'Яккасарой',
+      calendarDay: '2026-08-24',
+      evaluationId: 'eval_1',
+      visitBaselineTimestamp: '2026-08-24T08:00:00.000Z',
+      currentVisitTimestamp: '2026-08-24T09:00:00.000Z',
+      serverEvaluatedAt: '2026-08-24T09:00:00.000Z',
+      hasProcessingDelay: false,
+      lanes: {
+        WATER: {
+          lane: 'WATER',
+          topics: [
+            {
+              ...mockTopic,
+              evidenceCount: 1, // Old count
+            },
+          ],
+          totalCount: 1,
+          nextCursor: null,
+          hasNextPage: false,
+        },
+      },
+    });
+
+    const mockEvidenceResponse: TopicEvidenceResponse = {
+      topic: {
+        ...mockTopic,
+        evidenceCount: 3, // New count
+        latestMeaningfulActivityTimestamp: '2026-08-24T09:15:00.000Z',
+      },
+      anchorQuote: 'Сув соат 8 да ўчди.',
+      anchorEvidenceId: 'evi_1',
+      evidence: [],
+      totalCount: 3,
+      nextCursor: null,
+      hasNextPage: false,
+    };
+
+    vi.spyOn(hokimTopicsClient, 'getTopicEvidence').mockResolvedValueOnce(mockEvidenceResponse);
+
+    const { result } = renderHook(() => useTopicEvidence('top_100'), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Verify cache was immediately updated
+    const boardCache = queryClient.getQueryData<any>([
+      'hokim-board',
+      'dist_yakka_1',
+      'today',
+      null,
+      null,
+      null,
+      'WATER,ELECTRICITY,GAS,WASTE,HOKIM_RELATED',
+      null,
+    ]);
+
+    expect(boardCache?.lanes?.WATER?.topics[0]?.evidenceCount).toBe(3);
+    expect(boardCache?.lanes?.WATER?.topics[0]?.latestMeaningfulActivityTimestamp).toBe('2026-08-24T09:15:00.000Z');
+  });
 });

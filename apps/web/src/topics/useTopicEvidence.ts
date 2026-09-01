@@ -1,9 +1,11 @@
 import { useMemo, useEffect, useRef } from 'react';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  QualifyingLane,
   TopicCardItem,
   TopicEvidenceItem,
   TopicEvidenceResponse,
+  HokimLaneBoardData,
 } from '@mahalla-ovozi/api-contracts';
 import { hokimTopicsClient } from './hokim-topics-client.js';
 import { useAuth } from '../auth/auth-context.js';
@@ -74,8 +76,8 @@ export function useTopicEvidence(
     getNextPageParam: (lastPage) =>
       lastPage.hasNextPage && lastPage.nextCursor ? lastPage.nextCursor : undefined,
     enabled: Boolean(districtId && topicId && actor?.role === 'DISTRICT_HOKIM'),
-    staleTime: 5_000,
-    refetchInterval: 10_000,
+    staleTime: 2_000,
+    refetchInterval: 4_000,
     refetchIntervalInBackground: false,
     networkMode: 'online',
     retry: false,
@@ -83,6 +85,48 @@ export function useTopicEvidence(
   });
 
   const firstPage = data?.pages[0];
+
+  // Immediately synchronize board card evidenceCount and activity timestamp in React Query cache
+  useEffect(() => {
+    if (firstPage?.topic && topicId && districtId) {
+      queryClient.setQueriesData<{ lanes: Record<string, HokimLaneBoardData> }>(
+        { queryKey: ['hokim-board', districtId] },
+        (oldBoard) => {
+          if (!oldBoard?.lanes) return oldBoard;
+          let changed = false;
+          const updatedLanes = { ...oldBoard.lanes };
+          for (const laneKey of Object.keys(updatedLanes)) {
+            const laneData = updatedLanes[laneKey as QualifyingLane];
+            if (!laneData?.topics) continue;
+            const idx = laneData.topics.findIndex((t) => t.id === topicId);
+            if (idx !== -1) {
+              const currentTopic = laneData.topics[idx]!;
+              if (
+                currentTopic.evidenceCount !== firstPage.totalCount ||
+                currentTopic.latestMeaningfulActivityTimestamp !==
+                  firstPage.topic.latestMeaningfulActivityTimestamp
+              ) {
+                const newTopics = [...laneData.topics];
+                newTopics[idx] = {
+                  ...currentTopic,
+                  evidenceCount: firstPage.totalCount,
+                  latestMeaningfulActivityTimestamp:
+                    firstPage.topic.latestMeaningfulActivityTimestamp,
+                  summary: firstPage.topic.summary || currentTopic.summary,
+                };
+                updatedLanes[laneKey as QualifyingLane] = {
+                  ...laneData,
+                  topics: newTopics,
+                };
+                changed = true;
+              }
+            }
+          }
+          return changed ? { ...oldBoard, lanes: updatedLanes } : oldBoard;
+        },
+      );
+    }
+  }, [firstPage, topicId, districtId, queryClient]);
 
   // Merge newly arrived evidence items and order oldest-to-newest (AC 5)
   const evidenceList = useMemo(() => {

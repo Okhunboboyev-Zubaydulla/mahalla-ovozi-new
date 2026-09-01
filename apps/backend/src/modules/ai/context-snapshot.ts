@@ -155,6 +155,7 @@ export interface FormatEvidenceItemOptions {
   indent?: string;
   prefix?: string;
   timeLabel?: 'Timestamp' | 'Time';
+  relativeTimeOffset?: string;
 }
 
 /**
@@ -169,8 +170,9 @@ export function formatEvidenceItemLine(
   const prefix = options.prefix ?? `#${index + 1}`;
   const idPart = options.includeId ? `ID: ${item.id} | ` : '';
   const timeLabel = options.timeLabel ?? 'Timestamp';
+  const offsetPart = options.relativeTimeOffset ? ` (${options.relativeTimeOffset})` : '';
   const lanePart = options.includeLane && item.lane ? ` | Lane: [${item.lane}]` : '';
-  return `${indent}[${prefix}] ${idPart}${timeLabel}: ${item.originalTimestamp} | MsgID: ${item.telegramMessageId}${lanePart} | Text: "${item.verbatimText}"`;
+  return `${indent}[${prefix}] ${idPart}${timeLabel}: ${item.originalTimestamp}${offsetPart} | MsgID: ${item.telegramMessageId}${lanePart} | Text: "${item.verbatimText}"`;
 }
 
 /**
@@ -184,7 +186,21 @@ export function formatSnapshotEvidenceList(
     return '';
   }
   return evidence
-    .map((item, idx) => formatEvidenceItemLine(item, idx, options))
+    .map((item, idx) => {
+      let relativeTimeOffset: string | undefined = undefined;
+      if (idx > 0 && evidence[idx - 1]) {
+        const prevTime = new Date(evidence[idx - 1]!.originalTimestamp).getTime();
+        const currTime = new Date(item.originalTimestamp).getTime();
+        if (!Number.isNaN(prevTime) && !Number.isNaN(currTime)) {
+          const diffMinutes = Math.round((currTime - prevTime) / 60000);
+          relativeTimeOffset = `+${diffMinutes}m from previous`;
+        }
+      }
+      return formatEvidenceItemLine(item, idx, {
+        ...options,
+        relativeTimeOffset: options.relativeTimeOffset ?? relativeTimeOffset,
+      });
+    })
     .join('\n');
 }
 
