@@ -119,7 +119,9 @@ export function useDistrictTopicEvidence(
       lastPage.hasNextPage && lastPage.nextCursor ? lastPage.nextCursor : undefined,
     placeholderData: undefined,
     enabled: Boolean(districtId && topicId),
-    staleTime: 15_000,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
   });
 }
 

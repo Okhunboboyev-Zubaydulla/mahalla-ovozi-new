@@ -305,9 +305,9 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
       expect(rollbackData.restoredFromVersionId).toBe('gcfg_v1');
       expect(rollbackData.previousActiveVersionId).toBe('gcfg_v2');
 
-      // Check that V3 copied V1's parameters (OPENAI provider, gpt-4o-mini-2024-07-18)
-      expect(rollbackData.activeConfiguration.modelProvider).toBe('OPENAI');
-      expect(rollbackData.activeConfiguration.modelId).toBe('gpt-4o-mini-2024-07-18');
+      // Check that V3 copied V1's parameters (OLLAMA provider, gemma4:12b)
+      expect(rollbackData.activeConfiguration.modelProvider).toBe('OLLAMA');
+      expect(rollbackData.activeConfiguration.modelId).toBe('gemma4:12b');
 
       // 3. Verify history table now has 3 versions with V3 active
       const historyAfter = await server.inject({

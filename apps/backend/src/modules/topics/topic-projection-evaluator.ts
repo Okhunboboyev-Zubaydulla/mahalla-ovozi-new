@@ -29,18 +29,8 @@ export function isUzbekCyrillic(text: string): boolean {
   return cyrillicMatches.length / alphabeticMatches.length >= 0.7;
 }
 
-export const TopicProjectionResultSchema = z.preprocess(
-  (val: any) => {
-    if (!val || typeof val !== 'object') return val;
-    const copy = { ...val };
-    if (Array.isArray(copy.lanes)) {
-      copy.lanes = Array.from(new Set(copy.lanes));
-      copy.is_hokim_related = copy.lanes.includes('HOKIM_RELATED');
-    }
-    return copy;
-  },
-  z
-    .object({
+export const TopicProjectionResultSchema = z
+  .object({
       summary: z
         .string()
         .min(1)
@@ -89,8 +79,7 @@ export const TopicProjectionResultSchema = z.preprocess(
           'is_hokim_related must be true if and only if HOKIM_RELATED is present in lanes',
         path: ['is_hokim_related'],
       },
-    ),
-);
+    );
 
 export type TopicProjectionResult = z.infer<typeof TopicProjectionResultSchema>;
 
@@ -133,11 +122,12 @@ Your objective is to recalculate the single, authoritative, multi-lane derived r
    - Include HOKIM_RELATED if the evidence involves local governance, Hokimiyat promises, road infrastructure, or administrative neglect.
    - "is_hokim_related" MUST be true if and only if HOKIM_RELATED is present in "lanes".
 
-3. ANCHOR SELECTION:
-   - Select the latest self-contained, descriptive, and meaningful evidence item belonging strictly to the target Topic as "anchor_evidence_id".
-   - A vague follow-up (e.g. "Бизда ҳам", "Қачон бўлади?") or brief restoration notice must NOT replace a detailed self-contained report as anchor.
-   - Extract the key quotation or excerpt into "anchor_quote".
-   - "anchor_evidence_id" MUST strictly match an evidence ID from the target Topic.
+3. ANCHOR SELECTION & AUTHORITATIVE QUOTE (FOUNDATIONAL GENESIS PRINCIPLE):
+   - The foundational citizen report that caused this Topic card to open in the first place (the genesis message, e.g. Evidence #1) is the primary Anchor Evidence.
+   - The Anchor Evidence MUST be the foundational originating citizen report that started the card, or the most explicit and self-contained report of the issue.
+   - Subsequent follow-up messages (e.g. confirmations, questions, emotional reactions, cynical complaints like "bugun kemasa kere har doimgidek", "bizda ham", "hali ham yo'qmi?") are supporting timeline evidence and MUST NOT replace the foundational opening report as the anchor.
+   - "anchor_evidence_id" MUST strictly match the exact ID of that chosen foundational evidence item.
+   - "anchor_quote" MUST be the exact verbatim excerpt from that chosen evidence item.
 
 4. LATEST MEANINGFUL ACTIVITY TIMESTAMP:
    - "latest_meaningful_activity_timestamp" MUST strictly match the exact ISO-8601 originalTimestamp of an Accepted Evidence item belonging to the target Topic.

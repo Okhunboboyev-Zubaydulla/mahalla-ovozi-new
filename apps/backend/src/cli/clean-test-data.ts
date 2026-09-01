@@ -1,59 +1,55 @@
-import { createDbPool } from '../adapters/db/client.js';
+import { createDbPool, createDbClient } from '../adapters/db/client.js';
+import { ensureDefaultAiProfiles } from '../adapters/db/seeds.js';
 
 export async function cleanTestData() {
   const pool = createDbPool();
-  console.log('=== Cleaning Test Fixtures from Database ===\n');
+  const db = createDbClient(pool);
+  console.log('=== Cleaning Test Fixtures from Development Database ===\n');
 
   try {
-    const keepDistrictId = 'dist_c0934b97-2d90-4a15-83a7-80e6787fa2be';
-
     // 1. Initial count
     const initialDistricts = await pool.query('SELECT count(*) FROM districts');
     const initialAccounts = await pool.query('SELECT count(*) FROM accounts');
     console.log(`Current Districts: ${initialDistricts.rows[0].count}`);
     console.log(`Current Accounts: ${initialAccounts.rows[0].count}\n`);
 
-    // 2. Link real Hokim account to genuine Sharof Rashidov district
-    await pool.query(
-      "UPDATE accounts SET district_id = $1 WHERE username = 'Sharof_Rashidov'",
-      [keepDistrictId]
-    );
-
-    // 3. Delete test sessions
+    // 2. Delete test sessions (keep Zubaydulla sessions)
     const delSessions = await pool.query(
-      "DELETE FROM sessions WHERE account_id IN (SELECT id FROM accounts WHERE username NOT IN ('Zubaydulla', 'Sharof_Rashidov'))"
+      "DELETE FROM sessions WHERE account_id IN (SELECT id FROM accounts WHERE username != 'Zubaydulla')"
     );
     console.log(`Deleted ${delSessions.rowCount} test sessions.`);
 
-    // 4. Delete test accounts (keep Zubaydulla and Sharof_Rashidov)
+    // 3. Delete non-Zubaydulla accounts
     const delAccounts = await pool.query(
-      "DELETE FROM accounts WHERE username NOT IN ('Zubaydulla', 'Sharof_Rashidov')"
+      "DELETE FROM accounts WHERE username != 'Zubaydulla'"
     );
     console.log(`Deleted ${delAccounts.rowCount} test accounts.`);
 
-    // 5. Delete test districts (cascades to bots, groups, intakes, ai operations)
-    const delDistricts = await pool.query(
-      "DELETE FROM districts WHERE id != $1",
-      [keepDistrictId]
-    );
+    // 4. Delete all districts (cascades to bots, groups, intakes, topics, evidence, ai operations)
+    const delDistricts = await pool.query('DELETE FROM districts');
     console.log(`Deleted ${delDistricts.rowCount} test districts.`);
 
-    // 6. Delete stale pending test jobs from pg-boss queue
-    const delJobs = await pool.query(
-      "DELETE FROM pgboss.job WHERE state IN ('created', 'retry')"
-    );
-    console.log(`Deleted ${delJobs.rowCount} stale test queue jobs.`);
+    // 5. Delete stale pending test jobs from pg-boss queue (if table exists)
+    try {
+      const delJobs = await pool.query(
+        "DELETE FROM pgboss.job WHERE state IN ('created', 'retry', 'active')"
+      );
+      console.log(`Deleted ${delJobs.rowCount} stale test queue jobs.`);
+    } catch {
+      // pgboss schema might not be initialized in some states
+    }
 
-    // 6. Verify final counts
+    // 6. Ensure default Ollama AI profiles and baseline global analysis settings
+    await ensureDefaultAiProfiles(db);
+    console.log('Ensured default Ollama gemma4:12b baseline AI profiles and global configuration.');
+
+    // 7. Verify final counts
     const finalDistricts = await pool.query('SELECT count(*) FROM districts');
     const finalAccounts = await pool.query('SELECT count(*) FROM accounts');
     console.log(`\n✅ Final Districts Count: ${finalDistricts.rows[0].count}`);
     console.log(`✅ Final Accounts Count: ${finalAccounts.rows[0].count}`);
 
-    const remaining = await pool.query('SELECT id, name, region, status FROM districts');
-    console.log('\nRemaining districts:', remaining.rows);
-
-    const remainingAccounts = await pool.query('SELECT id, username, role, district_id FROM accounts');
+    const remainingAccounts = await pool.query('SELECT id, username, role FROM accounts');
     console.log('\nRemaining accounts:', remainingAccounts.rows);
   } catch (error) {
     console.error('Error during cleanup:', error);

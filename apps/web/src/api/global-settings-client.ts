@@ -7,13 +7,23 @@ import {
   type GlobalAnalysisSettingsHistoryResponse,
   type RollbackGlobalAnalysisSettingsRequest,
   type RollbackGlobalAnalysisSettingsResponse,
+  type GetOllamaModelsResponse,
   GetGlobalAnalysisSettingsResponseSchema,
   SaveGlobalAnalysisSettingsDraftResponseSchema,
   ActivateGlobalAnalysisSettingsResponseSchema,
   GlobalAnalysisSettingsHistoryResponseSchema,
   RollbackGlobalAnalysisSettingsResponseSchema,
+  GetOllamaModelsResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
+
+export async function getOllamaModels(): Promise<GetOllamaModelsResponse> {
+  return request<GetOllamaModelsResponse>(
+    '/api/v1/ai/settings/ollama-models',
+    { method: 'GET' },
+    GetOllamaModelsResponseSchema,
+  );
+}
 
 export async function getGlobalSettings(): Promise<GetGlobalAnalysisSettingsResponse> {
   return request<GetGlobalAnalysisSettingsResponse>(
@@ -71,11 +81,13 @@ export async function rollbackGlobalSettings(
 }
 
 export const globalSettingsClient = {
+  getOllamaModels,
   getGlobalSettings,
   saveGlobalSettingsDraft,
   activateGlobalSettings,
   getGlobalSettingsHistory,
   rollbackGlobalSettings,
 };
+
 
 

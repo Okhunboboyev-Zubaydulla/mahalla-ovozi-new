@@ -520,5 +520,14 @@ export type RollbackDistrictAnalysisSettingsResponse = z.infer<
   typeof RollbackDistrictAnalysisSettingsResponseSchema
 >;
 
+// ==========================================
+// Ollama Models Discovery Contract
+// ==========================================
 
-
+export const GetOllamaModelsResponseSchema = z.object({
+  isAvailable: z.boolean(),
+  models: z.array(z.string()),
+});
+export type GetOllamaModelsResponse = z.infer<
+  typeof GetOllamaModelsResponseSchema
+>;

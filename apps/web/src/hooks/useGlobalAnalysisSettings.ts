@@ -8,6 +8,7 @@ import {
   type GlobalAnalysisSettingsHistoryResponse,
   type RollbackGlobalAnalysisSettingsRequest,
   type RollbackGlobalAnalysisSettingsResponse,
+  type GetOllamaModelsResponse,
 } from '@mahalla-ovozi/api-contracts';
 import { globalSettingsClient } from '../api/global-settings-client.js';
 
@@ -18,6 +19,20 @@ export const GLOBAL_SETTINGS_HISTORY_QUERY_KEY = [
   'global',
   'history',
 ] as const;
+export const OLLAMA_MODELS_QUERY_KEY = [
+  'ai',
+  'settings',
+  'ollama-models',
+] as const;
+
+export function useOllamaModels() {
+  return useQuery<GetOllamaModelsResponse>({
+    queryKey: OLLAMA_MODELS_QUERY_KEY,
+    queryFn: () => globalSettingsClient.getOllamaModels(),
+    staleTime: 60_000,
+    retry: false,
+  });
+}
 
 export function useGlobalAnalysisSettings() {
   return useQuery<GetGlobalAnalysisSettingsResponse>({

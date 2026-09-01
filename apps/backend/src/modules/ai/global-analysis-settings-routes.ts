@@ -20,6 +20,40 @@ export function registerGlobalAnalysisSettingsRoutes(
     scope.addHook('preHandler', createRequireProductOwner(db));
 
     /**
+     * GET /api/v1/ai/settings/ollama-models
+     * Fetches locally available Ollama models dynamically from the Ollama service.
+     */
+    scope.get(
+      '/api/v1/ai/settings/ollama-models',
+      async (_req: FastifyRequest, reply: FastifyReply) => {
+        const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+        try {
+          const res = await fetch(`${ollamaBaseUrl}/api/tags`, {
+            signal: AbortSignal.timeout(3000),
+          });
+          if (res.ok) {
+            const data = (await res.json()) as { models?: Array<{ name?: string; model?: string }> };
+            const modelNames = (data.models || [])
+              .map((m) => m.name || m.model)
+              .filter((name): name is string => typeof name === 'string' && name.trim().length > 0);
+
+            return reply.status(200).send({
+              isAvailable: true,
+              models: modelNames.length > 0 ? modelNames : ['gemma4:12b'],
+            });
+          }
+        } catch {
+          // Ollama service unreachable or timed out
+        }
+
+        return reply.status(200).send({
+          isAvailable: false,
+          models: ['gemma4:12b'],
+        });
+      },
+    );
+
+    /**
      * GET /api/v1/ai/settings/global
      * Returns current active global analysis configuration and saved draft if any (AC 1, 2, 3, 8).
      */

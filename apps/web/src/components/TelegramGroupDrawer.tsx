@@ -60,6 +60,8 @@ export function TelegramGroupDrawer({
   const [testError, setTestError] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
+  const testStatusRef = useRef<'PENDING' | 'SUCCESS' | 'TIMEOUT' | 'FAILED'>('PENDING');
+  const prevOpenRef = useRef(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const stopPolling = useCallback(() => {
@@ -72,6 +74,7 @@ export function TelegramGroupDrawer({
   const startLiveTest = useCallback(
     async (group: TelegramGroupMapping) => {
       stopPolling();
+      testStatusRef.current = 'PENDING';
       setTestStatus('PENDING');
       setTestError(null);
       setCountdownDeadline(Date.now() + 60 * 1000);
@@ -88,17 +91,23 @@ export function TelegramGroupDrawer({
         try {
           const res = await telegramGroupClient.getTestStatus(districtId, group.id);
           if (res.status === 'SUCCESS') {
+            testStatusRef.current = 'SUCCESS';
             setTestStatus('SUCCESS');
+            setCountdownDeadline(0);
             stopPolling();
             onGroupSaved?.();
           } else if (res.status === 'TIMEOUT') {
+            testStatusRef.current = 'TIMEOUT';
             setTestStatus('TIMEOUT');
             setTestError(res.lastError || 'СинОВ вақти тугади. Ҳақиқий одам томонидан хабар юборилмади.');
+            setCountdownDeadline(0);
             stopPolling();
             onGroupSaved?.();
           } else if (res.status === 'FAILED') {
+            testStatusRef.current = 'FAILED';
             setTestStatus('FAILED');
             setTestError(res.lastError || 'СинОВ хатолик билан якунланди.');
+            setCountdownDeadline(0);
             stopPolling();
             onGroupSaved?.();
           }
@@ -114,12 +123,15 @@ export function TelegramGroupDrawer({
     [districtId, onGroupSaved, stopPolling],
   );
 
-  // Initialize or reset drawer state when opened/closed
+  // Initialize drawer state strictly once upon opening
   useEffect(() => {
-    if (open) {
+    if (open && !prevOpenRef.current) {
+      prevOpenRef.current = true;
       form.resetFields();
       setSubmitError(null);
       setTestError(null);
+      testStatusRef.current = 'PENDING';
+      setTestStatus('PENDING');
 
       if (initialGroup) {
         setActiveGroup(initialGroup);
@@ -139,11 +151,19 @@ export function TelegramGroupDrawer({
         setActiveGroup(null);
         setCurrentStep(0);
       }
-    } else {
+    } else if (!open && prevOpenRef.current) {
+      prevOpenRef.current = false;
       stopPolling();
+      setCountdownDeadline(0);
+      testStatusRef.current = 'PENDING';
     }
-    return () => stopPolling();
-  }, [open, initialGroup, initialStep, startLiveTest, stopPolling]);
+  }, [open, initialGroup, initialStep, startLiveTest, stopPolling, form]);
+
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, [stopPolling]);
 
   const handleFormSubmit = async (values: { mahallaName: string; telegramChatId: string }) => {
     setIsSubmitting(true);
@@ -178,21 +198,23 @@ export function TelegramGroupDrawer({
   };
 
   const handleTimeout = async () => {
-    if (testStatus === 'PENDING') {
-      setTestStatus('TIMEOUT');
-      setTestError('60 сониялик синов вақти тугади. Бот гуруҳдан инсон хабарини қабул қила олмади.');
-      stopPolling();
-      if (activeGroup) {
-        try {
-          const res = await telegramGroupClient.getTestStatus(districtId, activeGroup.id);
-          if (res.lastError) setTestError(res.lastError);
-        } catch (err: unknown) {
-          // Best-effort: enrich the local timeout message with server detail.
-          // If this fetch also fails, the already-set local error message stands.
-          console.warn('[TelegramGroupDrawer] failed to fetch final test status on timeout:', err);
-        }
-        onGroupSaved?.();
+    if (testStatusRef.current !== 'PENDING') {
+      return;
+    }
+    testStatusRef.current = 'TIMEOUT';
+    setTestStatus('TIMEOUT');
+    setTestError('60 сониялик синов вақти тугади. Бот гуруҳдан инсон хабарини қабул қила олмади.');
+    setCountdownDeadline(0);
+    stopPolling();
+    if (activeGroup) {
+      try {
+        const res = await telegramGroupClient.getTestStatus(districtId, activeGroup.id);
+        if (res.lastError) setTestError(res.lastError);
+      } catch (err: unknown) {
+        // Best-effort: enrich the local timeout message with server detail.
+        console.warn('[TelegramGroupDrawer] failed to fetch final test status on timeout:', err);
       }
+      onGroupSaved?.();
     }
   };
 
@@ -211,7 +233,9 @@ export function TelegramGroupDrawer({
       });
 
       if (res.accepted) {
+        testStatusRef.current = 'SUCCESS';
         setTestStatus('SUCCESS');
+        setCountdownDeadline(0);
         stopPolling();
         onGroupSaved?.();
       } else {

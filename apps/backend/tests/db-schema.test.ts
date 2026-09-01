@@ -583,8 +583,8 @@ describe('Database Schema & Migration Verification', () => {
       expect(profile).toBeDefined();
       expect(profile!.version).toBe(1);
       expect(profile!.operationType).toBe('SEMANTIC_RELEVANCE');
-      expect(profile!.provider).toBe('OPENAI');
-      expect(profile!.modelId).toBe('gpt-4o-mini-2024-07-18');
+      expect(profile!.provider).toBe('OLLAMA');
+      expect(profile!.modelId).toBe('gemma4:12b');
       expect(profile!.isActive).toBe(true);
     });
 
@@ -758,7 +758,8 @@ describe('Database Schema & Migration Verification', () => {
 
       expect(matchProfile).toBeDefined();
       expect(matchProfile?.operationType).toBe('TOPIC_MATCHING');
-      expect(matchProfile?.modelId).toBe('gpt-4o-mini-2024-07-18');
+      expect(matchProfile?.provider).toBe('OLLAMA');
+      expect(matchProfile?.modelId).toBe('gemma4:12b');
     });
 
     it('enforces foreign key restrict on accepted_evidence.topic_id (preventing topic deletion)', async () => {
@@ -928,8 +929,8 @@ describe('Database Schema & Migration Verification', () => {
 
       expect(activeVersion).toBeDefined();
       expect(activeVersion!.version).toBe(1);
-      expect(activeVersion!.modelProvider).toBe('OPENAI');
-      expect(activeVersion!.modelId).toBe('gpt-4o-mini-2024-07-18');
+      expect(activeVersion!.modelProvider).toBe('OLLAMA');
+      expect(activeVersion!.modelId).toBe('gemma4:12b');
       expect(activeVersion!.temperature).toBe(0.0);
       expect(activeVersion!.maxOutputTokens).toBe(500);
       expect(activeVersion!.isActive).toBe(true);

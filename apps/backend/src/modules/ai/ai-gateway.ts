@@ -234,6 +234,34 @@ export class AiGateway implements AiGatewayPort {
           );
         }
 
+        // Normalize model quirks (e.g. LLM populating dummy exclusion_reason when is_relevant: true, or exceeding max chars)
+        if (parsedJson && typeof parsedJson === 'object') {
+          if (typeof parsedJson.reasoning === 'string' && parsedJson.reasoning.length > 300) {
+            parsedJson.reasoning = parsedJson.reasoning.slice(0, 300);
+          }
+          if (parsedJson.is_relevant === true && parsedJson.exclusion_reason !== null) {
+            parsedJson.exclusion_reason = null;
+          } else if (
+            parsedJson.is_relevant === false &&
+            Array.isArray(parsedJson.relevant_lanes) &&
+            parsedJson.relevant_lanes.length > 0
+          ) {
+            parsedJson.relevant_lanes = [];
+          }
+          if (parsedJson.decision === 'MATCH_EXISTING_TOPIC') {
+            parsedJson.primary_lane = null;
+          } else if (parsedJson.decision === 'NEW_TOPIC') {
+            parsedJson.matched_topic_id = null;
+          } else if (parsedJson.decision === 'UNASSIGNABLE_VAGUE') {
+            parsedJson.matched_topic_id = null;
+            parsedJson.primary_lane = null;
+          }
+          if (Array.isArray(parsedJson.lanes)) {
+            parsedJson.lanes = Array.from(new Set(parsedJson.lanes));
+            parsedJson.is_hokim_related = parsedJson.lanes.includes('HOKIM_RELATED');
+          }
+        }
+
         // 2. Semantic Schema Validation via Zod
         const parseResult = options.schema.safeParse(parsedJson);
         if (!parseResult.success) {

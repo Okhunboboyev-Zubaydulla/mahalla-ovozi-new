@@ -142,4 +142,59 @@ describe('TelegramGroupDrawer Component Tests', () => {
       expect(screen.getByText('Синов муваффақиятли якунланди!')).toBeDefined();
     });
   });
+
+  it('does not restart live test when initialGroup props update while drawer is already open', async () => {
+    const startTestSpy = vi.spyOn(telegramGroupClient, 'startTest').mockResolvedValue({
+      session: {
+        status: 'PENDING',
+        expiresAt: new Date(Date.now() + 60000).toISOString(),
+      },
+    });
+
+    const initialGroup = {
+      id: 'grp_prop_test',
+      districtId: 'dist_test_1',
+      mahallaName: 'Бўстон',
+      telegramChatId: '-1009998887776',
+      telegramChatTitle: 'Бўстон Гуруҳи',
+      telegramChatUsername: null,
+      status: 'TESTING' as const,
+      botMembershipStatus: 'member',
+      privacyModeDisabled: true,
+      testMessageReceivedAt: null,
+      lastValidatedAt: null,
+      lastError: null,
+      createdAt: '2026-08-18T10:00:00.000Z',
+      updatedAt: '2026-08-18T10:00:00.000Z',
+    };
+
+    const { rerender } = render(
+      <ConfigProvider theme={mahallaTheme}>
+        <TelegramGroupDrawer
+          open={true}
+          onClose={() => {}}
+          districtId="dist_test_1"
+          initialGroup={initialGroup}
+        />
+      </ConfigProvider>,
+    );
+
+    expect(startTestSpy).toHaveBeenCalledTimes(1);
+
+    // Re-render with updated group object (simulating parent query refetch)
+    rerender(
+      <ConfigProvider theme={mahallaTheme}>
+        <TelegramGroupDrawer
+          open={true}
+          onClose={() => {}}
+          districtId="dist_test_1"
+          initialGroup={{ ...initialGroup, status: 'VALID' }}
+        />
+      </ConfigProvider>,
+    );
+
+    // Should STILL be 1, not restarted to 2
+    expect(startTestSpy).toHaveBeenCalledTimes(1);
+  });
 });
+

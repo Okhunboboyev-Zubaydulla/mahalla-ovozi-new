@@ -197,13 +197,30 @@ describe('Story 5.1: Global Analysis Settings & Drafts Integration Tests', () =>
       expect(res.statusCode).toBe(200);
       const data = JSON.parse(res.payload) as GetGlobalAnalysisSettingsResponse;
       expect(data.activeConfiguration.id).toBe('gcfg_v1');
-      expect(data.activeConfiguration.modelProvider).toBe('OPENAI');
-      expect(data.activeConfiguration.modelId).toBe('gpt-4o-mini-2024-07-18');
+      expect(data.activeConfiguration.modelProvider).toBe('OLLAMA');
+      expect(data.activeConfiguration.modelId).toBe('gemma4:12b');
       expect(data.activeConfiguration.temperature).toBe(0.0);
       expect(data.activeConfiguration.maxOutputTokens).toBe(500);
       expect(data.activeConfiguration.isActive).toBe(true);
       expect(data.activeConfiguration.globalServiceVocabulary.length).toBeGreaterThanOrEqual(6);
       expect(data.draft).toBeNull();
+    });
+
+    it('returns dynamically discovered Ollama models on GET /api/v1/ai/settings/ollama-models', async () => {
+      const res = await server.inject({
+        method: 'GET',
+        url: '/api/v1/ai/settings/ollama-models',
+        headers: {
+          cookie: poCookie,
+          ...SAME_ORIGIN_HEADERS,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.payload) as { isAvailable: boolean; models: string[] };
+      expect(Array.isArray(data.models)).toBe(true);
+      expect(data.models.length).toBeGreaterThan(0);
+      expect(typeof data.isAvailable).toBe('boolean');
     });
   });
 
@@ -292,7 +309,7 @@ describe('Story 5.1: Global Analysis Settings & Drafts Integration Tests', () =>
       const activeVer = afterVersions.find((v) => v.isActive);
       expect(activeVer).toBeDefined();
       expect(activeVer!.id).toBe('gcfg_v1');
-      expect(activeVer!.modelProvider).toBe('OPENAI'); // remains OPENAI
+      expect(activeVer!.modelProvider).toBe('OLLAMA'); // remains OLLAMA
     });
   });
 

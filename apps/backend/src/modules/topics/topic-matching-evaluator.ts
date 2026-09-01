@@ -136,12 +136,12 @@ Your objective is to evaluate relevance-qualified candidate messages and assign 
 
 ### DOMAIN CONTEXT & LANGUAGE
 - Neighborhood Telegram groups in Uzbekistan.
-- Messages may be in Uzbek (Latin or Cyrillic), Russian, or mixed colloquial forms (e.g. "svet o'chdi", "давление паст", "мусор тўлиб кетган", "ток 160V").
+- Messages may be in Uzbek (Latin or Cyrillic), Russian, or mixed colloquial forms (e.g. "svet o'chdi", "давление паст", "мусор тўлиб кетган", "ток 160V", "svet keldimi?").
 - All evidence and topics are strictly bounded to the same District, Mahalla, and calendar day (Asia/Tashkent).
 
 ### DECISION CATEGORIES
 1. MATCH_EXISTING_TOPIC:
-   - The candidate reports progress, updates, voltage drops/spikes ("tok 160V"), resident restoration notices ("svet yondi"), recurrence ("yana o'chdi"), or contradictory resident reports ("bizda bor, sizlarda yo'qmi?") concerning an ACTIVE same-day situation in this Mahalla.
+   - The candidate reports progress, updates, inquiries/status checks ("svet keldimi?", "suv bormi?", "chiroq yondimi?"), voltage drops/spikes ("tok 160V"), resident restoration notices ("svet yondi"), recurrence ("yana o'chdi"), or contradictory resident reports ("bizda bor, sizlarda yo'qmi?") concerning an ACTIVE same-day situation in this Mahalla.
    - When matching an existing topic:
      - "decision": "MATCH_EXISTING_TOPIC"
      - "matched_topic_id": "<existing_topic_id>" (e.g. "top_...")
@@ -149,22 +149,22 @@ Your objective is to evaluate relevance-qualified candidate messages and assign 
    - Note: The canonical topic's existing primary_lane remains immutable.
 
 2. NEW_TOPIC:
-   - The candidate reports an independent civic issue or distinct disruption that does NOT belong to any active topic in the Mahalla today.
-   - The candidate must be self-contained (e.g. "Suv quvuri yorildi, ko'chani suv bosdi", "Yana yangi chuqur paydo bo'ldi yo'lda").
+   - The candidate reports or implies an independent civic issue, service inquiry, or distinct disruption that does NOT belong to any active topic in the Mahalla today (e.g. "svet keldimi?" when no electricity topic exists yet today, "Suv quvuri yorildi, ko'chani suv bosdi", "Yana yangi chuqur paydo bo'ldi yo'lda").
    - When seeding a new topic:
      - "decision": "NEW_TOPIC"
      - "matched_topic_id": null
      - "primary_lane": "<LANE>" (must be one of: WATER, ELECTRICITY, GAS, WASTE, HOKIM_RELATED)
 
 3. UNASSIGNABLE_VAGUE:
-   - The candidate is a short, ambiguous, or context-dependent fragment (e.g. "Bizda ham", "Qachon beradi?", "Nega unday?") that cannot be linked to any active topic.
+   - The candidate is a short, empty, context-dependent fragment with NO reference to any service (e.g. "Bizda ham", "Nega?", "Shu ahvol", "Qachon?") that cannot be linked to any active topic.
    - When discarding as unassignable:
      - "decision": "UNASSIGNABLE_VAGUE"
      - "matched_topic_id": null
      - "primary_lane": null
 
-### DECISION RULES & CONTINUITY
-- Situation Continuity: Multiple reports regarding the same underlying service outage or civic incident must be grouped into the same Topic.
+### DECISION RULES & CONVERSATIONAL CONTINUITY
+- Conversational Thread Continuity & Temporal Proximity: When a candidate message is a continuation, reaction, confirmation, or follow-up without an explicit subject (e.g. "ha nimayam qilardik ertaga keb qolar", "manimcha berishmasa kere", "bizda ham"), it MUST be matched to the SAME TOPIC as the IMMEDIATE PRECEDING RECENT MESSAGE (the active chat thread from 1-3 minutes ago). It MUST NEVER jump back to an older topic from 15-30 minutes ago when an active discussion was ongoing right before it.
+- Situation Continuity: Multiple reports or inquiries regarding the same underlying service outage or civic incident must be grouped into the same Topic.
 - Preservation of Topic Lane: Matching an existing topic never alters that topic's primary lane.
 - Independent Incidents: Different public service categories (e.g. electricity outage vs water leak) or distinct incidents on different streets/locations represent separate Topics.
 - Fallback & Nearest-Earlier Context: When direct reply is absent or was excluded, evaluate the candidate against all existing topics and nearest-earlier messages in this Mahalla today.

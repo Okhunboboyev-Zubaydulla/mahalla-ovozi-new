@@ -74,7 +74,9 @@ export function useTopicEvidence(
     getNextPageParam: (lastPage) =>
       lastPage.hasNextPage && lastPage.nextCursor ? lastPage.nextCursor : undefined,
     enabled: Boolean(districtId && topicId && actor?.role === 'DISTRICT_HOKIM'),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
     networkMode: 'online',
     retry: false,
     placeholderData: undefined, // Strictly omit keepPreviousData to prevent ghost evidence cache during topic switching (AC 7)

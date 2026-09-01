@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Card,
   Form,
@@ -35,6 +35,7 @@ import {
 import {
   useSaveGlobalSettingsDraft,
   useActivateGlobalSettings,
+  useOllamaModels,
 } from '../../hooks/useGlobalAnalysisSettings.js';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
 import { useDirtyState } from '../../district/useDirtyState.js';
@@ -46,10 +47,10 @@ const { Text, Title } = Typography;
 const { TextArea } = Input;
 
 const PROVIDER_MODEL_PRESETS: Record<AiModelProvider, string[]> = {
+  OLLAMA: ['gemma4:12b', 'qwen2.5:7b', 'llama3.1:8b'],
   OPENAI: ['gpt-4o-mini', 'gpt-4o', 'gpt-4o-mini-2024-07-18'],
   GEMINI: ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'],
   GROQ: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile'],
-  OLLAMA: ['qwen2.5:7b', 'llama3.1:8b'],
 };
 
 interface GlobalSettingsDraftFormProps {
@@ -71,6 +72,7 @@ export const GlobalSettingsDraftForm: React.FC<GlobalSettingsDraftFormProps> = (
 
   const saveMutation = useSaveGlobalSettingsDraft();
   const activateMutation = useActivateGlobalSettings();
+  const { data: ollamaData } = useOllamaModels();
   const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
 
   // Initial values baseline: draft if present, else activeSettings
@@ -94,6 +96,20 @@ export const GlobalSettingsDraftForm: React.FC<GlobalSettingsDraftFormProps> = (
   );
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isFormDirty, setIsFormDirty] = useState(false);
+
+  const availableModelOptions = useMemo(() => {
+    if (selectedProvider === 'OLLAMA') {
+      const discoveredModels =
+        ollamaData?.models && ollamaData.models.length > 0
+          ? ollamaData.models
+          : PROVIDER_MODEL_PRESETS.OLLAMA;
+      return discoveredModels.map((m) => ({ value: m, label: m }));
+    }
+    return (PROVIDER_MODEL_PRESETS[selectedProvider] || []).map((m) => ({
+      value: m,
+      label: m,
+    }));
+  }, [selectedProvider, ollamaData]);
 
   // Sync form when incoming draft or activeSettings change (and form is clean)
   useEffect(() => {
@@ -318,10 +334,10 @@ export const GlobalSettingsDraftForm: React.FC<GlobalSettingsDraftFormProps> = (
               <Select
                 id="draft-modelProvider"
                 options={[
+                  { label: 'Ollama (Local)', value: 'OLLAMA' },
                   { label: 'OpenAI (GPT-4o)', value: 'OPENAI' },
                   { label: 'Google Gemini', value: 'GEMINI' },
                   { label: 'Groq (Llama)', value: 'GROQ' },
-                  { label: 'Ollama (Local)', value: 'OLLAMA' },
                 ]}
               />
             </Form.Item>
@@ -338,9 +354,7 @@ export const GlobalSettingsDraftForm: React.FC<GlobalSettingsDraftFormProps> = (
               <AutoComplete
                 id="draft-modelId"
                 placeholder="Модель номи ёки идентификатори"
-                options={(
-                  PROVIDER_MODEL_PRESETS[selectedProvider] || []
-                ).map((m) => ({ value: m, label: m }))}
+                options={availableModelOptions}
                 filterOption={(inputValue, option) =>
                   (option?.value?.toUpperCase().indexOf(inputValue.toUpperCase()) ??
                     -1) !== -1

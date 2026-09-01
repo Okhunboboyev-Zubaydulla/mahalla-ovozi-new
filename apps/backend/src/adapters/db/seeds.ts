@@ -1,3 +1,4 @@
+import { and, ne } from 'drizzle-orm';
 import {
   aiProfiles,
   NewAiProfile,
@@ -19,13 +20,13 @@ export const defaultSemanticRelevanceProfile: NewAiProfile = {
   id: 'prof_rel_2026_08_v1',
   version: 1,
   operationType: 'SEMANTIC_RELEVANCE',
-  provider: 'OPENAI',
-  modelId: 'gpt-4o-mini-2024-07-18',
+  provider: 'OLLAMA',
+  modelId: 'gemma4:12b',
   promptVersion: 'prom_rel_v1',
   schemaVersion: 'sch_rel_v1',
   temperature: 0.0,
   maxOutputTokens: 500,
-  timeoutMs: 10000,
+  timeoutMs: 30000,
   retryPolicy: {
     maxAttempts: 3,
     backoffFactor: 2,
@@ -42,13 +43,13 @@ export const defaultTopicMatchingProfile: NewAiProfile = {
   id: 'prof_match_2026_08_v1',
   version: 1,
   operationType: 'TOPIC_MATCHING',
-  provider: 'OPENAI',
-  modelId: 'gpt-4o-mini-2024-07-18',
+  provider: 'OLLAMA',
+  modelId: 'gemma4:12b',
   promptVersion: 'prom_match_v1',
   schemaVersion: 'sch_match_v1',
   temperature: 0.0,
   maxOutputTokens: 500,
-  timeoutMs: 10000,
+  timeoutMs: 30000,
   retryPolicy: {
     maxAttempts: 3,
     backoffFactor: 2,
@@ -65,13 +66,13 @@ export const defaultTopicProjectionProfile: NewAiProfile = {
   id: 'prof_proj_2026_08_v1',
   version: 1,
   operationType: 'TOPIC_DERIVED_PROJECTION',
-  provider: 'OPENAI',
-  modelId: 'gpt-4o-mini-2024-07-18',
+  provider: 'OLLAMA',
+  modelId: 'gemma4:12b',
   promptVersion: 'prom_proj_v1',
   schemaVersion: 'sch_proj_v1',
   temperature: 0.0,
   maxOutputTokens: 600,
-  timeoutMs: 10000,
+  timeoutMs: 30000,
   retryPolicy: {
     maxAttempts: 3,
     backoffFactor: 2,
@@ -87,8 +88,8 @@ export const defaultTopicProjectionProfile: NewAiProfile = {
 export const defaultGlobalAnalysisSettingsVersion: NewGlobalAnalysisSettingsVersion = {
   id: 'gcfg_v1',
   version: 1,
-  modelProvider: 'OPENAI',
-  modelId: 'gpt-4o-mini-2024-07-18',
+  modelProvider: 'OLLAMA',
+  modelId: 'gemma4:12b',
   temperature: 0.0,
   maxOutputTokens: 500,
   relevanceSystemPrompt: SEMANTIC_RELEVANCE_SYSTEM_PROMPT,
@@ -105,22 +106,66 @@ export async function ensureDefaultGlobalAnalysisSettings(db: DbOrTx): Promise<v
   await db
     .insert(globalAnalysisSettingsVersions)
     .values(defaultGlobalAnalysisSettingsVersion)
-    .onConflictDoNothing({ target: globalAnalysisSettingsVersions.id });
+    .onConflictDoUpdate({
+      target: globalAnalysisSettingsVersions.id,
+      set: {
+        modelProvider: defaultGlobalAnalysisSettingsVersion.modelProvider,
+        modelId: defaultGlobalAnalysisSettingsVersion.modelId,
+        relevanceSystemPrompt: defaultGlobalAnalysisSettingsVersion.relevanceSystemPrompt,
+        topicMatchingSystemPrompt: defaultGlobalAnalysisSettingsVersion.topicMatchingSystemPrompt,
+        topicProjectionSystemPrompt: defaultGlobalAnalysisSettingsVersion.topicProjectionSystemPrompt,
+      },
+    });
 }
 
 export async function ensureDefaultAiProfiles(db: DbOrTx): Promise<void> {
   await db
+    .update(aiProfiles)
+    .set({ isActive: false })
+    .where(
+      and(
+        ne(aiProfiles.id, defaultSemanticRelevanceProfile.id),
+        ne(aiProfiles.id, defaultTopicMatchingProfile.id),
+        ne(aiProfiles.id, defaultTopicProjectionProfile.id),
+      ),
+    );
+
+  await db
     .insert(aiProfiles)
     .values(defaultSemanticRelevanceProfile)
-    .onConflictDoNothing({ target: aiProfiles.id });
+    .onConflictDoUpdate({
+      target: aiProfiles.id,
+      set: {
+        provider: defaultSemanticRelevanceProfile.provider,
+        modelId: defaultSemanticRelevanceProfile.modelId,
+        timeoutMs: defaultSemanticRelevanceProfile.timeoutMs,
+        isActive: true,
+      },
+    });
   await db
     .insert(aiProfiles)
     .values(defaultTopicMatchingProfile)
-    .onConflictDoNothing({ target: aiProfiles.id });
+    .onConflictDoUpdate({
+      target: aiProfiles.id,
+      set: {
+        provider: defaultTopicMatchingProfile.provider,
+        modelId: defaultTopicMatchingProfile.modelId,
+        timeoutMs: defaultTopicMatchingProfile.timeoutMs,
+        isActive: true,
+      },
+    });
   await db
     .insert(aiProfiles)
     .values(defaultTopicProjectionProfile)
-    .onConflictDoNothing({ target: aiProfiles.id });
+    .onConflictDoUpdate({
+      target: aiProfiles.id,
+      set: {
+        provider: defaultTopicProjectionProfile.provider,
+        modelId: defaultTopicProjectionProfile.modelId,
+        timeoutMs: defaultTopicProjectionProfile.timeoutMs,
+        isActive: true,
+      },
+    });
   await ensureDefaultGlobalAnalysisSettings(db);
 }
 
