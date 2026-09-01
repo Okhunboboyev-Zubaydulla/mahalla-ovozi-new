@@ -376,4 +376,119 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
       ).rejects.toThrow('is not a valid ISO-8601 date string');
     });
   });
+
+  describe('Pragmatic Core Civic Disruption & Volume-Aware Attribution Scenarios', () => {
+    const createMockAiGateway = (returnData: TopicProjectionResult): AiGatewayPort => {
+      return {
+        generateStructured: async <T>(
+          _options: GenerateStructuredOptions<T>,
+        ): Promise<AiGatewayResult<T>> => {
+          return {
+            data: returnData as unknown as T,
+            profileId: 'prof_proj_2026_08_v1',
+            provider: 'OPENAI',
+            modelId: 'gpt-4o-mini-2024-07-18',
+            providerRequestId: 'req_test_inquiry',
+            durationMs: 110,
+            tokens: { inputTokens: 220, outputTokens: 50 },
+            estimatedCostUsd: 0.0001,
+            attempts: [],
+          };
+        },
+      } as unknown as AiGatewayPort;
+    };
+
+    it('evaluates single-citizen inquiry message with concise disruption summary and single-citizen attribution', async () => {
+      const singleInquirySnapshot: MahallaDailySnapshot = {
+        districtId: 'dist_tashkent_chilanzar',
+        mahallaName: 'Guliston',
+        calendarDay: '2026-08-22',
+        contextRevision: 1,
+        snapshotFingerprint: 'fp_inquiry_1',
+        evidence: [
+          {
+            id: 'evi_inquiry_1',
+            topicId: 'top_elec_inquiry',
+            telegramMessageId: '501',
+            originalTimestamp: '2026-08-22T10:15:00.000Z',
+            verbatimText: 'salom mahalladoshlar! svet hammada ucdimi yoki bizdami faqat?',
+            lane: 'ELECTRICITY',
+          },
+        ],
+      };
+
+      const expectedProjection: TopicProjectionResult = {
+        summary: 'Электр таъминотида узилиш юз бергани хабар қилинмоқда.',
+        lanes: ['ELECTRICITY'],
+        anchor_evidence_id: 'evi_inquiry_1',
+        anchor_quote: 'salom mahalladoshlar! svet hammada ucdimi yoki bizdami faqat?',
+        latest_meaningful_activity_timestamp: '2026-08-22T10:15:00.000Z',
+        attribution: 'Маҳалла фуқароси',
+        is_hokim_related: false,
+      };
+
+      const evaluator = new TopicProjectionEvaluator(createMockAiGateway(expectedProjection));
+      const result = await evaluator.evaluateTopicProjection({
+        topicId: 'top_elec_inquiry',
+        primaryLane: 'ELECTRICITY',
+        generation: 1,
+        snapshot: singleInquirySnapshot,
+      });
+
+      expect(result.summary).toBe('Электр таъминотида узилиш юз бергани хабар қилинмоқда.');
+      expect(result.attribution).toBe('Маҳалла фуқароси');
+      expect(result.lanes).toEqual(['ELECTRICITY']);
+      expect(isUzbekCyrillic(result.summary)).toBe(true);
+      expect(isUzbekCyrillic(result.attribution)).toBe(true);
+    });
+
+    it('evaluates multi-resident corroborating topic with multi-resident attribution', async () => {
+      const multiEvidenceSnapshot: MahallaDailySnapshot = {
+        districtId: 'dist_tashkent_chilanzar',
+        mahallaName: 'Guliston',
+        calendarDay: '2026-08-22',
+        contextRevision: 2,
+        snapshotFingerprint: 'fp_multi_1',
+        evidence: [
+          {
+            id: 'evi_multi_1',
+            topicId: 'top_elec_multi',
+            telegramMessageId: '601',
+            originalTimestamp: '2026-08-22T10:15:00.000Z',
+            verbatimText: 'svet ochdi 12-domda',
+            lane: 'ELECTRICITY',
+          },
+          {
+            id: 'evi_multi_2',
+            topicId: 'top_elec_multi',
+            telegramMessageId: '602',
+            originalTimestamp: '2026-08-22T10:18:00.000Z',
+            verbatimText: 'bizda ham yoq 14-dom',
+            lane: 'ELECTRICITY',
+          },
+        ],
+      };
+
+      const multiProjection: TopicProjectionResult = {
+        summary: 'Электр таъминотида узилиш сақланиб қолмоқда.',
+        lanes: ['ELECTRICITY'],
+        anchor_evidence_id: 'evi_multi_1',
+        anchor_quote: 'svet ochdi 12-domda',
+        latest_meaningful_activity_timestamp: '2026-08-22T10:18:00.000Z',
+        attribution: 'Маҳалла аҳолиси',
+        is_hokim_related: false,
+      };
+
+      const evaluator = new TopicProjectionEvaluator(createMockAiGateway(multiProjection));
+      const result = await evaluator.evaluateTopicProjection({
+        topicId: 'top_elec_multi',
+        primaryLane: 'ELECTRICITY',
+        generation: 2,
+        snapshot: multiEvidenceSnapshot,
+      });
+
+      expect(result.summary).toBe('Электр таъминотида узилиш сақланиб қолмоқда.');
+      expect(result.attribution).toBe('Маҳалла аҳолиси');
+    });
+  });
 });

@@ -35,7 +35,7 @@ export const TopicProjectionResultSchema = z
         .string()
         .min(1)
         .describe(
-          'Concise 1-3 sentence cautious Uzbek Cyrillic summary of the situation preserving reported status, disagreements, or recurrences',
+          'Concise 1-2 sentence cautious Uzbek Cyrillic summary of the reported civic disruption preserving reported status, disagreements, or recurrences without meta-commentary',
         ),
       lanes: z
         .array(QualifyingLaneEnum)
@@ -64,7 +64,7 @@ export const TopicProjectionResultSchema = z
         .string()
         .min(1)
         .describe(
-          'Neutral, cautious attribution (e.g. "Маҳалла аҳолиси хабарига кўра" or permitted resident username/display name)',
+          'Volume-aware cautious attribution (e.g. "Маҳалла фуқароси" for single report, "Маҳалла аҳолиси" or "Бир нечта фуқаролар" for multiple corroborating reports, or permitted resident username/display name)',
         ),
       is_hokim_related: z
         .boolean()
@@ -108,34 +108,41 @@ export const TOPIC_PROJECTION_SYSTEM_PROMPT = `You are the Canonical Topic Proje
 Your objective is to recalculate the single, authoritative, multi-lane derived representation for a target Topic based on its Accepted Evidence and same-day Mahalla context.
 
 ### CORE PRINCIPLES & GUARDRAILS
-1. CAUTIOUS UZBEK CYRILLIC SUMMARY:
-   - Provide a concise 1-3 sentence summary strictly in authentic Uzbek Cyrillic.
-   - Use cautious neutral framing (e.g. "Маҳалла аҳолиси хабарига кўра, ...", "Фуқаролар ... хабар қилишмоқда").
-   - Citizen reports are reported claims, NOT verified ground truth.
-   - Preserve reported contradictions, disagreements, voltage fluctuations, recurrences ("яна ўчди"), and reported restoration ("чироқ ёнди").
-   - A reported restoration must be described as reported (e.g. "Аҳоли чироқ ёнганини хабар қилди"), NEVER asserting official resolution or closing the issue.
-   - Do NOT invent Hokim recommendations, sentiment, urgency scores, or required actions.
+1. PRAGMATIC CORE CIVIC DISRUPTION SUMMARY (TUB MOHIYAT):
+   - Provide a concise 1-2 sentence summary strictly in authentic Uzbek Cyrillic.
+   - Focus directly on the UNDERLYING CIVIC DISRUPTION, outage, infrastructure failure, or municipal living condition reported by residents.
+   - When a resident posts questions, colloquial inquiries, or status checks (e.g., "svet hammada o'chdimi yoki bizdami?", "chiroq bormi?", "suv keldimi?", "suv qachon keladi?"), extract the core municipal failure (e.g. "Электр таъминотида узилиш юз бергани хабар қилинмоқда").
+   - ZERO META-CONVERSATIONAL CHATTER / BUREAUCRATIC FILLER:
+     - NEVER describe conversational chatter, resident intentions to inquire, or meta-commentary (e.g., DO NOT write "Маҳалла аҳолиси электр энергиясининг барқарорлиги ҳақида хабар бермоқда" or "Фуқаролар чироқ ёниб турибми ёки ўчганлигини аниқлаштиришга ҳаракат қилмоқда").
+     - INSTEAD state the core reported issue directly (e.g., "Электр таъминотида узилиш юз бергани хабар қилинмоқда").
+   - CAUTIOUS REPORTED FRAMING:
+     - Citizen reports are reported claims, NOT verified ground truth (use framing like "... хабар қилинмоқда", "... маълум қилинди", "... билдирилди").
+     - Preserve reported contradictions, disagreements, voltage fluctuations, recurrences ("яна ўчди" -> "такрорий узилиш кузатилмоқда"), and reported restoration ("чироқ ёнди" -> "таъминот тиклангани билдирилди").
+     - A reported restoration must be described as reported (e.g. "Электр таъминоти тиклангани билдирилди"), NEVER asserting official resolution or closing the issue.
+     - Do NOT invent Hokim recommendations, sentiment, urgency scores, or required actions.
 
-2. MULTI-LANE DERIVATION:
+2. VOLUME-AWARE ATTRIBUTION & PRIVACY:
+   - Match attribution strictly to the volume and specificity of reporting residents:
+     - If the target Topic contains evidence from a single resident (1 message), attribute to "Маҳалла фуқароси" (or permitted resident Telegram display name/username if provided). NEVER attribute a single message to "Маҳалла аҳолиси" or plural "Фуқаролар".
+     - If the target Topic contains corroborating evidence from multiple residents, attribute to "Маҳалла аҳолиси" or "Бир нечта фуқаролар".
+   - NEVER include, infer, or reconstruct phone numbers.
+
+3. MULTI-LANE DERIVATION:
    - Identify all applicable municipal/governance lanes from: WATER, ELECTRICITY, GAS, WASTE, HOKIM_RELATED.
    - The target Topic's initial primaryLane is IMMUTABLE and MUST be included in the lanes array.
    - Include HOKIM_RELATED if the evidence involves local governance, Hokimiyat promises, road infrastructure, or administrative neglect.
    - "is_hokim_related" MUST be true if and only if HOKIM_RELATED is present in "lanes".
 
-3. ANCHOR SELECTION & AUTHORITATIVE QUOTE (FOUNDATIONAL GENESIS PRINCIPLE):
+4. ANCHOR SELECTION & AUTHORITATIVE QUOTE (FOUNDATIONAL GENESIS PRINCIPLE):
    - The foundational citizen report that caused this Topic card to open in the first place (the genesis message, e.g. Evidence #1) is the primary Anchor Evidence.
    - The Anchor Evidence MUST be the foundational originating citizen report that started the card, or the most explicit and self-contained report of the issue.
    - Subsequent follow-up messages (e.g. confirmations, questions, emotional reactions, cynical complaints like "bugun kemasa kere har doimgidek", "bizda ham", "hali ham yo'qmi?") are supporting timeline evidence and MUST NOT replace the foundational opening report as the anchor.
    - "anchor_evidence_id" MUST strictly match the exact ID of that chosen foundational evidence item.
    - "anchor_quote" MUST be the exact verbatim excerpt from that chosen evidence item.
 
-4. LATEST MEANINGFUL ACTIVITY TIMESTAMP:
+5. LATEST MEANINGFUL ACTIVITY TIMESTAMP:
    - "latest_meaningful_activity_timestamp" MUST strictly match the exact ISO-8601 originalTimestamp of an Accepted Evidence item belonging to the target Topic.
    - Do NOT invent or use system/current time.
-
-5. ATTRIBUTION & PRIVACY:
-   - Use cautious neutral attribution or permitted resident Telegram handle/display name.
-   - NEVER include, infer, or reconstruct phone numbers.
 
 ### OUTPUT FORMAT
 Respond strictly with valid JSON conforming to the requested schema.`;
