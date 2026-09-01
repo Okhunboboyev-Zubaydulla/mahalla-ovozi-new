@@ -13,6 +13,7 @@ describe('District State & Switching Engine', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
+    localStorage.clear();
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -160,4 +161,52 @@ describe('District State & Switching Engine', () => {
 
     expect(screen.getByTestId('dirty-status').textContent).toBe('clean');
   });
+
+  it('persists and restores activeDistrictId from localStorage', async () => {
+    localStorage.setItem('mahalla_active_district_id', 'dist_stored_123');
+
+    const { result } = renderHook(() => useDistrict(), { wrapper });
+    expect(result.current.activeDistrictId).toBe('dist_stored_123');
+
+    // Switch district and verify localStorage update
+    await act(async () => {
+      await result.current.switchDistrict('dist_switched_456');
+    });
+    expect(localStorage.getItem('mahalla_active_district_id')).toBe('dist_switched_456');
+    expect(result.current.activeDistrictId).toBe('dist_switched_456');
+
+    // Clear district and verify localStorage removal
+    await act(async () => {
+      result.current.setActiveDistrictDirectly(null);
+    });
+    expect(localStorage.getItem('mahalla_active_district_id')).toBeNull();
+    expect(result.current.activeDistrictId).toBeNull();
+  });
+
+  it('auto-cleanses activeDistrictId when ID does not exist in districts list', async () => {
+    const mockDistricts: District[] = [
+      {
+        id: 'dist_valid_1',
+        name: 'Sharof Rashidov',
+        region: 'Jizzax viloyati',
+        status: 'ACTIVE',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ];
+
+    queryClient.setQueryData(['districts', 'list'], { districts: mockDistricts });
+    localStorage.setItem('mahalla_active_district_id', 'dist_deleted_999');
+
+    const { result } = renderHook(() => useDistrict(), { wrapper });
+
+    // Should detect that dist_deleted_999 is missing from mockDistricts and cleanse to null
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.activeDistrictId).toBeNull();
+    expect(localStorage.getItem('mahalla_active_district_id')).toBeNull();
+  });
 });
+
+

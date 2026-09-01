@@ -34,11 +34,11 @@ function renderConsoleLayout() {
     <QueryClientProvider client={queryClient}>
       <ConfigProvider theme={mahallaTheme}>
         <AuthProvider>
-          <DistrictProvider>
-            <BrowserRouter>
+          <BrowserRouter>
+            <DistrictProvider>
               <ConsoleLayout />
-            </BrowserRouter>
-          </DistrictProvider>
+            </DistrictProvider>
+          </BrowserRouter>
         </AuthProvider>
       </ConfigProvider>
     </QueryClientProvider>
@@ -71,3 +71,4 @@ describe('ConsoleLayout Component Tests', () => {
     expect(screen.getByRole('combobox')).toBeTruthy();
   });
 });
+

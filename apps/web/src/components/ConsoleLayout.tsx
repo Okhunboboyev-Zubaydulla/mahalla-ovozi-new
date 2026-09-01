@@ -23,7 +23,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context.js';
-import { useDistrict } from '../district/district-context.js';
+import { useDistrict, DISTRICT_STORAGE_KEY } from '../district/district-context.js';
 import { DistrictSelector } from './DistrictSelector.js';
 import { UnsavedChangesModal } from './UnsavedChangesModal.js';
 import { FullPageLoader } from './FullPageLoader.js';
@@ -77,7 +77,7 @@ const MENU_ITEMS = [
 export const ConsoleLayout: React.FC = () => {
   const { token } = theme.useToken();
   const { actor, signOut } = useAuth();
-  const { attemptTransition } = useDistrict();
+  const { activeDistrictId, attemptTransition } = useDistrict();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -86,13 +86,17 @@ export const ConsoleLayout: React.FC = () => {
   const handleMenuClick = ({ key }: { key: string }) => {
     if (key !== location.pathname) {
       attemptTransition(() => {
-        navigate(key);
+        const search = activeDistrictId ? `?districtId=${encodeURIComponent(activeDistrictId)}` : '';
+        navigate(`${key}${search}`);
       });
     }
   };
 
   const handleSignOut = () => {
     attemptTransition(async () => {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(DISTRICT_STORAGE_KEY);
+      }
       await signOut();
       navigate('/sign-in');
     });

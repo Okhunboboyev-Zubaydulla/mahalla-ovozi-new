@@ -101,6 +101,9 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
         districtId: validation.account.districtId ?? null,
         mustChangePassword: validation.account.mustChangePassword,
       },
+      session: {
+        expiresAt: validation.session.expiresAt.toISOString(),
+      },
     });
   });
 

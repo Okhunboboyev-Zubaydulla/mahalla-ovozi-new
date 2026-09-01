@@ -99,10 +99,10 @@ export function App() {
         <ConfigProvider theme={mahallaTheme}>
           <AntdApp>
             <AuthProvider>
-              {/* P4-E: DistrictProvider inside AuthProvider & QueryClientProvider */}
-              <DistrictProvider>
-                <LiveAnnouncerProvider>
-                  <BrowserRouter>
+              {/* BrowserRouter wraps DistrictProvider to allow URL SearchParam synchronization */}
+              <BrowserRouter>
+                <DistrictProvider>
+                  <LiveAnnouncerProvider>
                     <Suspense fallback={<FullPageLoader />}>
                       <Routes>
                         <Route path="/sign-in" element={<SignInPage />} />
@@ -157,9 +157,9 @@ export function App() {
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </Suspense>
-                  </BrowserRouter>
-                </LiveAnnouncerProvider>
-              </DistrictProvider>
+                  </LiveAnnouncerProvider>
+                </DistrictProvider>
+              </BrowserRouter>
             </AuthProvider>
           </AntdApp>
         </ConfigProvider>

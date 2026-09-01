@@ -5,9 +5,14 @@ import {
   useCallback,
   useMemo,
   useRef,
+  useEffect,
   ReactNode,
 } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { useInRouterContext, useSearchParams } from 'react-router-dom';
+import { districtClient } from './district-client.js';
+
+export const DISTRICT_STORAGE_KEY = 'mahalla_active_district_id';
 
 export interface DistrictContextValue {
   activeDistrictId: string | null;
@@ -24,9 +29,70 @@ export interface DistrictContextValue {
 
 const DistrictContext = createContext<DistrictContextValue | null>(null);
 
+function DistrictRouterSync({
+  activeDistrictId,
+  setActiveDistrictId,
+}: {
+  activeDistrictId: string | null;
+  setActiveDistrictId: (id: string | null) => void;
+}) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamDistrictId = searchParams.get('districtId');
+  const activeRef = useRef<string | null>(activeDistrictId);
+  activeRef.current = activeDistrictId;
+
+  // 1. Synchronize URL query parameter when activeDistrictId changes
+  useEffect(() => {
+    const currentQueryId = searchParams.get('districtId');
+    if (activeDistrictId && currentQueryId !== activeDistrictId) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('districtId', activeDistrictId);
+          return next;
+        },
+        { replace: true }
+      );
+    } else if (!activeDistrictId && currentQueryId) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('districtId');
+          return next;
+        },
+        { replace: true }
+      );
+    }
+  }, [activeDistrictId, searchParams, setSearchParams]);
+
+  // 2. Synchronize state if URL search param changes externally (e.g. browser navigation)
+  useEffect(() => {
+    if (searchParamDistrictId && searchParamDistrictId !== activeRef.current) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(DISTRICT_STORAGE_KEY, searchParamDistrictId);
+      }
+      setActiveDistrictId(searchParamDistrictId);
+    }
+  }, [searchParamDistrictId, setActiveDistrictId]);
+
+  return null;
+}
+
 export function DistrictProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const [activeDistrictId, setActiveDistrictId] = useState<string | null>(null);
+  const inRouter = useInRouterContext();
+
+  const [activeDistrictId, setActiveDistrictId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramId = urlParams.get('districtId');
+    if (paramId) {
+      localStorage.setItem(DISTRICT_STORAGE_KEY, paramId);
+      return paramId;
+    }
+    return localStorage.getItem(DISTRICT_STORAGE_KEY) || null;
+  });
+
   const [dirtySet, setDirtySet] = useState<Set<string>>(new Set());
   const [pendingTransition, setPendingTransition] = useState<(() => void) | null>(null);
 
@@ -34,6 +100,24 @@ export function DistrictProvider({ children }: { children: ReactNode }) {
   activeDistrictIdRef.current = activeDistrictId;
 
   const hasDirtyForms = dirtySet.size > 0;
+
+  // Validate active district against loaded districts list (Auto-cleanse invalid/deleted IDs)
+  const { data: districtsData } = useQuery({
+    queryKey: ['districts', 'list'],
+    queryFn: districtClient.listDistricts,
+    staleTime: 30 * 1000,
+  });
+
+  useEffect(() => {
+    if (!districtsData?.districts || !activeDistrictId) return;
+    const exists = districtsData.districts.some((d) => d.id === activeDistrictId);
+    if (!exists) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(DISTRICT_STORAGE_KEY);
+      }
+      setActiveDistrictId(null);
+    }
+  }, [districtsData, activeDistrictId]);
 
   const registerDirty = useCallback((id: string) => {
     setDirtySet((prev) => {
@@ -59,14 +143,24 @@ export function DistrictProvider({ children }: { children: ReactNode }) {
     async (nextId: string | null) => {
       const seq = ++switchSeqRef.current;
       const prevId = activeDistrictIdRef.current;
+
+      // 1. Update localStorage persistence immediately
+      if (typeof window !== 'undefined') {
+        if (nextId) {
+          localStorage.setItem(DISTRICT_STORAGE_KEY, nextId);
+        } else {
+          localStorage.removeItem(DISTRICT_STORAGE_KEY);
+        }
+      }
+
       if (prevId && prevId !== nextId) {
-        // 1. Signal abort to in-flight prior-district queries (async — await settlement)
+        // 2. Signal abort to in-flight prior-district queries (async — await settlement)
         await queryClient.cancelQueries({ queryKey: ['district', prevId] });
         await queryClient.cancelQueries({
           predicate: (query) =>
             query.queryKey.some((part) => typeof part === 'string' && part === prevId),
         });
-        // 2. Purge prior-district cache (sync — must fire AFTER cancelQueries resolves)
+        // 3. Purge prior-district cache (sync — must fire AFTER cancelQueries resolves)
         queryClient.removeQueries({ queryKey: ['district', prevId] });
         queryClient.removeQueries({
           predicate: (query) =>
@@ -75,9 +169,10 @@ export function DistrictProvider({ children }: { children: ReactNode }) {
       }
       // Drop late execution if a newer switch was initiated
       if (seq !== switchSeqRef.current) return;
-      // 3. Clear local interaction state & dirty registry
+      // 4. Clear local interaction state & dirty registry
       setDirtySet(new Set());
-      // 4. Activate new district context
+
+      // 5. Activate new district context
       setActiveDistrictId(nextId);
     },
     [queryClient]
@@ -161,6 +256,12 @@ export function DistrictProvider({ children }: { children: ReactNode }) {
 
   return (
     <DistrictContext.Provider value={contextValue}>
+      {inRouter && (
+        <DistrictRouterSync
+          activeDistrictId={activeDistrictId}
+          setActiveDistrictId={setActiveDistrictId}
+        />
+      )}
       {children}
     </DistrictContext.Provider>
   );

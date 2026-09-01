@@ -5,6 +5,7 @@ import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/clien
 import { createOrResetProductOwner } from '../src/modules/auth/account-service.js';
 import { sessions, auditEvents } from '../src/adapters/db/schema/index.js';
 import { COOKIE_NAME, hashSessionToken } from '../src/modules/auth/session-manager.js';
+import { SessionResponseSchema } from '@mahalla-ovozi/api-contracts';
 import { eq } from 'drizzle-orm';
 import pg from 'pg';
 
@@ -215,7 +216,11 @@ describe('Auth Module, Session Engine & Threat Defenses Integration Tests', () =
 
       expect(sessionRes.statusCode).toBe(200);
       const body = sessionRes.json();
+      const parseResult = SessionResponseSchema.safeParse(body);
+      expect(parseResult.success).toBe(true);
       expect(body.actor.username).toBe(testUsername);
+      expect(body.session).toBeDefined();
+      expect(typeof body.session.expiresAt).toBe('string');
     });
 
     it('rejects session after 12 hours of idle inactivity', async () => {
