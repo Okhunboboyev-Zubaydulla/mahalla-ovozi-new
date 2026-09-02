@@ -10,6 +10,9 @@ import {
   Typography,
   theme,
   Alert,
+  Modal,
+  Form,
+  message,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -18,6 +21,8 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   SearchOutlined,
+  SyncOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import type {
@@ -26,7 +31,7 @@ import type {
   QualifyingLane,
 } from '@mahalla-ovozi/api-contracts';
 import { districtClient } from '../../district/district-client.js';
-import { useSignalMessages } from '../../hooks/useSignalMessages.js';
+import { useSignalMessages, useBatchDeleteSignals } from '../../hooks/useSignalMessages.js';
 import { SignalInspectionDrawer } from './SignalInspectionDrawer.js';
 import { CreateManualSignalModal } from './CreateManualSignalModal.js';
 
@@ -94,6 +99,28 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
   const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null);
   const [inspectionDrawerOpen, setInspectionDrawerOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [batchDeleteModalOpen, setBatchDeleteModalOpen] = useState<boolean>(false);
+  const [batchDeleteForm] = Form.useForm();
+
+  const batchDeleteMutation = useBatchDeleteSignals();
+
+  const handleBatchDeleteSubmit = async (values: { changeReason: string }) => {
+    if (selectedRowKeys.length === 0) return;
+    try {
+      const ids = selectedRowKeys.map(String);
+      const result = await batchDeleteMutation.mutateAsync({
+        ids,
+        changeReason: values.changeReason,
+      });
+      message.success(`${result.deletedCount} та хабар муваффақиятли ўчирилди`);
+      setSelectedRowKeys([]);
+      setBatchDeleteModalOpen(false);
+      batchDeleteForm.resetFields();
+    } catch (err: any) {
+      message.error(err.message || 'Хабарларни ўчиришда хатолик юз берди');
+    }
+  };
 
   // Query Districts
   const { data: districtsData } = useQuery({
@@ -205,7 +232,14 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
       key: 'decision',
       width: 150,
       render: (_: unknown, record: SignalMessageListItemDto) => {
-        if (record.isRelevant) {
+        if (record.status === 'PENDING') {
+          return (
+            <Tag color="processing" icon={<SyncOutlined spin />}>
+              Жараёнда
+            </Tag>
+          );
+        }
+        if (record.status === 'ACCEPTED' || record.isRelevant) {
           return (
             <Tag color="success" icon={<CheckCircleOutlined />}>
               Қабул қилинди
@@ -252,19 +286,39 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
       title: 'AI изоҳи / Асос (Reasoning)',
       dataIndex: 'reasoning',
       key: 'reasoning',
-      render: (reasoning: string | null) => (
-        <div style={{ maxWidth: 300 }}>
-          <Text
-            style={{
-              fontSize: 12,
-              color: token.colorTextDescription,
-              fontStyle: 'italic',
-            }}
-          >
-            {reasoning || '—'}
-          </Text>
-        </div>
-      ),
+      render: (reasoning: string | null, record: SignalMessageListItemDto) => {
+        if (reasoning) {
+          return (
+            <div style={{ maxWidth: 300 }}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: token.colorTextDescription,
+                  fontStyle: 'italic',
+                }}
+              >
+                {reasoning}
+              </Text>
+            </div>
+          );
+        }
+        if (record.isRelevant || record.status === 'ACCEPTED') {
+          return (
+            <div style={{ maxWidth: 300 }}>
+              <Text
+                type="secondary"
+                style={{
+                  fontSize: 12,
+                  fontStyle: 'italic',
+                }}
+              >
+                Кетма-кет ёзилган хабар сифатида умумий баҳоланган
+              </Text>
+            </div>
+          );
+        }
+        return <Text type="secondary">—</Text>;
+      },
     },
     {
       title: 'Амаллар',
@@ -435,6 +489,43 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
         />
       )}
 
+      {/* Batch Actions Bar */}
+      {selectedRowKeys.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 20px',
+            marginBottom: 16,
+            background: token.colorFillAlter,
+            border: `1px solid ${token.colorBorderSecondary}`,
+            borderRadius: token.borderRadiusLG,
+          }}
+        >
+          <Space size="middle">
+            <Text strong style={{ fontSize: 14 }}>
+              Танланди: {selectedRowKeys.length} та хабар
+            </Text>
+            <Button
+              type="link"
+              size="small"
+              onClick={() => setSelectedRowKeys([])}
+            >
+              Танловни бекор қилиш
+            </Button>
+          </Space>
+          <Button
+            danger
+            type="primary"
+            icon={<DeleteOutlined />}
+            onClick={() => setBatchDeleteModalOpen(true)}
+          >
+            Танланганларни ўчириш ({selectedRowKeys.length})
+          </Button>
+        </div>
+      )}
+
       {/* Data Table */}
       <Card
         variant="borderless"
@@ -446,6 +537,10 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
       >
         <Table
           rowKey="id"
+          rowSelection={{
+            selectedRowKeys,
+            onChange: (newKeys) => setSelectedRowKeys(newKeys),
+          }}
           columns={columns}
           dataSource={signalsData?.items || []}
           loading={isLoading}
@@ -453,7 +548,21 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
           scroll={{ x: 1100 }}
           size="middle"
           onRow={(record) => ({
-            onClick: () => handleOpenDetail(record.id),
+            onClick: (e) => {
+              const target = e.target as HTMLElement;
+              if (
+                target.closest('.ant-table-selection-column') ||
+                target.closest('.ant-checkbox-wrapper') ||
+                target.closest('button') ||
+                target.closest('a') ||
+                target.closest('.ant-dropdown-trigger') ||
+                target.closest('input') ||
+                target.closest('[role="button"]')
+              ) {
+                return;
+              }
+              handleOpenDetail(record.id);
+            },
             style: { cursor: 'pointer' },
           })}
         />
@@ -500,6 +609,48 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
         onClose={() => setCreateModalOpen(false)}
         defaultDistrictId={districtId}
       />
+
+      {/* Batch Delete Confirmation Modal */}
+      <Modal
+        title={
+          <Space>
+            <DeleteOutlined style={{ color: token.colorError }} />
+            <span>Хабарларни гуруҳлаб ўчириш</span>
+          </Space>
+        }
+        open={batchDeleteModalOpen}
+        onCancel={() => {
+          setBatchDeleteModalOpen(false);
+          batchDeleteForm.resetFields();
+        }}
+        onOk={() => batchDeleteForm.submit()}
+        okText="Ўчиришни тасдиқлаш"
+        cancelText="Бекор қилиш"
+        okButtonProps={{ danger: true, loading: batchDeleteMutation.isPending }}
+      >
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message={`Жами ${selectedRowKeys.length} та танланган хабар ўчирилади.`}
+          description="Агар танланган хабарлар орасида қабул қилинган далиллар бўлса, улар тегишли мавзулардан олиб ташланади ва мавзу хулосаси қайта ҳисобланади."
+        />
+        <Form form={batchDeleteForm} layout="vertical" onFinish={handleBatchDeleteSubmit}>
+          <Form.Item
+            name="changeReason"
+            label="Ўчириш сабаби (аудит учун мажбурий)"
+            rules={[
+              { required: true, message: 'Ўчириш сабабини киритиш шарт' },
+              { min: 3, message: 'Камида 3 та белги бўлиши керак' },
+            ]}
+          >
+            <Input.TextArea
+              rows={3}
+              placeholder="Масалан: Такрорий ёки нотўғри хабарлар"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

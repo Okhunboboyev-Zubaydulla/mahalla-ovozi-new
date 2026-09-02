@@ -5,6 +5,9 @@ import { IsoDateStringSchema } from './common.js';
 
 export type { QualifyingLane };
 
+export const SignalProcessingStatusSchema = z.enum(['PENDING', 'ACCEPTED', 'REJECTED']);
+export type SignalProcessingStatus = z.infer<typeof SignalProcessingStatusSchema>;
+
 export const SignalMessageListItemSchema = z.object({
   id: z.string().min(1), // Unique identifier (evidenceId or intakeId)
   intakeId: z.string().min(1),
@@ -16,6 +19,7 @@ export const SignalMessageListItemSchema = z.object({
   originalTimestamp: z.string().datetime({ offset: true }),
   contentType: z.enum(['TEXT', 'MEDIA_CAPTION']),
   verbatimText: z.string(),
+  status: SignalProcessingStatusSchema.default('REJECTED'),
   isRelevant: z.boolean(),
   relevantLanes: z.array(QualifyingLaneSchema),
   exclusionReason: z.string().nullable(),
@@ -147,4 +151,22 @@ export const CreateManualSignalResponseSchema = z.object({
   intakeId: z.string(),
 });
 export type CreateManualSignalResponse = z.infer<typeof CreateManualSignalResponseSchema>;
+
+export const BatchDeleteSignalsRequestSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1, 'Камида битта хабар танланиши шарт'),
+  changeReason: z
+    .string()
+    .min(3, 'Ўчириш сабаби камида 3 та белги бўлиши шарт')
+    .max(500),
+});
+export type BatchDeleteSignalsRequest = z.infer<typeof BatchDeleteSignalsRequestSchema>;
+
+export const BatchDeleteSignalsResponseSchema = z.object({
+  success: z.boolean(),
+  deletedCount: z.number().int().nonnegative(),
+  topicsAffected: z.number().int().nonnegative(),
+  topicsDeleted: z.number().int().nonnegative(),
+});
+export type BatchDeleteSignalsResponse = z.infer<typeof BatchDeleteSignalsResponseSchema>;
+
 

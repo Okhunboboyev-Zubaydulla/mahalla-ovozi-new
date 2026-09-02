@@ -11,6 +11,7 @@ import {
   UpdateEvidenceTextRequestSchema,
   DeleteEvidenceRequestSchema,
   CreateManualSignalRequestSchema,
+  BatchDeleteSignalsRequestSchema,
 } from '@mahalla-ovozi/api-contracts';
 import type { DbClient } from '../../adapters/db/client.js';
 import {
@@ -572,6 +573,50 @@ export function registerAiOperationsRoutes(
           });
 
           return reply.status(201).send(result);
+        } catch (err: unknown) {
+          return handleAiOperationError(err, reply, req);
+        }
+      },
+    );
+
+    // POST /api/v1/admin/signals/batch-delete
+    scope.post(
+      '/api/v1/admin/signals/batch-delete',
+      async (
+        req: FastifyRequest<{
+          Body: unknown;
+        }>,
+        reply: FastifyReply,
+      ) => {
+        const parseResult = BatchDeleteSignalsRequestSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: parseResult.error.errors[0]?.message || 'Нотўғри маълумотлар киритилди.',
+            },
+          });
+        }
+
+        if (!pool || !boss) {
+          return reply.status(500).send({
+            error: {
+              code: 'SERVER_MISCONFIGURED',
+              message: 'Сервер навбат тизимига уланмаган.',
+            },
+          });
+        }
+
+        try {
+          const actor = (req as any).actor;
+          const result = await signalManagementService.batchDeleteSignals(pool, boss, db, {
+            ids: parseResult.data.ids,
+            changeReason: parseResult.data.changeReason,
+            actorId: actor?.id,
+            actorRole: actor?.role,
+          });
+
+          return reply.status(200).send(result);
         } catch (err: unknown) {
           return handleAiOperationError(err, reply, req);
         }

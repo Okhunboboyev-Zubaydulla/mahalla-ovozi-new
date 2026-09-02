@@ -550,5 +550,102 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
       expect(result.data.matched_topic_id).toBe('top_elec_1');
       expect(result.data.primary_lane).toBeNull();
     });
+
+    it('seeds NEW_TOPIC for distinct localized infrastructure failure within same service lane (water outage vs pipe leak)', async () => {
+      const expectedOutput: TopicMatchingResult = {
+        decision: 'NEW_TOPIC',
+        matched_topic_id: null,
+        primary_lane: 'WATER',
+        reasoning: 'Active pipe burst and street flooding on Bogzor street is a distinct physical incident from general tap water outage',
+      };
+
+      mockAdapter.setNextResponse(expectedOutput);
+
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Guliston',
+        calendarDay: '2026-09-02',
+        contextRevision: 3,
+        snapshotFingerprint: 'pipe_leak_hash',
+        evidence: [
+          {
+            id: 'evi_1',
+            topicId: 'top_elec_1',
+            telegramMessageId: '101',
+            originalTimestamp: '2026-09-02T14:57:00.000Z',
+            verbatimText: 'bugunam yu\nbugunam kemadi\nsvet',
+            lane: 'ELECTRICITY',
+          },
+          {
+            id: 'evi_2',
+            topicId: 'top_water_outage_1',
+            telegramMessageId: '102',
+            originalTimestamp: '2026-09-02T15:22:00.000Z',
+            verbatimText: 'qachon keladi\nsuv',
+            lane: 'WATER',
+          },
+        ],
+      };
+
+      const result = await evaluator.evaluateTopicAssignment({
+        candidateText: 'bogzor kucada suv oqib yotpti. 2 kun buldi. daryo bb ketmagunca vodokanal qaramedimi,\nsuvni tejela diyishadi uzlari qaramedi',
+        telegramMessageId: '103',
+        originalTimestamp: '2026-09-02T15:41:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['WATER'],
+        snapshot,
+        profileId: 'prof_match_2026_08_v1',
+      });
+
+      expect(result.data.decision).toBe('NEW_TOPIC');
+      expect(result.data.matched_topic_id).toBeNull();
+      expect(result.data.primary_lane).toBe('WATER');
+    });
+
+    it('seeds NEW_TOPIC for distinct localized physical hazard within same service lane (power outage vs sparking transformer)', async () => {
+      const expectedOutput: TopicMatchingResult = {
+        decision: 'NEW_TOPIC',
+        matched_topic_id: null,
+        primary_lane: 'ELECTRICITY',
+        reasoning: 'Sparking transformer on Navoiy street represents an independent physical hazard from general grid outage',
+      };
+
+      mockAdapter.setNextResponse(expectedOutput);
+
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Guliston',
+        calendarDay: '2026-09-02',
+        contextRevision: 2,
+        snapshotFingerprint: 'elec_trans_hash',
+        evidence: [
+          {
+            id: 'evi_1',
+            topicId: 'top_elec_outage_1',
+            telegramMessageId: '201',
+            originalTimestamp: '2026-09-02T10:00:00.000Z',
+            verbatimText: 'Hamma joyda chiroq o‘chdi',
+            lane: 'ELECTRICITY',
+          },
+        ],
+      };
+
+      const result = await evaluator.evaluateTopicAssignment({
+        candidateText: 'Navoiy ko‘chasidagi transformatordan uchqun chiqyapti, xavfli holat',
+        telegramMessageId: '202',
+        originalTimestamp: '2026-09-02T10:45:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['ELECTRICITY'],
+        snapshot,
+        profileId: 'prof_match_2026_08_v1',
+      });
+
+      expect(result.data.decision).toBe('NEW_TOPIC');
+      expect(result.data.matched_topic_id).toBeNull();
+      expect(result.data.primary_lane).toBe('ELECTRICITY');
+    });
   });
 });
+

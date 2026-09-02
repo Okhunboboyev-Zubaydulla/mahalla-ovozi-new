@@ -12,6 +12,8 @@ import {
   type DeleteEvidenceResponse,
   type CreateManualSignalRequest,
   type CreateManualSignalResponse,
+  type BatchDeleteSignalsRequest,
+  type BatchDeleteSignalsResponse,
   ListSignalsResponseSchema,
   SignalDetailSchema,
   PromoteSignalResponseSchema,
@@ -19,6 +21,7 @@ import {
   UpdateEvidenceTextResponseSchema,
   DeleteEvidenceResponseSchema,
   CreateManualSignalResponseSchema,
+  BatchDeleteSignalsResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
 
@@ -108,3 +111,17 @@ export async function createManualSignal(
     CreateManualSignalResponseSchema,
   );
 }
+
+export async function batchDeleteSignals(
+  payload: BatchDeleteSignalsRequest,
+): Promise<BatchDeleteSignalsResponse> {
+  return request<BatchDeleteSignalsResponse>(
+    '/api/v1/admin/signals/batch-delete',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    BatchDeleteSignalsResponseSchema,
+  );
+}
+

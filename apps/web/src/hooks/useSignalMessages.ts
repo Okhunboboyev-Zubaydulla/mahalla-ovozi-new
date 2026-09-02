@@ -8,6 +8,8 @@ import type {
   UpdateEvidenceTextRequest,
   DeleteEvidenceRequest,
   CreateManualSignalRequest,
+  BatchDeleteSignalsRequest,
+  BatchDeleteSignalsResponse,
 } from '@mahalla-ovozi/api-contracts';
 import {
   listSignals,
@@ -17,6 +19,7 @@ import {
   updateEvidenceText,
   deleteEvidence,
   createManualSignal,
+  batchDeleteSignals,
 } from '../api/signals-client.js';
 
 export const signalQueryKeys = {
@@ -122,3 +125,22 @@ export function useCreateManualSignal() {
     },
   });
 }
+
+export function useBatchDeleteSignals() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    BatchDeleteSignalsResponse,
+    Error,
+    BatchDeleteSignalsRequest
+  >({
+    mutationFn: (payload) => batchDeleteSignals(payload),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: signalQueryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ['topics'] }),
+        queryClient.invalidateQueries({ queryKey: ['ai-operations'] }),
+      ]);
+    },
+  });
+}
+

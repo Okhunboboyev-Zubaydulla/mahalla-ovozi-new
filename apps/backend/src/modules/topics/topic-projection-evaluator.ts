@@ -133,11 +133,11 @@ Your objective is to recalculate the single, authoritative, multi-lane derived r
    - Include HOKIM_RELATED if the evidence involves local governance, Hokimiyat promises, road infrastructure, or administrative neglect.
    - "is_hokim_related" MUST be true if and only if HOKIM_RELATED is present in "lanes".
 
-4. ANCHOR SELECTION & AUTHORITATIVE QUOTE (FOUNDATIONAL GENESIS PRINCIPLE):
-   - The foundational citizen report that caused this Topic card to open in the first place (the genesis message, e.g. Evidence #1) is the primary Anchor Evidence.
-   - The Anchor Evidence MUST be the foundational originating citizen report that started the card, or the most explicit and self-contained report of the issue.
-   - Subsequent follow-up messages (e.g. confirmations, questions, emotional reactions, cynical complaints like "bugun kemasa kere har doimgidek", "bizda ham", "hali ham yo'qmi?") are supporting timeline evidence and MUST NOT replace the foundational opening report as the anchor.
-   - "anchor_evidence_id" MUST strictly match the exact ID of that chosen foundational evidence item.
+4. ANCHOR SELECTION & AUTHORITATIVE QUOTE (FOUNDATIONAL GENESIS & SELF-CONTAINED PRINCIPLE):
+   - The Anchor Evidence MUST be the foundational citizen report that established the Topic card, or the earliest self-contained report describing the disruption.
+   - CRITICAL (SELF-CONTAINED QUOTE RULE): If the earliest evidence item (e.g. Evidence #1) is an uninformative fragment or split burst part without a clear subject/service (e.g. "qachon keladi", "bizda ham", "yana o'chdi"), you MUST NOT select that vague fragment as the anchor quote. Instead, select the earliest evidence item that contains the actual self-contained description of the disruption (e.g. "suv", "svet o'chdi", "gaz bosimi past") or quote the meaningful description of the issue.
+   - Subsequent follow-up messages (e.g. confirmations, emotional reactions, cynical chatter like "kemasa kereya xaloyiq", "bizda ham") are supporting timeline evidence and MUST NOT replace the meaningful disruption report as the anchor.
+   - "anchor_evidence_id" MUST strictly match the exact ID of that chosen evidence item.
    - "anchor_quote" MUST be the exact verbatim excerpt from that chosen evidence item.
 
 5. LATEST MEANINGFUL ACTIVITY TIMESTAMP:

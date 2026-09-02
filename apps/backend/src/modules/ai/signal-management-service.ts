@@ -162,9 +162,26 @@ export class SignalManagementService {
     const sliced = hasMore ? rows.slice(0, limit) : rows;
 
     const items: SignalMessageListItemDto[] = sliced.map((row) => {
-      const isRelevant = !!row.evidenceId || row.aiOpFinalStatus === 'COMPLETED_RELEVANT';
       const rawPayload = (row.intakeRawPayload as Record<string, unknown>) || {};
       const aiResult = (row.aiOpResultPayload as Record<string, unknown>) || {};
+
+      let status: 'PENDING' | 'ACCEPTED' | 'REJECTED' = 'REJECTED';
+      let isRelevant = false;
+
+      if (row.evidenceId || row.aiOpFinalStatus === 'COMPLETED_RELEVANT') {
+        status = 'ACCEPTED';
+        isRelevant = true;
+      } else if (
+        row.aiOpFinalStatus === 'COMPLETED_IRRELEVANT' ||
+        rawPayload.status === 'EXCLUDED' ||
+        rawPayload.status === 'PURGED'
+      ) {
+        status = 'REJECTED';
+        isRelevant = false;
+      } else {
+        status = 'PENDING';
+        isRelevant = false;
+      }
 
       const verbatimText =
         row.evidenceVerbatimText ||
@@ -202,6 +219,7 @@ export class SignalManagementService {
         originalTimestamp: row.originalTimestamp.toISOString(),
         contentType: (row.evidenceContentType as 'TEXT' | 'MEDIA_CAPTION') || 'TEXT',
         verbatimText,
+        status,
         isRelevant,
         relevantLanes,
         exclusionReason,
@@ -301,9 +319,26 @@ export class SignalManagementService {
       throw new SignalNotFoundError();
     }
 
-    const isRelevant = !!row.evidenceId || row.aiOpFinalStatus === 'COMPLETED_RELEVANT';
     const rawPayload = (row.intakeRawPayload as Record<string, unknown>) || {};
     const aiResult = (row.aiOpResultPayload as Record<string, unknown>) || {};
+
+    let status: 'PENDING' | 'ACCEPTED' | 'REJECTED' = 'REJECTED';
+    let isRelevant = false;
+
+    if (row.evidenceId || row.aiOpFinalStatus === 'COMPLETED_RELEVANT') {
+      status = 'ACCEPTED';
+      isRelevant = true;
+    } else if (
+      row.aiOpFinalStatus === 'COMPLETED_IRRELEVANT' ||
+      rawPayload.status === 'EXCLUDED' ||
+      rawPayload.status === 'PURGED'
+    ) {
+      status = 'REJECTED';
+      isRelevant = false;
+    } else {
+      status = 'PENDING';
+      isRelevant = false;
+    }
 
     const verbatimText =
       row.evidenceVerbatimText ||
@@ -363,6 +398,7 @@ export class SignalManagementService {
         originalTimestamp: row.originalTimestamp.toISOString(),
         contentType: (row.evidenceContentType as 'TEXT' | 'MEDIA_CAPTION') || 'TEXT',
         verbatimText,
+        status,
         isRelevant,
         relevantLanes,
         exclusionReason,
@@ -808,6 +844,28 @@ export class SignalManagementService {
 
       await tx.delete(acceptedEvidence).where(eq(acceptedEvidence.id, evidence.id));
 
+      if (evidence.intakeRecordId) {
+        await tx
+          .delete(aiOperations)
+          .where(
+            and(
+              eq(aiOperations.targetId, evidence.intakeRecordId),
+              eq(aiOperations.districtId, evidence.districtId),
+            ),
+          );
+        await tx
+          .delete(telegramIntakeRecords)
+          .where(eq(telegramIntakeRecords.id, evidence.intakeRecordId));
+      }
+      await tx
+        .delete(aiOperations)
+        .where(
+          and(
+            eq(aiOperations.targetId, evidence.id),
+            eq(aiOperations.districtId, evidence.districtId),
+          ),
+        );
+
       const remaining = await tx
         .select({ id: acceptedEvidence.id })
         .from(acceptedEvidence)
@@ -979,6 +1037,105 @@ export class SignalManagementService {
     });
 
     return { success: true, intakeId };
+  }
+
+  /**
+   * Batch delete multiple signals (evidence items or intake records).
+   */
+  async batchDeleteSignals(
+    pool: pg.Pool,
+    boss: PgBoss,
+    db: DbClient,
+    params: {
+      ids: string[];
+      changeReason: string;
+      actorId?: string;
+      actorRole?: string;
+    },
+  ): Promise<{
+    success: true;
+    deletedCount: number;
+    topicsAffected: number;
+    topicsDeleted: number;
+  }> {
+    let deletedCount = 0;
+    const affectedTopicIds = new Set<string>();
+    let topicsDeletedCount = 0;
+
+    for (const id of params.ids) {
+      // 1. Check if ID matches acceptedEvidence.id or points to acceptedEvidence via intakeRecordId
+      const [evidence] = await db
+        .select()
+        .from(acceptedEvidence)
+        .where(
+          sql`${acceptedEvidence.id} = ${id} OR ${acceptedEvidence.intakeRecordId} = ${id}`,
+        )
+        .limit(1);
+
+      if (evidence) {
+        const result = await this.deleteEvidence(pool, boss, db, {
+          evidenceId: evidence.id,
+          changeReason: params.changeReason,
+          actorId: params.actorId,
+          actorRole: params.actorRole,
+        });
+        if (result.success) {
+          deletedCount++;
+          affectedTopicIds.add(evidence.topicId);
+          if (result.topicDeleted) {
+            topicsDeletedCount++;
+          }
+        }
+      } else {
+        // 2. Check if ID is in telegramIntakeRecords (unassigned/ignored/excluded/pending)
+        const [intake] = await db
+          .select()
+          .from(telegramIntakeRecords)
+          .where(eq(telegramIntakeRecords.id, id))
+          .limit(1);
+
+        if (intake) {
+          await db.transaction(async (tx) => {
+            // Delete any dangling accepted_evidence referencing this intake
+            await tx
+              .delete(acceptedEvidence)
+              .where(eq(acceptedEvidence.intakeRecordId, intake.id));
+
+            await tx
+              .delete(aiOperations)
+              .where(
+                and(
+                  eq(aiOperations.targetId, intake.id),
+                  eq(aiOperations.districtId, intake.districtId),
+                ),
+              );
+
+            await tx
+              .delete(telegramIntakeRecords)
+              .where(eq(telegramIntakeRecords.id, intake.id));
+
+            await recordAuditEvent(tx as any, {
+              districtId: intake.districtId,
+              actorId: params.actorId,
+              actorRole: params.actorRole,
+              action: 'SIGNAL_DELETED',
+              metadata: {
+                intakeId: intake.id,
+                changeReason: params.changeReason,
+              },
+            });
+          });
+          deletedCount++;
+        }
+      }
+    }
+
+    return {
+      success: true,
+      deletedCount,
+      topicsAffected: affectedTopicIds.size,
+      topicsDeleted: topicsDeletedCount,
+    };
   }
 }
 

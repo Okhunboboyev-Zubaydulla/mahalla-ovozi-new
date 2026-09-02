@@ -132,9 +132,13 @@ Your objective is to evaluate relevance-qualified candidate messages and assign 
 - Recognize Uzbek colloquial contracted suffixes ('-am', '-yam', '-ham' meaning "also/too"): "suvam" (= suv ham), "svetam" (= svet ham), "tokam", "gazam", "musoram", "trubayam", "yo'lam".
 - All evidence and topics are strictly bounded to the same District, Mahalla, and calendar day (Asia/Tashkent).
 
+### CORE CONCEPT: TOPIC IS AN UNDERLYING INCIDENT, NOT A CATEGORY BUCKET
+- A Topic represents a single continuous real-world civic situation, disruption, or incident in this Mahalla today.
+- A Topic is NOT a broad category bucket. Multiple independent Topics can and often do exist concurrently within the SAME municipal service lane (e.g. WATER, ELECTRICITY, GAS, WASTE, HOKIM_RELATED).
+
 ### DECISION CATEGORIES
 1. MATCH_EXISTING_TOPIC:
-   - The candidate reports progress, updates, inquiries/status checks ("svet keldimi?", "suv bormi?", "chiroq yondimi?"), voltage drops/spikes ("tok 160V"), resident restoration notices ("svet yondi"), recurrence ("yana o'chdi"), or contradictory resident reports ("bizda bor, sizlarda yo'qmi?") concerning an ACTIVE same-day situation in this Mahalla in the SAME service lane.
+   - The candidate reports progress, updates, inquiries/status checks ("svet keldimi?", "suv bormi?", "chiroq yondimi?"), voltage/pressure variations ("tok 160V", "davlenie past"), resident restoration notices ("svet yondi"), recurrence ("yana o'chdi"), or confirmations concerning the EXACT SAME ACTIVE UNDERLYING REAL-WORLD INCIDENT in this Mahalla in the SAME service lane.
    - When matching an existing topic:
      - "decision": "MATCH_EXISTING_TOPIC"
      - "matched_topic_id": "<existing_topic_id>" (e.g. "top_...")
@@ -142,7 +146,7 @@ Your objective is to evaluate relevance-qualified candidate messages and assign 
    - Note: The canonical topic's existing primary_lane remains immutable.
 
 2. NEW_TOPIC:
-   - The candidate reports or implies an independent civic issue, service inquiry, or distinct disruption that does NOT belong to any active topic in the Mahalla today (e.g. "svet keldimi?" when no electricity topic exists yet today, "Suvam ucdi mana", "Suv quvuri yorildi, ko'chani suv bosdi", "Yana yangi chuqur paydo bo'ldi yo'lda").
+   - The candidate reports or implies an independent civic issue, separate physical infrastructure failure/damage, distinct localized event, or new service disruption that does NOT belong to any active topic in the Mahalla today.
    - When seeding a new topic:
      - "decision": "NEW_TOPIC"
      - "matched_topic_id": null
@@ -156,10 +160,10 @@ Your objective is to evaluate relevance-qualified candidate messages and assign 
      - "primary_lane": null
 
 ### DECISION RULES & CONVERSATIONAL CONTINUITY
-1. DOMAIN SPECIFICITY PRECEDENCE (EXPLICIT SERVICE SHIFTS):
-   - When a candidate message explicitly mentions or contracts a distinct municipal service category (e.g. "Suvam ucdi mana", "Gazam o'chdi", "Trubayam yorildi"), this domain ALWAYS takes precedence over conversational thread continuity.
-   - You MUST NEVER match a message about a different service category (e.g. WATER) into an active topic of another category (e.g. ELECTRICITY), even if it immediately follows an electricity discussion or uses additive particles like "-am" / "-ham" ("Suvam").
-   - If an active topic in that exact service lane already exists today, match it (MATCH_EXISTING_TOPIC); otherwise, create a new topic (NEW_TOPIC with primary_lane matching the candidate's service).
+1. DOMAIN & INCIDENT-LEVEL SPECIFICITY PRECEDENCE:
+   - Explicit Service Shift: When a candidate message explicitly mentions or contracts a distinct municipal service category (e.g. "Suvam ucdi mana", "Gazam o'chdi", "Trubayam yorildi"), this domain ALWAYS takes precedence over conversational thread continuity. You MUST NEVER match a message about a different service category into an active topic of another category.
+   - Incident-Level Distinction Within Same Service Lane: Having an active topic in the same service lane does NOT mean all new messages in that lane belong to it. Two messages in the same service category describe different Topics when they describe distinct underlying real-world situations (e.g., a general tap water supply outage vs. a localized pipe burst/leakage on a street; a neighborhood power cut vs. a sparking transformer; general low gas pressure vs. an active gas leak).
+   - If the candidate refers to the same ongoing incident, match it (MATCH_EXISTING_TOPIC); if it reports a distinct incident or separate physical problem, seed a new topic (NEW_TOPIC with primary_lane matching the candidate's service).
 
 2. CAUSAL DISRUPTIONS VS COMPOUND CO-OCCURRING COMPLAINTS:
    - Causal Chains: When a candidate states that one utility failure caused another (e.g. "Svet o'chgani sababli suv nasosi to'xtadi", "Gaz yo'qligiga tokda isitgich yoqdik"), assign to the ROOT CAUSE domain topic (e.g. ELECTRICITY for power loss causing pump failure).
@@ -170,10 +174,10 @@ Your objective is to evaluate relevance-qualified candidate messages and assign 
      - Within 30 minutes of chat activity: You MUST match to the topic of the IMMEDIATE PRECEDING RECENT MESSAGE (N-1 IN CHAT). You MUST NOT skip the immediate preceding message (N-1) to latch onto an earlier conversation topic (N-2, N-3) unless the candidate explicitly names that other service.
      - After >30 minutes of chat silence: If there is exactly ONE active unresolved outage topic in the Mahalla today, attach to that active topic; if multiple active topics or zero exist, classify as UNASSIGNABLE_VAGUE.
 
-4. SITUATION CONTINUITY & ISOLATION:
+4. SITUATION CONTINUITY VS INCIDENT ISOLATION & HARM HIERARCHY:
    - Multiple reports or inquiries regarding the same underlying service outage or civic incident must be grouped into the same Topic.
-   - Matching an existing topic never alters that topic's primary lane.
-   - Independent Incidents: Different public service categories (e.g. electricity outage vs water leak) or distinct incidents on different streets/locations represent separate Topics.
+   - Independent Incidents: Different public service categories, distinct physical problems (e.g. supply unavailability vs localized pipe rupture/leakage/damage), or distinct incidents on different streets/locations represent separate Topics.
+   - Anti-Overmerging Precedence: When in doubt whether a report is part of an ongoing situation or a distinct disruption, prefer NEW_TOPIC. Wrongly merging unrelated situations into one misleading topic is the most severe error.
 
 ### OUTPUT FORMAT
 Respond strictly with valid JSON conforming to the requested schema.`;

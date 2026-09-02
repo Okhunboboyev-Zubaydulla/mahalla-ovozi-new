@@ -26,6 +26,7 @@ import {
   PlusCircleOutlined,
   RobotOutlined,
   CopyOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 import type { QualifyingLane } from '@mahalla-ovozi/api-contracts';
 import {
@@ -199,7 +200,19 @@ export const SignalInspectionDrawer: React.FC<SignalInspectionDrawerProps> = ({
           <div>
             {/* Status Header */}
             <div style={{ marginBottom: 16 }}>
-              {signal.isRelevant ? (
+              {signal.status === 'PENDING' ? (
+                <Alert
+                  type="info"
+                  showIcon
+                  icon={<SyncOutlined spin />}
+                  message={
+                    <span style={{ fontWeight: 600 }}>
+                      АИ қарори: Жараёнда (PENDING / DEBOUNCING)
+                    </span>
+                  }
+                  description="Ушбу хабар навбатда ва таҳлил жараёнида бўлиб, тез орада АИ томонидан кўриб чиқилади."
+                />
+              ) : signal.status === 'ACCEPTED' || signal.isRelevant ? (
                 <Alert
                   type="success"
                   showIcon
@@ -276,7 +289,10 @@ export const SignalInspectionDrawer: React.FC<SignalInspectionDrawerProps> = ({
               }}
             >
               <Paragraph style={{ margin: 0, fontSize: 14, color: token.colorTextHeading }}>
-                {signal.reasoning || '(АИ томонидан асос кўрсатилмаган)'}
+                {signal.reasoning ||
+                  (signal.isRelevant || signal.status === 'ACCEPTED'
+                    ? 'Ушбу хабар фуқаронинг кетма-кет ёзган хабарлари билан биргаликда умумий мурожаат сифатида баҳоланган ва қабул қилинган.'
+                    : '(АИ томонидан асос кўрсатилмаган)')}
               </Paragraph>
             </Card>
 

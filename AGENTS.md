@@ -60,8 +60,10 @@ Do not remove, skip, or weaken verification just to pass checks.
 ## MODULE: DEBUGGING
 Form multiple hypotheses before fixing. Validate assumptions with targeted logging/tests. No shotgun debugging.
 ## MODULE: DEPENDENCIES & LIBRARIES
-Prefer battle-tested packages and their appropriate APIs over custom reimplementation; don't reinvent the wheel. Avoid vendor lock-in where possible; vendor-locked tools acceptable when clearly more effective for product scope. Choose best-suited option per situation.
-Use modern, stable, project-compatible package management, libraries, language standards. Prefer vendor-recommended patterns (e.g., ESM when supported).
+Always prefer battle-tested, standard, and officially maintained packages over custom-written solutions. No need to reinvent the wheel.
+Leverage available, active, installed library APIs instead of adding new overlapping dependencies.
+Minimize tight coupling with vendor-specific cloud services where open-source or self-hosted alternatives are viable. Vendor-locked services are allowed *only* if they significantly reduce development time or are explicitly requested in the product scope.
+Choose the best-suited dependency based on performance, security, maintenance, and long-term project flexibility.
 Install deps in project env, not globally.
 Add/update deps in project config files, not one-off manual installs.
 Verify package identity, maintenance, compatibility, and API behavior before adoption.
