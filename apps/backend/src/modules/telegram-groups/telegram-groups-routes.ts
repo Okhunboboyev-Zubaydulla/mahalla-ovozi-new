@@ -32,10 +32,10 @@ import {
   TelegramBotNotMemberError,
   TelegramBotIsAdminError,
   TelegramPrivacyModeEnabledError,
-} from '../../adapters/telegram/telegram-client.js';
+} from '../telegram-bot/ports/telegram-client-port.js';
 
 export function registerTelegramGroupRoutes(fastify: FastifyInstance, db: DbClient): void {
-  // Public webhook route for Telegram Bot updates (no auth cookie required)
+  // Public Webhook Ingress for Test Session Validation during Onboarding
   fastify.post(
     '/api/v1/telegram/webhook/:botId',
     async (
@@ -45,10 +45,14 @@ export function registerTelegramGroupRoutes(fastify: FastifyInstance, db: DbClie
       const { botId } = req.params;
       try {
         const result = await handleIncomingWebhookMessage(db, botId, req.body);
-        return reply.status(200).send({ ok: true, result });
-      } catch (err: unknown) {
-        req.log.error({ err, botId }, 'Error handling incoming Telegram webhook');
-        return reply.status(200).send({ ok: true, handled: false, error: 'INTERNAL_ERROR' });
+        if (result.handled) {
+          return reply.status(200).send({ ok: true, result });
+        }
+        return reply
+          .status(200)
+          .send({ ok: true, message: 'Message ignored or not for test session' });
+      } catch {
+        return reply.status(200).send({ ok: true, error: 'Internal processing error' });
       }
     },
   );

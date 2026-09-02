@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { IsoDateStringSchema, DistrictIdSchema } from './common.js';
 
 export const QualifyingLaneSchema = z.enum([
   'WATER',
@@ -25,7 +26,7 @@ export type SearchMatchBadge = z.infer<typeof SearchMatchBadgeSchema>;
 
 export const TopicCardItemSchema = z.object({
   id: z.string(),
-  districtId: z.string(),
+  districtId: DistrictIdSchema,
   mahallaName: z.string(),
   calendarDay: z.string(),
   summary: z.string(),
@@ -77,28 +78,22 @@ export type LanesQueryParam = z.infer<typeof LanesQueryParamSchema>;
 
 export const TopicDateFilterFields = {
   dateScope: DateFilterScopeSchema.default('today'),
-  dateFrom: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
-    .optional(),
-  dateTo: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD форматида бўлиши керак')
-    .optional(),
+  dateFrom: IsoDateStringSchema.optional(),
+  dateTo: IsoDateStringSchema.optional(),
 };
 
 export const TopicBaseFilterFields = {
   ...TopicDateFilterFields,
   mahallaName: z.string().trim().min(1).optional(),
   lanes: LanesQueryParamSchema,
-  calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  calendarDay: IsoDateStringSchema.optional(),
 };
 
 export const TopicSearchFilterFields = {
   ...TopicDateFilterFields,
   mahallaName: z.string().trim().min(1).optional(),
   lanes: z.array(QualifyingLaneSchema).min(1).max(5).optional(),
-  calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  calendarDay: IsoDateStringSchema.optional(),
 };
 
 export function refineDateScopeRange<
@@ -251,7 +246,7 @@ export type DistrictTopicsSearchBodyOutput = z.output<typeof DistrictTopicsSearc
 
 // 5. Response DTOs
 export const HokimTopicBoardResponseSchema = z.object({
-  districtId: z.string(),
+  districtId: DistrictIdSchema,
   districtName: z.string(),
   calendarDay: z.string(),
   evaluationId: z.string().uuid(),
@@ -364,7 +359,7 @@ export const TopicStatisticCard5Schema = z.discriminatedUnion('mode', [
 export type TopicStatisticCard5 = z.infer<typeof TopicStatisticCard5Schema>;
 
 export const HokimTopicStatisticsResponseSchema = z.object({
-  districtId: z.string(),
+  districtId: DistrictIdSchema,
   districtName: z.string(),
   calendarDay: z.string(),
   evaluationId: z.string().uuid(),
@@ -381,7 +376,7 @@ export const HokimTopicStatisticsResponseSchema = z.object({
 export type HokimTopicStatisticsResponse = z.infer<typeof HokimTopicStatisticsResponseSchema>;
 
 export const DistrictTopicsPageResponseSchema = z.object({
-  districtId: z.string(),
+  districtId: DistrictIdSchema,
   districtName: z.string(),
   topics: z.array(TopicCardItemSchema),
   totalCount: z.number().int().min(0),

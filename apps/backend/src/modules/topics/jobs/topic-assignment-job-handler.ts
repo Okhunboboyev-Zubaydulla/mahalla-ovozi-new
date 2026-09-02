@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
 import { eq, and, inArray } from 'drizzle-orm';
@@ -7,7 +6,6 @@ import {
   districts,
   telegramIntakeRecords,
   aiOperations,
-  aiProviderAttempts,
   topics,
   acceptedEvidence,
 } from '../../../adapters/db/schema/index.js';
@@ -19,6 +17,7 @@ import {
   type TelegramTopicAssignmentJobData,
   type TelegramTopicProjectionJobData,
 } from '../../../adapters/jobs/boss-client.js';
+import { insertAiProviderAttempts } from '../../ai/ai-operation-repository.js';
 import {
   TopicMatchingEvaluator,
   findDirectReplyTopic,
@@ -337,43 +336,8 @@ export async function processTopicAssignmentJobs(
                   resultPayload: matchingDecision,
                 });
 
-                const attemptsToInsert =
-                  matchingAiResult.attempts && matchingAiResult.attempts.length > 0
-                    ? matchingAiResult.attempts
-                    : [
-                        {
-                          attemptNumber: 1,
-                          provider: matchingAiResult.provider,
-                          modelId: matchingAiResult.modelId,
-                          providerRequestId: matchingAiResult.providerRequestId,
-                          durationMs: matchingAiResult.durationMs,
-                          inputTokens: matchingAiResult.tokens.inputTokens,
-                          outputTokens: matchingAiResult.tokens.outputTokens,
-                          cachedTokens: matchingAiResult.tokens.cachedTokens,
-                          estimatedCostUsd: matchingAiResult.estimatedCostUsd.toString(),
-                          status: 'SUCCESS' as const,
-                        },
-                      ];
-
-                for (const att of attemptsToInsert) {
-                  await tx.insert(aiProviderAttempts).values({
-                    id: `att_${crypto.randomUUID()}`,
-                    operationId: topicMatchingOpId,
-                    attemptNumber: att.attemptNumber,
-                    provider: att.provider,
-                    modelId: att.modelId,
-                    providerRequestId: att.providerRequestId,
-                    durationMs: att.durationMs,
-                    inputTokens: att.inputTokens,
-                    outputTokens: att.outputTokens,
-                    cachedTokens: att.cachedTokens,
-                    estimatedCostUsd:
-                      att.estimatedCostUsd ?? matchingAiResult.estimatedCostUsd.toString(),
-                    status: att.status,
-                    errorCode: att.errorCode,
-                    sanitizedErrorMessage: att.sanitizedErrorMessage,
-                  });
-                }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tx from withTransactionalIntake is structurally DbOrTx; module-identity mismatch in TS
+                await insertAiProviderAttempts(tx as any, topicMatchingOpId, matchingAiResult);
               }
 
               const evidenceItems =

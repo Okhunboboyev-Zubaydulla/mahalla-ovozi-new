@@ -24,8 +24,9 @@ import {
   encodeTopicKeysetCursor,
   decodeTopicKeysetCursor,
 } from './district-topics-service.js';
+import { escapeLikePattern, buildTopicSearchPredicate } from './topic-query-helpers.js';
 
-export { resolveDateBoundary };
+export { resolveDateBoundary, escapeLikePattern };
 
 export const CANONICAL_LANES: QualifyingLane[] = [
   'HOKIM_RELATED',
@@ -59,9 +60,6 @@ export interface HokimLaneQueryParams {
   baselineTimestamp?: string;
 }
 
-export function escapeLikePattern(input: string): string {
-  return input.replace(/[%_\\]/g, '\\$&');
-}
 
 // Canonical keyset cursor aliases from district-topics-service
 export type KeysetCursorPayload = TopicKeysetCursorPayload;
@@ -384,22 +382,7 @@ export class HokimTopicService {
     const trimmedSearch = search?.trim();
     if (trimmedSearch) {
       const pattern = `%${escapeLikePattern(trimmedSearch)}%`;
-      searchPredicate = sql`AND (
-        tp.summary ILIKE ${pattern}
-        OR EXISTS (
-          SELECT 1 FROM accepted_evidence ae 
-          WHERE ae.topic_id = t.id 
-            AND ae.district_id = ${districtId}
-            AND (
-              ae.verbatim_text ILIKE ${pattern}
-              OR ae.user_metadata->>'username' ILIKE ${pattern}
-              OR (ae.user_metadata->>'username' IS NOT NULL AND CONCAT('@', ae.user_metadata->>'username') ILIKE ${pattern})
-              OR ae.user_metadata->>'firstName' ILIKE ${pattern}
-              OR ae.user_metadata->>'lastName' ILIKE ${pattern}
-              OR ((ae.user_metadata->>'firstName' IS NOT NULL OR ae.user_metadata->>'lastName' IS NOT NULL) AND CONCAT_WS(' ', ae.user_metadata->>'firstName', ae.user_metadata->>'lastName') ILIKE ${pattern})
-            )
-        )
-      )`;
+      searchPredicate = buildTopicSearchPredicate(pattern, districtId);
 
       badgeSelect = sql`CASE 
         WHEN tp.summary ILIKE ${pattern} THEN NULL
@@ -545,22 +528,7 @@ export class HokimTopicService {
     const trimmedSearch = search?.trim();
     if (trimmedSearch) {
       const pattern = `%${escapeLikePattern(trimmedSearch)}%`;
-      searchPredicate = sql`AND (
-        tp.summary ILIKE ${pattern}
-        OR EXISTS (
-          SELECT 1 FROM accepted_evidence ae 
-          WHERE ae.topic_id = t.id 
-            AND ae.district_id = ${districtId}
-            AND (
-              ae.verbatim_text ILIKE ${pattern}
-              OR ae.user_metadata->>'username' ILIKE ${pattern}
-              OR (ae.user_metadata->>'username' IS NOT NULL AND CONCAT('@', ae.user_metadata->>'username') ILIKE ${pattern})
-              OR ae.user_metadata->>'firstName' ILIKE ${pattern}
-              OR ae.user_metadata->>'lastName' ILIKE ${pattern}
-              OR ((ae.user_metadata->>'firstName' IS NOT NULL OR ae.user_metadata->>'lastName' IS NOT NULL) AND CONCAT_WS(' ', ae.user_metadata->>'firstName', ae.user_metadata->>'lastName') ILIKE ${pattern})
-            )
-        )
-      )`;
+      searchPredicate = buildTopicSearchPredicate(pattern, districtId);
     }
 
     const lanePredicate =
@@ -672,22 +640,7 @@ export class HokimTopicService {
     const trimmedSearch = typeof params.search === 'string' ? params.search.trim() : undefined;
     if (trimmedSearch) {
       const pattern = `%${escapeLikePattern(trimmedSearch)}%`;
-      searchPredicate = sql`AND (
-        tp.summary ILIKE ${pattern}
-        OR EXISTS (
-          SELECT 1 FROM accepted_evidence ae 
-          WHERE ae.topic_id = t.id 
-            AND ae.district_id = ${districtId}
-            AND (
-              ae.verbatim_text ILIKE ${pattern}
-              OR ae.user_metadata->>'username' ILIKE ${pattern}
-              OR (ae.user_metadata->>'username' IS NOT NULL AND CONCAT('@', ae.user_metadata->>'username') ILIKE ${pattern})
-              OR ae.user_metadata->>'firstName' ILIKE ${pattern}
-              OR ae.user_metadata->>'lastName' ILIKE ${pattern}
-              OR ((ae.user_metadata->>'firstName' IS NOT NULL OR ae.user_metadata->>'lastName' IS NOT NULL) AND CONCAT_WS(' ', ae.user_metadata->>'firstName', ae.user_metadata->>'lastName') ILIKE ${pattern})
-            )
-        )
-      )`;
+      searchPredicate = buildTopicSearchPredicate(pattern, districtId);
     }
 
     const statsQuery = sql`

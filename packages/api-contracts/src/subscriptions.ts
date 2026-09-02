@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { containsProhibitedSecrets } from './analysis-settings.js';
-import { PrerequisiteItemSchema } from './readiness.js';
+import { applySecretCheck } from './analysis-settings.js';
+import { PrerequisiteItemSchema } from './districts.js';
 
 export const SubscriptionStatusSchema = z.enum([
   'SETUP_INCOMPLETE',
@@ -52,20 +52,8 @@ export const UpdateDistrictSubscriptionRequestSchema = z
       .nullish(),
   })
   .superRefine((data, ctx) => {
-    if (data.externalPaymentReference && containsProhibitedSecrets(data.externalPaymentReference)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['externalPaymentReference'],
-        message: 'Махфий маълумотлар (бот токенлари, API калитлар ёки пароллар) кўрсатилиши мумкин эмас.',
-      });
-    }
-    if (data.internalNote && containsProhibitedSecrets(data.internalNote)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['internalNote'],
-        message: 'Махфий маълумотлар (бот токенлари, API калитлар ёки пароллар) кўрсатилиши мумкин эмас.',
-      });
-    }
+    applySecretCheck(data.externalPaymentReference, 'externalPaymentReference', ctx);
+    applySecretCheck(data.internalNote, 'internalNote', ctx);
   });
 export type UpdateDistrictSubscriptionRequest = z.infer<typeof UpdateDistrictSubscriptionRequestSchema>;
 
@@ -90,13 +78,7 @@ export const StartGraceRequestSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.reason && containsProhibitedSecrets(data.reason)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['reason'],
-        message: 'Махфий маълумотлар (бот токенлари, API калитлар ёки пароллар) кўрсатилиши мумкин эмас.',
-      });
-    }
+    applySecretCheck(data.reason, 'reason', ctx);
   });
 export type StartGraceRequest = z.infer<typeof StartGraceRequestSchema>;
 
@@ -115,13 +97,7 @@ export const RestoreActiveRequestSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.reason && containsProhibitedSecrets(data.reason)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['reason'],
-        message: 'Махфий маълумотлар (бот токенлари, API калитлар ёки пароллар) кўрсатилиши мумкин эмас.',
-      });
-    }
+    applySecretCheck(data.reason, 'reason', ctx);
   });
 export type RestoreActiveRequest = z.infer<typeof RestoreActiveRequestSchema>;
 
@@ -152,13 +128,7 @@ export const CancelDistrictRequestSchema = z
       .max(255, 'Туман номи 255 та белгидан ошмаслиги керак.'),
   })
   .superRefine((data, ctx) => {
-    if (data.reason && containsProhibitedSecrets(data.reason)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['reason'],
-        message: 'Махфий маълумотлар (бот токенлари, API калитлар ёки пароллар) кўрсатилиши мумкин эмас.',
-      });
-    }
+    applySecretCheck(data.reason, 'reason', ctx);
   });
 export type CancelDistrictRequest = z.infer<typeof CancelDistrictRequestSchema>;
 
@@ -177,13 +147,7 @@ export const StartRecoveryRequestSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.reason && containsProhibitedSecrets(data.reason)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['reason'],
-        message: 'Махфий маълумотлар (бот токенлари, API калитлар ёки пароллар) кўрсатилиши мумкин эмас.',
-      });
-    }
+    applySecretCheck(data.reason, 'reason', ctx);
   });
 export type StartRecoveryRequest = z.infer<typeof StartRecoveryRequestSchema>;
 

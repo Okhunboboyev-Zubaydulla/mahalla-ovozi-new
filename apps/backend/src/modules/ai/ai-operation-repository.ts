@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { eq, and, or, lt, desc, asc, gte, lte, sql, SQL } from 'drizzle-orm';
 import {
   encodeKeysetCursor,
@@ -11,7 +12,7 @@ import {
   aiProviderAttempts,
   type AiProviderAttempt,
 } from '../../adapters/db/schema/ai.js';
-import type { AiGatewayErrorCode } from './types.js';
+import type { AiGatewayErrorCode, AiGatewayResult } from './types.js';
 import type {
   AiOperationFilter,
   AiOperationListItem,
@@ -441,4 +442,60 @@ export async function aggregateHealthMetrics(
     avgDurationMs: Math.round((statsResult?.avgDurationMs ?? 0) * 100) / 100,
     p95DurationMs: Math.round((statsResult?.p95DurationMs ?? 0) * 100) / 100,
   };
+}
+
+/**
+ * Inserts all provider attempt records for a completed AI operation.
+ *
+ * Normalizes the attempts array from the gateway result: if the gateway returned
+ * detailed per-attempt records, all are inserted; if not (single successful call),
+ * a synthetic SUCCESS attempt is synthesized from the top-level result fields.
+ *
+ * Must be called inside an active database transaction.
+ *
+ * @param tx          Active Drizzle transaction (or db for non-transactional callers)
+ * @param operationId The `aiOperations.id` this attempt belongs to
+ * @param aiResult    The `AiGatewayResult` returned by `AiGateway.generateStructured`
+ */
+export async function insertAiProviderAttempts(
+  tx: DbOrTx,
+  operationId: string,
+  aiResult: AiGatewayResult<unknown>,
+): Promise<void> {
+  const attemptsToInsert =
+    aiResult.attempts && aiResult.attempts.length > 0
+      ? aiResult.attempts
+      : [
+          {
+            attemptNumber: 1,
+            provider: aiResult.provider,
+            modelId: aiResult.modelId,
+            providerRequestId: aiResult.providerRequestId,
+            durationMs: aiResult.durationMs,
+            inputTokens: aiResult.tokens.inputTokens,
+            outputTokens: aiResult.tokens.outputTokens,
+            cachedTokens: aiResult.tokens.cachedTokens,
+            estimatedCostUsd: aiResult.estimatedCostUsd.toString(),
+            status: 'SUCCESS' as const,
+          },
+        ];
+
+  for (const att of attemptsToInsert) {
+    await tx.insert(aiProviderAttempts).values({
+      id: `att_${crypto.randomUUID()}`,
+      operationId,
+      attemptNumber: att.attemptNumber,
+      provider: att.provider,
+      modelId: att.modelId,
+      providerRequestId: att.providerRequestId,
+      durationMs: att.durationMs,
+      inputTokens: att.inputTokens,
+      outputTokens: att.outputTokens,
+      cachedTokens: att.cachedTokens,
+      estimatedCostUsd: att.estimatedCostUsd ?? aiResult.estimatedCostUsd.toString(),
+      status: att.status,
+      errorCode: att.errorCode,
+      sanitizedErrorMessage: att.sanitizedErrorMessage,
+    });
+  }
 }

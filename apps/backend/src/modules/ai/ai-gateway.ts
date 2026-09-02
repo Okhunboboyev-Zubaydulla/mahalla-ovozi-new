@@ -10,7 +10,6 @@ import {
   AiGatewayError,
 } from './types.js';
 import { compileProviderSchema } from './schema-compiler.js';
-import { HttpProviderAdapter } from '../../adapters/ai-providers/http-provider-adapter.js';
 
 export interface AiGatewayPort {
   generateStructured<T>(options: GenerateStructuredOptions<T>): Promise<AiGatewayResult<T>>;
@@ -100,22 +99,12 @@ export class AiGateway implements AiGatewayPort {
   }
 
   private getAdapter(provider: string): AiProviderAdapterPort {
-    if (this.adapters.has(provider)) {
-      return this.adapters.get(provider)!;
-    }
-
-    if (
-      provider === 'OPENAI' ||
-      provider === 'GEMINI' ||
-      provider === 'GROQ' ||
-      provider === 'OLLAMA'
-    ) {
-      const adapter = new HttpProviderAdapter(provider);
-      this.adapters.set(provider, adapter);
+    const adapter = this.adapters.get(provider);
+    if (adapter) {
       return adapter;
     }
 
-    throw new AiGatewayError('PROVIDER_SERVER_ERROR', `Unsupported AI provider adapter: ${provider}`, {
+    throw new AiGatewayError('PROVIDER_SERVER_ERROR', `No adapter registered for AI provider: ${provider}. Wire adapters at the composition root via AiGatewayOptions.customAdapters or registerAdapter().`, {
       retryable: false,
       provider,
     });

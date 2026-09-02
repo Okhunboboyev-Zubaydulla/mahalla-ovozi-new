@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { createKeysetPageSchema, KeysetPage, KeysetCursorPayload } from './pagination.js';
+import { IsoDateStringSchema, DistrictIdSchema } from './common.js';
 
 export const AuditActionCategoryEnumSchema = z.enum([
   'AUTH_SECURITY',
@@ -23,7 +24,7 @@ export type AuditActorRole = z.infer<typeof AuditActorRoleEnumSchema>;
 export const PermanentDeletionProofSchema = z.object({
   id: z.string(),
   recordType: z.literal('PERMANENT_DELETION_PROOF').default('PERMANENT_DELETION_PROOF'),
-  districtId: z.string(),
+  districtId: DistrictIdSchema,
   districtName: z.string(),
   cancelledAt: z.string().datetime().nullable().optional(),
   cancelledById: z.string().nullable().optional(),
@@ -47,7 +48,7 @@ export type PermanentDeletionProof = z.infer<typeof PermanentDeletionProofSchema
 export const AuditEventSchema = z.object({
   id: z.string(),
   recordType: z.literal('AUDIT_EVENT').default('AUDIT_EVENT'),
-  districtId: z.string().nullable(),
+  districtId: DistrictIdSchema.nullable(),
   districtName: z.string().nullable().optional(),
   actorId: z.string().nullable(),
   actorRole: AuditActorRoleEnumSchema.nullable(),
@@ -85,17 +86,13 @@ export const AuditHistoryQuerySchema = z
     districtId: z.preprocess((val) => (val === '' ? undefined : val), z.string().optional()),
     startDate: z.preprocess(
       (val) => (val === '' ? undefined : val),
-      z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD format required')
+      IsoDateStringSchema
         .refine((val) => !Number.isNaN(Date.parse(val)), 'Нотўғри сана киритилди.')
         .optional(),
     ),
     endDate: z.preprocess(
       (val) => (val === '' ? undefined : val),
-      z
-        .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD format required')
+      IsoDateStringSchema
         .refine((val) => !Number.isNaN(Date.parse(val)), 'Нотўғри сана киритилди.')
         .optional(),
     ),

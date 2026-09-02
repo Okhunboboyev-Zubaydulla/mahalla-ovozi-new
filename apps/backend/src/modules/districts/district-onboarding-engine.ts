@@ -69,6 +69,28 @@ export interface ClientContext {
   userAgent?: string | null;
 }
 
+/**
+ * Asserts that a district with the given ID exists and returns its raw DB row.
+ * Throws DistrictNotFoundError if the district cannot be found.
+ * Accepts DbOrTx so it can be called inside or outside a transaction.
+ */
+export async function assertDistrictExists(
+  db: DbOrTx,
+  districtId: string,
+): Promise<typeof districts.$inferSelect> {
+  const [row] = await db
+    .select()
+    .from(districts)
+    .where(eq(districts.id, districtId))
+    .limit(1);
+
+  if (!row) {
+    throw new DistrictNotFoundError(districtId);
+  }
+
+  return row;
+}
+
 /* ── Pure Prerequisite Evaluation Engine ── */
 
 export function evaluateDistrictPrerequisites(

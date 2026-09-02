@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
 import { eq, sql } from 'drizzle-orm';
@@ -12,13 +11,13 @@ import { DbClient } from '../../adapters/db/client.js';
 import {
   operationalIssues,
   districts,
-  auditEvents,
 } from '../../adapters/db/schema/index.js';
 import {
   withTransactionalIntake,
   TELEGRAM_TOPIC_RETENTION_QUEUE,
   JobSingletonKeys,
 } from '../../adapters/jobs/boss-client.js';
+import { recordAuditEvent } from '../audit/audit-service.js';
 import {
   isIssueRetryEligible,
   deriveRetryJobSpec,
@@ -179,9 +178,8 @@ export const retryService = {
         }
 
         // 7. Persist audit record atomically (AC 3, AC 9)
-        const auditId = `aud_${crypto.randomUUID()}`;
-        await tx.insert(auditEvents).values({
-          id: auditId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tx from withTransactionalIntake is structurally DbOrTx; module-identity mismatch in TS
+        await recordAuditEvent(tx as any, {
           districtId: isDeletionLifecycleIssue ? null : issue.districtId,
           actorId: actor.id,
           actorRole: actor.role,
@@ -194,7 +192,6 @@ export const retryService = {
             districtId: issue.districtId,
             reason: options.reason || null,
           },
-          createdAt: now,
         });
 
         // 8. Update operational issue metadata (pendingRetry: true, attempt count increment) (AC 3, AC 5)
@@ -320,9 +317,8 @@ export const retryService = {
           );
         }
 
-        const auditId = `aud_${crypto.randomUUID()}`;
-        await tx.insert(auditEvents).values({
-          id: auditId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tx from withTransactionalIntake is structurally DbOrTx; module-identity mismatch in TS
+        await recordAuditEvent(tx as any, {
           districtId: districtIdForAudit,
           actorId: actor.id,
           actorRole: actor.role,
@@ -334,7 +330,6 @@ export const retryService = {
             queueName,
             reason: request.reason || null,
           },
-          createdAt: now,
         });
 
         return {

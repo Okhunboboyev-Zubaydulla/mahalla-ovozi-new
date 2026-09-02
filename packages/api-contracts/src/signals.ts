@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { QualifyingLaneSchema, type QualifyingLane } from './topics.js';
 import { createKeysetPageSchema, type KeysetPage } from './pagination.js';
+import { IsoDateStringSchema } from './common.js';
 
 export type { QualifyingLane };
 
@@ -11,7 +12,7 @@ export const SignalMessageListItemSchema = z.object({
   districtId: z.string().min(1),
   districtName: z.string().nullable().optional(),
   mahallaName: z.string().min(1),
-  calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  calendarDay: IsoDateStringSchema,
   originalTimestamp: z.string().datetime({ offset: true }),
   contentType: z.enum(['TEXT', 'MEDIA_CAPTION']),
   verbatimText: z.string(),
@@ -31,7 +32,7 @@ export type SignalMessageListItemDto = z.infer<typeof SignalMessageListItemSchem
 export const ListSignalsQuerySchema = z.object({
   districtId: z.string().trim().optional(),
   mahallaName: z.string().trim().optional(),
-  calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  calendarDay: IsoDateStringSchema.optional(),
   isRelevant: z
     .union([z.boolean(), z.enum(['true', 'false', 'all'])])
     .optional()

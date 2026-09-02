@@ -6,35 +6,11 @@ import {
   DistrictDeletionRecord,
   DistrictDeletionRecordSchema,
 } from '@mahalla-ovozi/api-contracts';
-
-/**
- * Port interface for external deletion tombstone store.
- * Outside PostgreSQL backup history, maintaining privacy-safe deletion proofs.
- * Governed by FR-32, AD-11.
- */
-export interface ExternalTombstoneStore {
-  loadAllTombstones(): Promise<DistrictDeletionRecord[]>;
-  saveTombstone(record: DistrictDeletionRecord): Promise<void>;
-  saveAllTombstones(records: DistrictDeletionRecord[]): Promise<void>;
-  getTombstone(districtId: string): Promise<DistrictDeletionRecord | null>;
-}
-
-/**
- * Thrown when the external tombstone store contains invalid JSON or schema violations.
- * Fail-closed security principle: prevent corrupted storage from allowing resurrected districts.
- */
-export class TombstoneStoreCorruptedError extends Error {
-  readonly code = 'TOMBSTONE_STORE_CORRUPTED' as const;
-  readonly statusCode = 500;
-
-  constructor(message: string, cause?: unknown) {
-    super(`Ташқи ўчирилганлик маълумотлар омбори шикастланган: ${message}`);
-    this.name = 'TombstoneStoreCorruptedError';
-    if (cause) {
-      this.cause = cause;
-    }
-  }
-}
+// Port and error class live in the domain layer; import for local use and re-export for backward compat.
+import type { ExternalTombstoneStore } from '../../modules/subscriptions/ports/external-tombstone-store.port.js';
+import { TombstoneStoreCorruptedError } from '../../modules/subscriptions/ports/external-tombstone-store.port.js';
+export type { ExternalTombstoneStore };
+export { TombstoneStoreCorruptedError };
 
 /**
  * Strips all non-whitelisted properties from a deletion record before persisting

@@ -18,8 +18,8 @@ import {
   getTelegramChat,
   verifyBotGroupMembership,
   checkGroupPrivacyMode,
-  TelegramIntegrationError,
 } from '../../adapters/telegram/telegram-client.js';
+import { TelegramIntegrationError } from '../telegram-bot/ports/telegram-client-port.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
 import { DistrictNotFoundError } from '../districts/district-onboarding-engine.js';
 import { globalTestSessionManager, TelegramTestSessionManager } from './telegram-test-session-store.js';
@@ -77,6 +77,33 @@ export interface ClientInfo {
 
 export interface GroupServiceOptions {
   sessionManager?: TelegramTestSessionManager;
+}
+
+/**
+ * Validates a Telegram group chat via the Bot API and returns resolved chat metadata.
+ * Enforces group/supergroup type, passive non-admin membership (AD-6), and privacy mode (AD-6).
+ * Used by both createDistrictTelegramGroup and updateDistrictTelegramGroup.
+ */
+async function validateGroupChatWithTelegram(
+  token: string,
+  chatId: string,
+  botId: string,
+): Promise<{ chatTitle: string; chatUsername: string | null; isPrivacyDisabled: boolean }> {
+  const chatInfo = await getTelegramChat(token, chatId);
+  if (chatInfo.chatType !== 'group' && chatInfo.chatType !== 'supergroup') {
+    throw new TelegramIntegrationError(
+      'Фақат Telegram гуруҳларини (гуруҳ ёки супергуруҳ) бириктириш мумкин. Канал ёки шахсий ёзишмалар қабул қилинмайди.',
+      'INVALID_CHAT_TYPE',
+      400,
+    );
+  }
+  await verifyBotGroupMembership(token, chatId, botId);
+  const isPrivacyDisabled = await checkGroupPrivacyMode(token);
+  return {
+    chatTitle: chatInfo.chatTitle,
+    chatUsername: chatInfo.chatUsername,
+    isPrivacyDisabled,
+  };
 }
 
 export function formatTelegramGroup(row: DistrictTelegramGroup): TelegramGroupMapping {
@@ -190,16 +217,11 @@ export async function createDistrictTelegramGroup(
   const trimmedChatId = input.telegramChatId.trim();
   const trimmedMahalla = input.mahallaName.trim();
 
-  const chatInfo = await getTelegramChat(token, trimmedChatId);
-  if (chatInfo.chatType !== 'group' && chatInfo.chatType !== 'supergroup') {
-    throw new TelegramIntegrationError(
-      'Фақат Telegram гуруҳларини (гуруҳ ёки супергуруҳ) бириктириш мумкин. Канал ёки шахсий ёзишмалар қабул қилинмайди.',
-      'INVALID_CHAT_TYPE',
-      400,
-    );
-  }
-  await verifyBotGroupMembership(token, trimmedChatId, botRow.botId);
-  const isPrivacyDisabled = await checkGroupPrivacyMode(token);
+  const { chatTitle, chatUsername, isPrivacyDisabled } = await validateGroupChatWithTelegram(
+    token,
+    trimmedChatId,
+    botRow.botId,
+  );
 
   const groupId = `dtg_${crypto.randomUUID()}`;
   const now = new Date();
@@ -244,8 +266,8 @@ export async function createDistrictTelegramGroup(
           districtId,
           mahallaName: trimmedMahalla,
           telegramChatId: trimmedChatId,
-          telegramChatTitle: chatInfo.chatTitle,
-          telegramChatUsername: chatInfo.chatUsername,
+          telegramChatTitle: chatTitle,
+          telegramChatUsername: chatUsername,
           status: 'PENDING',
           botMembershipStatus: 'member',
           privacyModeDisabled: isPrivacyDisabled,
@@ -265,7 +287,7 @@ export async function createDistrictTelegramGroup(
           groupId,
           mahallaName: trimmedMahalla,
           telegramChatId: trimmedChatId,
-          telegramChatTitle: chatInfo.chatTitle,
+          telegramChatTitle: chatTitle,
         },
         ipAddress: clientInfo?.ipAddress || null,
         userAgent: clientInfo?.userAgent || null,
@@ -352,19 +374,11 @@ export async function updateDistrictTelegramGroup(
       tokenTag: botRow.tokenTag,
     });
 
-    const info = await getTelegramChat(token, newChatId);
-    if (info.chatType !== 'group' && info.chatType !== 'supergroup') {
-      throw new TelegramIntegrationError(
-        'Фақат Telegram гуруҳларини (гуруҳ ёки супергуруҳ) бириктириш мумкин. Канал ёки шахсий ёзишмалар қабул қилинмайди.',
-        'INVALID_CHAT_TYPE',
-        400,
-      );
-    }
-    await verifyBotGroupMembership(token, newChatId, botRow.botId);
-    isPrivacyDisabled = await checkGroupPrivacyMode(token);
+    const validated = await validateGroupChatWithTelegram(token, newChatId, botRow.botId);
+    isPrivacyDisabled = validated.isPrivacyDisabled;
     chatInfo = {
-      chatTitle: info.chatTitle,
-      chatUsername: info.chatUsername,
+      chatTitle: validated.chatTitle,
+      chatUsername: validated.chatUsername,
     };
 
     (options.sessionManager ?? globalTestSessionManager).resolveSessionFailure(

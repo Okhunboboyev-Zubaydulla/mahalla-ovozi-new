@@ -628,7 +628,7 @@ export class SignalManagementService {
           generation: newTargetGen,
         } as TelegramTopicProjectionJobData,
         {
-          singletonKey: `proj_${newTopicId}`,
+          singletonKey: JobSingletonKeys.forTopicProjection(newTopicId, newTargetGen),
           retryLimit: 3,
         },
       );
@@ -665,7 +665,7 @@ export class SignalManagementService {
               generation: oldNextGen,
             } as TelegramTopicProjectionJobData,
             {
-              singletonKey: `proj_${oldTopicId}`,
+              singletonKey: JobSingletonKeys.forTopicProjection(oldTopicId, oldNextGen),
               retryLimit: 3,
             },
           );
@@ -745,7 +745,7 @@ export class SignalManagementService {
           generation: nextGen,
         } as TelegramTopicProjectionJobData,
         {
-          singletonKey: `proj_${evidence.topicId}`,
+          singletonKey: JobSingletonKeys.forTopicProjection(evidence.topicId, nextGen),
           retryLimit: 3,
         },
       );
@@ -840,7 +840,7 @@ export class SignalManagementService {
             generation: nextGen,
           } as TelegramTopicProjectionJobData,
           {
-            singletonKey: `proj_${topicId}`,
+            singletonKey: JobSingletonKeys.forTopicProjection(topicId, nextGen),
             retryLimit: 3,
           },
         );

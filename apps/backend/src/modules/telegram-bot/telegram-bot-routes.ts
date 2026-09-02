@@ -14,7 +14,7 @@ import {
   DistrictNotFoundError,
   DistrictAlreadyActiveError,
 } from '../districts/districts-service.js';
-import { TelegramIntegrationError } from '../../adapters/telegram/telegram-client.js';
+import { TelegramIntegrationError } from './ports/telegram-client-port.js';
 
 export function registerTelegramBotRoutes(fastify: FastifyInstance, db: DbClient): void {
   fastify.register(async (scope) => {

@@ -2,14 +2,7 @@ import { eq } from 'drizzle-orm';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { DbClient } from '../../adapters/db/client.js';
 import { COOKIE_NAME, validateAndTouchSession } from './session-manager.js';
-import { Account, districts } from '../../adapters/db/schema/index.js';
-
-// Augment FastifyRequest to include authenticated actor
-declare module 'fastify' {
-  interface FastifyRequest {
-    actor?: Account;
-  }
-}
+import { districts } from '../../adapters/db/schema/index.js';
 
 export interface RequireAuthOptions {
   allowedRoles?: readonly string[];

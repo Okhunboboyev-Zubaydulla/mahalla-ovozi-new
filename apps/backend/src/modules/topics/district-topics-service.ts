@@ -16,7 +16,7 @@ import {
   TopicEvidenceService,
   TopicNotFoundError,
 } from './topic-evidence-service.js';
-import { escapeLikePattern } from './hokim-topic-service.js';
+import { escapeLikePattern, buildTopicSearchPredicate } from './topic-query-helpers.js';
 import { resolveDateBoundary } from '../telegram-intake/timezone-util.js';
 
 export { escapeLikePattern, resolveDateBoundary, TopicNotFoundError };
@@ -160,22 +160,7 @@ export class DistrictTopicsService {
     const trimmedSearch = filter.search?.trim();
     if (trimmedSearch) {
       const pattern = `%${escapeLikePattern(trimmedSearch)}%`;
-      searchPredicate = sql`AND (
-        tp.summary ILIKE ${pattern}
-        OR EXISTS (
-          SELECT 1 FROM accepted_evidence ae 
-          WHERE ae.topic_id = t.id 
-            AND ae.district_id = ${districtId}
-            AND (
-              ae.verbatim_text ILIKE ${pattern}
-              OR ae.user_metadata->>'username' ILIKE ${pattern}
-              OR (ae.user_metadata->>'username' IS NOT NULL AND CONCAT('@', ae.user_metadata->>'username') ILIKE ${pattern})
-              OR ae.user_metadata->>'firstName' ILIKE ${pattern}
-              OR ae.user_metadata->>'lastName' ILIKE ${pattern}
-              OR ((ae.user_metadata->>'firstName' IS NOT NULL OR ae.user_metadata->>'lastName' IS NOT NULL) AND CONCAT_WS(' ', ae.user_metadata->>'firstName', ae.user_metadata->>'lastName') ILIKE ${pattern})
-            )
-        )
-      )`;
+      searchPredicate = buildTopicSearchPredicate(pattern, districtId);
 
       badgeSelect = sql`CASE 
         WHEN EXISTS (

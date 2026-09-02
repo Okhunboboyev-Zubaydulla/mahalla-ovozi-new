@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Typography, Alert, Space, List, message } from 'antd';
+import { Modal, Button, Typography, Alert, Space, List, App } from 'antd';
 import { CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useDistrictActivation } from '../district/useDistrictActivation.js';
@@ -25,6 +25,7 @@ export const DistrictActivationModal: React.FC<DistrictActivationModalProps> = (
   districtName,
   onSuccess,
 }) => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const { activateDistrict, isActivating, reset } = useDistrictActivation(districtId);
 

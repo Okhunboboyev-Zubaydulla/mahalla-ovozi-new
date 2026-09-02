@@ -8,7 +8,6 @@ import {
   topics,
   topicProjections,
   aiOperations,
-  aiProviderAttempts,
 } from '../../../adapters/db/schema/index.js';
 import {
   TELEGRAM_TOPIC_PROJECTION_QUEUE,
@@ -17,6 +16,7 @@ import {
 } from '../../../adapters/jobs/boss-client.js';
 import type { QualifyingLane } from '@mahalla-ovozi/api-contracts';
 import { TopicProjectionEvaluator } from '../topic-projection-evaluator.js';
+import { insertAiProviderAttempts } from '../../ai/ai-operation-repository.js';
 import {
   getMahallaDailySnapshot,
   type AcceptedEvidenceItem,
@@ -239,43 +239,8 @@ export async function processTopicProjectionJobs(
               });
 
               // 7b. Record ai_provider_attempts
-              const attemptsToInsert =
-                evaluation.aiResult.attempts && evaluation.aiResult.attempts.length > 0
-                  ? evaluation.aiResult.attempts
-                  : [
-                      {
-                        attemptNumber: 1,
-                        provider: evaluation.aiResult.provider,
-                        modelId: evaluation.aiResult.modelId,
-                        providerRequestId: evaluation.aiResult.providerRequestId,
-                        durationMs: evaluation.aiResult.durationMs,
-                        inputTokens: evaluation.aiResult.tokens.inputTokens,
-                        outputTokens: evaluation.aiResult.tokens.outputTokens,
-                        cachedTokens: evaluation.aiResult.tokens.cachedTokens,
-                        estimatedCostUsd: evaluation.aiResult.estimatedCostUsd.toString(),
-                        status: 'SUCCESS' as const,
-                      },
-                    ];
-
-              for (const att of attemptsToInsert) {
-                await tx.insert(aiProviderAttempts).values({
-                  id: `att_${crypto.randomUUID()}`,
-                  operationId: projectionOpId,
-                  attemptNumber: att.attemptNumber,
-                  provider: att.provider,
-                  modelId: att.modelId,
-                  providerRequestId: att.providerRequestId,
-                  durationMs: att.durationMs,
-                  inputTokens: att.inputTokens,
-                  outputTokens: att.outputTokens,
-                  cachedTokens: att.cachedTokens,
-                  estimatedCostUsd:
-                    att.estimatedCostUsd ?? evaluation.aiResult.estimatedCostUsd.toString(),
-                  status: att.status,
-                  errorCode: att.errorCode,
-                  sanitizedErrorMessage: att.sanitizedErrorMessage,
-                });
-              }
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tx from withTransactionalIntake is structurally DbOrTx; module-identity mismatch in TS
+              await insertAiProviderAttempts(tx as any, projectionOpId, evaluation.aiResult);
 
               // 7c. Upsert into topic_projections table (1:1 with topics)
               const projectionRecordId = `prj_${crypto.randomUUID()}`;

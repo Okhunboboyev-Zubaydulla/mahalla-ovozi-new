@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
-import { eq, and, isNull } from 'drizzle-orm';
-import { DbClient } from '../../adapters/db/client.js';
+import { eq, and, isNull, ne } from 'drizzle-orm';
+import type { DbClient, DbOrTx } from '../../adapters/db/client.js';
 import { sessions, accounts, Account, Session } from '../../adapters/db/schema/index.js';
 
 export const IDLE_TIMEOUT_MS = 12 * 60 * 60 * 1000;    // 12 hours sliding
@@ -151,4 +151,24 @@ export async function revokeSessionByToken(db: DbClient, rawToken: string): Prom
     .update(sessions)
     .set({ revokedAt: new Date() })
     .where(and(eq(sessions.tokenHash, tokenHash), isNull(sessions.revokedAt)));
+}
+
+/**
+ * Revokes all active sessions for a given account.
+ * Call inside a transaction (tx) when paired with credential/status changes to
+ * guarantee atomicity. Optionally preserve one session by passing exceptSessionId.
+ */
+export async function revokeAllAccountSessions(
+  db: DbOrTx,
+  accountId: string,
+  exceptSessionId?: string,
+): Promise<void> {
+  const conditions = [eq(sessions.accountId, accountId), isNull(sessions.revokedAt)];
+  if (exceptSessionId) {
+    conditions.push(ne(sessions.id, exceptSessionId));
+  }
+  await db
+    .update(sessions)
+    .set({ revokedAt: new Date() })
+    .where(and(...conditions));
 }

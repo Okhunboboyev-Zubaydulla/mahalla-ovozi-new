@@ -1,7 +1,10 @@
 import { AuditActionCategory, AuditActionOutcome } from '@mahalla-ovozi/api-contracts';
 import crypto from 'node:crypto';
-import { DbClient } from '../../adapters/db/client.js';
+import type { DbOrTx } from '../../adapters/db/client.js';
 import { auditEvents, NewAuditEvent } from '../../adapters/db/schema/index.js';
+
+export type { DbOrTx }; // re-export for existing consumers
+
 
 const SENSITIVE_KEYS = new Set([
   'password',
@@ -128,8 +131,6 @@ export function determineAuditActionOutcome(
   }
   return 'SUCCESS';
 }
-
-export type DbOrTx = DbClient | Parameters<Parameters<DbClient['transaction']>[0]>[0];
 
 export async function recordAuditEvent(
   db: DbOrTx,

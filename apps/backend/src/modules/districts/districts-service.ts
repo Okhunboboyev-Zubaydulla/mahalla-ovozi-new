@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { eq, asc, sql } from 'drizzle-orm';
-import { DbClient, mapPostgresConstraintError } from '../../adapters/db/client.js';
+import type { DbClient } from '../../adapters/db/client.js';
+import { mapPostgresConstraintError } from '../../adapters/db/client.js';
 import { districts, districtSubscriptions } from '../../adapters/db/schema/index.js';
 import {
   CreateDistrictRequest,
@@ -16,6 +17,7 @@ import {
   DistrictNotReadyForActivationError,
   DistrictInvalidStatusError,
   activateDistrict,
+  assertDistrictExists,
 } from './district-onboarding-engine.js';
 
 export {
@@ -24,6 +26,7 @@ export {
   DistrictNotReadyForActivationError,
   DistrictInvalidStatusError,
   activateDistrict,
+  assertDistrictExists,
 };
 
 export class DistrictNameExistsError extends Error {
@@ -268,5 +271,3 @@ export async function updateDistrict(
 
   return formatDistrict(updatedRow);
 }
-
-

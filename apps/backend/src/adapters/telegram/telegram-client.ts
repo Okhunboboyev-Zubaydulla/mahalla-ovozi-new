@@ -1,87 +1,34 @@
-export class TelegramIntegrationError extends Error {
-  public readonly code: string;
-  public readonly httpStatus: number;
+// Error classes live in the domain port (AD-1: adapters import from domain, not the reverse).
+// Imported and re-exported here so existing consumers continue to compile without changes.
+import {
+  TelegramIntegrationError,
+  isTelegramIntegrationError,
+  TelegramInvalidTokenError,
+  TelegramNetworkTimeoutError,
+  TelegramRateLimitError,
+  TelegramApiError,
+  TelegramChatNotFoundError,
+  TelegramBotNotMemberError,
+  TelegramBotIsAdminError,
+  TelegramPrivacyModeEnabledError,
+  type ValidatedTelegramBot,
+  type TelegramChatInfo,
+} from '../../modules/telegram-bot/ports/telegram-client-port.js';
 
-  constructor(
-    message: string,
-    code: string,
-    httpStatus: number,
-  ) {
-    super(message);
-    this.name = 'TelegramIntegrationError';
-    this.code = code;
-    this.httpStatus = httpStatus;
-  }
-}
-
-/**
- * Type-guard predicate to check if an error is a TelegramIntegrationError
- */
-export function isTelegramIntegrationError(err: unknown): err is TelegramIntegrationError {
-  return err instanceof TelegramIntegrationError;
-}
-
-export class TelegramInvalidTokenError extends TelegramIntegrationError {
-  constructor(message = 'Telegram бот токени ҳақиқий эмас ёки бот топилмади.') {
-    super(message, 'TELEGRAM_INVALID_TOKEN', 400);
-    this.name = 'TelegramInvalidTokenError';
-  }
-}
-
-export class TelegramNetworkTimeoutError extends TelegramIntegrationError {
-  constructor(message = 'Telegram сервери билан боғланиш вақти тугади (5 сония).') {
-    super(message, 'TELEGRAM_TIMEOUT', 504);
-    this.name = 'TelegramNetworkTimeoutError';
-  }
-}
-
-export class TelegramRateLimitError extends TelegramIntegrationError {
-  constructor(
-    message = 'Telegram сўровлар сони чекланди. Бироздан сўнг қайта уриниб кўринг.',
-  ) {
-    super(message, 'TELEGRAM_RATE_LIMITED', 429);
-    this.name = 'TelegramRateLimitError';
-  }
-}
-
-export class TelegramApiError extends TelegramIntegrationError {
-  constructor(message = 'Telegram серверига уланишда хатолик юз берди.') {
-    super(message, 'TELEGRAM_API_ERROR', 502);
-    this.name = 'TelegramApiError';
-  }
-}
-
-export class TelegramChatNotFoundError extends TelegramIntegrationError {
-  constructor(message = 'Telegram гуруҳи топилмади ёки бот ушбу гуруҳга қўшилмаган.') {
-    super(message, 'BOT_NOT_IN_GROUP', 400);
-    this.name = 'TelegramChatNotFoundError';
-  }
-}
-
-export class TelegramBotNotMemberError extends TelegramIntegrationError {
-  constructor(message = 'Telegram бот мазкур гуруҳга аъзо эмас.') {
-    super(message, 'BOT_NOT_IN_GROUP', 400);
-    this.name = 'TelegramBotNotMemberError';
-  }
-}
-
-export class TelegramBotIsAdminError extends TelegramIntegrationError {
-  constructor(
-    message = 'Хавфсизлик талаби: Бот Telegram гуруҳда администратор бўлмаслиги керак, фақат оддий аъзо бўлиши шарт.',
-  ) {
-    super(message, 'BOT_IS_ADMIN_FORBIDDEN', 400);
-    this.name = 'TelegramBotIsAdminError';
-  }
-}
-
-export class TelegramPrivacyModeEnabledError extends TelegramIntegrationError {
-  constructor(
-    message = 'Telegram ботда гуруҳ махфийлик режими фаол. @BotFather орқали махфийлик режимини ўчиринг (/setprivacy -> Disable).',
-  ) {
-    super(message, 'TELEGRAM_PRIVACY_MODE_ENABLED', 400);
-    this.name = 'TelegramPrivacyModeEnabledError';
-  }
-}
+export {
+  TelegramIntegrationError,
+  isTelegramIntegrationError,
+  TelegramInvalidTokenError,
+  TelegramNetworkTimeoutError,
+  TelegramRateLimitError,
+  TelegramApiError,
+  TelegramChatNotFoundError,
+  TelegramBotNotMemberError,
+  TelegramBotIsAdminError,
+  TelegramPrivacyModeEnabledError,
+  type ValidatedTelegramBot,
+  type TelegramChatInfo,
+};
 
 /**
  * Sanitizes Telegram API URLs and text occurrences to ensure tokens are never leaked into logs or errors.
@@ -92,12 +39,6 @@ export function redactTokenFromUrl(text: string, token?: string): string {
     result = result.replaceAll(token, '[REDACTED]');
   }
   return result;
-}
-
-export interface ValidatedTelegramBot {
-  botId: string;
-  botFirstName: string;
-  botUsername: string | null;
 }
 
 export interface ValidateTelegramBotOptions {
@@ -225,12 +166,6 @@ export async function validateTelegramBot(
   };
 }
 
-export interface TelegramChatInfo {
-  chatId: string;
-  chatTitle: string;
-  chatType: string;
-  chatUsername: string | null;
-}
 
 interface TelegramGetChatResponse {
   ok?: boolean;

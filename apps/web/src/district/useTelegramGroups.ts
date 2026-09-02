@@ -133,7 +133,13 @@ export function useTelegramGroups(districtId: string | null) {
   });
 
   return {
-    ...query,
+    data: query.data,
+    isLoading: query.isLoading,
+    isPending: query.isPending,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
     groups: query.data ?? [],
     createGroup: createMutation.mutateAsync,
     isCreating: createMutation.isPending,

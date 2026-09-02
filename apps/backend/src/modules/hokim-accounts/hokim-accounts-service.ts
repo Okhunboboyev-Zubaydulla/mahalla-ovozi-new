@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
-import { eq, and, desc, isNull } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { DbClient, mapPostgresConstraintError } from '../../adapters/db/client.js';
-import { accounts, districts, sessions, Account } from '../../adapters/db/schema/index.js';
+import { accounts, Account } from '../../adapters/db/schema/index.js';
 import {
   DistrictHokimAccount,
   HokimAccountStateEnum,
@@ -9,7 +9,8 @@ import {
 } from '@mahalla-ovozi/api-contracts';
 import { cryptoService } from '../../adapters/crypto/index.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
-import { DistrictNotFoundError } from '../districts/districts-service.js';
+import { DistrictNotFoundError, assertDistrictExists } from '../districts/districts-service.js';
+import { revokeAllAccountSessions } from '../auth/session-manager.js';
 
 export class DistrictHokimAlreadyExistsError extends Error {
   statusCode = 409;
@@ -75,15 +76,7 @@ export async function getDistrictHokimAccount(
   districtId: string,
 ): Promise<{ state: HokimAccountStateEnum; account: DistrictHokimAccount | null }> {
   // Validate district exists
-  const [district] = await db
-    .select()
-    .from(districts)
-    .where(eq(districts.id, districtId))
-    .limit(1);
-
-  if (!district) {
-    throw new DistrictNotFoundError(districtId);
-  }
+  await assertDistrictExists(db, districtId);
 
   // 1. Look for active Hokim account
   const [activeAccount] = await db
@@ -142,16 +135,8 @@ export async function createDistrictHokimAccount(
   actor: ActorContext,
   clientInfo?: ClientContext,
 ): Promise<{ account: DistrictHokimAccount; temporaryPassword: string }> {
-  // 1. Verify district exists
-  const [district] = await db
-    .select()
-    .from(districts)
-    .where(eq(districts.id, districtId))
-    .limit(1);
-
-  if (!district) {
-    throw new DistrictNotFoundError(districtId);
-  }
+  // 1. Verify district exists (returned for district.name in audit trail)
+  const district = await assertDistrictExists(db, districtId);
 
   const normalizedUsername = params.username.trim();
 
@@ -264,16 +249,8 @@ export async function resetDistrictHokimPassword(
   actor: ActorContext,
   clientInfo?: ClientContext,
 ): Promise<{ account: DistrictHokimAccount; temporaryPassword: string }> {
-  // 1. Verify district exists
-  const [district] = await db
-    .select()
-    .from(districts)
-    .where(eq(districts.id, districtId))
-    .limit(1);
-
-  if (!district) {
-    throw new DistrictNotFoundError(districtId);
-  }
+  // 1. Verify district exists (returned for district.name in audit trail)
+  const district = await assertDistrictExists(db, districtId);
 
   // 2. Find active Hokim account
   const [activeAccount] = await db
@@ -315,10 +292,7 @@ export async function resetDistrictHokimPassword(
     }
 
     // Revoke all active sessions immediately
-    await tx
-      .update(sessions)
-      .set({ revokedAt: now })
-      .where(and(eq(sessions.accountId, activeAccount.id), isNull(sessions.revokedAt)));
+    await revokeAllAccountSessions(tx, activeAccount.id);
 
     await recordAuditEvent(tx, {
       actorId: actor.id,
@@ -354,15 +328,7 @@ export async function disableDistrictHokimAccount(
   actor: ActorContext,
   clientInfo?: ClientContext,
 ): Promise<{ account: DistrictHokimAccount }> {
-  const [district] = await db
-    .select()
-    .from(districts)
-    .where(eq(districts.id, districtId))
-    .limit(1);
-
-  if (!district) {
-    throw new DistrictNotFoundError(districtId);
-  }
+  const district = await assertDistrictExists(db, districtId);
 
   const [activeAccount] = await db
     .select()
@@ -398,10 +364,7 @@ export async function disableDistrictHokimAccount(
     }
 
     // Revoke all active sessions immediately
-    await tx
-      .update(sessions)
-      .set({ revokedAt: now })
-      .where(and(eq(sessions.accountId, activeAccount.id), isNull(sessions.revokedAt)));
+    await revokeAllAccountSessions(tx, activeAccount.id);
 
     await recordAuditEvent(tx, {
       actorId: actor.id,
@@ -438,15 +401,7 @@ export async function replaceDistrictHokimAccount(
   actor: ActorContext,
   clientInfo?: ClientContext,
 ): Promise<{ account: DistrictHokimAccount; temporaryPassword: string; previousAccountId: string }> {
-  const [district] = await db
-    .select()
-    .from(districts)
-    .where(eq(districts.id, districtId))
-    .limit(1);
-
-  if (!district) {
-    throw new DistrictNotFoundError(districtId);
-  }
+  const district = await assertDistrictExists(db, districtId);
 
   const normalizedUsername = params.newUsername.trim();
 
@@ -496,10 +451,7 @@ export async function replaceDistrictHokimAccount(
           })
           .where(eq(accounts.id, currentActive.id));
 
-        await tx
-          .update(sessions)
-          .set({ revokedAt: now })
-          .where(and(eq(sessions.accountId, currentActive.id), isNull(sessions.revokedAt)));
+        await revokeAllAccountSessions(tx, currentActive.id);
       } else {
         const [latestDisabled] = await tx
           .select()

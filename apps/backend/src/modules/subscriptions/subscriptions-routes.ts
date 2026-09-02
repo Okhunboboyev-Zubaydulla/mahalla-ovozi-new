@@ -47,10 +47,8 @@ import {
 } from './district-deletion-service.js';
 import type { BackupRetentionVerifier } from './ports/backup-retention-verifier.js';
 import { SystemBackupRetentionVerifier } from '../../adapters/backup/system-backup-verifier.js';
-import {
-  ExternalTombstoneStore,
-  FileExternalTombstoneStore,
-} from '../../adapters/storage/external-tombstone-store.js';
+import type { ExternalTombstoneStore } from './ports/external-tombstone-store.port.js';
+import { FileExternalTombstoneStore } from '../../adapters/storage/external-tombstone-store.js';
 import { reconcileDisasterRestore } from '../retention/restore-reconciliation.js';
 
 export interface SubscriptionRoutesDeps {

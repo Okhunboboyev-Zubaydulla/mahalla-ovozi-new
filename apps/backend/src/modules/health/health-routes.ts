@@ -21,11 +21,9 @@ import {
   districtDeletionRecords,
   operationalIssues,
 } from '../../adapters/db/schema/index.js';
-import {
-  ExternalTombstoneStore,
-  FileExternalTombstoneStore,
-  TombstoneStoreCorruptedError,
-} from '../../adapters/storage/external-tombstone-store.js';
+import type { ExternalTombstoneStore } from '../subscriptions/ports/external-tombstone-store.port.js';
+import { TombstoneStoreCorruptedError } from '../subscriptions/ports/external-tombstone-store.port.js';
+import { FileExternalTombstoneStore } from '../../adapters/storage/external-tombstone-store.js';
 
 const DistrictHealthParamsSchema = z.object({
   districtId: z.string().min(1, 'Туман ID киритилиши шарт.'),

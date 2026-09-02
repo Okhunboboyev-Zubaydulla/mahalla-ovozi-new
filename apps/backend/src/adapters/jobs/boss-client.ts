@@ -3,117 +3,79 @@ import type pg from 'pg';
 import PgBoss from 'pg-boss';
 import * as schema from '../db/schema/index.js';
 import type {
-  QualifyingLane,
-  TelegramReplyMetadata,
-} from '@mahalla-ovozi/api-contracts';
-export type { TelegramReplyMetadata };
+  BossQueueMap,
+  BossQueueName,
+} from './job-types.js';
 
-export const TELEGRAM_BURST_DEBOUNCE_QUEUE = 'telegram-burst-debounce';
-export const TELEGRAM_CONTENT_QUALIFICATION_QUEUE = 'telegram-content-qualification';
-export const TELEGRAM_SEMANTIC_RELEVANCE_QUEUE = 'telegram-semantic-relevance';
-export const TELEGRAM_TOPIC_ASSIGNMENT_QUEUE = 'telegram-topic-assignment';
-export const TELEGRAM_TOPIC_PROJECTION_QUEUE = 'telegram-topic-projection';
-export const TELEGRAM_TOPIC_RETENTION_QUEUE = 'telegram-topic-retention';
-export const DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE = 'district-subscription-expiry';
-export const DISTRICT_SUBSCRIPTION_EXPIRY_CRON_QUEUE = 'district-subscription-expiry-cron';
-export const DISTRICT_LIVE_DELETION_QUEUE = 'district-live-deletion';
-export const DISTRICT_LIVE_DELETION_CRON_QUEUE = 'district-live-deletion-cron';
-export const DISTRICT_BACKUP_EXPIRY_QUEUE = 'district-backup-expiry';
-export const DISTRICT_BACKUP_EXPIRY_CRON_QUEUE = 'district-backup-expiry-cron';
+// Re-export everything from job-types.ts for backward compatibility —
+// all existing consumers of boss-client.ts continue to work unchanged.
+export * from './job-types.js';
 
-export interface BurstMessageItem {
-  intakeId: string;
-  telegramMessageId: string;
-  originalTimestamp: string;
-  verbatimText: string;
-  contentType: 'TEXT' | 'MEDIA_CAPTION';
-  replyMetadata?: TelegramReplyMetadata | null;
-}
-
-export interface TelegramBurstDebounceJobData {
-  districtId: string;
-  mahallaName: string;
-  calendarDay: string;
-  telegramChatId: string;
-  telegramUserId?: string | null;
-  telegramBotId: string;
-  firstMessageTimestamp: string;
-  issueId?: string;
-}
-
-export interface DistrictSubscriptionExpiryJobData {
-  districtId: string;
-}
-
-export interface DistrictLiveDeletionJobData {
-  districtId: string;
-  issueId?: string;
-}
-
-export interface DistrictBackupExpiryJobData {
-  districtId: string;
-  issueId?: string;
-}
-
-export interface TelegramContentQualificationJobData {
-  intakeId: string;
-  districtId: string;
-  mahallaName: string;
-  calendarDay: string;
-  telegramChatId: string;
-  telegramMessageId: string;
-  originalTimestamp: string;
-  issueId?: string;
-}
-
-export interface TelegramSemanticRelevanceJobData {
-  intakeId: string;
-  districtId: string;
-  mahallaName: string;
-  calendarDay: string;
-  telegramChatId: string;
-  telegramMessageId: string;
-  telegramUserId?: string;
-  originalTimestamp: string; // ISO-8601 string
-  contentType: 'TEXT' | 'MEDIA_CAPTION';
-  verbatimText: string;
-  replyMetadata: TelegramReplyMetadata | null;
-  burstMessages?: BurstMessageItem[];
-  issueId?: string;
-}
-
-export interface TelegramTopicAssignmentJobData {
-  intakeId: string;
-  districtId: string;
-  mahallaName: string;
-  calendarDay: string;
-  telegramChatId: string;
-  telegramMessageId: string;
-  telegramUserId?: string;
-  originalTimestamp: string; // ISO-8601 string
-  contentType: 'TEXT' | 'MEDIA_CAPTION';
-  verbatimText: string;
-  replyMetadata: TelegramReplyMetadata | null;
-  aiOperationId: string;
-  relevantLanes: QualifyingLane[];
-  reasoning: string;
-  burstMessages?: BurstMessageItem[];
-  issueId?: string;
-}
-
-export interface TelegramTopicProjectionJobData {
-  topicId: string;
-  districtId: string;
-  mahallaName: string;
-  calendarDay: string;
-  generation: number;
-  issueId?: string;
-}
-
-export interface TelegramTopicRetentionJobData {
-  districtId?: string;
-  issueId?: string;
-}
+export const DEFAULT_QUEUE_CONFIGS: Record<string, Omit<PgBoss.SendOptions, 'db'>> = {
+  'telegram-burst-debounce': {
+    retryLimit: 3,
+    retryDelay: 5,
+    retryBackoff: true,
+    expireInMinutes: 10,
+    retentionDays: 1,
+  },
+  'telegram-content-qualification': {
+    retryLimit: 3,
+    retryDelay: 5,
+    retryBackoff: true,
+    expireInMinutes: 10,
+    retentionDays: 1,
+  },
+  'telegram-semantic-relevance': {
+    retryLimit: 3,
+    retryDelay: 5,
+    retryBackoff: true,
+    expireInMinutes: 10,
+    retentionDays: 1,
+  },
+  'telegram-topic-assignment': {
+    retryLimit: 3,
+    retryDelay: 5,
+    retryBackoff: true,
+    expireInMinutes: 10,
+    retentionDays: 1,
+  },
+  'telegram-topic-projection': {
+    retryLimit: 3,
+    retryDelay: 5,
+    retryBackoff: true,
+    expireInMinutes: 10,
+    retentionDays: 1,
+  },
+  'telegram-topic-retention': {
+    retryLimit: 2,
+    retryDelay: 30,
+    retryBackoff: false,
+    expireInMinutes: 30,
+    retentionDays: 3,
+  },
+  'district-subscription-expiry': {
+    retryLimit: 3,
+    retryDelay: 30,
+    retryBackoff: true,
+    expireInMinutes: 10,
+    retentionDays: 2,
+  },
+  'district-live-deletion': {
+    retryLimit: 3,
+    retryDelay: 60,
+    retryBackoff: true,
+    expireInMinutes: 15,
+    retentionDays: 3,
+  },
+  'district-backup-expiry': {
+    retryLimit: 3,
+    retryDelay: 60,
+    retryBackoff: true,
+    expireInMinutes: 15,
+    retentionDays: 3,
+  },
+};
 
 export function createBossClient(options?: { connectionString?: string; schema?: string }): PgBoss {
   const connectionString =
@@ -134,172 +96,72 @@ export function createBossClient(options?: { connectionString?: string; schema?:
  * This operation is idempotent.
  */
 export async function initBossQueues(boss: PgBoss): Promise<void> {
-  await boss.createQueue(TELEGRAM_BURST_DEBOUNCE_QUEUE);
-  await boss.createQueue(TELEGRAM_CONTENT_QUALIFICATION_QUEUE);
-  await boss.createQueue(TELEGRAM_SEMANTIC_RELEVANCE_QUEUE);
-  await boss.createQueue(TELEGRAM_TOPIC_ASSIGNMENT_QUEUE);
-  await boss.createQueue(TELEGRAM_TOPIC_PROJECTION_QUEUE);
-  await boss.createQueue(TELEGRAM_TOPIC_RETENTION_QUEUE);
-  await boss.createQueue(DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE);
-  await boss.createQueue(DISTRICT_SUBSCRIPTION_EXPIRY_CRON_QUEUE);
-  await boss.createQueue(DISTRICT_LIVE_DELETION_QUEUE);
-  await boss.createQueue(DISTRICT_LIVE_DELETION_CRON_QUEUE);
-  await boss.createQueue(DISTRICT_BACKUP_EXPIRY_QUEUE);
-  await boss.createQueue(DISTRICT_BACKUP_EXPIRY_CRON_QUEUE);
+  await boss.createQueue('telegram-burst-debounce');
+  await boss.createQueue('telegram-content-qualification');
+  await boss.createQueue('telegram-semantic-relevance');
+  await boss.createQueue('telegram-topic-assignment');
+  await boss.createQueue('telegram-topic-projection');
+  await boss.createQueue('telegram-topic-retention');
+  await boss.createQueue('district-subscription-expiry');
+  await boss.createQueue('district-subscription-expiry-cron');
+  await boss.createQueue('district-live-deletion');
+  await boss.createQueue('district-live-deletion-cron');
+  await boss.createQueue('district-backup-expiry');
+  await boss.createQueue('district-backup-expiry-cron');
 }
 
 /**
  * Standard singleton key generators for pg-boss deduplication and ordering.
  */
 export const JobSingletonKeys = {
-  /**
-   * Deduplication key for Telegram burst debounce aggregation.
-   */
+  /** Deduplication key for Telegram burst debounce aggregation. */
   forBurstDebounce(districtId: string, chatId: string, userId?: string | null): string {
     return `burst:${districtId}:${chatId}:${userId || 'anon'}`;
   },
 
-  /**
-   * Deduplication key for Telegram message intake qualification.
-   */
+  /** Deduplication key for Telegram message intake qualification. */
   forContentQualification(districtId: string, chatId: string, messageId: string): string {
     return `msg:${districtId}:${chatId}:${messageId}`;
   },
 
-  /**
-   * Deduplication key for Semantic Relevance AI evaluation.
-   */
+  /** Deduplication key for Semantic Relevance AI evaluation. */
   forSemanticRelevance(districtId: string, chatId: string, messageId: string): string {
     return `rel:${districtId}:${chatId}:${messageId}`;
   },
 
-  /**
-   * Deduplication key for Topic Assignment AI evaluation.
-   */
+  /** Deduplication key for Topic Assignment AI evaluation. */
   forTopicAssignment(districtId: string, chatId: string, messageId: string): string {
     return `topic:${districtId}:${chatId}:${messageId}`;
   },
 
-  /**
-   * Coalescing key for Topic Projection AI recalculation (AD-7).
-   */
+  /** Coalescing key for Topic Projection AI recalculation (AD-7). */
   forTopicProjection(topicId: string, generation: number): string {
     return `proj:${topicId}:${generation}`;
   },
 
-  /**
-   * Ordering serialization key for same-day Mahalla civic signal ordering (AD-3).
-   */
+  /** Ordering serialization key for same-day Mahalla civic signal ordering (AD-3). */
   forDistrictMahallaDay(districtId: string, mahallaName: string, calendarDay: string): string {
     return `scope:${districtId}:${mahallaName.trim().toLowerCase()}:${calendarDay}`;
   },
 
-  /**
-   * Deduplication key for Global or District retention scans (Story 4.3 Task 3).
-   */
+  /** Deduplication key for Global or District retention scans (Story 4.3 Task 3). */
   forRetention(districtId?: string): string {
     return `retention:${districtId || 'global'}`;
   },
 
-  /**
-   * Deduplication key for District subscription Grace expiry.
-   */
+  /** Deduplication key for District subscription Grace expiry. */
   forSubscriptionExpiry(districtId: string): string {
     return `sub-expiry:${districtId}`;
   },
 
-  /**
-   * Deduplication key for District permanent live deletion.
-   */
+  /** Deduplication key for District permanent live deletion. */
   forLiveDeletion(districtId: string): string {
     return `live-del:${districtId}`;
   },
 
-  /**
-   * Deduplication key for District protected-backup expiry.
-   */
+  /** Deduplication key for District protected-backup expiry. */
   forBackupExpiry(districtId: string): string {
     return `backup-exp:${districtId}`;
-  },
-};
-
-export interface BossQueueMap {
-  [TELEGRAM_BURST_DEBOUNCE_QUEUE]: TelegramBurstDebounceJobData;
-  [TELEGRAM_CONTENT_QUALIFICATION_QUEUE]: TelegramContentQualificationJobData;
-  [TELEGRAM_SEMANTIC_RELEVANCE_QUEUE]: TelegramSemanticRelevanceJobData;
-  [TELEGRAM_TOPIC_ASSIGNMENT_QUEUE]: TelegramTopicAssignmentJobData;
-  [TELEGRAM_TOPIC_PROJECTION_QUEUE]: TelegramTopicProjectionJobData;
-  [TELEGRAM_TOPIC_RETENTION_QUEUE]: TelegramTopicRetentionJobData;
-  [DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE]: DistrictSubscriptionExpiryJobData;
-  [DISTRICT_LIVE_DELETION_QUEUE]: DistrictLiveDeletionJobData;
-  [DISTRICT_BACKUP_EXPIRY_QUEUE]: DistrictBackupExpiryJobData;
-}
-
-export type BossQueueName = keyof BossQueueMap;
-
-export const DEFAULT_QUEUE_CONFIGS: Record<string, Omit<PgBoss.SendOptions, 'db'>> = {
-  [TELEGRAM_BURST_DEBOUNCE_QUEUE]: {
-    retryLimit: 3,
-    retryDelay: 5,
-    retryBackoff: true,
-    expireInMinutes: 10,
-    retentionDays: 1,
-  },
-  [TELEGRAM_CONTENT_QUALIFICATION_QUEUE]: {
-    retryLimit: 3,
-    retryDelay: 5,
-    retryBackoff: true,
-    expireInMinutes: 10,
-    retentionDays: 1,
-  },
-  [TELEGRAM_SEMANTIC_RELEVANCE_QUEUE]: {
-    retryLimit: 3,
-    retryDelay: 5,
-    retryBackoff: true,
-    expireInMinutes: 10,
-    retentionDays: 1,
-  },
-  [TELEGRAM_TOPIC_ASSIGNMENT_QUEUE]: {
-    retryLimit: 3,
-    retryDelay: 5,
-    retryBackoff: true,
-    expireInMinutes: 10,
-    retentionDays: 1,
-  },
-  [TELEGRAM_TOPIC_PROJECTION_QUEUE]: {
-    retryLimit: 3,
-    retryDelay: 5,
-    retryBackoff: true,
-    expireInMinutes: 10,
-    retentionDays: 1,
-  },
-  [TELEGRAM_TOPIC_RETENTION_QUEUE]: {
-    retryLimit: 2,
-    retryDelay: 30,
-    retryBackoff: false,
-    expireInMinutes: 30,
-    retentionDays: 3,
-  },
-  [DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE]: {
-    retryLimit: 3,
-    retryDelay: 30,
-    retryBackoff: true,
-    expireInMinutes: 10,
-    retentionDays: 2,
-  },
-  [DISTRICT_LIVE_DELETION_QUEUE]: {
-    retryLimit: 3,
-    retryDelay: 60,
-    retryBackoff: true,
-    expireInMinutes: 15,
-    retentionDays: 3,
-  },
-  [DISTRICT_BACKUP_EXPIRY_QUEUE]: {
-    retryLimit: 3,
-    retryDelay: 60,
-    retryBackoff: true,
-    expireInMinutes: 15,
-    retentionDays: 3,
   },
 };
 

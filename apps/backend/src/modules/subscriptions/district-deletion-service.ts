@@ -32,10 +32,8 @@ import { createTelegramGroupsDataCleaner } from '../telegram-groups/telegram-gro
 import { createTelegramBotsDataCleaner } from '../telegram-bot/telegram-bot-data-cleaner.js';
 import { createAuditDataCleaner } from '../audit/audit-data-cleaner.js';
 import { createSubscriptionsDataCleaner } from './subscriptions-data-cleaner.js';
-import {
-  ExternalTombstoneStore,
-  FileExternalTombstoneStore,
-} from '../../adapters/storage/external-tombstone-store.js';
+import type { ExternalTombstoneStore } from './ports/external-tombstone-store.port.js';
+import { FileExternalTombstoneStore } from '../../adapters/storage/external-tombstone-store.js';
 
 
 export class DeletionRecordNotFoundError extends Error {

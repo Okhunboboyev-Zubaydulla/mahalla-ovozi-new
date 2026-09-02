@@ -19,6 +19,8 @@ import {
 import { createDbPool, createDbClient, type DbClient } from '../adapters/db/client.js';
 import { ensureDefaultAiProfiles } from '../adapters/db/seeds.js';
 import { AiGateway, type AiGatewayPort } from '../modules/ai/ai-gateway.js';
+import type { AiProviderAdapterPort } from '../modules/ai/types.js';
+import { HttpProviderAdapter } from '../adapters/ai-providers/http-provider-adapter.js';
 import { SemanticRelevanceEvaluator } from '../modules/ai/semantic-relevance-evaluator.js';
 import { TopicMatchingEvaluator } from '../modules/topics/topic-matching-evaluator.js';
 import { TopicProjectionEvaluator } from '../modules/topics/topic-projection-evaluator.js';
@@ -162,7 +164,13 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
   await initBossQueues(boss);
   await ensureDefaultAiProfiles(db);
 
-  const aiGateway: AiGatewayPort = options?.aiGateway || new AiGateway({ db });
+  const aiProviderAdapters = new Map<string, AiProviderAdapterPort>([
+    ['OPENAI', new HttpProviderAdapter('OPENAI')],
+    ['GEMINI', new HttpProviderAdapter('GEMINI')],
+    ['GROQ', new HttpProviderAdapter('GROQ')],
+    ['OLLAMA', new HttpProviderAdapter('OLLAMA')],
+  ]);
+  const aiGateway: AiGatewayPort = options?.aiGateway || new AiGateway({ db, customAdapters: aiProviderAdapters });
   const relevanceEvaluator = new SemanticRelevanceEvaluator(aiGateway);
   const topicMatchingEvaluator = new TopicMatchingEvaluator(aiGateway);
   const topicProjectionEvaluator = new TopicProjectionEvaluator(aiGateway);

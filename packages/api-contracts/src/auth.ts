@@ -64,5 +64,4 @@ export const FirstSignInPasswordChangeResponseSchema = z.object({
 });
 export type FirstSignInPasswordChangeResponse = z.infer<typeof FirstSignInPasswordChangeResponseSchema>;
 
-export { ApiErrorEnvelopeSchema, type ApiErrorEnvelope } from './errors.js';
 

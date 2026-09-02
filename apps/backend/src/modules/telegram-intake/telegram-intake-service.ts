@@ -19,28 +19,8 @@ import {
 import { qualifyTelegramContent } from './telegram-content-qualification.js';
 import { getTashkentCalendarDay } from './timezone-util.js';
 
-export interface TelegramUpdate {
-  update_id?: number;
-  message?: {
-    message_id?: number;
-    date?: number; // unix timestamp in seconds
-    chat?: {
-      id?: number | string;
-      title?: string;
-      type?: string;
-    };
-    from?: {
-      id?: number | string;
-      is_bot?: boolean;
-      first_name?: string;
-      username?: string;
-    };
-    text?: string;
-    caption?: string;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-}
+import type { TelegramUpdate } from '../../adapters/telegram/telegram-types.js';
+export type { TelegramUpdate };
 
 export type AuthorizationFailureReason =
   | 'BOT_NOT_FOUND'

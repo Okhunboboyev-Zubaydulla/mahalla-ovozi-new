@@ -16,22 +16,22 @@ describe('Crypto Facade & Database Health (Layer 1 Phase 1.2)', () => {
   });
 
   it('validates password policy and blocks weak/short passwords', () => {
-    const short = cryptoService.passwords.validatePolicy('short123');
+    const short = cryptoService.passwords.validate('short123');
     expect(short.isValid).toBe(false);
     expect(short.error).toBe('TOO_SHORT');
 
-    const common = cryptoService.passwords.validatePolicy('password12345678');
+    const common = cryptoService.passwords.validate('password12345678');
     expect(common.isValid).toBe(false);
     expect(common.error).toBe('COMMON_PASSWORD');
 
-    const strong = cryptoService.passwords.validatePolicy('ValidSecurePassword2026!');
+    const strong = cryptoService.passwords.validate('ValidSecurePassword2026!');
     expect(strong.isValid).toBe(true);
   });
 
   it('generates high-entropy unambiguous temporary passwords', () => {
     const tempPass = cryptoService.passwords.generateTemporary(18);
     expect(tempPass).toHaveLength(18);
-    expect(cryptoService.passwords.validatePolicy(tempPass).isValid).toBe(true);
+    expect(cryptoService.passwords.validate(tempPass).isValid).toBe(true);
   });
 
   it('encrypts, decrypts, and masks bot tokens via cryptoService.tokens (AD-9)', () => {

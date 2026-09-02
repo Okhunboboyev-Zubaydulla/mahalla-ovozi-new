@@ -29,10 +29,8 @@ import {
 } from '@mahalla-ovozi/api-contracts';
 import { formatDistrictDeletionRecord } from '../subscriptions/district-deletion-service.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
-import {
-  ExternalTombstoneStore,
-  FileExternalTombstoneStore,
-} from '../../adapters/storage/external-tombstone-store.js';
+import type { ExternalTombstoneStore } from '../subscriptions/ports/external-tombstone-store.port.js';
+import { FileExternalTombstoneStore } from '../../adapters/storage/external-tombstone-store.js';
 import { TopicRetentionService } from './topic-retention-service.js';
 
 export interface DisasterRestoreReconciliationOptions {

@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { cryptoService } from '../../adapters/crypto/index.js';
+import { getEncryptionKey } from '../../adapters/crypto/token-cipher.js';
 
 /**
  * Derives a deterministic webhook secret token for a specific botId using HMAC-SHA256
@@ -9,7 +9,7 @@ export function deriveWebhookSecret(botId: string): string {
   if (!botId || typeof botId !== 'string') {
     return '';
   }
-  const key = cryptoService.tokens.getKey();
+  const key = getEncryptionKey();
   return crypto.createHmac('sha256', key).update(botId).digest('hex');
 }
 

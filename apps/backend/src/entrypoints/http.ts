@@ -17,7 +17,7 @@ import { registerHokimTopicsRoutes } from '../modules/topics/hokim-topics-routes
 import { registerHealthRoutes } from '../modules/health/health-routes.js';
 import { registerIssueRoutes } from '../modules/issues/issue-routes.js';
 import { registerAuditRoutes } from '../modules/audit/audit-routes.js';
-import { registerDistrictTopicsRoutes } from '../modules/districts/district-topics-routes.js';
+import { registerDistrictTopicsRoutes } from '../modules/topics/district-topics-routes.js';
 import { registerGlobalAnalysisSettingsRoutes } from '../modules/ai/global-analysis-settings-routes.js';
 import { registerDistrictAnalysisSettingsRoutes } from '../modules/ai/district-analysis-settings-routes.js';
 import { registerSubscriptionRoutes } from '../modules/subscriptions/subscriptions-routes.js';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Alert, Space, Spin, Button, message, theme } from 'antd';
+import { Card, Typography, Alert, Space, Spin, Button, theme, App } from 'antd';
 import { ReloadOutlined, WifiOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DistrictSubscription } from '@mahalla-ovozi/api-contracts';
@@ -20,6 +20,7 @@ import { StartRecoveryModal } from '../components/subscriptions/StartRecoveryMod
 const { Title, Paragraph } = Typography;
 
 export const SubscriptionsPage: React.FC = () => {
+  const { message } = App.useApp();
   const { token } = theme.useToken();
   const queryClient = useQueryClient();
   const isOffline = useOnlineStatus();

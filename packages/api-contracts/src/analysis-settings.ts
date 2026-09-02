@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DistrictIdSchema } from './common.js';
 
 export const AiModelProviderEnumSchema = z.enum([
   'OPENAI',
@@ -255,7 +256,7 @@ export type DistrictLocalVocabularyItem = z.infer<
 
 export const DistrictAnalysisSettingsDtoSchema = z.object({
   id: z.string(),
-  districtId: z.string(),
+  districtId: DistrictIdSchema,
   version: z.number().int().positive(),
   hokimRecognitionTerms: z.array(z.string()),
   localVocabularyAdditions: z.array(DistrictLocalVocabularyItemSchema),
@@ -271,7 +272,7 @@ export type DistrictAnalysisSettingsDto = z.infer<
 
 export const DistrictAnalysisSettingsDraftDtoSchema = z.object({
   id: z.string(),
-  districtId: z.string(),
+  districtId: DistrictIdSchema,
   baseActiveVersionId: z.string().nullable().optional(),
   hokimRecognitionTerms: z.array(z.string()),
   localVocabularyAdditions: z.array(DistrictLocalVocabularyItemSchema),
@@ -344,7 +345,7 @@ export type SaveDistrictAnalysisSettingsDraftRequest = z.infer<
 >;
 
 export const GetDistrictAnalysisSettingsResponseSchema = z.object({
-  districtId: z.string(),
+  districtId: DistrictIdSchema,
   districtName: z.string(),
   activeConfiguration: DistrictAnalysisSettingsDtoSchema,
   draft: DistrictAnalysisSettingsDraftDtoSchema.nullable(),
@@ -388,6 +389,27 @@ export function containsProhibitedSecrets(text: string): boolean {
   if (!text || typeof text !== 'string') return false;
   return PROHIBITED_SECRET_PATTERNS.some((pattern) => pattern.test(text));
 }
+
+/**
+ * Applies the prohibited-secret check inside an object-level `.superRefine` block.
+ * Keeps secret-scanning regex patterns local to analysis-settings and avoids
+ * Zod type gymnastics from field-level refinement on ZodEffects.
+ */
+export function applySecretCheck(
+  val: string | null | undefined,
+  path: string,
+  ctx: z.RefinementCtx,
+): void {
+  if (val != null && containsProhibitedSecrets(val)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [path],
+      message:
+        'Махфий маълумотлар (бот токенлари, API калитлар ёки пароллар) кўрсатилиши мумкин эмас.',
+    });
+  }
+}
+
 
 export const ChangeReasonSchema = z
   .string({ invalid_type_error: 'Ўзгартириш сабаби матн бўлиши шарт.' })
@@ -436,7 +458,7 @@ export type ActivateDistrictAnalysisSettingsRequest = z.infer<
 >;
 
 export const ActivateDistrictAnalysisSettingsResponseSchema = z.object({
-  districtId: z.string(),
+  districtId: DistrictIdSchema,
   districtName: z.string(),
   activeConfiguration: DistrictAnalysisSettingsDtoSchema,
   previousVersionId: z.string(),
@@ -459,7 +481,7 @@ export type GlobalAnalysisSettingsHistoryResponse = z.infer<
 >;
 
 export const DistrictAnalysisSettingsHistoryResponseSchema = z.object({
-  districtId: z.string(),
+  districtId: DistrictIdSchema,
   districtName: z.string(),
   items: z.array(DistrictAnalysisSettingsDtoSchema),
   totalCount: z.number().int().nonnegative(),
@@ -509,7 +531,7 @@ export type RollbackDistrictAnalysisSettingsRequest = z.infer<
 >;
 
 export const RollbackDistrictAnalysisSettingsResponseSchema = z.object({
-  districtId: z.string(),
+  districtId: DistrictIdSchema,
   districtName: z.string(),
   activeConfiguration: DistrictAnalysisSettingsDtoSchema,
   restoredFromVersionId: z.string(),

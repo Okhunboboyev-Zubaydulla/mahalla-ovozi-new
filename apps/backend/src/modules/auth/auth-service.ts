@@ -1,4 +1,4 @@
-import { eq, and, ne, isNull } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { DbClient } from '../../adapters/db/client.js';
 import { accounts, districts, sessions, Account, Session } from '../../adapters/db/schema/index.js';
 import { cryptoService } from '../../adapters/crypto/index.js';
@@ -8,7 +8,7 @@ import {
   resetRateLimit,
   buildRateLimitKey,
 } from './rate-limiter.js';
-import { createSession } from './session-manager.js';
+import { createSession, revokeAllAccountSessions } from './session-manager.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
 
 // ─── Error classes ────────────────────────────────────────────────────────────
@@ -315,17 +315,8 @@ export async function changeFirstLoginPassword(
         })
         .where(eq(sessions.id, session.id));
 
-      // Revoke all other active sessions for that account
-      await tx
-        .update(sessions)
-        .set({ revokedAt: now })
-        .where(
-          and(
-            eq(sessions.accountId, account.id),
-            ne(sessions.id, session.id),
-            isNull(sessions.revokedAt)
-          )
-        );
+      // Revoke all other active sessions for that account (preserves current session)
+      await revokeAllAccountSessions(tx, account.id, session.id);
 
       // Record audit event
       await recordAuditEvent(tx, {

@@ -14,8 +14,8 @@ import {
   InvalidCursorError,
   TopicNotFoundError,
   decodeDistrictTopicKeysetCursor,
-} from '../topics/district-topics-service.js';
-import { decodeEvidenceKeysetCursor } from '../topics/topic-evidence-service.js';
+} from './district-topics-service.js';
+import { decodeEvidenceKeysetCursor } from './topic-evidence-service.js';
 
 export function registerDistrictTopicsRoutes(fastify: FastifyInstance, db: DbClient): void {
   const districtTopicsService = new DistrictTopicsService(db);

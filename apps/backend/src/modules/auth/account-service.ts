@@ -1,8 +1,9 @@
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { DbClient } from '../../adapters/db/client.js';
-import { accounts, sessions } from '../../adapters/db/schema/index.js';
+import { accounts } from '../../adapters/db/schema/index.js';
 import { cryptoService } from '../../adapters/crypto/index.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
+import { revokeAllAccountSessions } from './session-manager.js';
 
 export interface ManageProductOwnerResult {
   isNew: boolean;
@@ -50,10 +51,7 @@ export async function createOrResetProductOwner(
         .where(eq(accounts.id, existing.id));
 
       // Immediately revoke all existing active sessions upon credential reset
-      await tx
-        .update(sessions)
-        .set({ revokedAt: now })
-        .where(and(eq(sessions.accountId, existing.id), isNull(sessions.revokedAt)));
+      await revokeAllAccountSessions(tx, existing.id);
 
       // Record privacy-safe audit event
       await recordAuditEvent(tx, {

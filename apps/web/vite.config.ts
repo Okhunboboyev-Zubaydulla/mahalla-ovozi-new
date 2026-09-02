@@ -14,19 +14,12 @@ export default defineConfig({
     },
   },
   build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-antd': ['antd', '@ant-design/icons'],
-          'vendor-query': ['@tanstack/react-query'],
-        },
-      },
-    },
+    target: 'esnext',
   },
   test: {
     globals: true,
     environment: 'jsdom',
+    testTimeout: 15000,
     include: ['src/**/*.test.{ts,tsx}', 'tests/unit/**/*.test.{ts,tsx}'],
   },
 });

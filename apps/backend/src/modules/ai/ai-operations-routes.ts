@@ -70,12 +70,11 @@ function handleAiOperationError(err: unknown, reply: FastifyReply, req?: Fastify
     });
   }
 
-  console.error('AI OPERATIONS ERROR:', err);
   req?.log?.error({ err }, 'Unhandled AI operations error');
   return reply.status(500).send({
     error: {
       code: 'INTERNAL_ERROR',
-      message: (err as any)?.message || 'Серверда кутилмаган хатолик юз берди.',
+      message: 'Серверда кутилмаган хатолик юз берди.',
     },
   });
 }

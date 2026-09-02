@@ -4,6 +4,7 @@ import {
   type KeysetPage,
   type KeysetCursorPayload,
 } from './pagination.js';
+import { IsoDateStringSchema } from './common.js';
 
 export const AiOperationErrorCodeSchema = z.enum([
   'RATE_LIMIT_EXCEEDED',
@@ -88,7 +89,7 @@ export const AiOperationListItemSchema = z.object({
   id: z.string().min(1),
   districtId: z.string().min(1),
   mahallaName: z.string().min(1),
-  calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  calendarDay: IsoDateStringSchema,
   operationType: z.string().min(1),
   targetId: z.string().min(1),
   pinnedProfileId: z.string().min(1),
@@ -107,7 +108,7 @@ export const AiOperationDetailSchema = z.object({
     id: z.string().min(1),
     districtId: z.string().min(1),
     mahallaName: z.string().min(1),
-    calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    calendarDay: IsoDateStringSchema,
     operationType: z.string().min(1),
     targetId: z.string().min(1),
     pinnedProfileId: z.string().min(1),
@@ -146,7 +147,7 @@ export type AiOperationHealthMetricsDto = z.infer<typeof AiOperationHealthMetric
 
 export const ListAiOperationsQuerySchema = z.object({
   mahallaName: z.string().trim().optional(),
-  calendarDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  calendarDay: IsoDateStringSchema.optional(),
   operationType: AiOperationTypeSchema.optional(),
   finalStatus: AiOperationStatusSchema.optional(),
   targetId: z.string().trim().optional(),
