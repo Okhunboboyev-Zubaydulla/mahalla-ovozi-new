@@ -6,6 +6,7 @@ import {
   compileProviderSchema,
 } from '../src/modules/ai/schema-compiler.js';
 import { MockProviderAdapter } from '../src/adapters/ai-providers/mock-provider-adapter.js';
+import { HttpProviderAdapter } from '../src/adapters/ai-providers/http-provider-adapter.js';
 import { AiGatewayError } from '../src/modules/ai/types.js';
 import type { AiProfile } from '../src/adapters/db/schema/ai.js';
 
@@ -297,6 +298,83 @@ describe('AI Gateway & Portable Schema Compiler Unit Tests', () => {
       });
 
       expect(mockAdapter.getCalls()).toHaveLength(1);
+    });
+  });
+
+  describe('HttpProviderAdapter - Ollama Provider', () => {
+    it('throws CONTEXT_LIMIT_EXCEEDED when Ollama returns done_reason = length', async () => {
+      const adapter = new HttpProviderAdapter('OLLAMA');
+      const originalFetch = globalThis.fetch;
+      try {
+        globalThis.fetch = (async () =>
+          new Response(
+            JSON.stringify({
+              model: 'gemma4:12b',
+              done: true,
+              done_reason: 'length',
+              prompt_eval_count: 3927,
+              eval_count: 169,
+              message: { role: 'assistant', content: '{"summary": "incomplete...' },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          )) as any;
+
+        await expect(
+          adapter.executeRequest({
+            systemPrompt: 'sys',
+            userPrompt: 'user',
+            compiledSchema: {},
+            schemaName: 'test',
+            modelId: 'gemma4:12b',
+            temperature: 0,
+            maxOutputTokens: 600,
+            timeoutMs: 1000,
+          }),
+        ).rejects.toMatchObject({
+          code: 'CONTEXT_LIMIT_EXCEEDED',
+          message: expect.stringContaining('Ollama output truncated due to context/token limit'),
+        });
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it('sets num_ctx and keep_alive in Ollama request payload', async () => {
+      const adapter = new HttpProviderAdapter('OLLAMA');
+      const originalFetch = globalThis.fetch;
+      let capturedBody: any;
+      try {
+        globalThis.fetch = (async (_url: any, init: any) => {
+          capturedBody = JSON.parse(init.body);
+          return new Response(
+            JSON.stringify({
+              model: 'gemma4:12b',
+              done: true,
+              done_reason: 'stop',
+              prompt_eval_count: 100,
+              eval_count: 50,
+              message: { role: 'assistant', content: '{"status": "ok"}' },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          );
+        }) as any;
+
+        await adapter.executeRequest({
+          systemPrompt: 'sys',
+          userPrompt: 'user',
+          compiledSchema: {},
+          schemaName: 'test',
+          modelId: 'gemma4:12b',
+          temperature: 0.1,
+          maxOutputTokens: 500,
+          timeoutMs: 1000,
+        });
+
+        expect(capturedBody.options.num_ctx).toBe(8192);
+        expect(capturedBody.keep_alive).toBe('5m');
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
     });
   });
 });

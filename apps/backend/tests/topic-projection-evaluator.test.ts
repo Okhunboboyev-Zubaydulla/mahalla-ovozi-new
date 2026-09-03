@@ -490,5 +490,176 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
       expect(result.summary).toBe('Электр таъминотида узилиш сақланиб қолмоқда.');
       expect(result.attribution).toBe('Маҳалла аҳолиси');
     });
+
+    it('rejects summary containing prohibited bureaucratic filler placeholder (Guardrail 6)', async () => {
+      const testSnapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-02',
+        contextRevision: 1,
+        snapshotFingerprint: 'fp_bureau_1',
+        evidence: [
+          {
+            id: 'evi_bureau_1',
+            topicId: 'top_water_bureau',
+            telegramMessageId: '801',
+            originalTimestamp: '2026-09-02T22:02:00.000Z',
+            verbatimText: 'suv keb turgandedi',
+            lane: 'WATER',
+          },
+        ],
+      };
+
+      const bureaucraticResult: TopicProjectionResult = {
+        summary: 'Сув таъминотининг барқарорлиги ҳақида маълумот олинмоқда.',
+        lanes: ['WATER'],
+        anchor_evidence_id: 'evi_bureau_1',
+        anchor_quote: 'suv keb turgandedi',
+        latest_meaningful_activity_timestamp: '2026-09-02T22:02:00.000Z',
+        attribution: 'Маҳалла фуқароси',
+        is_hokim_related: false,
+      };
+
+      const evaluator = new TopicProjectionEvaluator(
+        createMockAiGateway(bureaucraticResult),
+      );
+      await expect(
+        evaluator.evaluateTopicProjection({
+          topicId: 'top_water_bureau',
+          primaryLane: 'WATER',
+          generation: 1,
+          snapshot: testSnapshot,
+        }),
+      ).rejects.toThrow(
+        'Summary contains prohibited bureaucratic filler/placeholder',
+      );
+
+      const discussionResult: TopicProjectionResult = {
+        ...bureaucraticResult,
+        summary: 'Чиқинди муаммоси маҳаллада муҳокама қилинмоқда.',
+      };
+      const discussionEvaluator = new TopicProjectionEvaluator(
+        createMockAiGateway(discussionResult),
+      );
+      await expect(
+        discussionEvaluator.evaluateTopicProjection({
+          topicId: 'top_water_bureau',
+          primaryLane: 'WATER',
+          generation: 1,
+          snapshot: testSnapshot,
+        }),
+      ).rejects.toThrow(
+        'Summary contains prohibited bureaucratic filler/placeholder',
+      );
+    });
+
+    it('validates canonical disruption summary for colloquial past-continuous lamentation', async () => {
+      const waterSnapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-02',
+        contextRevision: 2,
+        snapshotFingerprint: 'fp_water_past',
+        evidence: [
+          {
+            id: 'evi_water_1',
+            topicId: 'top_water_past',
+            telegramMessageId: '701',
+            originalTimestamp: '2026-09-02T22:02:00.000Z',
+            verbatimText: 'hec bumasa',
+            lane: 'WATER',
+          },
+          {
+            id: 'evi_water_2',
+            topicId: 'top_water_past',
+            telegramMessageId: '702',
+            originalTimestamp: '2026-09-02T22:02:00.000Z',
+            verbatimText: 'suv keb turgandedi',
+            lane: 'WATER',
+          },
+        ],
+      };
+
+      const validWaterProjection: TopicProjectionResult = {
+        summary: 'Сув таъминотида узилиш юз бергани хабар қилинмоқда.',
+        lanes: ['WATER'],
+        anchor_evidence_id: 'evi_water_2',
+        anchor_quote: 'suv keb turgandedi',
+        latest_meaningful_activity_timestamp: '2026-09-02T22:02:00.000Z',
+        attribution: 'Маҳалла фуқароси',
+        is_hokim_related: false,
+      };
+
+      const evaluator = new TopicProjectionEvaluator(createMockAiGateway(validWaterProjection));
+      const result = await evaluator.evaluateTopicProjection({
+        topicId: 'top_water_past',
+        primaryLane: 'WATER',
+        generation: 1,
+        snapshot: waterSnapshot,
+      });
+
+      expect(result.summary).toBe('Сув таъминотида узилиш юз бергани хабар қилинмоқда.');
+      expect(result.anchorEvidenceId).toBe('evi_water_2');
+      expect(result.anchorQuote).toBe('suv keb turgandedi');
+    });
+
+    it('enforces prompt budgeting: caps target evidence to 15 items and other topics to 5 topics with 2 items each', () => {
+      const mockGateway = createMockAiGateway({
+        summary: 'test',
+        lanes: ['WATER'],
+        anchor_evidence_id: 'evi_1',
+        anchor_quote: 'quote',
+        latest_meaningful_activity_timestamp: '2026-09-02T22:00:00.000Z',
+        attribution: 'test',
+        is_hokim_related: false,
+      });
+      const evaluator = new TopicProjectionEvaluator(mockGateway);
+
+      const targetItems = Array.from({ length: 20 }, (_, i) => ({
+        id: `evi_target_${i + 1}`,
+        topicId: 'top_target',
+        telegramMessageId: `${100 + i}`,
+        originalTimestamp: new Date(Date.now() + i * 1000).toISOString(),
+        verbatimText: `message ${i + 1}`,
+        lane: 'WATER',
+      }));
+
+      const otherItems: any[] = [];
+      for (let t = 1; t <= 8; t++) {
+        for (let m = 1; m <= 4; m++) {
+          otherItems.push({
+            id: `evi_other_${t}_${m}`,
+            topicId: `top_other_${t}`,
+            telegramMessageId: `${200 + t * 10 + m}`,
+            originalTimestamp: new Date(Date.now() + (t * 10 + m) * 1000).toISOString(),
+            verbatimText: `other topic ${t} message ${m}`,
+            lane: 'ELECTRICITY',
+          });
+        }
+      }
+
+      const prompt = evaluator.buildUserPrompt({
+        topicId: 'top_target',
+        primaryLane: 'WATER',
+        generation: 1,
+        snapshot: {
+          districtId: 'dist_1',
+          mahallaName: 'Navbahor',
+          calendarDay: '2026-09-02',
+          contextRevision: 1,
+          snapshotFingerprint: 'fp_large',
+          evidence: [...targetItems, ...otherItems],
+        },
+      });
+
+      expect(prompt).toContain('Evidence #15');
+      expect(prompt).not.toContain('Evidence #16');
+      expect(prompt).toContain('top_other_5');
+      expect(prompt).toContain('additional same-day topics omitted for brevity');
+      expect(prompt).toContain('other topic 1 message 4');
+      expect(prompt).toContain('other topic 1 message 3');
+      expect(prompt).not.toContain('other topic 1 message 2');
+      expect(prompt).not.toContain('other topic 1 message 1');
+    });
   });
 });

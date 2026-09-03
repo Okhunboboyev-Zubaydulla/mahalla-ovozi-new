@@ -112,9 +112,35 @@ Your objective is to recalculate the single, authoritative, multi-lane derived r
    - Provide a concise 1-2 sentence summary strictly in authentic Uzbek Cyrillic.
    - Focus directly on the UNDERLYING CIVIC DISRUPTION, outage, infrastructure failure, or municipal living condition reported by residents.
    - When a resident posts questions, colloquial inquiries, or status checks (e.g., "svet hammada o'chdimi yoki bizdami?", "chiroq bormi?", "suv keldimi?", "suv qachon keladi?"), extract the core municipal failure (e.g. "Электр таъминотида узилиш юз бергани хабар қилинмоқда").
-   - ZERO META-CONVERSATIONAL CHATTER / BUREAUCRATIC FILLER:
-     - NEVER describe conversational chatter, resident intentions to inquire, or meta-commentary (e.g., DO NOT write "Маҳалла аҳолиси электр энергиясининг барқарорлиги ҳақида хабар бермоқда" or "Фуқаролар чироқ ёниб турибми ёки ўчганлигини аниқлаштиришга ҳаракат қилмоқда").
-     - INSTEAD state the core reported issue directly (e.g., "Электр таъминотида узилиш юз бергани хабар қилинмоқда").
+
+   - UZBEK COLLOQUIAL LAMENTATIONS & PAST-CONTINUOUS OUTAGE EXPRESSIONS:
+     - Recognize colloquial expressions where residents state past continuous availability ("-ib turgandi", "-ayotgandi", "-ib turgandedi") combined with restrictive or lamenting particles ("hech bo'lmasa", "hec bumasa", "kamiga", "bor edi-da"):
+       - Examples: "hech bo'lmasa suv kelib turgandi", "chiroq yonib turgandi", "gaz kelayotgandi", "hec bumasa suv keb turgandedi".
+     - IN REAL CONTEXT: These expressions convey that the municipal service (water, electricity, gas) was available earlier but has NOW BEEN LOST / CUT OFF.
+     - They MUST ALWAYS be summarized as an OUTAGE / SUPPLY DISRUPTION:
+       - WATER: "Сув таъминотида узилиш юз бергани хабар қилинмоқда."
+       - ELECTRICITY: "Электр таъминотида узилиш юз бергани хабар қилинмоқда."
+       - GAS: "Газ таъминотида узилиш юз бергани хабар қилинмоқда."
+     - NEVER interpret past availability ("...kelib turgandi") literally as positive service stability or as an inquiry into supply stability!
+
+   - STRICT PROHIBITION OF BUREAUCRATIC FILLER & INVESTIGATIVE PLACEHOLDERS:
+     - NEVER describe conversational chatter, resident intentions to inquire, or meta-commentary.
+     - You MUST NEVER use vague bureaucratic formulas, meta-commentary, or administrative placeholders such as:
+       - "...барқарорлиги ҳақида маълумот олинмоқда" (STRICTLY FORBIDDEN)
+       - "...ҳолати ўрганилмоқда" (STRICTLY FORBIDDEN)
+       - "...аниқлик киритилмоқда" (STRICTLY FORBIDDEN)
+       - "...муҳокама қилинмоқда" (STRICTLY FORBIDDEN)
+       - "...барқарорлиги ҳақида хабар бермоқда" (STRICTLY FORBIDDEN)
+       - "...маълумот алмашилмоқда" (STRICTLY FORBIDDEN)
+       - "...ҳолати юзасидан маълумот олинмоқда" (STRICTLY FORBIDDEN)
+     - A Topic Card is an alert to the District Hokim and municipal departments about a real-world citizen problem. Stating that "information is being gathered about stability" completely hides the citizen's suffering. State the core failure directly (e.g. "Сув таъминотида узилиш юз бергани хабар қилинмоқда.").
+
+   - CANONICAL OUTAGE TEMPLATES BY LANE:
+     - WATER: "Сув таъминотида узилиш юз бергани хабар қилинмоқда." (low pressure: "Сув босими пастлиги хабар қилинмоқда."; pipe leak: "[Кўча номи бўлса: <Кўча номи> кўчасида] Сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда.")
+     - ELECTRICITY: "Электр таъминотида узилиш юз бергани хабар қилинмоқда." (low voltage: "Электр кучланиши (вольтаж) пастлиги хабар қилинмоқда.")
+     - GAS: "Газ таъминотида узилиш юз бергани хабар қилинмоқда." (low pressure: "Газ босими пастлиги хабар қилинмоқда.")
+     - WASTE: "Чиқиндилар олиб кетилмагани хабар қилинмоқда."
+
    - CAUTIOUS REPORTED FRAMING:
      - Citizen reports are reported claims, NOT verified ground truth (use framing like "... хабар қилинмоқда", "... маълум қилинди", "... билдирилди").
      - Preserve reported contradictions, disagreements, voltage fluctuations, recurrences ("яна ўчди" -> "такрорий узилиш кузатилмоқда"), and reported restoration ("чироқ ёнди" -> "таъминот тиклангани билдирилди").
@@ -188,7 +214,12 @@ export class TopicProjectionEvaluator {
 
     // 2. Target Topic Evidence Items
     if (targetEvidence.length > 0) {
-      const targetItemsText = targetEvidence
+      const cappedTargetEvidence =
+        targetEvidence.length > 15
+          ? targetEvidence.slice(-15)
+          : targetEvidence;
+
+      const targetItemsText = cappedTargetEvidence
         .map((it, idx) =>
           formatEvidenceItemLine(it, idx, {
             prefix: `Evidence #${idx + 1}`,
@@ -209,8 +240,25 @@ ${targetItemsText}`);
     // 3. Other Same-Day Topics in Mahalla (Context)
     if (otherTopicsMap.size > 0) {
       const otherSections: string[] = [];
+      let otherTopicCount = 0;
+      const MAX_OTHER_TOPICS = 5;
+      const MAX_ITEMS_PER_OTHER_TOPIC = 2;
+
       for (const [otherId, group] of otherTopicsMap.entries()) {
-        const itemsText = group.items
+        if (otherTopicCount >= MAX_OTHER_TOPICS) {
+          otherSections.push(
+            `- ...and ${otherTopicsMap.size - MAX_OTHER_TOPICS} additional same-day topics omitted for brevity.`,
+          );
+          break;
+        }
+        otherTopicCount++;
+
+        const cappedItems =
+          group.items.length > MAX_ITEMS_PER_OTHER_TOPIC
+            ? group.items.slice(-MAX_ITEMS_PER_OTHER_TOPIC)
+            : group.items;
+
+        const itemsText = cappedItems
           .map((it, idx) =>
             formatEvidenceItemLine(it, idx, {
               includeId: true,
@@ -323,6 +371,16 @@ ${otherSections.join('\n\n')}`);
       throw new AiGatewayError(
         'INVALID_OUTPUT_SEMANTICS',
         'Output contains forbidden phone number pattern violating privacy invariants',
+      );
+    }
+
+    // Guardrail 6: programmatic prohibition of bureaucratic filler & investigative placeholders
+    const bureaucraticFillerRegex =
+      /(?:маълумот\s+олинмоқда|ҳолати\s+ўрганилмоқда|аниқлик\s+киритилмоқда|муҳокама\s+қилинмоқда|барқарорлиги\s+ҳақида|маълумот\s+алмашилмоқда|ҳолати\s+(?:бўйича|юзасидан)\s+маълумот)/i;
+    if (bureaucraticFillerRegex.test(data.summary)) {
+      throw new AiGatewayError(
+        'INVALID_OUTPUT_SEMANTICS',
+        `Summary contains prohibited bureaucratic filler/placeholder: "${data.summary}". Must state the core reported civic disruption directly.`,
       );
     }
 

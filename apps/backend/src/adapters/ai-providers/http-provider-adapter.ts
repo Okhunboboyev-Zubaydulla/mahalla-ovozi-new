@@ -123,10 +123,11 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
           options: {
             temperature: payload.temperature,
             num_predict: payload.maxOutputTokens,
+            num_ctx: Number(process.env.OLLAMA_NUM_CTX || 8192),
           },
           format: payload.compiledSchema,
           think: false,
-          keep_alive: -1,
+          keep_alive: process.env.OLLAMA_KEEP_ALIVE || '5m',
         };
         break;
       }
@@ -255,10 +256,10 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
       );
     }
 
-    return this.parseResponse(data, durationMs);
+    return this.parseResponse(data, durationMs, payload.modelId);
   }
 
-  private parseResponse(data: any, durationMs: number): RawProviderResponse {
+  private parseResponse(data: any, durationMs: number, modelId?: string): RawProviderResponse {
     switch (this.providerName) {
       case 'OPENAI':
       case 'GROQ': {
@@ -354,6 +355,19 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
       }
 
       case 'OLLAMA': {
+        if (data.done_reason === 'length') {
+          throw new AiGatewayError(
+            'CONTEXT_LIMIT_EXCEEDED',
+            `Ollama output truncated due to context/token limit (prompt: ${data.prompt_eval_count ?? 0}, output: ${data.eval_count ?? 0})`,
+            {
+              status: 400,
+              retryable: false,
+              provider: 'OLLAMA',
+              modelId: modelId || data.model,
+            },
+          );
+        }
+
         const rawContent = data.message?.content || '';
         return {
           rawContent,
