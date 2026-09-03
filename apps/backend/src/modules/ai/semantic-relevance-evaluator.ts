@@ -65,12 +65,26 @@ Analyze candidate messages and determine whether they represent genuine, active 
 - Evaluate the UNDERLYING CIVIC REALITY and COMMUNICATIVE INTENT of the resident, NOT literal grammar or formal syntax.
 - Real neighborhood group messages in Uzbekistan are conversational, colloquial, and implicit.
 - When a resident posts:
-  1. Service Inquiries / Status Questions: "svet keldimi?", "chiroq bormi?", "suv keldimi?", "nasos ishlayaptimi?", "gaz bormi sizlarda?", "chiroq yondimi?", "svet qachon keladi?"
+  1. Service Inquiries / Status Questions: "svet keldimi?", "chiroq bormi?", "suv keldimi?", "nasos ishlayaptimi?", "gaz bormi sizlarda?", "chiroq yondimi?", "svet qachon keladi?", "musor mashinasi keladimi?"
   2. Outage Consequences & Living Conditions: "qorong'uda o'tiribmiz", "muzxona erib ketdi", "chiroqsiz qoldik", "suvsiz qoldik", "bolalar sovuqda o'tiribdi", "ko'cha qorong'u"
   3. Outage & Disruption Statements: "suv yuq", "suv yo'q", "suv o'chdi", "svet o'chdi", "chiroq yo'q", "tok yo'q", "gaz o'chdi", "давление паст", "tok 160V"
   4. Local Infrastructure / Hazard Alerts: "truba yorildi", "kanalizatsiya toshdi", "yo'l cho'kib ketgan", "musor to'lib ketgan", "sim uzilib tushdi"
 - ALL of the above communicative acts signify that a resident is experiencing or observing an active municipal disruption, outage, or hazard.
 - They MUST ALWAYS be classified as relevant (is_relevant: true) under the corresponding lane (WATER, ELECTRICITY, GAS, WASTE, HOKIM_RELATED), even if phrased as a question, exclamation, or colloquial inquiry.
+
+### CRITICAL BOUNDARY: PUBLIC MUNICIPAL SERVICE VS. PRIVATE PEER-TO-PEER TRANSACTIONS
+Mahalla Ovozi exclusively tracks disruptions, outages, and hazards under the domain of Municipal / Communal Public Utilities and District Leadership (Hokimiyat, Toza Hudud, Maxsustrans, Suv Ta'minoti, HET, Hududgaz).
+You MUST strictly distinguish between:
+1. PUBLIC MUNICIPAL SERVICE DISRUPTIONS & CIVIC ISSUES (is_relevant: true):
+   - Failures, delays, or outages of public utility networks and scheduled public municipal services.
+   - Public neighborhood infrastructure hazards (ruptured water mains, sparking public transformers, broken street asphalt, open manholes, blocked irrigation canals).
+   - Official municipal waste collection failures: scheduled municipal garbage truck did not arrive ("musor mashinasi kelmadi", "shafyor kelmadi", "pulini to'layapmiz shafyor kelmayapti", "bizni ko'chaga ham kelsin"), overflowing public neighborhood dumpsters/containers, uncollected street trash, illegal dumping on public roads/grounds.
+   - Public service status inquiries and follow-ups ("chiroq yondimi?", "suv keldimi?", "musor mashinasi bugun keladimi?").
+2. PRIVATE DOMESTIC, COMMERCIAL & PEER-TO-PEER TRANSACTIONS (is_relevant: false -> ADVERTISEMENT_OR_SPAM):
+   - Inquiries about or offers from private scrap/recyclables buyers/collectors: plastic bottles ("bakalashka oladiganlar nomeri", "bakalashka oladigan bormi"), scrap paper/cardboard ("makulatura"), scrap metal ("metallolom", "temir-tersak"), used car batteries ("akkumulyator"). These are private recyclables/scrap transactions, NOT municipal waste collection.
+   - Seeking or offering private vehicle/driver hire ("muravey", "labo", "gazel", "damas") for private chores, hauling private renovation/construction debris ("remontdan keyingi chiqindi", "qurilish chiqindisi"), garden trimming, or household moving. In Uzbekistan, municipal waste services legally do not haul construction rubble; hiring a private driver/muravey is a private domestic errand.
+   - Seeking or offering private trade/craftsman services: private plumbers ("santexnik bormi/nomeri", in-house leaky faucets/toilets), private electricians ("rozetka/lyustra ustasi"), appliance technicians ("gaz plita ustasi", "kotyol ustasi", "konditsioner ustasi").
+   - Distinction note: If construction debris is reported as dumped illegally on a public street, road, or canal, it is an illegal dump -> is_relevant: true (WASTE or HOKIM_RELATED). But asking neighbors to hire a vehicle/muravey to haul one's own renovation trash is a private transaction -> is_relevant: false (ADVERTISEMENT_OR_SPAM).
 
 ### LANGUAGE & SCRIPT SUPPORT
 Messages may be in Uzbek (Latin or Cyrillic), Russian, or mixed colloquial forms (e.g., "suv yuq", "svet o'chdi", "давление паст", "мусор тўлиб кетган", "ток 160V", "suvam o'chdi").
@@ -82,10 +96,10 @@ CRITICAL: Recognize Uzbek colloquial contracted suffixes ('-am', '-yam', '-ham' 
 - Hokim / Infrastructure: "yo'lam", "chuquram", "asfaltam", "ariqam", "lyukam"
 
 ### QUALIFYING LANES
-1. WATER (Сув): Tap water outages (suv yo'q, suv o'chdi, suv yuq, suvam o'chdi, suv kelmayapti, suv keldimi?), low pressure, pipe bursts (truba yorildi), sewage leaks/overflows (kanalizatsiya), polluted drinking water.
-2. ELECTRICITY (Электр): Power cuts (svet o'chdi/chiroq yo'q/tok yo'q/svetam o'chdi, svet keldimi?, chiroq yondimi?), low/high voltage (tok past, 160V), sparking transformers, dangerous fallen wires.
-3. GAS (Газ): Gas outages (gaz yo'q, gaz o'chdi, gazam o'chdi, gaz bormi?), low gas pressure in winter (davlenie past), leaks, odor of gas.
-4. WASTE (Чиқинди): Overflowing garbage containers (musorxona to'lgan, musoram olinmadi), uncollected trash, illegal dumps, animal carcasses.
+1. WATER (Сув): Tap water outages (suv yo'q, suv o'chdi, suv yuq, suvam o'chdi, suv kelmayapti, suv keldimi?), low pressure, pipe bursts (truba yorildi), sewage leaks/overflows (kanalizatsiya), polluted drinking water. EXCLUDES private in-house plumbing/faucet repairs.
+2. ELECTRICITY (Электр): Power cuts (svet o'chdi/chiroq yo'q/tok yo'q/svetam o'chdi, svet keldimi?, chiroq yondimi?), low/high voltage (tok past, 160V), sparking transformers, dangerous fallen wires. EXCLUDES private indoor appliance or socket repairs.
+3. GAS (Газ): Gas outages (gaz yo'q, gaz o'chdi, gazam o'chdi, gaz bormi?), low gas pressure in winter (davlenie past), leaks, odor of gas. EXCLUDES private stove or boiler handyman requests.
+4. WASTE (Чиқинди): Municipal waste service failures (scheduled collection truck missed / did not arrive: "musor mashinasi kelmadi", "shafyor kelmadi", "bizni ko'chaga kelsin"), overflowing public neighborhood dumpsters/containers ("musorxona to'lgan", "musoram olinmadi"), uncollected street trash, illegal public dumps, animal carcasses on public roads. EXCLUDES private scrap trading (bakalashka, makulatura) and private vehicle hire for renovation debris (muravey, labo).
 5. HOKIM_RELATED (Ҳокимга оид): 
    - Direct appeals/complaints to the District Hokim, Hokimiyat, or sector leadership.
    - Non-service public infrastructure issues: broken roads/potholes (yo'llar rasvo, asfalt, chuqur, yo'lam rasvo), broken streetlights, blocked irrigation canals (ariqlar), illegal construction.
@@ -97,7 +111,7 @@ CRITICAL: Recognize Uzbek colloquial contracted suffixes ('-am', '-yam', '-ham' 
 
 ### STRICT EXCLUSIONS (is_relevant = false)
 - PLANNED_ANNOUNCEMENT: Official maintenance notices (e.g., "Ertaga soat 09:00 dan 18:00 gacha ta'mirlash sababli elektr o'chiriladi").
-- ADVERTISEMENT_OR_SPAM: Buying, selling, apartment rentals, plumbing/electrician services, course ads.
+- ADVERTISEMENT_OR_SPAM: Commercial buying/selling, apartment rentals, course ads, private service inquiries, private craftsman/handyman requests (santexnik, elektrik, gaz plita ustasi), private transportation/hauling hire (muravey, labo, gazel for renovation rubble or moving), private scrap/recyclable trading (bakalashka, makulatura, scrap metal).
 - SPECULATION_OR_RUMOR: Unconfirmed hearsay, future pricing rumors.
 - NEUTRAL_OR_PRAISE: "Rahmat svet yondi", "Hokim keldi", general greetings, prayers.
 - GENERAL_CHATTER: Off-topic discussions, jokes, arguments, political debates, vague blaming ("mas'ullar qayerga qarayapti").

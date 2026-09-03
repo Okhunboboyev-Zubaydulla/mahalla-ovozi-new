@@ -153,7 +153,9 @@ Your objective is to evaluate relevance-qualified candidate messages and assign 
      - "primary_lane": "<LANE>" (must be one of: WATER, ELECTRICITY, GAS, WASTE, HOKIM_RELATED)
 
 3. UNASSIGNABLE_VAGUE:
-   - The candidate is a short, empty, context-dependent fragment with NO reference to any service (e.g. "Bizda ham", "Nega?", "Shu ahvol", "Qachon?") that cannot be linked to any active topic.
+   - The candidate is either:
+     a) A short, empty, context-dependent fragment with NO reference to any service (e.g. "Bizda ham", "Nega?", "Shu ahvol", "Qachon?") that cannot be linked to any active topic; OR
+     b) A message that mentions utility or service keywords (e.g., waste, water, electricity, gas) but represents a private peer-to-peer transaction, private craftsman hire ("santexnik kerak"), private scrap/recyclables trading ("bakalashka oladigan nomeri"), or private vehicle/driver hire for personal renovation rubble ("remont chiqindisiga muravey bormi") rather than an active public communal problem. Such messages MUST NOT be merged into active municipal topics nor seed new topics.
    - When discarding as unassignable:
      - "decision": "UNASSIGNABLE_VAGUE"
      - "matched_topic_id": null
@@ -163,6 +165,10 @@ Your objective is to evaluate relevance-qualified candidate messages and assign 
 1. DOMAIN & INCIDENT-LEVEL SPECIFICITY PRECEDENCE:
    - Explicit Service Shift: When a candidate message explicitly mentions or contracts a distinct municipal service category (e.g. "Suvam ucdi mana", "Gazam o'chdi", "Trubayam yorildi"), this domain ALWAYS takes precedence over conversational thread continuity. You MUST NEVER match a message about a different service category into an active topic of another category.
    - Incident-Level Distinction Within Same Service Lane: Having an active topic in the same service lane does NOT mean all new messages in that lane belong to it. Two messages in the same service category describe different Topics when they describe distinct underlying real-world situations (e.g., a general tap water supply outage vs. a localized pipe burst/leakage on a street; a neighborhood power cut vs. a sparking transformer; general low gas pressure vs. an active gas leak).
+   - Incident Semantic Relevance Precedence (Municipal Disruption vs. Private Peer Requests):
+     - An active Topic represents a PUBLIC MUNICIPAL / COMMUNAL issue or disruption (e.g., missed municipal trash truck, neighborhood power outage, tap water cut).
+     - Under NO circumstances may a private peer-to-peer request (e.g., hiring a private muravey or labo for renovation debris, asking for scrap bottle collectors' phone numbers, asking for an in-house plumber) be merged into a public municipal topic (MATCH_EXISTING_TOPIC).
+     - If a candidate discussing private domestic transactions or errands is evaluated here, you MUST NOT attach it to the ongoing municipal outage topic. Designate it UNASSIGNABLE_VAGUE so that the public municipal incident card is not contaminated.
    - General Outage vs. Localized Street Incidents:
      - When an active topic represents a general municipal service outage/disruption across the Mahalla (e.g. Current Topic Summary: "Сув таъминотида узилиш юз бергани хабар қилинмоқда" or "Электр таъминотида узилиш..."), and another topic represents a localized physical infrastructure problem on a specific street (e.g. "Боғзор кўчасида сув қувури сизиши..."):
      - Any subsequent general inquiry, status check, or complaint that does NOT specifically name that localized street/location (e.g. "hech bo'lmasa suv kelib turgandi", "suv bormi?", "suv keldimi?", "haliyam yo'q", "qachon berishadi?") belongs strictly to the GENERAL OUTAGE TOPIC (MATCH_EXISTING_TOPIC).
@@ -170,9 +176,9 @@ Your objective is to evaluate relevance-qualified candidate messages and assign 
      - You MUST NOT seed a duplicate 3rd topic (NEW_TOPIC) when an ongoing general outage topic already exists for that service lane.
 
 2. SAME-DAY GENERAL UTILITY OUTAGE CONTINUITY (MULTI-HOUR RECURRENCE & FOLLOW-UPS):
-   - Municipal utility outages (tap water cuts, power cuts, low gas pressure) in a Mahalla are community-wide disruptions that typically persist across several hours or throughout the calendar day.
+   - Municipal utility outages (tap water cuts, power cuts, low gas pressure, missed municipal garbage truck routes) in a Mahalla are community-wide disruptions that typically persist across several hours or throughout the calendar day.
    - When an active topic already exists for a general service outage in this Mahalla today:
-     - Any subsequent resident message on the same calendar day reporting, inquiring about, confirming, lamenting, or checking on that same service (e.g. "suv keb turgandedi", "suv keldimi?", "chiroq yondimi?", "suv haliyam yo'q", "gaz yana o'chdi", "svetni berishmasa kere"), REGARDLESS of how many hours have elapsed since the last message (e.g., even after 4, 6, or 8 hours of chat silence), MUST be matched to the existing ongoing outage topic (MATCH_EXISTING_TOPIC). (Note: For purely subjectless fragments that omit the service name entirely like "Haliyam yo'q" or "Bizda ham", strictly follow Section 4 below).
+     - Any subsequent resident message on the same calendar day reporting, inquiring about, confirming, lamenting, or checking on that SAME public municipal service disruption (e.g. "suv keb turgandedi", "suv keldimi?", "chiroq yondimi?", "suv haliyam yo'q", "gaz yana o'chdi", "svetni berishmasa kere", "musor mashinasi kelmadi", "bizni ko'chaga ham kelsin"), REGARDLESS of how many hours have elapsed since the last message (e.g., even after 4, 6, or 8 hours of chat silence), MUST be matched to the existing ongoing outage topic (MATCH_EXISTING_TOPIC). (Note: For purely subjectless fragments that omit the service name entirely like "Haliyam yo'q" or "Bizda ham", strictly follow Section 4 below).
      - This applies even if an earlier resident reported temporary restoration ("suv keldi", "svet yondi") and a later resident reports recurrence ("yana o'chdi", "suv kelib turgandi endi yana yo'q"): match to the existing topic (MATCH_EXISTING_TOPIC), because the topic projection engine will recalculate and describe the reported recurrence in the same topic card.
      - You MUST NOT create a duplicate topic (NEW_TOPIC) for the same service outage simply because several hours have passed.
 

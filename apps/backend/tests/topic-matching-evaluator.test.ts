@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import {
   TopicMatchingEvaluator,
   TopicMatchingResultSchema,
+  TOPIC_MATCHING_SYSTEM_PROMPT,
   type TopicMatchingResult,
   findDirectReplyTopic,
 } from '../src/modules/topics/topic-matching-evaluator.js';
@@ -748,6 +749,116 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
       expect(result.data.decision).toBe('MATCH_EXISTING_TOPIC');
       expect(result.data.matched_topic_id).toBe('top_water_outage_1');
       expect(result.data.primary_lane).toBeNull();
+    });
+
+    it('ensures system prompt defines incident-level semantic relevance safeguard for private peer requests', () => {
+      expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('Incident Semantic Relevance Precedence (Municipal Disruption vs. Private Peer Requests)');
+      expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('bakalashka oladigan nomeri');
+      expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('remont chiqindisiga muravey bormi');
+      expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('santexnik kerak');
+      expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('UNASSIGNABLE_VAGUE');
+    });
+
+    it('designates private peer requests (Shahob & Dildora cases) as UNASSIGNABLE_VAGUE instead of merging into active municipal waste topic', async () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: "Navro'z",
+        calendarDay: '2026-09-03',
+        contextRevision: 4,
+        snapshotFingerprint: 'sha256_navroz_waste_v1',
+        evidence: [
+          {
+            id: 'evi_waste_1',
+            topicId: 'top_navroz_waste_truck',
+            telegramMessageId: '8001',
+            originalTimestamp: '2026-09-03T10:57:00.000Z',
+            verbatimText: 'ХУДО. ХОХЛАСА. ЭРТАГА. МУСОР. МАШИНАСИ. КЕЛАДИМИ ИЛТИМОС. ШАФЕР. ТАЙИНЛАНГ ПАЛЬИКЛИНИКАНИ. ОРКА. КУЧАСИГА КЕЛСИН.',
+            lane: 'WASTE',
+            topicSummary: 'Чиқиндиларни олиб кетиш хизматининг тўхтаб қолганлиги ва мусоратланиши хабар қилинмоқда.',
+          },
+          {
+            id: 'evi_waste_2',
+            topicId: 'top_navroz_waste_truck',
+            telegramMessageId: '8002',
+            originalTimestamp: '2026-09-03T11:01:00.000Z',
+            verbatimText: 'АХОЛИ. МАХАЛЛАДАГИЛАР. ХАММАМИЗ. ВАКТИДА. ПУЛИНИ. ТУЛАЯПМИЗ. УЗИМИЗ. УН. ТУЛАЙМИЗ. ШАФЕР. НИМА. КУЧАЛАРНИ. БИЛМАЙДИМИ',
+            lane: 'WASTE',
+            topicSummary: 'Чиқиндиларни олиб кетиш хизматининг тўхтаб қолганлиги ва мусоратланиши хабар қилинмоқда.',
+          },
+        ],
+      };
+
+      // 1. Shahob case: private recyclable bottle inquiry
+      mockAdapter.setNextResponse({
+        decision: 'UNASSIGNABLE_VAGUE',
+        matched_topic_id: null,
+        primary_lane: null,
+        reasoning: 'Private peer inquiry asking for phone number of scrap plastic bottle collectors, not a communal waste service incident',
+      });
+
+      const shahobResult = await evaluator.evaluateTopicAssignment({
+        candidateText: 'Bakalashka olekkanlani nomerini aytvorila',
+        telegramMessageId: '8003',
+        originalTimestamp: '2026-09-03T13:58:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['WASTE'],
+        relevanceReasoning: 'Mentioned recyclable waste',
+        snapshot,
+        profileId: 'prof_match_2026_08_v1',
+      });
+
+      expect(shahobResult.data.decision).toBe('UNASSIGNABLE_VAGUE');
+      expect(shahobResult.data.matched_topic_id).toBeNull();
+      expect(shahobResult.data.primary_lane).toBeNull();
+
+      // 2. Dildora case: private vehicle hire for renovation debris
+      mockAdapter.setNextResponse({
+        decision: 'UNASSIGNABLE_VAGUE',
+        matched_topic_id: null,
+        primary_lane: null,
+        reasoning: 'Inquiry seeking private vehicle hire for home renovation rubble, not a municipal waste service failure',
+      });
+
+      const dildoraResult = await evaluator.evaluateTopicAssignment({
+        candidateText: 'Ассалому алайкум ремонтдан кейинги чикиндини олиб кетишга муравейча борми',
+        telegramMessageId: '8004',
+        originalTimestamp: '2026-09-03T14:00:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['WASTE'],
+        relevanceReasoning: 'Mentioned waste removal vehicle',
+        snapshot,
+        profileId: 'prof_match_2026_08_v1',
+      });
+
+      expect(dildoraResult.data.decision).toBe('UNASSIGNABLE_VAGUE');
+      expect(dildoraResult.data.matched_topic_id).toBeNull();
+      expect(dildoraResult.data.primary_lane).toBeNull();
+
+      // 3. Genuine Municipal Waste Follow-up: Matches existing topic
+      mockAdapter.setNextResponse({
+        decision: 'MATCH_EXISTING_TOPIC',
+        matched_topic_id: 'top_navroz_waste_truck',
+        primary_lane: null,
+        reasoning: 'Direct continuation of municipal garbage truck route complaint for adjacent street',
+      });
+
+      const validFollowupResult = await evaluator.evaluateTopicAssignment({
+        candidateText: 'ЮКОРИ. КУЧАГА ЯЪНИ. КАТЕЖ ЛАР. ОРАЛАБ. МУСОРНИ. ЙИГИБ. КЕТГАН. БИЗНИ. КУЧАГАЯМ. ТУШСИН. МУСОРНИ. ОЛИШГА.',
+        telegramMessageId: '8005',
+        originalTimestamp: '2026-09-03T14:05:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['WASTE'],
+        relevanceReasoning: 'Garbage truck route complaint',
+        snapshot,
+        profileId: 'prof_match_2026_08_v1',
+      });
+
+      expect(validFollowupResult.data.decision).toBe('MATCH_EXISTING_TOPIC');
+      expect(validFollowupResult.data.matched_topic_id).toBe('top_navroz_waste_truck');
+      expect(validFollowupResult.data.primary_lane).toBeNull();
     });
   });
 });

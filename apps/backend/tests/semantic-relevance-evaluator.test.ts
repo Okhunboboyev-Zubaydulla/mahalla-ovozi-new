@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   SemanticRelevanceEvaluator,
   SemanticRelevanceResultSchema,
+  SEMANTIC_RELEVANCE_SYSTEM_PROMPT,
   type SemanticRelevanceResult,
 } from '../src/modules/ai/semantic-relevance-evaluator.js';
 import {
@@ -352,6 +353,250 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
       expect(prompt).toContain('### IMMEDIATE PRECEDING MESSAGE (N-1 IN CHAT)');
       expect(prompt).toContain('Message ID: 102 (+1m before candidate) (Lane: [ELECTRICITY])');
       expect(prompt).toContain('Text: "kamiga svetam yu"');
+    });
+
+    it('ensures system prompt defines the public municipal vs private peer-to-peer boundary', () => {
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('CRITICAL BOUNDARY: PUBLIC MUNICIPAL SERVICE VS. PRIVATE PEER-TO-PEER TRANSACTIONS');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('bakalashka');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('muravey');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('santexnik');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('musor mashinasi kelmadi');
+    });
+
+    it('evaluates private transactions (Shahob & Dildora cases) as excluded ADVERTISEMENT_OR_SPAM', async () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: "Navro'z",
+        calendarDay: '2026-09-03',
+        contextRevision: 1,
+        snapshotFingerprint: 'sha256_navroz_v1',
+        evidence: [],
+      };
+
+      // 1. Shahob case: private bottle recycling inquiry
+      mockAdapter.setNextResponse({
+        is_relevant: false,
+        relevant_lanes: [],
+        exclusion_reason: 'ADVERTISEMENT_OR_SPAM',
+        reasoning: 'Private inquiry asking for contact numbers of scrap plastic bottle buyers',
+      });
+
+      const shahobResult = await evaluator.evaluateRelevance({
+        candidateText: 'Bakalashka olekkanlani nomerini aytvorila',
+        telegramMessageId: '9001',
+        originalTimestamp: '2026-09-03T13:58:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+
+      expect(shahobResult.data.is_relevant).toBe(false);
+      expect(shahobResult.data.exclusion_reason).toBe('ADVERTISEMENT_OR_SPAM');
+      expect(shahobResult.data.relevant_lanes).toEqual([]);
+
+      // 2. Dildora case: private vehicle hire for renovation rubble
+      mockAdapter.setNextResponse({
+        is_relevant: false,
+        relevant_lanes: [],
+        exclusion_reason: 'ADVERTISEMENT_OR_SPAM',
+        reasoning: 'Inquiry seeking to hire a private motorized tricycle for home renovation debris removal',
+      });
+
+      const dildoraResult = await evaluator.evaluateRelevance({
+        candidateText: 'Ассалому алайкум ремонтдан кейинги чикиндини олиб кетишга муравейча борми',
+        telegramMessageId: '9002',
+        originalTimestamp: '2026-09-03T14:00:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+
+      expect(dildoraResult.data.is_relevant).toBe(false);
+      expect(dildoraResult.data.exclusion_reason).toBe('ADVERTISEMENT_OR_SPAM');
+      expect(dildoraResult.data.relevant_lanes).toEqual([]);
+
+      // 3. Municipal Waste True Positive: Scheduled collection truck missed
+      mockAdapter.setNextResponse({
+        is_relevant: true,
+        relevant_lanes: ['WASTE'],
+        exclusion_reason: null,
+        reasoning: 'Report of scheduled municipal waste truck failing to service residential street',
+      });
+
+      const truckResult = await evaluator.evaluateRelevance({
+        candidateText: 'МУСОР. МАШИНАСИ. КЕЛМАДИ. ОЛДИНГИ. ХАФТАДА. ПАЛЬИКЛИНИКАНИ. ОРКА. КУЧАСИГА КЕЛСИН.',
+        telegramMessageId: '9003',
+        originalTimestamp: '2026-09-03T14:05:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+
+      expect(truckResult.data.is_relevant).toBe(true);
+      expect(truckResult.data.relevant_lanes).toEqual(['WASTE']);
+      expect(truckResult.data.exclusion_reason).toBeNull();
+    });
+
+    it('verifies 5-lane paired boundaries: Private Domestic Transactions vs Public Municipal Failures', async () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Istiqlol',
+        calendarDay: '2026-09-03',
+        contextRevision: 1,
+        snapshotFingerprint: 'sha256_istiqlol_v1',
+        evidence: [],
+      };
+
+      // 1. WATER: Private plumber inquiry (Exclude) vs Public main pipe burst (Include)
+      mockAdapter.setNextResponse({
+        is_relevant: false,
+        relevant_lanes: [],
+        exclusion_reason: 'ADVERTISEMENT_OR_SPAM',
+        reasoning: 'Private household request for a plumber to fix indoor leaky tap',
+      });
+      const waterPrivate = await evaluator.evaluateRelevance({
+        candidateText: 'Santexnik bormi kran oqib ketdi uyda',
+        telegramMessageId: '9101',
+        originalTimestamp: '2026-09-03T10:00:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+      expect(waterPrivate.data.is_relevant).toBe(false);
+      expect(waterPrivate.data.exclusion_reason).toBe('ADVERTISEMENT_OR_SPAM');
+
+      mockAdapter.setNextResponse({
+        is_relevant: true,
+        relevant_lanes: ['WATER'],
+        exclusion_reason: null,
+        reasoning: 'Public main drinking water pipe rupture on residential street',
+      });
+      const waterPublic = await evaluator.evaluateRelevance({
+        candidateText: "Ko'chada markaziy vodoprovod trubasi yorilib ketdi, suv toshib yotibdi",
+        telegramMessageId: '9102',
+        originalTimestamp: '2026-09-03T10:05:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+      expect(waterPublic.data.is_relevant).toBe(true);
+      expect(waterPublic.data.relevant_lanes).toEqual(['WATER']);
+
+      // 2. ELECTRICITY: Private electrician inquiry (Exclude) vs Public transformer outage (Include)
+      mockAdapter.setNextResponse({
+        is_relevant: false,
+        relevant_lanes: [],
+        exclusion_reason: 'ADVERTISEMENT_OR_SPAM',
+        reasoning: 'Private request for an electrician to install household light fixture and socket',
+      });
+      const elecPrivate = await evaluator.evaluateRelevance({
+        candidateText: "Uyga yangi lyustra va rozetka o'rnatadigan elektrik kerak",
+        telegramMessageId: '9103',
+        originalTimestamp: '2026-09-03T10:10:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+      expect(elecPrivate.data.is_relevant).toBe(false);
+      expect(elecPrivate.data.exclusion_reason).toBe('ADVERTISEMENT_OR_SPAM');
+
+      mockAdapter.setNextResponse({
+        is_relevant: true,
+        relevant_lanes: ['ELECTRICITY'],
+        exclusion_reason: null,
+        reasoning: 'Public neighborhood transformer sparked causing neighborhood power cut',
+      });
+      const elecPublic = await evaluator.evaluateRelevance({
+        candidateText: "Ko'chamizdagi transformator tutab ketdi, butun mahalla qorong'uda qoldi",
+        telegramMessageId: '9104',
+        originalTimestamp: '2026-09-03T10:15:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+      expect(elecPublic.data.is_relevant).toBe(true);
+      expect(elecPublic.data.relevant_lanes).toEqual(['ELECTRICITY']);
+
+      // 3. GAS: Private stove repair (Exclude) vs Public low pressure crisis (Include)
+      mockAdapter.setNextResponse({
+        is_relevant: false,
+        relevant_lanes: [],
+        exclusion_reason: 'ADVERTISEMENT_OR_SPAM',
+        reasoning: 'Private appliance repair inquiry for a household gas stove',
+      });
+      const gasPrivate = await evaluator.evaluateRelevance({
+        candidateText: 'Gaz plitamni gorelkalari yaxshi yonmayapti, usta bormi?',
+        telegramMessageId: '9105',
+        originalTimestamp: '2026-09-03T10:20:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+      expect(gasPrivate.data.is_relevant).toBe(false);
+      expect(gasPrivate.data.exclusion_reason).toBe('ADVERTISEMENT_OR_SPAM');
+
+      mockAdapter.setNextResponse({
+        is_relevant: true,
+        relevant_lanes: ['GAS'],
+        exclusion_reason: null,
+        reasoning: 'Public municipal gas supply pressure collapse in winter',
+      });
+      const gasPublic = await evaluator.evaluateRelevance({
+        candidateText: "Gaz bosimi judayam past, kotyollar o'chib qolyapti sovuqda",
+        telegramMessageId: '9106',
+        originalTimestamp: '2026-09-03T10:25:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+      expect(gasPublic.data.is_relevant).toBe(true);
+      expect(gasPublic.data.relevant_lanes).toEqual(['GAS']);
+
+      // 4. HOKIM_RELATED: Private mason hire (Exclude) vs Public road potholes / streetlights (Include)
+      mockAdapter.setNextResponse({
+        is_relevant: false,
+        relevant_lanes: [],
+        exclusion_reason: 'ADVERTISEMENT_OR_SPAM',
+        reasoning: 'Private request to hire laborers for personal house construction',
+      });
+      const hokimPrivate = await evaluator.evaluateRelevance({
+        candidateText: "Xususiy hovlimga g'isht teradigan mardikor yoki usta kerak",
+        telegramMessageId: '9107',
+        originalTimestamp: '2026-09-03T10:30:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+      expect(hokimPrivate.data.is_relevant).toBe(false);
+      expect(hokimPrivate.data.exclusion_reason).toBe('ADVERTISEMENT_OR_SPAM');
+
+      mockAdapter.setNextResponse({
+        is_relevant: true,
+        relevant_lanes: ['HOKIM_RELATED'],
+        exclusion_reason: null,
+        reasoning: 'Public street infrastructure defect with unpaved road and potholes',
+      });
+      const hokimPublic = await evaluator.evaluateRelevance({
+        candidateText: "Ko'chamizdagi chuqurlardan mashinalar o'tolmayapti, asfalt qilib berishsin mas'ullar",
+        telegramMessageId: '9108',
+        originalTimestamp: '2026-09-03T10:35:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+      expect(hokimPublic.data.is_relevant).toBe(true);
+      expect(hokimPublic.data.relevant_lanes).toEqual(['HOKIM_RELATED']);
     });
   });
 });
