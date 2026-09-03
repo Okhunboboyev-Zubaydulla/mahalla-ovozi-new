@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import type { DbClient } from '../../adapters/db/client.js';
 import { createDbClient } from '../../adapters/db/client.js';
 import {
@@ -12,6 +12,7 @@ import {
 } from '../../adapters/db/schema/index.js';
 import {
   withTransactionalIntake,
+  sendQueueJob,
   TELEGRAM_BURST_DEBOUNCE_QUEUE,
   TELEGRAM_CONTENT_QUALIFICATION_QUEUE,
   JobSingletonKeys,
@@ -19,7 +20,7 @@ import {
 import { qualifyTelegramContent } from './telegram-content-qualification.js';
 import { getTashkentCalendarDay } from './timezone-util.js';
 
-import type { TelegramUpdate } from '../../adapters/telegram/telegram-types.js';
+import type { TelegramUpdate, TelegramMessage } from '../../adapters/telegram/telegram-types.js';
 export type { TelegramUpdate };
 
 export type AuthorizationFailureReason =
@@ -44,6 +45,15 @@ export type AuthorizationResult =
 export type ProcessWebhookResult =
   | {
       status: 'ACCEPTED';
+      intakeId: string;
+      jobId: string | null;
+      districtId: string;
+      mahallaName: string;
+      chatId: string;
+      messageId: string;
+    }
+  | {
+      status: 'UPDATED';
       intakeId: string;
       jobId: string | null;
       districtId: string;
@@ -156,16 +166,22 @@ export async function processTelegramWebhookUpdate(
   botId: string,
   update: TelegramUpdate,
 ): Promise<ProcessWebhookResult> {
+  const isEdit = Boolean(update.edited_message || update.edited_channel_post);
+  const rawMsg = (update.message ??
+    update.edited_message ??
+    update.channel_post ??
+    update.edited_channel_post) as TelegramMessage | undefined;
+
   // Structural Guard: only process updates containing a valid message with chat.id and message_id
   if (
     !update ||
     typeof update !== 'object' ||
-    !update.message ||
-    typeof update.message !== 'object' ||
-    update.message.chat?.id === undefined ||
-    update.message.chat?.id === null ||
-    update.message.message_id === undefined ||
-    update.message.message_id === null
+    !rawMsg ||
+    typeof rawMsg !== 'object' ||
+    rawMsg.chat?.id === undefined ||
+    rawMsg.chat?.id === null ||
+    rawMsg.message_id === undefined ||
+    rawMsg.message_id === null
   ) {
     return {
       status: 'DROPPED',
@@ -173,12 +189,12 @@ export async function processTelegramWebhookUpdate(
     };
   }
 
-  const chatId = String(update.message.chat.id);
-  const messageId = String(update.message.message_id);
+  const chatId = String(rawMsg.chat.id);
+  const messageId = String(rawMsg.message_id);
   const updateId =
     update.update_id != null ? String(update.update_id) : null;
   const userId =
-    update.message.from?.id != null ? String(update.message.from.id) : null;
+    rawMsg.from?.id != null ? String(rawMsg.from.id) : null;
 
   const db = createDbClient(pool);
   const auth = await resolveDistrictBotAndGroup(db, botId, chatId);
@@ -192,7 +208,84 @@ export async function processTelegramWebhookUpdate(
     };
   }
 
-  const rawDate = update.message.date;
+  if (isEdit) {
+    const [existing] = await db
+      .select({
+        id: telegramIntakeRecords.id,
+        processedAt: telegramIntakeRecords.processedAt,
+        calendarDay: telegramIntakeRecords.calendarDay,
+        originalTimestamp: telegramIntakeRecords.originalTimestamp,
+      })
+      .from(telegramIntakeRecords)
+      .where(
+        and(
+          eq(telegramIntakeRecords.districtId, auth.districtId),
+          eq(telegramIntakeRecords.telegramChatId, chatId),
+          eq(telegramIntakeRecords.telegramMessageId, messageId),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      if (existing.processedAt) {
+        // Already processed through debounce into AI pipeline -> ignore post-AI edit (Decision 1 & 2)
+        return {
+          status: 'DROPPED',
+          reason: 'ALREADY_PROCESSED',
+          chatId,
+          messageId,
+        };
+      }
+
+      // In-buffer edit (Decision 2 & 3): update raw_payload in place with latest edit
+      await db
+        .update(telegramIntakeRecords)
+        .set({
+          rawPayload: update,
+          updatedAt: new Date(),
+        })
+        .where(eq(telegramIntakeRecords.id, existing.id));
+
+      // Reschedule / extend the debounce timer (Decision 2 Option A)
+      let jobId: string | null = null;
+      if (userId) {
+        const singletonKey = JobSingletonKeys.forBurstDebounce(auth.districtId, chatId, userId);
+        jobId = await sendQueueJob(
+          boss,
+          TELEGRAM_BURST_DEBOUNCE_QUEUE,
+          {
+            districtId: auth.districtId,
+            mahallaName: auth.mahallaName,
+            calendarDay: existing.calendarDay,
+            telegramChatId: chatId,
+            telegramUserId: userId,
+            telegramBotId: auth.botId,
+            firstMessageTimestamp: existing.originalTimestamp.toISOString(),
+          },
+          {
+            singletonKey,
+            startAfter: 25,
+            retryLimit: 3,
+            retryDelay: 5,
+            retryBackoff: true,
+          },
+        );
+      }
+
+      return {
+        status: 'UPDATED',
+        intakeId: existing.id,
+        jobId,
+        districtId: auth.districtId,
+        mahallaName: auth.mahallaName,
+        chatId,
+        messageId,
+      };
+    }
+    // If not existing: fall through to insert as a new message (Decision 5 Option A)
+  }
+
+  const rawDate = rawMsg.date;
   const unixSeconds =
     typeof rawDate === 'number' && Number.isFinite(rawDate) && rawDate > 0
       ? (rawDate > 1e11 ? Math.floor(rawDate / 1000) : Math.floor(rawDate))

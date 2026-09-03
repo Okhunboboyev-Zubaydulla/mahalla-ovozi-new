@@ -82,6 +82,28 @@ export function registerTelegramIntakeRoutes(
           });
         }
 
+        if (result.status === 'UPDATED') {
+          console.log('[telemetry:telegram-intake]', {
+            event: 'TELEGRAM_INTAKE_UPDATED',
+            botId,
+            districtId: result.districtId,
+            mahallaName: result.mahallaName,
+            chatId: result.chatId,
+            messageId: result.messageId,
+            status: 'UPDATED',
+            intakeId: result.intakeId,
+            jobId: result.jobId,
+            durationMs,
+            latencyMs: durationMs,
+          });
+
+          return reply.status(200).send({
+            ok: true,
+            status: 'UPDATED',
+            intakeId: result.intakeId,
+          });
+        }
+
         if (result.status === 'DUPLICATE') {
           console.log('[telemetry:telegram-intake]', {
             event: 'TELEGRAM_INTAKE_DUPLICATE',

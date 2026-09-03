@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import type { DbClient } from '../../../adapters/db/client.js';
 import {
   districts,
+  telegramIntakeRecords,
 } from '../../../adapters/db/schema/index.js';
 import {
   TELEGRAM_BURST_DEBOUNCE_QUEUE,
@@ -92,10 +93,27 @@ export async function processBurstDebounceJobs(
       // 3. Sliding Window Evaluation
       const now = Date.now();
       const firstMsgTime = new Date(firstMessageTimestamp || pendingRecords[0]!.originalTimestamp).getTime();
-      const latestRecord = pendingRecords[pendingRecords.length - 1]!;
-      const latestMsgTime = new Date(latestRecord.originalTimestamp).getTime();
 
-      const timeSinceLatest = (now - latestMsgTime) / 1000;
+      let latestActivityTime = 0;
+      for (const rec of pendingRecords) {
+        const orig = new Date(rec.originalTimestamp).getTime();
+        let editTime = 0;
+        const payload =
+          typeof rec.rawPayload === 'object' && rec.rawPayload !== null
+            ? (rec.rawPayload as Record<string, any>)
+            : null;
+        const editDate =
+          payload?.edited_message?.edit_date ?? payload?.edited_channel_post?.edit_date;
+        if (typeof editDate === 'number' && editDate > 0) {
+          editTime = editDate > 1e11 ? Math.floor(editDate) : Math.floor(editDate * 1000);
+        }
+        const maxRec = Math.max(orig, editTime);
+        if (maxRec > latestActivityTime) {
+          latestActivityTime = maxRec;
+        }
+      }
+
+      const timeSinceLatest = (now - latestActivityTime) / 1000;
       const totalElapsed = (now - firstMsgTime) / 1000;
 
       // If user sent a message within the last 25s AND total elapsed time is under 60s -> extend timer
@@ -174,6 +192,21 @@ export async function processBurstDebounceJobs(
           }
         } else {
           excludedIds.push(rec.id);
+          const currentPayload =
+            typeof rec.rawPayload === 'object' && rec.rawPayload !== null
+              ? (rec.rawPayload as Record<string, unknown>)
+              : {};
+          await db
+            .update(telegramIntakeRecords)
+            .set({
+              rawPayload: {
+                ...currentPayload,
+                status: 'EXCLUDED',
+                exclusionReason: qual.reason,
+              },
+              updatedAt: new Date(),
+            })
+            .where(eq(telegramIntakeRecords.id, rec.id));
         }
       }
 

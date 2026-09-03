@@ -409,4 +409,315 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
       sendSpy.mockRestore();
     }
   });
+
+  it('Test 4 (In-buffer Edit): Updates payload in-place and flushes revised text to AI pipeline', async () => {
+    const userId = '999401';
+    const msgId = `401_${Date.now()}`;
+    const baseTime = new Date('2026-08-21T21:00:00Z');
+
+    // 1. Initial message with typo
+    const res1 = await processTelegramWebhookUpdate(pool, boss, activeBotId, {
+      update_id: 4001,
+      message: {
+        message_id: Number(msgId.split('_')[0]),
+        date: Math.floor(baseTime.getTime() / 1000),
+        chat: { id: validChatId, title: 'Navbahor' },
+        from: { id: Number(userId), first_name: 'Resident 4' },
+        text: 'Bogzor kucada quvr yorilgan',
+      },
+    });
+    expect(res1.status).toBe('ACCEPTED');
+    if (res1.status !== 'ACCEPTED') throw new Error('Expected ACCEPTED');
+    expect(res1.intakeId).toBeDefined();
+
+    // 2. In-buffer edit (5 seconds later)
+    const editTime = new Date(baseTime.getTime() + 5000);
+    const resEdit = await processTelegramWebhookUpdate(pool, boss, activeBotId, {
+      update_id: 4002,
+      edited_message: {
+        message_id: Number(msgId.split('_')[0]),
+        date: Math.floor(baseTime.getTime() / 1000),
+        edit_date: Math.floor(editTime.getTime() / 1000),
+        chat: { id: validChatId, title: 'Navbahor' },
+        from: { id: Number(userId), first_name: 'Resident 4' },
+        text: "Bog'zor ko'chasida quvur yorilgan, suv toshmoqda",
+      },
+    });
+    expect(resEdit.status).toBe('UPDATED');
+    if (resEdit.status !== 'UPDATED') throw new Error('Expected UPDATED');
+    expect(resEdit.intakeId).toBe(res1.intakeId);
+
+    // Verify DB row contains the updated payload
+    const [record] = await db
+      .select()
+      .from(telegramIntakeRecords)
+      .where(eq(telegramIntakeRecords.id, res1.intakeId));
+    expect(record).toBeDefined();
+    const payload = record!.rawPayload as any;
+    expect(payload.edited_message?.text).toBe("Bog'zor ko'chasida quvur yorilgan, suv toshmoqda");
+
+    // 3. Flush burst worker 35 seconds later
+    const realDateNow = Date.now;
+    Date.now = () => baseTime.getTime() + 35000;
+
+    let enqueuedSemanticJobData: any = null;
+    const sendSpy = vi.spyOn(boss, 'send').mockImplementation(async (queue: any, data: any) => {
+      if (queue === TELEGRAM_SEMANTIC_RELEVANCE_QUEUE) {
+        enqueuedSemanticJobData = data;
+      }
+      return 'mock_job_id';
+    });
+
+    try {
+      const debounceJob: any = {
+        data: {
+          districtId: activeDistrictId,
+          mahallaName: 'Navbahor',
+          calendarDay: '2026-08-21',
+          telegramChatId: validChatId,
+          telegramUserId: userId,
+          telegramBotId: activeBotId,
+          firstMessageTimestamp: baseTime.toISOString(),
+        },
+      };
+
+      await processBurstDebounceJobs([debounceJob], { db, boss });
+
+      expect(enqueuedSemanticJobData).toBeDefined();
+      // Verifies the revised/edited text was extracted and passed downstream
+      expect(enqueuedSemanticJobData.verbatimText).toBe("Bog'zor ko'chasida quvur yorilgan, suv toshmoqda");
+    } finally {
+      Date.now = realDateNow;
+      sendSpy.mockRestore();
+    }
+  });
+
+  it('Test 5 (Edit Resets Debounce Timer): Reschedules job if edit occurred within 25 seconds of check', async () => {
+    const userId = '999501';
+    const msgId = `501_${Date.now()}`;
+    const baseTime = new Date('2026-08-21T21:10:00Z');
+
+    // 1. Send initial message at t=0
+    await processTelegramWebhookUpdate(pool, boss, activeBotId, {
+      update_id: 5001,
+      message: {
+        message_id: Number(msgId.split('_')[0]),
+        date: Math.floor(baseTime.getTime() / 1000),
+        chat: { id: validChatId, title: 'Navbahor' },
+        from: { id: Number(userId), first_name: 'Resident 5' },
+        text: 'Chiroq o‘chdimi hammada',
+      },
+    });
+
+    // 2. Edit message at t=20s via webhook
+    const editTime = Math.floor(baseTime.getTime() / 1000) + 20;
+    const resEdit = await processTelegramWebhookUpdate(pool, boss, activeBotId, {
+      update_id: 5002,
+      edited_message: {
+        message_id: Number(msgId.split('_')[0]),
+        date: Math.floor(baseTime.getTime() / 1000),
+        edit_date: editTime,
+        chat: { id: validChatId, title: 'Navbahor' },
+        from: { id: Number(userId), first_name: 'Resident 5' },
+        text: 'Chiroq o‘chdimi hammada? Bizda o‘chdi',
+      },
+    });
+    expect(resEdit.status).toBe('UPDATED');
+
+    // 3. Worker fires at t=26s (26s after initial send, but only 6s after edit)
+    const realDateNow = Date.now;
+    Date.now = () => baseTime.getTime() + 26000;
+
+    let rescheduledJob: any = null;
+    const sendSpy = vi.spyOn(boss, 'send').mockImplementation(async (queue: any, data: any, options: any) => {
+      if (queue === TELEGRAM_BURST_DEBOUNCE_QUEUE) {
+        rescheduledJob = { data, options };
+      }
+      return 'mock_job_id';
+    });
+
+    try {
+      const debounceJob: any = {
+        data: {
+          districtId: activeDistrictId,
+          mahallaName: 'Navbahor',
+          calendarDay: '2026-08-21',
+          telegramChatId: validChatId,
+          telegramUserId: userId,
+          telegramBotId: activeBotId,
+          firstMessageTimestamp: baseTime.toISOString(),
+        },
+      };
+
+      await processBurstDebounceJobs([debounceJob], { db, boss });
+
+      // Verifies timer was extended: remainingDelay is ceil(25 - 6) = 19 seconds
+      expect(rescheduledJob).toBeDefined();
+      expect(rescheduledJob.options.startAfter).toBe(19);
+    } finally {
+      Date.now = realDateNow;
+      sendSpy.mockRestore();
+    }
+  });
+
+  it('Test 6 (Edit to Empty Content): Excludes blanked-out message dynamically at flush', async () => {
+    const userId = '999601';
+    const msgId = `601_${Date.now()}`;
+    const baseTime = new Date('2026-08-21T21:20:00Z');
+
+    // 1. Send valid message
+    const res1 = await processTelegramWebhookUpdate(pool, boss, activeBotId, {
+      update_id: 6001,
+      message: {
+        message_id: Number(msgId.split('_')[0]),
+        date: Math.floor(baseTime.getTime() / 1000),
+        chat: { id: validChatId, title: 'Navbahor' },
+        from: { id: Number(userId), first_name: 'Resident 6' },
+        text: 'Adashib yozvordim uzr',
+      },
+    });
+    expect(res1.status).toBe('ACCEPTED');
+    if (res1.status !== 'ACCEPTED') throw new Error('Expected ACCEPTED');
+
+    // 2. Edit to empty whitespace (retraction)
+    const resEdit = await processTelegramWebhookUpdate(pool, boss, activeBotId, {
+      update_id: 6002,
+      edited_message: {
+        message_id: Number(msgId.split('_')[0]),
+        date: Math.floor(baseTime.getTime() / 1000),
+        edit_date: Math.floor((baseTime.getTime() + 2000) / 1000),
+        chat: { id: validChatId, title: 'Navbahor' },
+        from: { id: Number(userId), first_name: 'Resident 6' },
+        text: '   ',
+      },
+    });
+    expect(resEdit.status).toBe('UPDATED');
+
+    // 3. Flush worker at t=30s
+    const realDateNow = Date.now;
+    Date.now = () => baseTime.getTime() + 30000;
+
+    let enqueuedSemanticJob = false;
+    const sendSpy = vi.spyOn(boss, 'send').mockImplementation(async (queue: any) => {
+      if (queue === TELEGRAM_SEMANTIC_RELEVANCE_QUEUE) {
+        enqueuedSemanticJob = true;
+      }
+      return 'mock_job_id';
+    });
+
+    try {
+      const debounceJob: any = {
+        data: {
+          districtId: activeDistrictId,
+          mahallaName: 'Navbahor',
+          calendarDay: '2026-08-21',
+          telegramChatId: validChatId,
+          telegramUserId: userId,
+          telegramBotId: activeBotId,
+          firstMessageTimestamp: baseTime.toISOString(),
+        },
+      };
+
+      await processBurstDebounceJobs([debounceJob], { db, boss });
+
+      // No semantic job should be enqueued for a retracted blank message
+      expect(enqueuedSemanticJob).toBe(false);
+
+      // Record should be updated with EXCLUDED status
+      const [updatedRecord] = await db
+        .select()
+        .from(telegramIntakeRecords)
+        .where(eq(telegramIntakeRecords.id, res1.intakeId));
+      const payload = updatedRecord!.rawPayload as any;
+      expect(payload.status).toBe('EXCLUDED');
+      expect(payload.exclusionReason).toBe('EMPTY_CONTENT');
+    } finally {
+      Date.now = realDateNow;
+      sendSpy.mockRestore();
+    }
+  });
+
+  it('Test 7 (Post-Flush Edit): Rejects edit when message was already processed into AI pipeline', async () => {
+    const userId = '999701';
+    const msgId = `701_${Date.now()}`;
+    const baseTime = new Date('2026-08-21T21:30:00Z');
+
+    // 1. Send initial message
+    const res1 = await processTelegramWebhookUpdate(pool, boss, activeBotId, {
+      update_id: 7001,
+      message: {
+        message_id: Number(msgId.split('_')[0]),
+        date: Math.floor(baseTime.getTime() / 1000),
+        chat: { id: validChatId, title: 'Navbahor' },
+        from: { id: Number(userId), first_name: 'Resident 7' },
+        text: 'Suv ertalabdan beri yo‘q',
+      },
+    });
+    expect(res1.status).toBe('ACCEPTED');
+    if (res1.status !== 'ACCEPTED') throw new Error('Expected ACCEPTED');
+
+    // 2. Mark message as processed (simulating completion of burst debounce flush)
+    await db
+      .update(telegramIntakeRecords)
+      .set({
+        processedAt: new Date(),
+        batchId: 'batch_test_processed',
+      })
+      .where(eq(telegramIntakeRecords.id, res1.intakeId));
+
+    // 3. User edits message post-processing
+    const resEdit = await processTelegramWebhookUpdate(pool, boss, activeBotId, {
+      update_id: 7002,
+      edited_message: {
+        message_id: Number(msgId.split('_')[0]),
+        date: Math.floor(baseTime.getTime() / 1000),
+        edit_date: Math.floor((baseTime.getTime() + 45000) / 1000),
+        chat: { id: validChatId, title: 'Navbahor' },
+        from: { id: Number(userId), first_name: 'Resident 7' },
+        text: 'Suv ertalabdan beri yo‘q, keldi endi',
+      },
+    });
+
+    // Verifies the post-flush edit is cleanly dropped
+    expect(resEdit.status).toBe('DROPPED');
+    expect((resEdit as any).reason).toBe('ALREADY_PROCESSED');
+
+    // Verifies raw_payload in DB was NOT mutated
+    const [unmutatedRecord] = await db
+      .select()
+      .from(telegramIntakeRecords)
+      .where(eq(telegramIntakeRecords.id, res1.intakeId));
+    const payload = unmutatedRecord!.rawPayload as any;
+    expect(payload.message.text).toBe('Suv ertalabdan beri yo‘q');
+  });
+
+  it('Test 8 (Untracked Edit): Ingests edited_message as a new intake if message was not previously recorded', async () => {
+    const userId = '999801';
+    const untrackedMsgId = Number(`801${Math.floor(Math.random() * 1000)}`);
+    const baseTime = new Date('2026-08-21T21:40:00Z');
+
+    // Webhook receives edited_message for a message that never had an initial intake
+    const res = await processTelegramWebhookUpdate(pool, boss, activeBotId, {
+      update_id: 8001,
+      edited_message: {
+        message_id: untrackedMsgId,
+        date: Math.floor(baseTime.getTime() / 1000),
+        edit_date: Math.floor((baseTime.getTime() + 5000) / 1000),
+        chat: { id: validChatId, title: 'Navbahor' },
+        from: { id: Number(userId), first_name: 'Resident 8' },
+        text: 'Gaz tarmog‘ida portlash ovozi eshitildi',
+      },
+    });
+
+    expect(res.status).toBe('ACCEPTED');
+    if (res.status !== 'ACCEPTED') throw new Error('Expected ACCEPTED');
+    expect(res.intakeId).toBeDefined();
+
+    const [record] = await db
+      .select()
+      .from(telegramIntakeRecords)
+      .where(eq(telegramIntakeRecords.id, res.intakeId));
+    expect(record).toBeDefined();
+    expect(record!.telegramMessageId).toBe(String(untrackedMsgId));
+  });
 });

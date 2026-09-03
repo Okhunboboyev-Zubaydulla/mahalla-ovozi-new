@@ -363,7 +363,41 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
       expect(prompt).toContain('### CANDIDATE RELEVANT TELEGRAM MESSAGE TO ASSIGN');
       expect(prompt).toContain('Tok 160V bo‘lib qoldi');
       expect(prompt).toContain('top_elec_1 (Primary Lane: ELECTRICITY)');
+      expect(prompt).toContain('Current Topic Summary: (Initial report: "Svet o‘chdi 5-domda")');
       expect(prompt).toContain('Nearest Earlier Same-Day Message in Mahalla: MsgID 102');
+    });
+
+    it('renders canonical topic summary in prompt when topicSummary is present in snapshot', () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-08-22',
+        contextRevision: 1,
+        snapshotFingerprint: 'abc123',
+        evidence: [
+          {
+            id: 'evi_1',
+            topicId: 'top_water_1',
+            telegramMessageId: '101',
+            originalTimestamp: '2026-08-22T09:00:00.000Z',
+            verbatimText: 'Suv o‘chdi',
+            lane: 'WATER',
+            topicSummary: 'Сув таъминотида узилиш юз бергани хабар қилинмоқда.',
+          },
+        ],
+      };
+
+      const prompt = evaluator.buildUserPrompt({
+        candidateText: 'hech bo‘lmasa suv kelib turgandi',
+        telegramMessageId: '102',
+        originalTimestamp: '2026-08-22T14:30:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['WATER'],
+        snapshot,
+      });
+
+      expect(prompt).toContain('Current Topic Summary: "Сув таъминотида узилиш юз бергани хабар қилинмоқда."');
     });
 
     it('executes AI structured evaluation returning typed TopicMatchingResult', async () => {
@@ -645,6 +679,75 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
       expect(result.data.decision).toBe('NEW_TOPIC');
       expect(result.data.matched_topic_id).toBeNull();
       expect(result.data.primary_lane).toBe('ELECTRICITY');
+    });
+
+    it('matches same-day general outage follow-up after multi-hour silence to general outage topic when localized leak also coexists', async () => {
+      const expectedOutput: TopicMatchingResult = {
+        decision: 'MATCH_EXISTING_TOPIC',
+        matched_topic_id: 'top_water_outage_1',
+        primary_lane: null,
+        reasoning: 'General water supply follow-up belongs to ongoing same-day general water outage, not localized street pipe leak',
+      };
+
+      mockAdapter.setNextResponse(expectedOutput);
+
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-02',
+        contextRevision: 2,
+        snapshotFingerprint: 'water_continuity_hash',
+        evidence: [
+          {
+            id: 'evi_1',
+            topicId: 'top_water_outage_1',
+            telegramMessageId: '101',
+            originalTimestamp: '2026-09-02T17:00:00.000Z',
+            verbatimText: 'qachon keladi\nsuv\nkemasa kereya xaloyiq',
+            lane: 'WATER',
+            topicSummary: 'Сув таъминотида узилиш юз бергани хабар қилинмоқда.',
+          },
+          {
+            id: 'evi_2',
+            topicId: 'top_water_pipe_2',
+            telegramMessageId: '102',
+            originalTimestamp: '2026-09-02T17:02:00.000Z',
+            verbatimText: 'bogzor kucada suv oqib yotpti. 2 kun buldi. daryo bb ketmagunca vodokanal qaramedimi,',
+            lane: 'WATER',
+            topicSummary: 'Боғзор кўчасида сув қувурининг сизиш ёки оқиб кетиши натижасида сув йўқотилиши юз берганлиги хабар қилинмоқда.',
+          },
+        ],
+      };
+
+      const prompt = evaluator.buildUserPrompt({
+        candidateText: 'hec bumasa\nsuv keb turgandedi',
+        telegramMessageId: '103',
+        originalTimestamp: '2026-09-02T22:02:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['WATER'],
+        snapshot,
+        profileId: 'prof_match_2026_08_v1',
+      });
+
+      // Assert prompt includes both topic summaries so LLM has clear context
+      expect(prompt).toContain('Current Topic Summary: "Сув таъминотида узилиш юз бергани хабар қилинмоқда."');
+      expect(prompt).toContain('Current Topic Summary: "Боғзор кўчасида сув қувурининг сизиш');
+
+      const result = await evaluator.evaluateTopicAssignment({
+        candidateText: 'hec bumasa\nsuv keb turgandedi',
+        telegramMessageId: '103',
+        originalTimestamp: '2026-09-02T22:02:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['WATER'],
+        snapshot,
+        profileId: 'prof_match_2026_08_v1',
+      });
+
+      expect(result.data.decision).toBe('MATCH_EXISTING_TOPIC');
+      expect(result.data.matched_topic_id).toBe('top_water_outage_1');
+      expect(result.data.primary_lane).toBeNull();
     });
   });
 });

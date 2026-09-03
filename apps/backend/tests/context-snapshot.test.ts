@@ -137,20 +137,32 @@ describe('Context Snapshot Kernel & Cryptographic Integrity Tests (AD-5, AD-6)',
       expect(list).toContain('[#2] Timestamp: 2026-08-25T10:05:00.000Z (+5m from previous) | MsgID: 1002 | Lane: [ELECTRICITY]');
     });
 
-    it('groups evidence deterministically by topicId', () => {
+    it('groups evidence deterministically by topicId and preserves topicSummary', () => {
       const snapshot: MahallaDailySnapshot = {
         districtId: 'dist_1',
         mahallaName: 'Navbahor',
         calendarDay: '2026-08-25',
         contextRevision: 3,
         snapshotFingerprint: computeSnapshotFingerprint(sampleEvidence),
-        evidence: sampleEvidence,
+        evidence: [
+          {
+            ...sampleEvidence[0]!,
+            topicSummary: 'Электр таъминотида узилиш хабар қилинмоқда',
+          },
+          sampleEvidence[1]!,
+          {
+            ...sampleEvidence[2]!,
+            topicSummary: 'Сув қувури ёрилиши',
+          },
+        ],
       };
 
       const topicMap = groupSnapshotByTopic(snapshot);
       expect(topicMap.size).toBe(2);
       expect(topicMap.get('top_1')?.items.length).toBe(2);
+      expect(topicMap.get('top_1')?.summary).toBe('Электр таъминотида узилиш хабар қилинмоқда');
       expect(topicMap.get('top_2')?.items.length).toBe(1);
+      expect(topicMap.get('top_2')?.summary).toBe('Сув қувури ёрилиши');
     });
 
     it('formats semantic relevance context section with relative time offsets', () => {

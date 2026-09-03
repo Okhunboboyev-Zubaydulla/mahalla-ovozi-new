@@ -114,6 +114,23 @@ export async function processQualificationJobs(
         );
       } else {
         // Structurally excluded: discard content without enqueuing downstream AI job (AC 3, 4, 9)
+        const currentPayload =
+          typeof record.rawPayload === 'object' && record.rawPayload !== null
+            ? (record.rawPayload as Record<string, unknown>)
+            : {};
+
+        await db
+          .update(telegramIntakeRecords)
+          .set({
+            rawPayload: {
+              ...currentPayload,
+              status: 'EXCLUDED',
+              exclusionReason: qualification.reason,
+            },
+            updatedAt: new Date(),
+          })
+          .where(eq(telegramIntakeRecords.id, intakeId));
+
         console.log(
           JSON.stringify({
             event: 'TELEGRAM_CONTENT_EXCLUDED',

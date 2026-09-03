@@ -3,6 +3,7 @@ import { eq, and } from 'drizzle-orm';
 import type { DbClient } from '../../adapters/db/client.js';
 import { acceptedEvidence } from '../../adapters/db/schema/accepted-evidence.js';
 import { topics } from '../../adapters/db/schema/topics.js';
+import { topicProjections } from '../../adapters/db/schema/topic-projections.js';
 
 export interface AcceptedEvidenceItem {
   id: string;
@@ -11,6 +12,7 @@ export interface AcceptedEvidenceItem {
   originalTimestamp: string; // ISO-8601 string
   verbatimText: string;
   lane?: string;
+  topicSummary?: string;
 }
 
 export interface MahallaDailySnapshot {
@@ -64,9 +66,11 @@ export async function getMahallaDailySnapshot(
         originalTimestamp: acceptedEvidence.originalTimestamp,
         verbatimText: acceptedEvidence.verbatimText,
         lane: topics.primaryLane,
+        summary: topicProjections.summary,
       })
       .from(acceptedEvidence)
       .innerJoin(topics, eq(acceptedEvidence.topicId, topics.id))
+      .leftJoin(topicProjections, eq(topics.id, topicProjections.topicId))
       .where(
         and(
           eq(acceptedEvidence.districtId, districtId),
@@ -83,6 +87,7 @@ export async function getMahallaDailySnapshot(
         originalTimestamp: row.originalTimestamp.toISOString(),
         verbatimText: row.verbatimText,
         lane: row.lane,
+        topicSummary: row.summary?.trim() || undefined,
       });
     }
   }
@@ -209,16 +214,20 @@ export function formatSnapshotEvidenceList(
  */
 export function groupSnapshotByTopic(
   snapshot: MahallaDailySnapshot,
-): Map<string, { lane: string; items: AcceptedEvidenceItem[] }> {
-  const topicMap = new Map<string, { lane: string; items: AcceptedEvidenceItem[] }>();
+): Map<string, { lane: string; summary?: string; items: AcceptedEvidenceItem[] }> {
+  const topicMap = new Map<string, { lane: string; summary?: string; items: AcceptedEvidenceItem[] }>();
   for (const item of snapshot.evidence) {
     const topicId = item.topicId || 'UNKNOWN_TOPIC';
     const existing = topicMap.get(topicId);
     if (existing) {
       existing.items.push(item);
+      if (!existing.summary?.trim() && item.topicSummary?.trim()) {
+        existing.summary = item.topicSummary.trim();
+      }
     } else {
       topicMap.set(topicId, {
         lane: item.lane || 'UNKNOWN',
+        summary: item.topicSummary?.trim() || undefined,
         items: [item],
       });
     }

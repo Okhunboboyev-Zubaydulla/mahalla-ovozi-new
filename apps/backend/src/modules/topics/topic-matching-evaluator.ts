@@ -163,21 +163,35 @@ Your objective is to evaluate relevance-qualified candidate messages and assign 
 1. DOMAIN & INCIDENT-LEVEL SPECIFICITY PRECEDENCE:
    - Explicit Service Shift: When a candidate message explicitly mentions or contracts a distinct municipal service category (e.g. "Suvam ucdi mana", "Gazam o'chdi", "Trubayam yorildi"), this domain ALWAYS takes precedence over conversational thread continuity. You MUST NEVER match a message about a different service category into an active topic of another category.
    - Incident-Level Distinction Within Same Service Lane: Having an active topic in the same service lane does NOT mean all new messages in that lane belong to it. Two messages in the same service category describe different Topics when they describe distinct underlying real-world situations (e.g., a general tap water supply outage vs. a localized pipe burst/leakage on a street; a neighborhood power cut vs. a sparking transformer; general low gas pressure vs. an active gas leak).
-   - If the candidate refers to the same ongoing incident, match it (MATCH_EXISTING_TOPIC); if it reports a distinct incident or separate physical problem, seed a new topic (NEW_TOPIC with primary_lane matching the candidate's service).
+   - General Outage vs. Localized Street Incidents:
+     - When an active topic represents a general municipal service outage/disruption across the Mahalla (e.g. Current Topic Summary: "Сув таъминотида узилиш юз бергани хабар қилинмоқда" or "Электр таъминотида узилиш..."), and another topic represents a localized physical infrastructure problem on a specific street (e.g. "Боғзор кўчасида сув қувури сизиши..."):
+     - Any subsequent general inquiry, status check, or complaint that does NOT specifically name that localized street/location (e.g. "hech bo'lmasa suv kelib turgandi", "suv bormi?", "suv keldimi?", "haliyam yo'q", "qachon berishadi?") belongs strictly to the GENERAL OUTAGE TOPIC (MATCH_EXISTING_TOPIC).
+     - You MUST NOT attach general service inquiries to a localized street rupture topic.
+     - You MUST NOT seed a duplicate 3rd topic (NEW_TOPIC) when an ongoing general outage topic already exists for that service lane.
 
-2. CAUSAL DISRUPTIONS VS COMPOUND CO-OCCURRING COMPLAINTS:
+2. SAME-DAY GENERAL UTILITY OUTAGE CONTINUITY (MULTI-HOUR RECURRENCE & FOLLOW-UPS):
+   - Municipal utility outages (tap water cuts, power cuts, low gas pressure) in a Mahalla are community-wide disruptions that typically persist across several hours or throughout the calendar day.
+   - When an active topic already exists for a general service outage in this Mahalla today:
+     - Any subsequent resident message on the same calendar day reporting, inquiring about, confirming, lamenting, or checking on that same service (e.g. "suv keb turgandedi", "suv keldimi?", "chiroq yondimi?", "suv haliyam yo'q", "gaz yana o'chdi", "svetni berishmasa kere"), REGARDLESS of how many hours have elapsed since the last message (e.g., even after 4, 6, or 8 hours of chat silence), MUST be matched to the existing ongoing outage topic (MATCH_EXISTING_TOPIC). (Note: For purely subjectless fragments that omit the service name entirely like "Haliyam yo'q" or "Bizda ham", strictly follow Section 4 below).
+     - This applies even if an earlier resident reported temporary restoration ("suv keldi", "svet yondi") and a later resident reports recurrence ("yana o'chdi", "suv kelib turgandi endi yana yo'q"): match to the existing topic (MATCH_EXISTING_TOPIC), because the topic projection engine will recalculate and describe the reported recurrence in the same topic card.
+     - You MUST NOT create a duplicate topic (NEW_TOPIC) for the same service outage simply because several hours have passed.
+
+3. CAUSAL DISRUPTIONS VS COMPOUND CO-OCCURRING COMPLAINTS:
    - Causal Chains: When a candidate states that one utility failure caused another (e.g. "Svet o'chgani sababli suv nasosi to'xtadi", "Gaz yo'qligiga tokda isitgich yoqdik"), assign to the ROOT CAUSE domain topic (e.g. ELECTRICITY for power loss causing pump failure).
    - Compound Co-Occurring Complaints: When a candidate complains of multiple independent disruptions (e.g. "Suvam yo'q, gazam yo'q"), assign to the first/dominant service lane mentioned (e.g. WATER).
 
-3. TEMPORAL CONTINUITY HORIZON & STRICT N-1 BINDING:
-   - For subjectless continuations, reactions, confirmations, or follow-up complaints (e.g. "Cherez den uciroriw odat bub qoldi ln. Remon diyiladi...", "Haliyam yo'q", "Bizda ham", "Qachon berishadi?"):
+4. TEMPORAL CONTINUITY HORIZON & STRICT N-1 BINDING (SUBJECTLESS FRAGMENTS):
+   - For subjectless continuations, reactions, confirmations, or follow-up complaints WITHOUT naming any service (e.g. "Cherez den uciroriw odat bub qoldi ln. Remon diyiladi...", "Haliyam yo'q", "Bizda ham", "Qachon berishadi?"):
      - Within 30 minutes of chat activity: You MUST match to the topic of the IMMEDIATE PRECEDING RECENT MESSAGE (N-1 IN CHAT). You MUST NOT skip the immediate preceding message (N-1) to latch onto an earlier conversation topic (N-2, N-3) unless the candidate explicitly names that other service.
      - After >30 minutes of chat silence: If there is exactly ONE active unresolved outage topic in the Mahalla today, attach to that active topic; if multiple active topics or zero exist, classify as UNASSIGNABLE_VAGUE.
 
-4. SITUATION CONTINUITY VS INCIDENT ISOLATION & HARM HIERARCHY:
+5. SITUATION CONTINUITY VS INCIDENT ISOLATION & CALIBRATED ANTI-OVERMERGING:
    - Multiple reports or inquiries regarding the same underlying service outage or civic incident must be grouped into the same Topic.
    - Independent Incidents: Different public service categories, distinct physical problems (e.g. supply unavailability vs localized pipe rupture/leakage/damage), or distinct incidents on different streets/locations represent separate Topics.
-   - Anti-Overmerging Precedence: When in doubt whether a report is part of an ongoing situation or a distinct disruption, prefer NEW_TOPIC. Wrongly merging unrelated situations into one misleading topic is the most severe error.
+   - Calibrated Anti-Overmerging Precedence:
+     - DO NOT merge distinct physical failures or different streets into one topic (e.g. pipe leaks on street X must not merge into general water outage or power cut).
+     - BUT merging subsequent same-day reports, inquiries, or recurrences of the SAME ongoing general utility outage into its active topic is MANDATORY behavior, NOT over-merging.
+     - Only seed a NEW_TOPIC in the same lane if: (a) an ongoing general outage exists and the candidate explicitly identifies a distinct localized physical infrastructure failure (e.g., named street pipe break, fallen transformer, sewage burst), OR (b) only a localized street incident exists and the candidate reports a community-wide general utility outage (e.g., "suv butun mahallada yo'q").
 
 ### OUTPUT FORMAT
 Respond strictly with valid JSON conforming to the requested schema.`;
@@ -228,7 +242,14 @@ ${input.relevanceReasoning ? `- Relevance Reasoning: "${input.relevanceReasoning
           )
           .join('\n');
 
-        topicSections.push(`- Topic ID: ${topicId} (Primary Lane: ${group.lane})
+        const cleanSummary = group.summary?.trim().replace(/\n/g, ' ');
+        const initialExcerpt = group.items[0]?.verbatimText
+          ? `(Initial report: "${group.items[0].verbatimText.slice(0, 100).replace(/\n/g, ' ')}")`
+          : '';
+        const summaryDisplay = cleanSummary ? `"${cleanSummary}"` : initialExcerpt;
+        const summaryLine = summaryDisplay ? `\n  Current Topic Summary: ${summaryDisplay}` : '';
+
+        topicSections.push(`- Topic ID: ${topicId} (Primary Lane: ${group.lane})${summaryLine}
   Accepted Evidence:
 ${itemsText}`);
       }

@@ -164,7 +164,9 @@ export function isTelegramCommand(message: TelegramMessage): boolean {
 
 const SERVICE_MESSAGE_KEYS: readonly string[] = [
   'new_chat_members',
+  'new_chat_participant',
   'left_chat_member',
+  'left_chat_participant',
   'new_chat_title',
   'new_chat_photo',
   'delete_chat_photo',

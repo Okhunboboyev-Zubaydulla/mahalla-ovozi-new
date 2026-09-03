@@ -19,6 +19,7 @@ import { createOrResetProductOwner } from '../src/modules/auth/account-service.j
 import { COOKIE_NAME } from '../src/modules/auth/session-manager.js';
 import { createBossClient, initBossQueues } from '../src/adapters/jobs/boss-client.js';
 import { purgeExpiredDebugIntakePayloads } from '../src/modules/retention/debug-payload-retention.js';
+import { extractSignalVerbatimText } from '../src/modules/ai/signal-management-service.js';
 import type PgBoss from 'pg-boss';
 
 const SAME_ORIGIN_HEADERS = {
@@ -546,6 +547,99 @@ describe('Signal & Evidence Management Console & CRUD Verification', () => {
     });
 
     expect(res.statusCode).toBe(404);
+  });
+
+  it('12. extractSignalVerbatimText resolves native message fields and service event fallbacks', () => {
+    // 1. Evidence verbatim text precedence
+    expect(extractSignalVerbatimText('Evidence verbatim text', { message: { text: 'Raw text' } })).toBe('Evidence verbatim text');
+
+    // 2. Raw message text
+    expect(extractSignalVerbatimText(null, { message: { text: 'Suv oqib yotibdi' } })).toBe('Suv oqib yotibdi');
+
+    // 3. Media caption
+    expect(extractSignalVerbatimText(null, { message: { caption: 'Quvur yorildi rasm' } })).toBe('Quvur yorildi rasm');
+
+    // 4. Service message: left_chat_participant
+    expect(
+      extractSignalVerbatimText(null, {
+        message: { left_chat_participant: { first_name: 'Ali', last_name: 'Valiyev' } },
+      }),
+    ).toBe('(Хизмат хабари: Ali Valiyev гуруҳни тарк этди)');
+
+    // 5. Fallback for completely empty payload
+    expect(extractSignalVerbatimText(null, {})).toBe('(Матн мавжуд эмас)');
+  });
+
+  it('13. GET /api/v1/admin/signals extracts native Telegram text for in-flight signals and marks service message exclusions as REJECTED', async () => {
+    const rawMsgIntakeId = `intake_raw_${crypto.randomUUID()}`;
+    const serviceMsgIntakeId = `intake_service_${crypto.randomUUID()}`;
+
+    // Insert in-flight message with raw Telegram update
+    await db.insert(telegramIntakeRecords).values({
+      id: rawMsgIntakeId,
+      districtId: testDistrictId,
+      mahallaName,
+      telegramBotId: 'bot_test',
+      telegramChatId: '-10099887766',
+      telegramMessageId: '5501',
+      originalTimestamp: new Date('2026-09-02T12:00:00.000Z'),
+      calendarDay: '2026-09-02',
+      rawPayload: {
+        update_id: 112233,
+        message: {
+          message_id: 5501,
+          date: 1788350400,
+          chat: { id: -10099887766, type: 'supergroup', title: 'Test Group' },
+          from: { id: 12345, is_bot: false, first_name: 'TestUser' },
+          text: 'Mahallamizda suv bosimi juda past',
+        },
+      },
+    });
+
+    // Insert service message (user left group)
+    await db.insert(telegramIntakeRecords).values({
+      id: serviceMsgIntakeId,
+      districtId: testDistrictId,
+      mahallaName,
+      telegramBotId: 'bot_test',
+      telegramChatId: '-10099887766',
+      telegramMessageId: '5502',
+      originalTimestamp: new Date('2026-09-02T12:01:00.000Z'),
+      calendarDay: '2026-09-02',
+      rawPayload: {
+        update_id: 112234,
+        message: {
+          message_id: 5502,
+          date: 1788350460,
+          chat: { id: -10099887766, type: 'supergroup', title: 'Test Group' },
+          from: { id: 12345, is_bot: false, first_name: 'TestUser' },
+          left_chat_participant: { id: 12345, is_bot: false, first_name: 'TestUser' },
+        },
+      },
+    });
+
+    const res = await server.inject({
+      method: 'GET',
+      url: `/api/v1/admin/signals?districtId=${testDistrictId}`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.payload);
+
+    const rawSignal = body.items.find((item: any) => item.intakeId === rawMsgIntakeId);
+    expect(rawSignal).toBeDefined();
+    expect(rawSignal.verbatimText).toBe('Mahallamizda suv bosimi juda past');
+    expect(rawSignal.status).toBe('PENDING');
+
+    const serviceSignal = body.items.find((item: any) => item.intakeId === serviceMsgIntakeId);
+    expect(serviceSignal).toBeDefined();
+    expect(serviceSignal.status).toBe('REJECTED');
+    expect(serviceSignal.exclusionReason).toBe('SERVICE_MESSAGE');
+    expect(serviceSignal.verbatimText).toContain('тарк этди');
   });
 
   afterAll(async () => {

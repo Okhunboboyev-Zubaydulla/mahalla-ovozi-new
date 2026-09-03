@@ -24,6 +24,7 @@ import {
 import { calculateRetentionDeadline } from '../retention/index.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
 import { getTashkentCalendarDay } from '../telegram-intake/timezone-util.js';
+import { qualifyTelegramContent } from '../telegram-intake/telegram-content-qualification.js';
 import {
   encodeKeysetCursor,
   decodeKeysetCursor,
@@ -33,6 +34,69 @@ import {
   type SignalDetailDto,
   type QualifyingLane,
 } from '@mahalla-ovozi/api-contracts';
+
+/**
+ * Resolves the display text for a signal message across database evidence and raw payload structures.
+ */
+export function extractSignalVerbatimText(
+  evidenceVerbatimText: string | null | undefined,
+  intakeRawPayload: unknown,
+): string {
+  if (typeof evidenceVerbatimText === 'string' && evidenceVerbatimText.trim().length > 0) {
+    return evidenceVerbatimText;
+  }
+
+  const raw =
+    typeof intakeRawPayload === 'object' && intakeRawPayload !== null
+      ? (intakeRawPayload as Record<string, any>)
+      : {};
+
+  if (typeof raw.verbatimText === 'string' && raw.verbatimText.trim().length > 0) {
+    return raw.verbatimText;
+  }
+
+  if (typeof raw.text === 'string' && raw.text.trim().length > 0) {
+    return raw.text;
+  }
+
+  const message =
+    typeof raw.message === 'object' && raw.message !== null
+      ? (raw.message as Record<string, any>)
+      : typeof raw.edited_message === 'object' && raw.edited_message !== null
+        ? (raw.edited_message as Record<string, any>)
+        : typeof raw.channel_post === 'object' && raw.channel_post !== null
+          ? (raw.channel_post as Record<string, any>)
+          : typeof raw.edited_channel_post === 'object' && raw.edited_channel_post !== null
+            ? (raw.edited_channel_post as Record<string, any>)
+            : null;
+
+  if (message) {
+    if (typeof message.text === 'string' && message.text.trim().length > 0) {
+      return message.text;
+    }
+    if (typeof message.caption === 'string' && message.caption.trim().length > 0) {
+      return message.caption;
+    }
+    if (message.left_chat_participant || message.left_chat_member) {
+      const user = message.left_chat_participant || message.left_chat_member;
+      const name = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.username || '';
+      return name
+        ? `(Хизмат хабари: ${name} гуруҳни тарк этди)`
+        : `(Хизмат хабари: фойдаланувчи гуруҳни тарк этди)`;
+    }
+    if (message.new_chat_members || message.new_chat_participant) {
+      return `(Хизмат хабари: янги аъзо қўшилди)`;
+    }
+    if (message.pinned_message) return `(Хизмат хабари: хабар қотирилди)`;
+    if (message.photo) return `(Расм хабари)`;
+    if (message.voice) return `(Овозли хабар)`;
+    if (message.video) return `(Видео хабар)`;
+    if (message.document) return `(Ҳужжат)`;
+    if (message.sticker) return `(Стикер)`;
+  }
+
+  return '(Матн мавжуд эмас)';
+}
 
 export class SignalNotFoundError extends Error {
   readonly code = 'SIGNAL_NOT_FOUND' as const;
@@ -69,6 +133,9 @@ export class SignalManagementService {
         districtName: districts.name,
         mahallaName: telegramIntakeRecords.mahallaName,
         calendarDay: telegramIntakeRecords.calendarDay,
+        telegramBotId: telegramIntakeRecords.telegramBotId,
+        telegramChatId: telegramIntakeRecords.telegramChatId,
+        telegramMessageId: telegramIntakeRecords.telegramMessageId,
         originalTimestamp: telegramIntakeRecords.originalTimestamp,
         intakeRawPayload: telegramIntakeRecords.rawPayload,
         intakeCreatedAt: telegramIntakeRecords.createdAt,
@@ -126,7 +193,7 @@ export class SignalManagementService {
     if (query.search && query.search.trim().length > 0) {
       const searchPattern = `%${query.search.trim()}%`;
       conditions.push(
-        sql`(${acceptedEvidence.verbatimText} ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->>'verbatimText' ILIKE ${searchPattern})`,
+        sql`(${acceptedEvidence.verbatimText} ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->>'verbatimText' ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->'message'->>'text' ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->'message'->>'caption' ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->'edited_message'->>'text' ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->'edited_message'->>'caption' ILIKE ${searchPattern})`,
       );
     }
 
@@ -167,6 +234,10 @@ export class SignalManagementService {
 
       let status: 'PENDING' | 'ACCEPTED' | 'REJECTED' = 'REJECTED';
       let isRelevant = false;
+      let exclusionReason =
+        (aiResult.exclusion_reason as string) ||
+        (rawPayload.exclusionReason as string) ||
+        null;
 
       if (row.evidenceId || row.aiOpFinalStatus === 'COMPLETED_RELEVANT') {
         status = 'ACCEPTED';
@@ -179,17 +250,31 @@ export class SignalManagementService {
         status = 'REJECTED';
         isRelevant = false;
       } else {
-        status = 'PENDING';
-        isRelevant = false;
+        const qual = qualifyTelegramContent({
+          id: row.intakeId,
+          districtId: row.districtId,
+          mahallaName: row.mahallaName,
+          calendarDay: row.calendarDay,
+          telegramBotId: row.telegramBotId || '',
+          telegramChatId: row.telegramChatId || '',
+          telegramMessageId: row.telegramMessageId || '',
+          originalTimestamp: row.originalTimestamp,
+          rawPayload: row.intakeRawPayload,
+        });
+        if (qual.status === 'EXCLUDED') {
+          status = 'REJECTED';
+          isRelevant = false;
+          exclusionReason = qual.reason;
+        } else {
+          status = 'PENDING';
+          isRelevant = false;
+        }
       }
 
-      const verbatimText =
-        row.evidenceVerbatimText ||
-        (typeof rawPayload.verbatimText === 'string'
-          ? rawPayload.verbatimText
-          : typeof rawPayload.text === 'string'
-            ? rawPayload.text
-            : '(Матн мавжуд эмас)');
+      const verbatimText = extractSignalVerbatimText(
+        row.evidenceVerbatimText,
+        row.intakeRawPayload,
+      );
 
       let relevantLanes: QualifyingLane[] = [];
       if (Array.isArray(aiResult.relevant_lanes)) {
@@ -197,11 +282,6 @@ export class SignalManagementService {
       } else if (row.topicPrimaryLane) {
         relevantLanes = [row.topicPrimaryLane as QualifyingLane];
       }
-
-      const exclusionReason =
-        (aiResult.exclusion_reason as string) ||
-        (rawPayload.exclusionReason as string) ||
-        null;
 
       const reasoning =
         (aiResult.reasoning as string) ||
@@ -277,6 +357,7 @@ export class SignalManagementService {
         districtName: districts.name,
         mahallaName: telegramIntakeRecords.mahallaName,
         calendarDay: telegramIntakeRecords.calendarDay,
+        telegramBotId: telegramIntakeRecords.telegramBotId,
         telegramChatId: telegramIntakeRecords.telegramChatId,
         telegramMessageId: telegramIntakeRecords.telegramMessageId,
         telegramUserId: telegramIntakeRecords.telegramUserId,
@@ -324,6 +405,10 @@ export class SignalManagementService {
 
     let status: 'PENDING' | 'ACCEPTED' | 'REJECTED' = 'REJECTED';
     let isRelevant = false;
+    let exclusionReason =
+      (aiResult.exclusion_reason as string) ||
+      (rawPayload.exclusionReason as string) ||
+      null;
 
     if (row.evidenceId || row.aiOpFinalStatus === 'COMPLETED_RELEVANT') {
       status = 'ACCEPTED';
@@ -336,17 +421,31 @@ export class SignalManagementService {
       status = 'REJECTED';
       isRelevant = false;
     } else {
-      status = 'PENDING';
-      isRelevant = false;
+      const qual = qualifyTelegramContent({
+        id: row.intakeId,
+        districtId: row.districtId,
+        mahallaName: row.mahallaName,
+        calendarDay: row.calendarDay,
+        telegramBotId: row.telegramBotId || '',
+        telegramChatId: row.telegramChatId || '',
+        telegramMessageId: row.telegramMessageId || '',
+        originalTimestamp: row.originalTimestamp,
+        rawPayload: row.intakeRawPayload,
+      });
+      if (qual.status === 'EXCLUDED') {
+        status = 'REJECTED';
+        isRelevant = false;
+        exclusionReason = qual.reason;
+      } else {
+        status = 'PENDING';
+        isRelevant = false;
+      }
     }
 
-    const verbatimText =
-      row.evidenceVerbatimText ||
-      (typeof rawPayload.verbatimText === 'string'
-        ? rawPayload.verbatimText
-        : typeof rawPayload.text === 'string'
-          ? rawPayload.text
-          : '(Матн мавжуд эмас)');
+    const verbatimText = extractSignalVerbatimText(
+      row.evidenceVerbatimText,
+      row.intakeRawPayload,
+    );
 
     let relevantLanes: QualifyingLane[] = [];
     if (Array.isArray(aiResult.relevant_lanes)) {
@@ -354,11 +453,6 @@ export class SignalManagementService {
     } else if (row.topicPrimaryLane) {
       relevantLanes = [row.topicPrimaryLane as QualifyingLane];
     }
-
-    const exclusionReason =
-      (aiResult.exclusion_reason as string) ||
-      (rawPayload.exclusionReason as string) ||
-      null;
 
     const reasoning =
       (aiResult.reasoning as string) ||
