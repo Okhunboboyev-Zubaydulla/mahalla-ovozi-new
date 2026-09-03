@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   TopicProjectionEvaluator,
   TopicProjectionResultSchema,
+  TOPIC_PROJECTION_SYSTEM_PROMPT,
   isUzbekCyrillic,
   type TopicProjectionResult,
 } from '../src/modules/topics/topic-projection-evaluator.js';
@@ -660,6 +661,66 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
       expect(prompt).toContain('other topic 1 message 3');
       expect(prompt).not.toContain('other topic 1 message 2');
       expect(prompt).not.toContain('other topic 1 message 1');
+    });
+
+    it('ensures system prompt defines mandatory location and landmark prefixing for localized infrastructure issues', () => {
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('MANDATORY LOCATION & LANDMARK PREFIX FOR LOCALIZED INFRASTRUCTURE FAILURES');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('elektroset arqasideyi kucada');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('Электросеть орқасидаги кўчада');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('NEVER strip the landmark or street reference');
+    });
+
+    it('extracts landmark prefix into summary title for localized pipe leak (Card 1 Navbahor case)', async () => {
+      const mockGateway = createMockAiGateway({
+        summary: 'Электросеть орқасидаги кўчада сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда.',
+        lanes: ['WATER'],
+        anchor_evidence_id: 'evi_elektroset_1',
+        anchor_quote: 'elektroset arqasideyi kucada suv oqib yotipti shetda. 2 kun buldi.',
+        latest_meaningful_activity_timestamp: '2026-09-03T12:39:00.000Z',
+        attribution: 'Маҳалла фуқароси',
+        is_hokim_related: false,
+      });
+      const evaluator = new TopicProjectionEvaluator(mockGateway);
+
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-03',
+        contextRevision: 3,
+        snapshotFingerprint: 'fp_navbahor_elektroset',
+        evidence: [
+          {
+            id: 'evi_elektroset_1',
+            topicId: 'top_navbahor_pipe_elektroset',
+            telegramMessageId: '123901',
+            originalTimestamp: '2026-09-03T12:39:00.000Z',
+            verbatimText: 'elektroset arqasideyi kucada suv oqib yotipti shetda. 2 kun buldi.',
+            lane: 'WATER',
+          },
+          {
+            id: 'evi_elektroset_2',
+            topicId: 'top_navbahor_pipe_elektroset',
+            telegramMessageId: '123902',
+            originalTimestamp: '2026-09-03T12:39:30.000Z',
+            verbatimText: 'vodokanalga aytsh kere',
+            lane: 'WATER',
+          },
+        ],
+      };
+
+      const result = await evaluator.evaluateTopicProjection({
+        topicId: 'top_navbahor_pipe_elektroset',
+        primaryLane: 'WATER',
+        generation: 1,
+        snapshot,
+        profileId: 'prof_proj_2026_08_v1',
+      });
+
+      expect(result.summary).toBe('Электросеть орқасидаги кўчада сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда.');
+      expect(result.summary).toContain('Электросеть орқасидаги кўчада');
+      expect(result.anchorEvidenceId).toBe('evi_elektroset_1');
+      expect(result.lanes).toEqual(['WATER']);
+      expect(result.isHokimRelated).toBe(false);
     });
   });
 });

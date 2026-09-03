@@ -135,11 +135,22 @@ Your objective is to recalculate the single, authoritative, multi-lane derived r
        - "...ҳолати юзасидан маълумот олинмоқда" (STRICTLY FORBIDDEN)
      - A Topic Card is an alert to the District Hokim and municipal departments about a real-world citizen problem. Stating that "information is being gathered about stability" completely hides the citizen's suffering. State the core failure directly (e.g. "Сув таъминотида узилиш юз бергани хабар қилинмоқда.").
 
-   - CANONICAL OUTAGE TEMPLATES BY LANE:
-     - WATER: "Сув таъминотида узилиш юз бергани хабар қилинмоқда." (low pressure: "Сув босими пастлиги хабар қилинмоқда."; pipe leak: "[Кўча номи бўлса: <Кўча номи> кўчасида] Сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда.")
-     - ELECTRICITY: "Электр таъминотида узилиш юз бергани хабар қилинмоқда." (low voltage: "Электр кучланиши (вольтаж) пастлиги хабар қилинмоқда.")
-     - GAS: "Газ таъминотида узилиш юз бергани хабар қилинмоқда." (low pressure: "Газ босими пастлиги хабар қилинмоқда.")
-     - WASTE: "Чиқиндилар олиб кетилмагани хабар қилинмоқда."
+    - CANONICAL OUTAGE TEMPLATES BY LANE:
+      - WATER: "Сув таъминотида узилиш юз бергани хабар қилинмоқда." (low pressure: "Сув босими пастлиги хабар қилинмоқда."; pipe leak: "[Кўча/мўлжал бўлса: <Кўча номи ёки Мўлжал>да] Сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда.")
+      - ELECTRICITY: "Электр таъминотида узилиш юз бергани хабар қилинмоқда." (low voltage: "Электр кучланиши (вольтаж) пастлиги хабар қилинмоқда.")
+      - GAS: "Газ таъминотида узилиш юз бергани хабар қилинмоқда." (low pressure: "Газ босими пастлиги хабар қилинмоқда.")
+      - WASTE: "Чиқиндилар олиб кетилмагани хабар қилинмоқда."
+
+    - MANDATORY LOCATION & LANDMARK PREFIX FOR LOCALIZED INFRASTRUCTURE FAILURES:
+      - For localized physical issues (pipe leaks/bursts, sewage overflow, broken streetlights, transformer sparking/fires, road potholes/collapse):
+      - When accepted evidence mentions ANY street name, landmark, building reference, or colloquial location (e.g. "Bog'zor ko'chasida", "elektroset arqasidagi ko'chada", "14-maktab yonida", "bozor orqasida", "Amir Temur ko'chasida"):
+      - You MUST ALWAYS extract this location/landmark and prefix it in authentic Uzbek Cyrillic into the summary title.
+      - Examples:
+        - "elektroset arqasideyi kucada suv oqib yotipti" -> "Электросеть орқасидаги кўчада сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда."
+        - "bogzor kucada suv oqib yotpti" -> "Боғзор кўчасида сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда."
+        - "14-maktab yonida kanalizatsiya toshdi" -> "14-мактаб ёнида канализация тошгани хабар қилинмоқда."
+      - NEVER strip the landmark or street reference to produce a generic unlocalized template when location details exist in the evidence!
+      - If NO location or street is mentioned anywhere in the evidence, use the general unlocalized template: "Сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда."
 
    - CAUTIOUS REPORTED FRAMING:
      - Citizen reports are reported claims, NOT verified ground truth (use framing like "... хабар қилинмоқда", "... маълум қилинди", "... билдирилди").

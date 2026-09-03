@@ -186,10 +186,15 @@ Your objective is to evaluate relevance-qualified candidate messages and assign 
    - Causal Chains: When a candidate states that one utility failure caused another (e.g. "Svet o'chgani sababli suv nasosi to'xtadi", "Gaz yo'qligiga tokda isitgich yoqdik"), assign to the ROOT CAUSE domain topic (e.g. ELECTRICITY for power loss causing pump failure).
    - Compound Co-Occurring Complaints: When a candidate complains of multiple independent disruptions (e.g. "Suvam yo'q, gazam yo'q"), assign to the first/dominant service lane mentioned (e.g. WATER).
 
-4. TEMPORAL CONTINUITY HORIZON & STRICT N-1 BINDING (SUBJECTLESS FRAGMENTS):
+4. TEMPORAL CONTINUITY HORIZON & STRICT N-1 BINDING (SUBJECTLESS FRAGMENTS & MULTI-INCIDENT RESOLUTION):
    - For subjectless continuations, reactions, confirmations, or follow-up complaints WITHOUT naming any service (e.g. "Cherez den uciroriw odat bub qoldi ln. Remon diyiladi...", "Haliyam yo'q", "Bizda ham", "Qachon berishadi?"):
      - Within 30 minutes of chat activity: You MUST match to the topic of the IMMEDIATE PRECEDING RECENT MESSAGE (N-1 IN CHAT). You MUST NOT skip the immediate preceding message (N-1) to latch onto an earlier conversation topic (N-2, N-3) unless the candidate explicitly names that other service.
      - After >30 minutes of chat silence: If there is exactly ONE active unresolved outage topic in the Mahalla today, attach to that active topic; if multiple active topics or zero exist, classify as UNASSIGNABLE_VAGUE.
+   - Multi-Incident Disambiguation for Localized Follow-ups:
+     - When multiple localized physical incident topics exist in the same lane (e.g. Bog'zor street pipe burst AND Elektroset street pipe burst):
+     - If a subsequent follow-up mentions the issue type (e.g. "suv oqib yotipti hali ham", "trubani tuzatishmadi") but does NOT name a street or landmark:
+       - Within 30 minutes of chat activity: Match to the topic of the IMMEDIATE PRECEDING RECENT MESSAGE (N-1 IN CHAT) if it belongs to one of those incident threads.
+       - After >30 minutes of chat silence: The AI MUST NOT guess between the two localized streets. If a general mahalla water outage topic exists today, match to the general outage topic; otherwise, classify as UNASSIGNABLE_VAGUE to avoid misattributing field reports to the wrong street.
 
 5. SITUATION CONTINUITY VS INCIDENT ISOLATION & CALIBRATED ANTI-OVERMERGING:
    - Multiple reports or inquiries regarding the same underlying service outage or civic incident must be grouped into the same Topic.

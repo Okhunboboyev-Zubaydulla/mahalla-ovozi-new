@@ -860,6 +860,85 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
       expect(validFollowupResult.data.matched_topic_id).toBe('top_navroz_waste_truck');
       expect(validFollowupResult.data.primary_lane).toBeNull();
     });
+
+    it('ensures system prompt defines multi-incident disambiguation rules for localized infrastructure follow-ups', () => {
+      expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('Multi-Incident Disambiguation for Localized Follow-ups');
+      expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('The AI MUST NOT guess between the two localized streets');
+    });
+
+    it('handles multi-incident follow-ups: binds to thread within 30m and avoids arbitrary guessing after chat silence', async () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-03',
+        contextRevision: 4,
+        snapshotFingerprint: 'fp_navbahor_multi_leak',
+        evidence: [
+          {
+            id: 'evi_bogzor_1',
+            topicId: 'top_bogzor_pipe',
+            telegramMessageId: '7001',
+            originalTimestamp: '2026-09-03T07:42:00.000Z',
+            verbatimText: 'bogzor kucada suv oqib yotpti. 2 kun buldi. daryo bb ketmagunca vodokanal qaramedimi,',
+            lane: 'WATER',
+            topicSummary: 'Боғзор кўчасида сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда.',
+          },
+          {
+            id: 'evi_elektroset_1',
+            topicId: 'top_elektroset_pipe',
+            telegramMessageId: '7002',
+            originalTimestamp: '2026-09-03T12:39:00.000Z',
+            verbatimText: 'elektroset arqasideyi kucada suv oqib yotipti shetda. 2 kun buldi.',
+            lane: 'WATER',
+            topicSummary: 'Электросеть орқасидаги кўчада сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда.',
+          },
+        ],
+      };
+
+      // Case 1: Thread continuation within 2m of Elektroset report -> matches Elektroset topic
+      mockAdapter.setNextResponse({
+        decision: 'MATCH_EXISTING_TOPIC',
+        matched_topic_id: 'top_elektroset_pipe',
+        primary_lane: null,
+        reasoning: 'Immediate chat thread continuation regarding pipe leak behind Elektroset',
+      });
+
+      const threadContinuation = await evaluator.evaluateTopicAssignment({
+        candidateText: 'ula kegunca daryo bub ketmasa buldi',
+        telegramMessageId: '7003',
+        originalTimestamp: '2026-09-03T12:41:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['WATER'],
+        snapshot,
+        profileId: 'prof_match_2026_08_v1',
+      });
+
+      expect(threadContinuation.data.decision).toBe('MATCH_EXISTING_TOPIC');
+      expect(threadContinuation.data.matched_topic_id).toBe('top_elektroset_pipe');
+
+      // Case 2: Isolated follow-up (>4h later) with multiple localized pipe bursts and no general water outage -> UNASSIGNABLE_VAGUE (no guessing)
+      mockAdapter.setNextResponse({
+        decision: 'UNASSIGNABLE_VAGUE',
+        matched_topic_id: null,
+        primary_lane: null,
+        reasoning: 'Ambiguous pipe leak report after chat silence with multiple active localized pipe bursts',
+      });
+
+      const isolatedAmbiguous = await evaluator.evaluateTopicAssignment({
+        candidateText: 'suv oqib yotipti hali ham tuzatishmadi',
+        telegramMessageId: '7004',
+        originalTimestamp: '2026-09-03T17:00:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['WATER'],
+        snapshot,
+        profileId: 'prof_match_2026_08_v1',
+      });
+
+      expect(isolatedAmbiguous.data.decision).toBe('UNASSIGNABLE_VAGUE');
+      expect(isolatedAmbiguous.data.matched_topic_id).toBeNull();
+    });
   });
 });
 
