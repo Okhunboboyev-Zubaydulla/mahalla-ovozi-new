@@ -939,6 +939,96 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
       expect(isolatedAmbiguous.data.decision).toBe('UNASSIGNABLE_VAGUE');
       expect(isolatedAmbiguous.data.matched_topic_id).toBeNull();
     });
+
+    it('ensures system prompt defines spatial orientir exceptions and binds primary_lane to Relevant Lanes', () => {
+      expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('CRITICAL EXCEPTION (SPATIAL ORIENTIRS / ADDRESSES)');
+      expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('MUST strictly be chosen from the candidate\'s upstream Relevant Lanes');
+      expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('elektrosvet orqa tarafideyi kucagayam kesin');
+      expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('NEVER ELECTRICITY');
+    });
+
+    it('ensures system prompt defines HOKIM_RELATED isolation for direct complaints and appeals only', () => {
+      expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('HOKIM_RELATED is strictly reserved for civic complaints');
+      expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('explicitly addressed to or demanding action from the District Hokim or Hokimiyat');
+      expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('Messages that do NOT address or criticize the Hokim/Hokimiyat MUST NEVER be assigned to or matched into HOKIM_RELATED');
+    });
+
+    it('treats "elektrosvet orqa tarafideyi kucagayam kesin" as WASTE and avoids ELECTRICITY (Navbahor case)', async () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-04',
+        contextRevision: 1,
+        snapshotFingerprint: 'sha256_navbahor_orientir',
+        evidence: [
+          {
+            id: 'evi_navbahor_waste_1',
+            topicId: 'top_navbahor_waste_active',
+            telegramMessageId: '8010',
+            originalTimestamp: '2026-09-04T08:10:00.000Z',
+            verbatimText: 'musor mashinasi kelmadi bugun',
+            lane: 'WASTE',
+            topicSummary: 'Чиқиндилар олиб кетилмагани хабар қилинмоқда.',
+          },
+        ],
+      };
+
+      // Case 1: Active waste topic exists -> matches existing waste topic
+      mockAdapter.setNextResponse({
+        decision: 'MATCH_EXISTING_TOPIC',
+        matched_topic_id: 'top_navbahor_waste_active',
+        primary_lane: null,
+        reasoning: 'Follow-up request for municipal waste truck to service the street behind the electric utility office',
+      });
+
+      const matchResult = await evaluator.evaluateTopicAssignment({
+        candidateText: 'elektrosvet orqa tarafideyi kucagayam kesin',
+        telegramMessageId: '8161',
+        originalTimestamp: '2026-09-04T08:16:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['WASTE'],
+        relevanceReasoning: 'Waste collection route request',
+        snapshot,
+        profileId: 'prof_match_2026_08_v1',
+      });
+
+      expect(matchResult.data.decision).toBe('MATCH_EXISTING_TOPIC');
+      expect(matchResult.data.matched_topic_id).toBe('top_navbahor_waste_active');
+
+      // Case 2: Empty snapshot (no active waste topic) -> seeds NEW_TOPIC in WASTE, NOT ELECTRICITY
+      const emptySnapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-04',
+        contextRevision: 0,
+        snapshotFingerprint: 'sha256_empty',
+        evidence: [],
+      };
+
+      mockAdapter.setNextResponse({
+        decision: 'NEW_TOPIC',
+        matched_topic_id: null,
+        primary_lane: 'WASTE',
+        reasoning: 'New topic for missed municipal waste truck route for street behind electric office',
+      });
+
+      const newTopicResult = await evaluator.evaluateTopicAssignment({
+        candidateText: 'elektrosvet orqa tarafideyi kucagayam kesin',
+        telegramMessageId: '8162',
+        originalTimestamp: '2026-09-04T08:16:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        relevantLanes: ['WASTE'],
+        relevanceReasoning: 'Waste collection route request',
+        snapshot: emptySnapshot,
+        profileId: 'prof_match_2026_08_v1',
+      });
+
+      expect(newTopicResult.data.decision).toBe('NEW_TOPIC');
+      expect(newTopicResult.data.primary_lane).toBe('WASTE');
+      expect(newTopicResult.data.primary_lane).not.toBe('ELECTRICITY');
+    });
   });
 });
 

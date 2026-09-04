@@ -444,6 +444,29 @@ export async function processTopicAssignmentJobs(
                   retryBackoff: true,
                 });
               } else if (matchingDecision.decision === 'NEW_TOPIC') {
+                let effectivePrimaryLane = matchingDecision.primary_lane!;
+
+                // Programmatic Defense-in-Depth: primaryLane must align with upstream relevantLanes
+                if (
+                  relevantLanes &&
+                  relevantLanes.length > 0 &&
+                  relevantLanes[0] &&
+                  !relevantLanes.includes(effectivePrimaryLane)
+                ) {
+                  console.warn(
+                    JSON.stringify({
+                      event: 'TELEGRAM_TOPIC_ASSIGNMENT_PRIMARY_LANE_CLAMPED',
+                      districtId,
+                      mahallaName,
+                      telegramMessageId,
+                      aiReturnedLane: effectivePrimaryLane,
+                      clampedTo: relevantLanes[0],
+                      relevantLanes,
+                    }),
+                  );
+                  effectivePrimaryLane = relevantLanes[0];
+                }
+
                 const newTopicId = `top_${crypto.randomUUID()}`;
                 const retentionExpiresAt = calculateRetentionDeadline(latestCandidateTimestamp);
 
@@ -453,7 +476,7 @@ export async function processTopicAssignmentJobs(
                   districtId,
                   mahallaName,
                   calendarDay,
-                  primaryLane: matchingDecision.primary_lane!,
+                  primaryLane: effectivePrimaryLane,
                   status: 'ACTIVE',
                   latestRelevantEvidenceTimestamp: latestCandidateTimestamp,
                   retentionExpiresAt,

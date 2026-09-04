@@ -670,6 +670,10 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
       expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('NEVER strip the landmark or street reference');
     });
 
+    it('ensures system prompt defines HOKIM_RELATED multi-lane derivation strictly for explicit appeals', () => {
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('Include HOKIM_RELATED if and only if the evidence involves explicit civic appeals, complaints, or accountability directed to the District Hokim or Hokimiyat, and their direct follow-ups.');
+    });
+
     it('extracts landmark prefix into summary title for localized pipe leak (Card 1 Navbahor case)', async () => {
       const mockGateway = createMockAiGateway({
         summary: 'Электросеть орқасидаги кўчада сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда.',

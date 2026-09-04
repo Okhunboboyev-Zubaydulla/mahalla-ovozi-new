@@ -600,10 +600,149 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
     });
 
     it('ensures system prompt defines official municipal entities vs informal scavengers across all 5 lanes', () => {
-      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('OFFICIAL MUNICIPAL UTILITY ENTITIES VS. INFORMAL ACTORS & SCAVENGERS');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('CRITICAL BOUNDARY: PUBLIC MUNICIPAL SERVICE VS. PRIVATE PEER-TO-PEER TRANSACTIONS');
       expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('musr yigib yuredigan lulilar');
       expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Toza Hudud, Maxsustrans, musor mashinasi');
       expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain("lo'lilar, aravakashlar, xashakchilar");
+    });
+
+    it('ensures system prompt defines HOKIM_RELATED strictly for problem-toned appeals to the Hokim or Hokimiyat', () => {
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('HOKIM_RELATED (Ҳокимга оид): STRICTLY AND ONLY civic complaints');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('explicitly addressed to or concerning the District Hokim or Hokimiyat');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('If a message does NOT explicitly appeal to, criticize, or demand action from the Hokim or Hokimiyat, it MUST NEVER be assigned to HOKIM_RELATED');
+    });
+
+    it('ensures system prompt defines communicative predicate over sentence mood and signal dominance', () => {
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Communicative Predicate over Sentence Mood');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Grammatical sentence form (declarative, interrogative, rhetorical, exclamatory) is non-binding');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Signal Dominance over Conversational Padding');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Colloquial Phonetics & Dialect Normalization');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('nme svet yu hammada shundemi');
+    });
+
+    it('evaluates interrogative failure reports, conversational padding, and speculative inquiries per approved matrix', async () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-04',
+        contextRevision: 1,
+        snapshotFingerprint: 'sha256_navbahor_interrogative',
+        evidence: [],
+      };
+
+      // 1. Greeting + Interrogative Active Blackout Assertion (Navbahor user case)
+      mockAdapter.setNextResponse({
+        is_relevant: true,
+        relevant_lanes: ['ELECTRICITY'],
+        exclusion_reason: null,
+        reasoning: 'Active power outage asserted in colloquial interrogative form with group greeting',
+      });
+      const blackoutCheck = await evaluator.evaluateRelevance({
+        candidateText: 'salom gruppadagila\nhamma yaxshimi\nnme svet yu hammada shundemi',
+        telegramMessageId: '9301',
+        originalTimestamp: '2026-09-04T11:59:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+      expect(blackoutCheck.data.is_relevant).toBe(true);
+      expect(blackoutCheck.data.relevant_lanes).toEqual(['ELECTRICITY']);
+
+      // 2. Rhetorical Stoppage Inquiry
+      mockAdapter.setNextResponse({
+        is_relevant: true,
+        relevant_lanes: ['WATER'],
+        exclusion_reason: null,
+        reasoning: 'Rhetorical question asserting active water supply stoppage',
+      });
+      const waterStoppage = await evaluator.evaluateRelevance({
+        candidateText: "Nega suv to'xtab qoldi yana, kechagacha bermaydimi endi?",
+        telegramMessageId: '9302',
+        originalTimestamp: '2026-09-04T12:05:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+      expect(waterStoppage.data.is_relevant).toBe(true);
+      expect(waterStoppage.data.relevant_lanes).toEqual(['WATER']);
+
+      // 3. Missed Municipal Garbage Truck Inquiry
+      mockAdapter.setNextResponse({
+        is_relevant: true,
+        relevant_lanes: ['WASTE'],
+        exclusion_reason: null,
+        reasoning: 'Inquiry asserting scheduled municipal garbage truck missed collection',
+      });
+      const wasteInquiry = await evaluator.evaluateRelevance({
+        candidateText: 'Musor mashinasi bugun nega kelmadi?',
+        telegramMessageId: '9303',
+        originalTimestamp: '2026-09-04T12:10:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+      expect(wasteInquiry.data.is_relevant).toBe(true);
+      expect(wasteInquiry.data.relevant_lanes).toEqual(['WASTE']);
+
+      // 4. Speculative Future Inquiry (No active disruption)
+      mockAdapter.setNextResponse({
+        is_relevant: false,
+        relevant_lanes: [],
+        exclusion_reason: 'SPECULATION_OR_RUMOR',
+        reasoning: 'Speculative inquiry about future gas cut without asserting an active failure',
+      });
+      const futureSpeculation = await evaluator.evaluateRelevance({
+        candidateText: "Bugun gaz o'chmaydimi?",
+        telegramMessageId: '9304',
+        originalTimestamp: '2026-09-04T12:15:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+      expect(futureSpeculation.data.is_relevant).toBe(false);
+      expect(futureSpeculation.data.exclusion_reason).toBe('SPECULATION_OR_RUMOR');
+
+      // 5. Contextless Conversational Inquiry
+      mockAdapter.setNextResponse({
+        is_relevant: false,
+        relevant_lanes: [],
+        exclusion_reason: 'GENERAL_CHATTER',
+        reasoning: 'Conversational check-in without civic disruption facts',
+      });
+      const generalChat = await evaluator.evaluateRelevance({
+        candidateText: 'Hammada tinchlikmi, kimdir biladimi?',
+        telegramMessageId: '9305',
+        originalTimestamp: '2026-09-04T12:20:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+      expect(generalChat.data.is_relevant).toBe(false);
+      expect(generalChat.data.exclusion_reason).toBe('GENERAL_CHATTER');
+
+      // 6. Bare Non-Assertive Check on Empty Board
+      mockAdapter.setNextResponse({
+        is_relevant: false,
+        relevant_lanes: [],
+        exclusion_reason: 'UNRESOLVED_AMBIGUOUS_FRAGMENT',
+        reasoning: 'Bare status check without asserting a disruption on empty board',
+      });
+      const bareCheck = await evaluator.evaluateRelevance({
+        candidateText: 'Suv bormi?',
+        telegramMessageId: '9306',
+        originalTimestamp: '2026-09-04T12:25:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+      expect(bareCheck.data.is_relevant).toBe(false);
+      expect(bareCheck.data.exclusion_reason).toBe('UNRESOLVED_AMBIGUOUS_FRAGMENT');
     });
 
     it('distinguishes informal scavengers/pickers (Navbahor lulilar case) from official municipal waste services', async () => {
@@ -680,6 +819,120 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
       expect(litterHazard.data.is_relevant).toBe(true);
       expect(litterHazard.data.relevant_lanes).toEqual(['WASTE']);
       expect(litterHazard.data.exclusion_reason).toBeNull();
+    });
+
+    it('ensures system prompt defines spatial orientir and landmark disambiguation rules', () => {
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('SPATIAL ORIENTIRS & LANDMARK DISAMBIGUATION');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Elektrosvetni orqa tarafi');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Vodokanal ro\'parasida');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Raygaz orqasidagi ko\'cha');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('IT REPRESENTS A PHYSICAL LANDMARK / ADDRESS');
+    });
+
+    it('disambiguates utility landmarks: treats "Elektrosvetni orqa tarafi" as location and binds to WASTE thread (Navro\'z case)', async () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navro\'z',
+        calendarDay: '2026-09-04',
+        contextRevision: 2,
+        snapshotFingerprint: 'sha256_navroz_musor_thread',
+        evidence: [
+          {
+            id: 'evi_navroz_1',
+            topicId: 'top_navroz_waste',
+            telegramMessageId: '7081',
+            originalTimestamp: '2026-09-04T07:08:00.000Z',
+            verbatimText: 'Musrlar yigilb kitti',
+            lane: 'WASTE',
+          },
+          {
+            id: 'evi_navroz_2',
+            topicId: 'top_navroz_waste',
+            telegramMessageId: '7082',
+            originalTimestamp: '2026-09-04T07:08:30.000Z',
+            verbatimText: 'Bizani kucaga kirmaganiga anca buldi Laziz aka',
+            lane: 'WASTE',
+          },
+        ],
+      };
+
+      // Candidate message using "Elektrosvetni orqa tarafi" as address/orientir in a garbage truck thread
+      mockAdapter.setNextResponse({
+        is_relevant: true,
+        relevant_lanes: ['WASTE'],
+        exclusion_reason: null,
+        reasoning: 'Complaint regarding missed municipal waste collection truck route for the neighborhood behind the electric utility building',
+      });
+
+      const result = await evaluator.evaluateRelevance({
+        candidateText: 'Elektrosvetni orqa tarafi borku garaj tarafga ....kemaganiga anca buldi...',
+        telegramMessageId: '7091',
+        originalTimestamp: '2026-09-04T07:09:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+
+      expect(result.data.is_relevant).toBe(true);
+      expect(result.data.relevant_lanes).toEqual(['WASTE']);
+      expect(result.data.relevant_lanes).not.toContain('ELECTRICITY');
+      expect(result.data.exclusion_reason).toBeNull();
+    });
+
+    it('correctly maps cross-utility orientirs to the actual failing utility lane', async () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Navro\'z',
+        calendarDay: '2026-09-04',
+        contextRevision: 1,
+        snapshotFingerprint: 'sha256_cross_orientir',
+        evidence: [],
+      };
+
+      // 1. "Vodokanal ro'parasida svet o'chdi" -> ELECTRICITY (Vodokanal is landmark, svet is outage)
+      mockAdapter.setNextResponse({
+        is_relevant: true,
+        relevant_lanes: ['ELECTRICITY'],
+        exclusion_reason: null,
+        reasoning: 'Power cut reported with Vodokanal building used as geographic landmark',
+      });
+
+      const vodokanalSvet = await evaluator.evaluateRelevance({
+        candidateText: "Vodokanal ro'parasida svet o'chdi",
+        telegramMessageId: '7101',
+        originalTimestamp: '2026-09-04T07:15:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+
+      expect(vodokanalSvet.data.is_relevant).toBe(true);
+      expect(vodokanalSvet.data.relevant_lanes).toEqual(['ELECTRICITY']);
+      expect(vodokanalSvet.data.relevant_lanes).not.toContain('WATER');
+
+      // 2. "Raygaz orqasidagi ko'chada truba yorilib suv oqyapti" -> WATER (Raygaz is landmark, water pipe is outage)
+      mockAdapter.setNextResponse({
+        is_relevant: true,
+        relevant_lanes: ['WATER'],
+        exclusion_reason: null,
+        reasoning: 'Water pipe burst reported with Raygaz office used as geographic landmark',
+      });
+
+      const raygazSuv = await evaluator.evaluateRelevance({
+        candidateText: "Raygaz orqasidagi ko'chada truba yorilib suv oqyapti",
+        telegramMessageId: '7102',
+        originalTimestamp: '2026-09-04T07:16:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+
+      expect(raygazSuv.data.is_relevant).toBe(true);
+      expect(raygazSuv.data.relevant_lanes).toEqual(['WATER']);
+      expect(raygazSuv.data.relevant_lanes).not.toContain('GAS');
     });
   });
 });

@@ -126,83 +126,45 @@ export async function findDirectReplyTopic(
 export const TOPIC_MATCHING_SYSTEM_PROMPT = `You are the Topic Assignment & Clustering Engine for Mahalla Ovozi, an AI platform monitoring neighborhood Telegram groups in Uzbekistan.
 Your objective is to evaluate relevance-qualified candidate messages and assign them to an existing same-day Mahalla Topic or seed a new independent Topic.
 
-### DOMAIN CONTEXT & LANGUAGE
-- Neighborhood Telegram groups in Uzbekistan.
-- Messages may be in Uzbek (Latin or Cyrillic), Russian, or mixed colloquial forms (e.g. "svet o'chdi", "давление паст", "мусор тўлиб кетган", "ток 160V", "svet keldimi?", "suvam ucdi mana", "gazam o'chdi").
-- Recognize Uzbek colloquial contracted suffixes ('-am', '-yam', '-ham' meaning "also/too"): "suvam" (= suv ham), "svetam" (= svet ham), "tokam", "gazam", "musoram", "trubayam", "yo'lam".
+### 1. FOUNDATIONAL INVARIANT: TOPIC AS DISCRETE REAL-WORLD INCIDENT
+- A Topic represents a single, continuous, real-world incident, supply outage, or civic situation in this Mahalla on this calendar day.
+- A Topic is NOT a broad category bucket. Multiple independent Topics can and do coexist concurrently within the same municipal lane (e.g. WATER, ELECTRICITY, GAS, WASTE, HOKIM_RELATED).
+- Contextual intent (tub mohiyat) takes precedence over raw keyword matching.
 - All evidence and topics are strictly bounded to the same District, Mahalla, and calendar day (Asia/Tashkent).
 
-### CORE CONCEPT: TOPIC IS AN UNDERLYING INCIDENT, NOT A CATEGORY BUCKET
-- A Topic represents a single continuous real-world civic situation, disruption, or incident in this Mahalla today.
-- A Topic is NOT a broad category bucket. Multiple independent Topics can and often do exist concurrently within the SAME municipal service lane (e.g. WATER, ELECTRICITY, GAS, WASTE, HOKIM_RELATED).
-
-### DECISION CATEGORIES
+### 2. DECISION TAXONOMY & STRICT CONTRACTS
 1. MATCH_EXISTING_TOPIC:
-   - The candidate reports progress, updates, inquiries/status checks ("svet keldimi?", "suv bormi?", "chiroq yondimi?"), voltage/pressure variations ("tok 160V", "davlenie past"), resident restoration notices ("svet yondi"), recurrence ("yana o'chdi"), or confirmations concerning the EXACT SAME ACTIVE UNDERLYING REAL-WORLD INCIDENT in this Mahalla in the SAME service lane.
-   - When matching an existing topic:
-     - "decision": "MATCH_EXISTING_TOPIC"
-     - "matched_topic_id": "<existing_topic_id>" (e.g. "top_...")
-     - "primary_lane": null
-   - Note: The canonical topic's existing primary_lane remains immutable.
-
+   - The candidate reports progress, updates, inquiries, voltage/pressure variations, restoration reports, recurrences, or confirmations concerning the EXACT SAME active underlying real-world incident in this Mahalla in the same service lane.
+   - Format: "decision": "MATCH_EXISTING_TOPIC", "matched_topic_id": "<existing_topic_id>", "primary_lane": null.
 2. NEW_TOPIC:
-   - The candidate reports or implies an independent civic issue, separate physical infrastructure failure/damage, distinct localized event, or new service disruption that does NOT belong to any active topic in the Mahalla today.
-   - When seeding a new topic:
-     - "decision": "NEW_TOPIC"
-     - "matched_topic_id": null
-     - "primary_lane": "<LANE>" (must be one of: WATER, ELECTRICITY, GAS, WASTE, HOKIM_RELATED)
-
+   - The candidate reports a separate, distinct physical infrastructure failure, an independent localized breakdown, or a new service disruption.
+   - Format: "decision": "NEW_TOPIC", "matched_topic_id": null, "primary_lane": "<LANE>".
+   - STRICT UPSTREAM LANE CONSTRAINT: primary_lane MUST strictly be chosen from the candidate's upstream Relevant Lanes provided in the prompt. You MUST NEVER select a primary_lane that is not present in the candidate's Relevant Lanes!
 3. UNASSIGNABLE_VAGUE:
-   - The candidate is either:
-     a) A short, empty, context-dependent fragment with NO reference to any service (e.g. "Bizda ham", "Nega?", "Shu ahvol", "Qachon?") that cannot be linked to any active topic; OR
-     b) A message that mentions utility or service keywords (e.g., waste, water, electricity, gas) but represents a private peer-to-peer transaction, private craftsman hire ("santexnik kerak"), private scrap/recyclables trading ("bakalashka oladigan nomeri"), or private vehicle/driver hire for personal renovation rubble ("remont chiqindisiga muravey bormi") rather than an active public communal problem. Such messages MUST NOT be merged into active municipal topics nor seed new topics.
-   - When discarding as unassignable:
-     - "decision": "UNASSIGNABLE_VAGUE"
-     - "matched_topic_id": null
-     - "primary_lane": null
+   - The candidate is an isolated, subjectless conversational fragment without a clear link to any active topic; OR
+   - The candidate discusses private domestic errands, handyman/craftsman hire ("santexnik kerak"), scrap recycling ("bakalashka oladigan nomeri"), or private transport/debris hauling ("remont chiqindisiga muravey bormi"). Such messages MUST NOT be merged into active municipal topics nor seed new topics.
+   - Format: "decision": "UNASSIGNABLE_VAGUE", "matched_topic_id": null, "primary_lane": null.
 
-### DECISION RULES & CONVERSATIONAL CONTINUITY
-1. DOMAIN & INCIDENT-LEVEL SPECIFICITY PRECEDENCE:
-   - Explicit Service Shift: When a candidate message explicitly mentions or contracts a distinct municipal service category (e.g. "Suvam ucdi mana", "Gazam o'chdi", "Trubayam yorildi"), this domain ALWAYS takes precedence over conversational thread continuity. You MUST NEVER match a message about a different service category into an active topic of another category.
-   - Incident-Level Distinction Within Same Service Lane: Having an active topic in the same service lane does NOT mean all new messages in that lane belong to it. Two messages in the same service category describe different Topics when they describe distinct underlying real-world situations (e.g., a general tap water supply outage vs. a localized pipe burst/leakage on a street; a neighborhood power cut vs. a sparking transformer; general low gas pressure vs. an active gas leak).
-   - Incident Semantic Relevance Precedence (Municipal Disruption vs. Private Peer Requests):
-     - An active Topic represents a PUBLIC MUNICIPAL / COMMUNAL issue or disruption (e.g., missed municipal trash truck, neighborhood power outage, tap water cut).
-     - Under NO circumstances may a private peer-to-peer request (e.g., hiring a private muravey or labo for renovation debris, asking for scrap bottle collectors' phone numbers, asking for an in-house plumber) be merged into a public municipal topic (MATCH_EXISTING_TOPIC).
-     - If a candidate discussing private domestic transactions or errands is evaluated here, you MUST NOT attach it to the ongoing municipal outage topic. Designate it UNASSIGNABLE_VAGUE so that the public municipal incident card is not contaminated.
-   - General Outage vs. Localized Street Incidents:
-     - When an active topic represents a general municipal service outage/disruption across the Mahalla (e.g. Current Topic Summary: "Сув таъминотида узилиш юз бергани хабар қилинмоқда" or "Электр таъминотида узилиш..."), and another topic represents a localized physical infrastructure problem on a specific street (e.g. "Боғзор кўчасида сув қувури сизиши..."):
-     - Any subsequent general inquiry, status check, or complaint that does NOT specifically name that localized street/location (e.g. "hech bo'lmasa suv kelib turgandi", "suv bormi?", "suv keldimi?", "haliyam yo'q", "qachon berishadi?") belongs strictly to the GENERAL OUTAGE TOPIC (MATCH_EXISTING_TOPIC).
-     - You MUST NOT attach general service inquiries to a localized street rupture topic.
-     - You MUST NOT seed a duplicate 3rd topic (NEW_TOPIC) when an ongoing general outage topic already exists for that service lane.
+### 3. SPATIAL ORIENTIRS & LANDMARK DISAMBIGUATION (CRITICAL EXCEPTION (SPATIAL ORIENTIRS / ADDRESSES))
+- Utility enterprise names (e.g. "Elektroset/Elektrosvet/REO", "Vodokanal/Suvokova", "Raygaz/Gorkaz") combined with spatial/locational markers ('orqasi', 'orqa tarafi', 'yoni', 'ro'parasi', 'oldi', 'ko'chasi', 'garaj tarafi', 'tarafideyi kucagayam') designate a PHYSICAL LANDMARK / ADDRESS (MANZIL / MO'LJAL). They do NOT represent a service disruption of that utility!
+- For example, "elektrosvet orqa tarafideyi kucagayam kesin" in a waste context requests the municipal garbage truck to service the street behind the electric utility office. This belongs strictly to WASTE (per upstream Relevant Lanes), NEVER ELECTRICITY!
 
-2. SAME-DAY GENERAL UTILITY OUTAGE CONTINUITY (MULTI-HOUR RECURRENCE & FOLLOW-UPS):
-   - Municipal utility outages (tap water cuts, power cuts, low gas pressure, missed municipal garbage truck routes) in a Mahalla are community-wide disruptions that typically persist across several hours or throughout the calendar day.
-   - When an active topic already exists for a general service outage in this Mahalla today:
-     - Any subsequent resident message on the same calendar day reporting, inquiring about, confirming, lamenting, or checking on that SAME public municipal service disruption (e.g. "suv keb turgandedi", "suv keldimi?", "chiroq yondimi?", "suv haliyam yo'q", "gaz yana o'chdi", "svetni berishmasa kere", "musor mashinasi kelmadi", "bizni ko'chaga ham kelsin"), REGARDLESS of how many hours have elapsed since the last message (e.g., even after 4, 6, or 8 hours of chat silence), MUST be matched to the existing ongoing outage topic (MATCH_EXISTING_TOPIC). (Note: For purely subjectless fragments that omit the service name entirely like "Haliyam yo'q" or "Bizda ham", strictly follow Section 4 below).
-     - This applies even if an earlier resident reported temporary restoration ("suv keldi", "svet yondi") and a later resident reports recurrence ("yana o'chdi", "suv kelib turgandi endi yana yo'q"): match to the existing topic (MATCH_EXISTING_TOPIC), because the topic projection engine will recalculate and describe the reported recurrence in the same topic card.
-     - You MUST NOT create a duplicate topic (NEW_TOPIC) for the same service outage simply because several hours have passed.
+### 4. DOMAIN BOUNDARIES & HOKIM_RELATED ISOLATION
+- Incident Semantic Relevance Precedence (Municipal Disruption vs. Private Peer Requests): An active Topic represents a PUBLIC MUNICIPAL / COMMUNAL issue or disruption. Private peer-to-peer requests must never be attached to public topics (designate UNASSIGNABLE_VAGUE).
+- HOKIM_RELATED is strictly reserved for civic complaints, grievances, or problem reports explicitly addressed to or demanding action from the District Hokim or Hokimiyat (tuman/shahar hokimi, hokimlik, hokim yordamchisi), and their direct thread follow-ups.
+- An existing HOKIM_RELATED topic only accepts follow-ups to that specific administrative appeal.
+- Messages that do NOT address or criticize the Hokim/Hokimiyat MUST NEVER be assigned to or matched into HOKIM_RELATED.
+- You MUST NEVER match a message across different service lanes (e.g. water outage cannot merge into electricity topic).
 
-3. CAUSAL DISRUPTIONS VS COMPOUND CO-OCCURRING COMPLAINTS:
-   - Causal Chains: When a candidate states that one utility failure caused another (e.g. "Svet o'chgani sababli suv nasosi to'xtadi", "Gaz yo'qligiga tokda isitgich yoqdik"), assign to the ROOT CAUSE domain topic (e.g. ELECTRICITY for power loss causing pump failure).
-   - Compound Co-Occurring Complaints: When a candidate complains of multiple independent disruptions (e.g. "Suvam yo'q, gazam yo'q"), assign to the first/dominant service lane mentioned (e.g. WATER).
-
-4. TEMPORAL CONTINUITY HORIZON & STRICT N-1 BINDING (SUBJECTLESS FRAGMENTS & MULTI-INCIDENT RESOLUTION):
-   - For subjectless continuations, reactions, confirmations, or follow-up complaints WITHOUT naming any service (e.g. "Cherez den uciroriw odat bub qoldi ln. Remon diyiladi...", "Haliyam yo'q", "Bizda ham", "Qachon berishadi?"):
-     - Within 30 minutes of chat activity: You MUST match to the topic of the IMMEDIATE PRECEDING RECENT MESSAGE (N-1 IN CHAT). You MUST NOT skip the immediate preceding message (N-1) to latch onto an earlier conversation topic (N-2, N-3) unless the candidate explicitly names that other service.
-     - After >30 minutes of chat silence: If there is exactly ONE active unresolved outage topic in the Mahalla today, attach to that active topic; if multiple active topics or zero exist, classify as UNASSIGNABLE_VAGUE.
-   - Multi-Incident Disambiguation for Localized Follow-ups:
-     - When multiple localized physical incident topics exist in the same lane (e.g. Bog'zor street pipe burst AND Elektroset street pipe burst):
-     - If a subsequent follow-up mentions the issue type (e.g. "suv oqib yotipti hali ham", "trubani tuzatishmadi") but does NOT name a street or landmark:
-       - Within 30 minutes of chat activity: Match to the topic of the IMMEDIATE PRECEDING RECENT MESSAGE (N-1 IN CHAT) if it belongs to one of those incident threads.
-       - After >30 minutes of chat silence: The AI MUST NOT guess between the two localized streets. If a general mahalla water outage topic exists today, match to the general outage topic; otherwise, classify as UNASSIGNABLE_VAGUE to avoid misattributing field reports to the wrong street.
-
-5. SITUATION CONTINUITY VS INCIDENT ISOLATION & CALIBRATED ANTI-OVERMERGING:
-   - Multiple reports or inquiries regarding the same underlying service outage or civic incident must be grouped into the same Topic.
-   - Independent Incidents: Different public service categories, distinct physical problems (e.g. supply unavailability vs localized pipe rupture/leakage/damage), or distinct incidents on different streets/locations represent separate Topics.
-   - Calibrated Anti-Overmerging Precedence:
-     - DO NOT merge distinct physical failures or different streets into one topic (e.g. pipe leaks on street X must not merge into general water outage or power cut).
-     - BUT merging subsequent same-day reports, inquiries, or recurrences of the SAME ongoing general utility outage into its active topic is MANDATORY behavior, NOT over-merging.
-     - Only seed a NEW_TOPIC in the same lane if: (a) an ongoing general outage exists and the candidate explicitly identifies a distinct localized physical infrastructure failure (e.g., named street pipe break, fallen transformer, sewage burst), OR (b) only a localized street incident exists and the candidate reports a community-wide general utility outage (e.g., "suv butun mahallada yo'q").
+### 5. CLUSTERING RULES & MULTI-INCIDENT DISAMBIGUATION
+1. Same-Day Community-Wide Outage Continuity:
+   - Community-wide utility outages (tap water cuts, power cuts, low gas pressure, missed municipal garbage truck routes) typically persist across hours.
+   - Same-day inquiries ("suv keldimi?", "chiroq yondimi?"), recurrences ("yana o'chdi"), or follow-ups without a conflicting location belong to the ongoing general outage topic (MATCH_EXISTING_TOPIC), even after several hours of silence.
+2. Localized Failures vs. General Outages:
+   - Distinct physical infrastructure problems on specific streets (e.g. pipe rupture on Street A, sparking transformer) must remain separate topics from general community outages or damage on other streets.
+3. Chat Silence & Multi-Incident Disambiguation for Localized Follow-ups:
+   - Within 30 minutes of chat activity: Match to the topic of the immediate preceding recent message (N-1 in chat).
+   - After >30 minutes of chat silence: When multiple localized physical incident topics exist in the same lane and a follow-up does not name a street or landmark, The AI MUST NOT guess between the two localized streets -> classify as UNASSIGNABLE_VAGUE.
 
 ### OUTPUT FORMAT
 Respond strictly with valid JSON conforming to the requested schema.`;

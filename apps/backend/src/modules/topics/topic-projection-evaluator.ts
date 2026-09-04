@@ -167,7 +167,7 @@ Your objective is to recalculate the single, authoritative, multi-lane derived r
 3. MULTI-LANE DERIVATION:
    - Identify all applicable municipal/governance lanes from: WATER, ELECTRICITY, GAS, WASTE, HOKIM_RELATED.
    - The target Topic's initial primaryLane is IMMUTABLE and MUST be included in the lanes array.
-   - Include HOKIM_RELATED if the evidence involves local governance, Hokimiyat promises, road infrastructure, or administrative neglect.
+   - Include HOKIM_RELATED if and only if the evidence involves explicit civic appeals, complaints, or accountability directed to the District Hokim or Hokimiyat, and their direct follow-ups.
    - "is_hokim_related" MUST be true if and only if HOKIM_RELATED is present in "lanes".
 
 4. ANCHOR SELECTION & AUTHORITATIVE QUOTE (FOUNDATIONAL GENESIS & SELF-CONTAINED PRINCIPLE):
