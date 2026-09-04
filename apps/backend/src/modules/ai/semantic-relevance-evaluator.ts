@@ -86,6 +86,25 @@ You MUST strictly distinguish between:
    - Seeking or offering private trade/craftsman services: private plumbers ("santexnik bormi/nomeri", in-house leaky faucets/toilets), private electricians ("rozetka/lyustra ustasi"), appliance technicians ("gaz plita ustasi", "kotyol ustasi", "konditsioner ustasi").
    - Distinction note: If construction debris is reported as dumped illegally on a public street, road, or canal, it is an illegal dump -> is_relevant: true (WASTE or HOKIM_RELATED). But asking neighbors to hire a vehicle/muravey to haul one's own renovation trash is a private transaction -> is_relevant: false (ADVERTISEMENT_OR_SPAM).
 
+### OFFICIAL MUNICIPAL UTILITY ENTITIES VS. INFORMAL ACTORS & SCAVENGERS
+To avoid confusing informal neighborhood individuals with authorized municipal utility staff, you MUST strictly enforce the following entity boundaries:
+1. WASTE (Чиқинди):
+   - Official Authorized Entities: Official municipal sanitation operators (Toza Hudud, Maxsustrans, musor mashinasi, maxsus avtotransport, obodonlashtirish xizmati). Inquiries about official garbage trucks arriving or missing routes -> is_relevant: true (WASTE).
+   - Informal Individuals & Scavengers: Roaming informal scrap/junk pickers, scavengers, ragpickers, pushcart gatherers (lo'lilar, aravakashlar, xashakchilar, latta/suyak/temir/bakalashka yig'uvchilar, "musr yigib yuredigan lulilar"). Asking if informal scavengers or scrap collectors have arrived -> is_relevant: false (ADVERTISEMENT_OR_SPAM).
+   - Public Litter Hazard Exception: If a resident reports that scavengers or informal pickers physically tore open bags and scattered trash across public streets, roads, or dumpsters creating an active sanitation hazard ("lo'lilar musorni titib hamma yoqqa sochib ketdi") -> is_relevant: true (WASTE).
+2. WATER (Сув):
+   - Official: Central water supply utility (O'zsuvta'minot, Vodokanal, suv ta'minoti korxonasi, tuman suvsoz).
+   - Informal / Private: Private well drillers (skvajina ustalari), private plumbers (santexnik).
+3. ELECTRICITY (Электр):
+   - Official: State electric grid operator (HET, Hududiy elektr tarmoqlari, Elektroset, REO, avariya xizmati).
+   - Informal / Private: Private domestic electricians (ko'cha elektriklari).
+4. GAS (Газ):
+   - Official: State gas enterprise (Hududgaz, Raygaz, Gorkaz, tuman gaz ta'minoti).
+   - Informal / Private: Private propane cylinder resellers, private stove/boiler technicians.
+5. HOKIM_RELATED (Ҳокимга оид):
+   - Official: District Hokim, Hokimiyat leadership, Sector heads (1-4 sektor rahbarlari), Mahalla chairman.
+   - Informal / Private: Neighborhood informal elders, private dispute participants.
+
 ### LANGUAGE & SCRIPT SUPPORT
 Messages may be in Uzbek (Latin or Cyrillic), Russian, or mixed colloquial forms (e.g., "suv yuq", "svet o'chdi", "давление паст", "мусор тўлиб кетган", "ток 160V", "suvam o'chdi").
 CRITICAL: Recognize Uzbek colloquial contracted suffixes ('-am', '-yam', '-ham' meaning "also/too") and fused particles:
@@ -99,7 +118,7 @@ CRITICAL: Recognize Uzbek colloquial contracted suffixes ('-am', '-yam', '-ham' 
 1. WATER (Сув): Tap water outages (suv yo'q, suv o'chdi, suv yuq, suvam o'chdi, suv kelmayapti, suv keldimi?), low pressure, pipe bursts (truba yorildi), sewage leaks/overflows (kanalizatsiya), polluted drinking water. EXCLUDES private in-house plumbing/faucet repairs.
 2. ELECTRICITY (Электр): Power cuts (svet o'chdi/chiroq yo'q/tok yo'q/svetam o'chdi, svet keldimi?, chiroq yondimi?), low/high voltage (tok past, 160V), sparking transformers, dangerous fallen wires. EXCLUDES private indoor appliance or socket repairs.
 3. GAS (Газ): Gas outages (gaz yo'q, gaz o'chdi, gazam o'chdi, gaz bormi?), low gas pressure in winter (davlenie past), leaks, odor of gas. EXCLUDES private stove or boiler handyman requests.
-4. WASTE (Чиқинди): Municipal waste service failures (scheduled collection truck missed / did not arrive: "musor mashinasi kelmadi", "shafyor kelmadi", "bizni ko'chaga kelsin"), overflowing public neighborhood dumpsters/containers ("musorxona to'lgan", "musoram olinmadi"), uncollected street trash, illegal public dumps, animal carcasses on public roads. EXCLUDES private scrap trading (bakalashka, makulatura) and private vehicle hire for renovation debris (muravey, labo).
+4. WASTE (Чиқинди): Municipal waste service failures (scheduled collection truck missed / did not arrive: "musor mashinasi kelmadi", "shafyor kelmadi", "bizni ko'chaga kelsin"), overflowing public neighborhood dumpsters/containers ("musorxona to'lgan", "musoram olinmadi"), uncollected street trash, illegal public dumps, animal carcasses on public roads, trash scattered on public streets by scavengers. EXCLUDES private scrap trading (bakalashka, makulatura), private vehicle hire for renovation debris (muravey, labo), and inquiring about roaming informal scrap gatherers/scavengers (lo'lilar, aravakashlar).
 5. HOKIM_RELATED (Ҳокимга оид): 
    - Direct appeals/complaints to the District Hokim, Hokimiyat, or sector leadership.
    - Non-service public infrastructure issues: broken roads/potholes (yo'llar rasvo, asfalt, chuqur, yo'lam rasvo), broken streetlights, blocked irrigation canals (ariqlar), illegal construction.
@@ -111,7 +130,7 @@ CRITICAL: Recognize Uzbek colloquial contracted suffixes ('-am', '-yam', '-ham' 
 
 ### STRICT EXCLUSIONS (is_relevant = false)
 - PLANNED_ANNOUNCEMENT: Official maintenance notices (e.g., "Ertaga soat 09:00 dan 18:00 gacha ta'mirlash sababli elektr o'chiriladi").
-- ADVERTISEMENT_OR_SPAM: Commercial buying/selling, apartment rentals, course ads, private service inquiries, private craftsman/handyman requests (santexnik, elektrik, gaz plita ustasi), private transportation/hauling hire (muravey, labo, gazel for renovation rubble or moving), private scrap/recyclable trading (bakalashka, makulatura, scrap metal).
+- ADVERTISEMENT_OR_SPAM: Commercial buying/selling, apartment rentals, course ads, private service inquiries, private craftsman/handyman requests (santexnik, elektrik, gaz plita ustasi), private transportation/hauling hire (muravey, labo, gazel for renovation rubble or moving), private scrap/recyclable trading (bakalashka, makulatura, scrap metal), inquiring about roaming informal scrap/junk collectors or scavengers (lo'lilar, aravakashlar, temirchilar).
 - SPECULATION_OR_RUMOR: Unconfirmed hearsay, future pricing rumors.
 - NEUTRAL_OR_PRAISE: "Rahmat svet yondi", "Hokim keldi", general greetings, prayers.
 - GENERAL_CHATTER: Off-topic discussions, jokes, arguments, political debates, vague blaming ("mas'ullar qayerga qarayapti").

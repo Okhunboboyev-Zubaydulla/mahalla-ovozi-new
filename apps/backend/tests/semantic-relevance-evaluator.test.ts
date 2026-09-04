@@ -598,5 +598,88 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
       expect(hokimPublic.data.is_relevant).toBe(true);
       expect(hokimPublic.data.relevant_lanes).toEqual(['HOKIM_RELATED']);
     });
+
+    it('ensures system prompt defines official municipal entities vs informal scavengers across all 5 lanes', () => {
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('OFFICIAL MUNICIPAL UTILITY ENTITIES VS. INFORMAL ACTORS & SCAVENGERS');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('musr yigib yuredigan lulilar');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Toza Hudud, Maxsustrans, musor mashinasi');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain("lo'lilar, aravakashlar, xashakchilar");
+    });
+
+    it('distinguishes informal scavengers/pickers (Navbahor lulilar case) from official municipal waste services', async () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-03',
+        contextRevision: 1,
+        snapshotFingerprint: 'sha256_navbahor_luli',
+        evidence: [],
+      };
+
+      // 1. Informal scrap picker inquiry (Navbahor case): "musr yigib yuredigan lulilar kemeptimi mahallaga" -> FALSE (ADVERTISEMENT_OR_SPAM)
+      mockAdapter.setNextResponse({
+        is_relevant: false,
+        relevant_lanes: [],
+        exclusion_reason: 'ADVERTISEMENT_OR_SPAM',
+        reasoning: 'Inquiry regarding roaming informal scrap/junk gatherers (lo\'lilar), not official municipal waste collection services',
+      });
+
+      const luliInquiry = await evaluator.evaluateRelevance({
+        candidateText: 'musr yigib yuredigan lulilar kemeptimi mahallaga',
+        telegramMessageId: '9201',
+        originalTimestamp: '2026-09-03T20:07:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+
+      expect(luliInquiry.data.is_relevant).toBe(false);
+      expect(luliInquiry.data.exclusion_reason).toBe('ADVERTISEMENT_OR_SPAM');
+      expect(luliInquiry.data.relevant_lanes).toEqual([]);
+
+      // 2. Dependent burst fragment: "kimdir biladimi" -> FALSE (UNRESOLVED_AMBIGUOUS_FRAGMENT)
+      mockAdapter.setNextResponse({
+        is_relevant: false,
+        relevant_lanes: [],
+        exclusion_reason: 'UNRESOLVED_AMBIGUOUS_FRAGMENT',
+        reasoning: 'Ambiguous conversational fragment without utility context',
+      });
+
+      const burstFragment = await evaluator.evaluateRelevance({
+        candidateText: 'kimdir biladimi',
+        telegramMessageId: '9202',
+        originalTimestamp: '2026-09-03T20:07:05.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+
+      expect(burstFragment.data.is_relevant).toBe(false);
+      expect(burstFragment.data.exclusion_reason).toBe('UNRESOLVED_AMBIGUOUS_FRAGMENT');
+
+      // 3. Exception: Scavengers scatter trash across public street creating sanitation hazard -> TRUE (WASTE)
+      mockAdapter.setNextResponse({
+        is_relevant: true,
+        relevant_lanes: ['WASTE'],
+        exclusion_reason: null,
+        reasoning: 'Public sanitation hazard created by trash scattered across public street from containers',
+      });
+
+      const litterHazard = await evaluator.evaluateRelevance({
+        candidateText: "lo'lilar musorxonani titib hamma yoqni ko'chaga sochib ketdi",
+        telegramMessageId: '9203',
+        originalTimestamp: '2026-09-03T20:10:00.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot,
+        profileId: 'prof_rel_2026_08_v1',
+      });
+
+      expect(litterHazard.data.is_relevant).toBe(true);
+      expect(litterHazard.data.relevant_lanes).toEqual(['WASTE']);
+      expect(litterHazard.data.exclusion_reason).toBeNull();
+    });
   });
 });
