@@ -202,9 +202,10 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
       aria-label="Муҳим кўрсаткичлар"
       data-stale={isStale ? 'true' : undefined}
       style={{
-        backgroundColor: '#F4F6F8',
-        padding: isDesktop ? '12px 24px' : '10px 16px',
+        backgroundColor: '#F8FAFC',
+        padding: isDesktop ? '8px 20px' : '8px 16px',
         borderBottom: '1px solid #E2E8F0',
+        flexShrink: 0,
       }}
     >
       {/* Mobile Overflow Navigation Header (< 1024px) */}
@@ -281,8 +282,8 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
             backgroundColor: '#FEF2F2',
             border: '1px solid #FECACA',
             borderRadius: 8,
-            padding: isDesktop ? '16px 24px' : '16px',
-            minHeight: 116,
+            padding: isDesktop ? '10px 20px' : '12px 16px',
+            minHeight: 76,
             display: 'flex',
             flexDirection: isDesktop ? 'row' : 'column',
             alignItems: isDesktop ? 'center' : 'flex-start',
@@ -307,9 +308,9 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
               borderColor: '#FCA5A5',
               color: '#991B1B',
               fontWeight: 600,
-              minHeight: isDesktop ? 36 : 44,
-              height: isDesktop ? 36 : 44,
-              borderRadius: 8,
+              minHeight: isDesktop ? 32 : 40,
+              height: isDesktop ? 32 : 40,
+              borderRadius: 6,
               boxShadow: 'none',
               display: 'inline-flex',
               alignItems: 'center',
@@ -325,7 +326,7 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
           style={{
             display: isDesktop ? 'grid' : 'flex',
             gridTemplateColumns: isDesktop ? 'repeat(5, minmax(0, 1fr))' : undefined,
-            gap: 12,
+            gap: 16,
             overflowX: isDesktop ? 'visible' : 'auto',
             scrollSnapType: isDesktop ? undefined : 'x mandatory',
             scrollbarWidth: 'none',

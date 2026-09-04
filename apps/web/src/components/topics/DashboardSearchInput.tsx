@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Input } from 'antd';
+import { Input, ConfigProvider } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 
 export interface DashboardSearchInputProps {
@@ -77,28 +77,60 @@ export const DashboardSearchInput: React.FC<DashboardSearchInputProps> = ({
   };
 
   return (
-    <Input
-      className={className}
-      type="search"
-      role="searchbox"
-      value={localValue}
-      onChange={handleChange}
-      onPressEnter={handlePressEnter}
-      placeholder={placeholder}
-      prefix={<SearchOutlined style={{ color: '#64748B', fontSize: 14 }} />}
-      allowClear
-      maxLength={200}
-      disabled={disabled}
-      aria-label="Мавзулар ва далиллар бўйича қидирув"
-      style={{
-        width: 240,
-        borderRadius: 6,
-        borderColor: '#CBD5E1',
-        height: 36,
-        backgroundColor: '#FFFFFF',
-        flexShrink: 0,
-        ...style,
+    <ConfigProvider
+      theme={{
+        components: {
+          Input: {
+            colorText: '#64748B',
+            colorTextPlaceholder: '#64748B',
+            colorBorder: '#CBD5E1',
+            hoverBorderColor: '#0284C7',
+            activeBorderColor: '#0284C7',
+            activeShadow: '0 0 0 2px rgba(2, 132, 199, 0.2)',
+            fontSize: 14,
+            controlHeight: 32,
+            borderRadius: 6,
+          },
+        },
       }}
-    />
+    >
+      <Input
+        className={className}
+        type="search"
+        role="searchbox"
+        value={localValue}
+        onChange={handleChange}
+        onPressEnter={handlePressEnter}
+        placeholder={placeholder}
+        prefix={<SearchOutlined style={{ color: '#64748B', fontSize: 14 }} />}
+        allowClear
+        maxLength={200}
+        disabled={disabled}
+        aria-label="Мавзулар ва далиллар бўйича қидирув"
+        styles={{
+          input: {
+            fontSize: 14,
+            fontWeight: 400,
+            lineHeight: '22px',
+            color: '#64748B',
+          },
+        }}
+        style={{
+          width: 300,
+          borderRadius: 6,
+          borderColor: '#CBD5E1',
+          height: 32,
+          backgroundColor: '#FFFFFF',
+          fontSize: 14,
+          fontWeight: 400,
+          color: '#64748B',
+          padding: '0 8px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          flexShrink: 0,
+          ...style,
+        }}
+      />
+    </ConfigProvider>
   );
 };

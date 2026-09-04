@@ -5,6 +5,7 @@ import { QualifyingLane, TopicCardItem } from '@mahalla-ovozi/api-contracts';
 import { LaneColumn } from './LaneColumn.js';
 import { LaneLocalState } from '../../topics/useHokimTopicBoard.js';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
+import { themeColors } from '../../theme/antd-theme.js';
 
 const { Text } = Typography;
 
@@ -96,8 +97,9 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
       style={{
         position: 'relative',
         flex: 1,
-        backgroundColor: '#F4F6F8',
-        padding: '16px 20px',
+        minHeight: 0,
+        backgroundColor: '#F8FAFC',
+        padding: '8px 20px 6px 20px',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
@@ -113,10 +115,12 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
             borderRadius: 8,
             padding: '12px 16px',
             marginBottom: 12,
+            boxShadow: themeColors.shadowCard,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 12,
+            flexShrink: 0,
           }}
         >
           <div>
@@ -137,7 +141,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
       <div
         style={{
           position: 'absolute',
-          top: 24,
+          top: 16,
           right: 28,
           zIndex: 10,
           display: canScrollLeft || canScrollRight ? 'flex' : 'none',
@@ -181,13 +185,16 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
         aria-label="Йўналишлар тахтаси"
         tabIndex={0}
         style={{
+          flex: 1,
+          minHeight: 0,
           display: 'flex',
           gap: 16,
           overflowX: 'auto',
           overflowY: 'hidden',
-          paddingBottom: 8,
+          paddingBottom: 4,
           scrollbarWidth: 'thin',
           outline: 'none',
+          alignItems: 'stretch',
         }}
         onFocus={(e) => {
           if (e.target === e.currentTarget) {
@@ -226,6 +233,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
               onLoadMore={onLoadMore}
               onSelectTopic={onSelectTopic}
               onRevealNewItems={onRevealNewTopics}
+              style={lanesToRender.length < 5 ? { maxWidth: 380 } : undefined}
             />
           );
         })}

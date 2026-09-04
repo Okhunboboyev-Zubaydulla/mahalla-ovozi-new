@@ -135,26 +135,27 @@ export const LaneMultiSelect: React.FC<LaneMultiSelectProps> = ({
     >
       <Button
         disabled={disabled}
-        icon={<AppstoreOutlined style={{ color: '#0284C7' }} />}
+        icon={<AppstoreOutlined style={{ color: '#64748B', fontSize: 14 }} />}
         style={{
-          height: 36,
+          height: 32,
           borderRadius: 6,
           borderColor: '#CBD5E1',
           boxShadow: 'none',
           display: 'flex',
           alignItems: 'center',
           gap: 6,
-          fontWeight: 500,
-          color: '#0F172A',
+          fontWeight: 400,
+          fontSize: 14,
+          color: '#64748B',
           flexShrink: 0,
           ...style,
         }}
         aria-label={`Йўналишлар фильтри: ${selectedLanes.length} та йўналиш танланган`}
       >
-        <span>
-          Йўналишлар: <strong>{selectedLanes.length}/5</strong>
+        <span style={{ fontSize: 14, fontWeight: 400, color: '#64748B' }}>
+          Йўналишлар: {selectedLanes.length}/5
         </span>
-        <DownOutlined style={{ fontSize: 11, color: '#64748B' }} />
+        <DownOutlined style={{ fontSize: 12, color: '#64748B' }} />
       </Button>
     </Popover>
   );

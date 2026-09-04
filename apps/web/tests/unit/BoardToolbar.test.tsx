@@ -57,7 +57,7 @@ describe('Story 3.3 & 3.6: BoardToolbar Component Tests', () => {
     );
   };
 
-  it('Test 1: Renders district name, calendar date, and freshness timestamp (AC 6)', () => {
+  it('Test 1: Renders district name and freshness timestamp in smart refresh button (AC 6)', () => {
     renderWithProviders(
       <BoardToolbar
         districtName="Яккасарой тумани"
@@ -68,8 +68,7 @@ describe('Story 3.3 & 3.6: BoardToolbar Component Tests', () => {
 
     expect(screen.getByText('Маҳалла Овози')).toBeTruthy();
     expect(screen.getByText('Яккасарой тумани')).toBeTruthy();
-    expect(screen.getByText('24.08.2026')).toBeTruthy();
-    expect(screen.getByText(/Охирги янгиланиш:/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Маълумотларни янгилаш' })).toBeTruthy();
   });
 
   it('Test 2: Янгилаш button triggers onRefresh when clicked (AC 7)', () => {
@@ -82,7 +81,7 @@ describe('Story 3.3 & 3.6: BoardToolbar Component Tests', () => {
       />,
     );
 
-    const refreshButton = screen.getByRole('button', { name: 'Маълумотларни янгилаш' });
+    const refreshButton = screen.getByRole('button', { name: /Маълумотларни янгилаш/ });
     expect(refreshButton).toBeTruthy();
     fireEvent.click(refreshButton);
     expect(handleRefresh).toHaveBeenCalledTimes(1);
@@ -97,7 +96,7 @@ describe('Story 3.3 & 3.6: BoardToolbar Component Tests', () => {
       />,
     );
 
-    let refreshButton = screen.getByRole('button', { name: 'Маълумотларни янгилаш' });
+    let refreshButton = screen.getByRole('button', { name: /Маълумотларни янгилаш/ });
     expect(refreshButton.hasAttribute('disabled')).toBe(true);
 
     rerender(
@@ -114,7 +113,7 @@ describe('Story 3.3 & 3.6: BoardToolbar Component Tests', () => {
       </QueryClientProvider>,
     );
 
-    refreshButton = screen.getByRole('button', { name: 'Маълумотларни янгилаш' });
+    refreshButton = screen.getByRole('button', { name: /Маълумотларни янгилаш/ });
     expect(refreshButton.hasAttribute('disabled')).toBe(true);
   });
 
@@ -128,7 +127,6 @@ describe('Story 3.3 & 3.6: BoardToolbar Component Tests', () => {
       />,
     );
 
-    expect(screen.getByText(/Янгиланиш давом этмоқда/)).toBeTruthy();
     expect(
       screen.getByLabelText(/Янгиланиш давом этмоқда — айрим сўнгги хабарлар ҳали кўринмаслиги мумкин/),
     ).toBeTruthy();

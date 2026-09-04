@@ -4,7 +4,6 @@ import { Button, Alert, Typography } from 'antd';
 import { ReloadOutlined, DisconnectOutlined, WarningOutlined } from '@ant-design/icons';
 import { TopicCardItem } from '@mahalla-ovozi/api-contracts';
 import { BoardToolbar } from '../components/topics/BoardToolbar.js';
-import { FilterBar } from '../components/topics/FilterBar.js';
 import { FilterModalSheet } from '../components/topics/FilterModalSheet.js';
 import { TopicStatisticsStrip } from '../components/topics/TopicStatisticsStrip.js';
 import { FiveLaneBoard } from '../components/topics/FiveLaneBoard.js';
@@ -197,7 +196,7 @@ export const HokimDashboardPage: React.FC = () => {
       <div
         style={{
           minHeight: '100vh',
-          backgroundColor: '#F4F6F8',
+          backgroundColor: '#F8FAFC',
           display: 'flex',
           flexDirection: 'column',
         }}
@@ -262,8 +261,10 @@ export const HokimDashboardPage: React.FC = () => {
   return (
     <div
       style={{
-        minHeight: '100vh',
-        backgroundColor: '#F4F6F8',
+        height: '100vh',
+        maxHeight: '100vh',
+        overflow: 'hidden',
+        backgroundColor: '#F8FAFC',
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -281,15 +282,11 @@ export const HokimDashboardPage: React.FC = () => {
         mobileFilterButtonRef={mobileFilterButtonRef}
         onOpenHelp={handleOpenHelp}
         helpButtonRef={helpButtonRef}
-      />
-
-      {/* Desktop Sticky Filter Bar */}
-      <FilterBar
         filters={filters}
         onFilterChange={setFilters}
         onResetFilters={handleResetAll}
         isDefaultFilters={isDefaultFilters}
-        isLoading={isFilterTransitioning}
+        isFilterLoading={isFilterTransitioning}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
@@ -333,6 +330,7 @@ export const HokimDashboardPage: React.FC = () => {
             backgroundColor: '#FEF3C7',
             borderBottom: '1px solid #FDE68A',
             padding: '6px 24px',
+            flexShrink: 0,
           }}
         />
       )}
@@ -383,6 +381,7 @@ export const HokimDashboardPage: React.FC = () => {
             backgroundColor: '#FEE2E2',
             borderBottom: '1px solid #FECACA',
             padding: '6px 24px',
+            flexShrink: 0,
           }}
         />
       )}

@@ -2,7 +2,7 @@ import { ThemeConfig } from 'antd';
 
 export const mahallaTheme: ThemeConfig = {
   token: {
-    colorBgLayout: '#F4F6F8',
+    colorBgLayout: '#F8FAFC',
     colorBgContainer: '#FFFFFF',
     colorPrimary: '#0284C7',
     colorPrimaryHover: '#0369A1',
@@ -76,9 +76,14 @@ export const themeColors = {
   colorTextMuted: '#94A3B8',
 
   // Backgrounds
-  colorBgLayout: '#F4F6F8',
+  colorBgLayout: '#F8FAFC',
   colorBgSubtle: '#F8FAFC',
   colorBgEmpty: '#F1F5F9',
+  colorBgLaneTrack: '#FFFFFF',
+
+  // Elevation & Shadows
+  shadowCard: '0 2px 4px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.06)',
+  shadowCardHover: '0 6px 12px -2px rgba(15, 23, 42, 0.12), 0 3px 6px -3px rgba(15, 23, 42, 0.08)',
 
   // Borders
   colorBorder: '#E2E8F0',

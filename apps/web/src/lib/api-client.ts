@@ -85,6 +85,12 @@ export async function request<T>(
 
   const result = schema.safeParse(body);
   if (!result.success || result.data === undefined) {
+    if (typeof console !== 'undefined' && result.error) {
+      console.error(
+        `[api-client] Schema validation failed for ${url}:`,
+        result.error,
+      );
+    }
     throw new ApiError(
       'Сервердан нотўғри форматдаги маълумот олинди.',
       'INVALID_RESPONSE',

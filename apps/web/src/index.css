@@ -29,3 +29,33 @@ body {
   outline: 2px solid var(--mahalla-focus);
   outline-offset: 2px;
 }
+
+/* Refined, ultra-subtle floating scrollbar for lane columns */
+.lane-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+.lane-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.lane-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.lane-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.lane-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.55);
+}
+
+/* Bold emphasis for selected Segmented tabs */
+.ant-segmented .ant-segmented-item-selected {
+  font-weight: 600 !important;
+}
+

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Select } from 'antd';
+import { Select, ConfigProvider } from 'antd';
 import { EnvironmentOutlined } from '@ant-design/icons';
 import { useDistrictMahallas } from '../../topics/useDistrictMahallas.js';
 
@@ -26,27 +26,48 @@ export const MahallaSelect: React.FC<MahallaSelectProps> = ({
   const selectedValue = value && value !== 'all' ? value : 'all';
 
   return (
-    <Select
-      showSearch
-      value={selectedValue}
-      onChange={(val) => {
-        onChange(val === 'all' ? undefined : val);
+    <ConfigProvider
+      theme={{
+        components: {
+          Select: {
+            colorText: '#64748B',
+            colorTextPlaceholder: '#64748B',
+            fontSize: 14,
+            controlHeight: 32,
+            borderRadius: 6,
+            colorBorder: '#CBD5E1',
+            hoverBorderColor: '#0284C7',
+            activeBorderColor: '#0284C7',
+            activeOutlineColor: 'rgba(2, 132, 199, 0.2)',
+          },
+        },
       }}
-      options={options}
-      loading={isLoading}
-      disabled={disabled}
-      placeholder="Маҳаллани танланг"
-      suffixIcon={<EnvironmentOutlined style={{ color: '#64748B' }} />}
-      filterOption={(input, option) =>
-        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-      }
-      style={{
-        width: 180,
-        height: 36,
-        flexShrink: 0,
-        ...style,
-      }}
-      aria-label="Маҳалла бўйича фильтр"
-    />
+    >
+      <Select
+        showSearch
+        value={selectedValue}
+        onChange={(val) => {
+          onChange(val === 'all' ? undefined : val);
+        }}
+        options={options}
+        loading={isLoading}
+        disabled={disabled}
+        placeholder="Маҳаллани танланг"
+        suffixIcon={<EnvironmentOutlined style={{ color: '#64748B' }} />}
+        filterOption={(input, option) =>
+          (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+        }
+        style={{
+          width: 180,
+          height: 32,
+          fontSize: 14,
+          fontWeight: 400,
+          color: '#64748B',
+          flexShrink: 0,
+          ...style,
+        }}
+        aria-label="Маҳалла бўйича фильтр"
+      />
+    </ConfigProvider>
   );
 };

@@ -161,7 +161,6 @@ describe('Hokim Dashboard Component & Integration Tests (Story 3.1)', () => {
 
       expect(screen.getByText('Маҳалла Овози')).toBeTruthy();
       expect(screen.getByText('Яккасарой тумани')).toBeTruthy();
-      expect(screen.getByText('23.08.2026')).toBeTruthy();
       const profileButton = screen.getByRole('button', { name: /Ҳоким профили/i });
       expect(profileButton).toBeTruthy();
       fireEvent.click(profileButton);

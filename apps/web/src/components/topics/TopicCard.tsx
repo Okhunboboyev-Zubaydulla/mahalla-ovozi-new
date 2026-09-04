@@ -1,11 +1,35 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Tag, Typography, Space } from 'antd';
-import { ClockCircleOutlined, MessageOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import {
+  ClockCircleOutlined,
+  MessageOutlined,
+  EnvironmentOutlined,
+  BankOutlined,
+  ThunderboltOutlined,
+  FireOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons';
 import { TopicCardItem, QualifyingLane } from '@mahalla-ovozi/api-contracts';
-import { formatTashkentActivityTime } from '../../lib/formatters.js';
+import { formatTashkentCalendarDate, formatTashkentTime } from '../../lib/formatters.js';
 import { HighlightText } from './HighlightText.js';
+import { themeColors } from '../../theme/antd-theme.js';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 
 const { Text, Paragraph } = Typography;
+
+export const WaterDropIcon: React.FC<{ style?: React.CSSProperties }> = ({ style }) => (
+  <span role="img" aria-label="сув" className="anticon" style={style}>
+    <svg
+      viewBox="0 0 1024 1024"
+      width="1em"
+      height="1em"
+      fill="currentColor"
+      focusable="false"
+    >
+      <path d="M512 64C512 64 213.33 469.33 213.33 682.67c0 164.95 133.72 298.66 298.67 298.66s298.67-133.71 298.67-298.66C810.67 469.33 512 64 512 64z m0 810.67c-120.53 0-218.67-98.13-218.67-218.67 0-117.33 149.34-362.67 218.67-469.33 69.33 106.66 218.67 352 218.67 469.33 0 120.54-98.14 218.67-218.67 218.67z" />
+    </svg>
+  </span>
+);
 
 export const LANE_LABELS: Record<QualifyingLane, string> = {
   HOKIM_RELATED: 'Ҳокимга оид',
@@ -26,6 +50,14 @@ export const LANE_STYLES: Record<
   WASTE: { bg: '#D1FAE5', text: '#047857', border: '#A7F3D0' },
 };
 
+export const LANE_ICONS: Record<QualifyingLane, React.ReactNode> = {
+  HOKIM_RELATED: <BankOutlined aria-hidden="true" />,
+  WATER: <WaterDropIcon style={{ fontSize: 13 }} />,
+  ELECTRICITY: <ThunderboltOutlined aria-hidden="true" />,
+  GAS: <FireOutlined aria-hidden="true" />,
+  WASTE: <DeleteOutlined aria-hidden="true" />,
+};
+
 export interface TopicCardProps {
   topic: TopicCardItem;
   currentLane?: QualifyingLane;
@@ -41,10 +73,20 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
   searchQuery,
   onClick,
 }) => {
-  const formattedTime = formatTashkentActivityTime(
-    topic.latestMeaningfulActivityTimestamp,
-    topic.calendarDay,
-  );
+  const [isHovered, setIsHovered] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  const formattedMahallaName = topic.mahallaName.toLowerCase().includes('маҳалла')
+    ? topic.mahallaName
+    : `${topic.mahallaName} маҳалласи`;
+
+  const formattedDate = formatTashkentCalendarDate(topic.calendarDay);
+  const timeStr = formatTashkentTime(topic.latestMeaningfulActivityTimestamp);
+  const formattedTimestamp = timeStr ? `${formattedDate}, ${timeStr}` : formattedDate;
+
+  const isInteractive = Boolean(onClick);
+  const isElevated = isInteractive && isHovered;
 
   return (
     <article
@@ -59,36 +101,37 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
           onClick();
         }
       }}
+      onMouseEnter={isInteractive ? () => setIsHovered(true) : undefined}
+      onMouseLeave={isInteractive ? () => setIsHovered(false) : undefined}
+      onFocus={(e) => {
+        if (e.target !== e.currentTarget) return;
+        setIsFocused(true);
+      }}
+      onBlur={(e) => {
+        if (e.target !== e.currentTarget) return;
+        setIsFocused(false);
+      }}
       style={{
-        backgroundColor: isSelected ? '#F8FAFC' : '#FFFFFF',
-        border: isSelected ? '1px solid #0284C7' : '1px solid #E2E8F0',
+        backgroundColor: '#FFFFFF',
+        border: `1px solid ${
+          isSelected || isFocused ? '#0284C7' : isElevated ? '#CBD5E1' : '#E2E8F0'
+        }`,
         borderRadius: 8,
         padding: '16px',
         marginBottom: '12px',
         display: 'flex',
         flexDirection: 'column',
         gap: '10px',
-        cursor: onClick ? 'pointer' : 'default',
-        boxShadow: 'none',
-        outline: isSelected ? '2px solid #0284C7' : 'none',
-        outlineOffset: isSelected ? '2px' : undefined,
-        transition: 'border-color 0.15s ease',
-      }}
-      onFocus={(e) => {
-        if (e.target !== e.currentTarget) return;
-        e.currentTarget.style.borderColor = '#0284C7';
-        e.currentTarget.style.outline = '2px solid #0284C7';
-        e.currentTarget.style.outlineOffset = '2px';
-      }}
-      onBlur={(e) => {
-        if (e.target !== e.currentTarget) return;
-        if (!isSelected) {
-          e.currentTarget.style.borderColor = '#E2E8F0';
-          e.currentTarget.style.outline = 'none';
-        }
+        cursor: isInteractive ? 'pointer' : 'default',
+        boxShadow: isElevated ? themeColors.shadowCardHover : themeColors.shadowCard,
+        outline: isSelected || isFocused ? '2px solid #0284C7' : 'none',
+        outlineOffset: isSelected || isFocused ? '2px' : undefined,
+        transition: prefersReducedMotion
+          ? 'none'
+          : 'border-color 0.15s ease, box-shadow 0.15s ease',
       }}
       aria-current={isSelected ? 'true' : undefined}
-      aria-label={`Мавзу: ${topic.mahallaName}, ${topic.summary}`}
+      aria-label={`Мавзу: ${formattedMahallaName}, ${topic.summary}`}
     >
       {/* Header: Mahalla name + Badges (New / Updated / Search Match) */}
       <div
@@ -100,18 +143,18 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
         }}
       >
         <Space size={6} style={{ minWidth: 0, flex: 1 }}>
-          <EnvironmentOutlined style={{ color: '#0284C7', fontSize: 14 }} />
+          <EnvironmentOutlined style={{ color: '#0284C7', fontSize: 13 }} />
           <Text
             strong
             style={{
-              fontSize: 14,
-              color: '#0F172A',
+              fontSize: 13,
+              color: '#475569',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
             }}
           >
-            {topic.mahallaName}
+            {formattedMahallaName}
           </Text>
         </Space>
 
@@ -187,7 +230,8 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
         style={{
           fontSize: 14,
           lineHeight: '20px',
-          color: '#1E293B',
+          fontWeight: 500,
+          color: '#0F172A',
           margin: 0,
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-word',
@@ -223,14 +267,16 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
         </div>
       )}
 
-      {/* Footer: Evidence Count & Latest Meaningful Activity Time */}
+      {/* Footer: Evidence Count & Latest Activity Timestamp */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 6,
           paddingTop: 8,
-          borderTop: '1px solid #F1F5F9',
+          borderTop: '1px solid #E2E8F0',
           marginTop: 2,
         }}
       >
@@ -241,10 +287,10 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
           </Text>
         </Space>
 
-        {formattedTime && (
+        {formattedTimestamp && (
           <Space size={4} style={{ color: '#64748B', fontSize: 13 }}>
             <ClockCircleOutlined style={{ fontSize: 13, color: '#94A3B8' }} />
-            <Text style={{ fontSize: 13, color: '#64748B' }}>{formattedTime}</Text>
+            <Text style={{ fontSize: 13, color: '#64748B' }}>{formattedTimestamp}</Text>
           </Space>
         )}
       </div>
