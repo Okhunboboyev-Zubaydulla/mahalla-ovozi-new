@@ -179,7 +179,7 @@ export const SignalInspectionDrawer: React.FC<SignalInspectionDrawerProps> = ({
         width={680}
         onClose={onClose}
         open={open}
-        destroyOnClose
+        destroyOnHidden
       >
         {isLoading && (
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
@@ -444,7 +444,7 @@ export const SignalInspectionDrawer: React.FC<SignalInspectionDrawerProps> = ({
         confirmLoading={promoteMutation.isPending}
         okText="Қабул қилиш"
         cancelText="Бекор қилиш"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={promoteForm} layout="vertical" onFinish={handlePromote}>
           <Form.Item
@@ -484,7 +484,7 @@ export const SignalInspectionDrawer: React.FC<SignalInspectionDrawerProps> = ({
         confirmLoading={reclassifyMutation.isPending}
         okText="Ўзгартириш"
         cancelText="Бекор қилиш"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={reclassifyForm} layout="vertical" onFinish={handleReclassify}>
           <Form.Item
@@ -524,7 +524,7 @@ export const SignalInspectionDrawer: React.FC<SignalInspectionDrawerProps> = ({
         confirmLoading={updateTextMutation.isPending}
         okText="Сақлаш"
         cancelText="Бекор қилиш"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={editForm} layout="vertical" onFinish={handleUpdateText}>
           <Form.Item
@@ -558,7 +558,7 @@ export const SignalInspectionDrawer: React.FC<SignalInspectionDrawerProps> = ({
         okText="Ўчириш"
         okButtonProps={{ danger: true }}
         cancelText="Бекор қилиш"
-        destroyOnClose
+        destroyOnHidden
       >
         <Alert
           type="warning"

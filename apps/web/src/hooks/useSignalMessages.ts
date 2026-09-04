@@ -35,7 +35,9 @@ export const SIGNAL_DETAIL_QUERY_KEY = signalQueryKeys.details();
 
 export function useSignalMessages(
   filters: ListSignalsQuery,
-  options?: { refetchInterval?: number | false },
+  options?: {
+    refetchInterval?: number | false | ((query: any) => number | false | undefined);
+  },
 ) {
   return useQuery<ListSignalsResponse>({
     queryKey: signalQueryKeys.list(filters),

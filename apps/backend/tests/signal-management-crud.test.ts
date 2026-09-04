@@ -279,6 +279,106 @@ describe('Signal & Evidence Management Console & CRUD Verification', () => {
     expect(bodyEx.items.every((i: any) => i.isRelevant === false)).toBe(true);
   });
 
+  it('2a. GET /api/v1/admin/signals filters by mahallaName case-insensitively with substring matching', async () => {
+    // Partial lowercase query
+    const resPartial = await server.inject({
+      method: 'GET',
+      url: `/api/v1/admin/signals?districtId=${testDistrictId}&mahallaName=istiq`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+    });
+    expect(resPartial.statusCode).toBe(200);
+    const bodyPartial = JSON.parse(resPartial.payload);
+    expect(bodyPartial.items.length).toBeGreaterThanOrEqual(1);
+    expect(bodyPartial.items.some((i: any) => i.intakeId === relevantIntakeId)).toBe(true);
+    expect(bodyPartial.items.every((i: any) => i.mahallaName.toLowerCase().includes('istiq'))).toBe(true);
+
+    // Uppercase full match query
+    const resUpper = await server.inject({
+      method: 'GET',
+      url: `/api/v1/admin/signals?districtId=${testDistrictId}&mahallaName=ISTIQLOL`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+    });
+    expect(resUpper.statusCode).toBe(200);
+    const bodyUpper = JSON.parse(resUpper.payload);
+    expect(bodyUpper.items.length).toBeGreaterThanOrEqual(1);
+    expect(bodyUpper.items.every((i: any) => i.mahallaName.toUpperCase().includes('ISTIQLOL'))).toBe(true);
+
+    // SQL LIKE wildcard character % treated as literal search, not wildcard matching all
+    const resWildcard = await server.inject({
+      method: 'GET',
+      url: `/api/v1/admin/signals?districtId=${testDistrictId}&mahallaName=%`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+    });
+    expect(resWildcard.statusCode).toBe(200);
+    const bodyWildcard = JSON.parse(resWildcard.payload);
+    expect(bodyWildcard.items.length).toBe(0);
+
+    // Non-existent mahalla returns empty
+    const resNone = await server.inject({
+      method: 'GET',
+      url: `/api/v1/admin/signals?districtId=${testDistrictId}&mahallaName=nonexistent_xyz`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+    });
+    expect(resNone.statusCode).toBe(200);
+    const bodyNone = JSON.parse(resNone.payload);
+    expect(bodyNone.items.length).toBe(0);
+  });
+
+  it('2b. GET /api/v1/admin/signals filters by startDate and endDate range', async () => {
+    // Range including the 2026-09-01 record
+    const resMatch = await server.inject({
+      method: 'GET',
+      url: `/api/v1/admin/signals?districtId=${testDistrictId}&startDate=2026-09-01T00:00:00.000Z&endDate=2026-09-01T23:59:59.999Z`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+    });
+    expect(resMatch.statusCode).toBe(200);
+    const bodyMatch = JSON.parse(resMatch.payload);
+    expect(bodyMatch.items.length).toBeGreaterThanOrEqual(1);
+    expect(bodyMatch.items.some((i: any) => i.intakeId === relevantIntakeId)).toBe(true);
+
+    // Range outside the record timestamp (e.g. tomorrow)
+    const resMiss = await server.inject({
+      method: 'GET',
+      url: `/api/v1/admin/signals?districtId=${testDistrictId}&startDate=2026-09-02T00:00:00.000Z&endDate=2026-09-02T23:59:59.999Z`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+    });
+    expect(resMiss.statusCode).toBe(200);
+    const bodyMiss = JSON.parse(resMiss.payload);
+    expect(bodyMiss.items.length).toBe(0);
+
+    // Inverted date range (startDate > endDate) returns empty cleanly without error
+    const resInverted = await server.inject({
+      method: 'GET',
+      url: `/api/v1/admin/signals?districtId=${testDistrictId}&startDate=2026-09-05T00:00:00.000Z&endDate=2026-09-01T00:00:00.000Z`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+    });
+    expect(resInverted.statusCode).toBe(200);
+    const bodyInverted = JSON.parse(resInverted.payload);
+    expect(bodyInverted.items.length).toBe(0);
+    expect(bodyInverted.pagination.hasNextPage).toBe(false);
+  });
+
   it('3. GET /api/v1/admin/signals/:id returns single signal detail', async () => {
     const res = await server.inject({
       method: 'GET',

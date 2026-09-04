@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, ilike, gte, lte } from 'drizzle-orm';
 import type { DbClient } from '../../adapters/db/client.js';
 import {
   districts,
@@ -168,11 +168,30 @@ export class SignalManagementService {
 
     const conditions: any[] = [];
 
+    if (query.startDate && query.endDate) {
+      const start = new Date(query.startDate);
+      const end = new Date(query.endDate);
+      if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && start > end) {
+        return {
+          items: [],
+          pagination: {
+            limit,
+            nextCursor: null,
+            prevCursor: null,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
+        };
+      }
+    }
+
     if (query.districtId) {
       conditions.push(eq(telegramIntakeRecords.districtId, query.districtId));
     }
-    if (query.mahallaName) {
-      conditions.push(eq(telegramIntakeRecords.mahallaName, query.mahallaName));
+    if (query.mahallaName && query.mahallaName.trim().length > 0) {
+      const sanitized = query.mahallaName.trim().replace(/[%_\\]/g, '\\$&');
+      const mahallaPattern = `%${sanitized}%`;
+      conditions.push(ilike(telegramIntakeRecords.mahallaName, mahallaPattern));
     }
     if (query.calendarDay) {
       conditions.push(eq(telegramIntakeRecords.calendarDay, query.calendarDay));
@@ -191,17 +210,24 @@ export class SignalManagementService {
     }
 
     if (query.search && query.search.trim().length > 0) {
-      const searchPattern = `%${query.search.trim()}%`;
+      const sanitizedSearch = query.search.trim().replace(/[%_\\]/g, '\\$&');
+      const searchPattern = `%${sanitizedSearch}%`;
       conditions.push(
         sql`(${acceptedEvidence.verbatimText} ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->>'verbatimText' ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->'message'->>'text' ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->'message'->>'caption' ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->'edited_message'->>'text' ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->'edited_message'->>'caption' ILIKE ${searchPattern})`,
       );
     }
 
     if (query.startDate) {
-      conditions.push(sql`${telegramIntakeRecords.originalTimestamp} >= ${query.startDate}`);
+      const start = new Date(query.startDate);
+      if (!Number.isNaN(start.getTime())) {
+        conditions.push(gte(telegramIntakeRecords.originalTimestamp, start));
+      }
     }
     if (query.endDate) {
-      conditions.push(sql`${telegramIntakeRecords.originalTimestamp} <= ${query.endDate}`);
+      const end = new Date(query.endDate);
+      if (!Number.isNaN(end.getTime())) {
+        conditions.push(lte(telegramIntakeRecords.originalTimestamp, end));
+      }
     }
 
     if (query.cursor) {

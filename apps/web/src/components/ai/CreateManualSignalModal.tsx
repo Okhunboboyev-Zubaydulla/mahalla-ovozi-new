@@ -67,7 +67,7 @@ export const CreateManualSignalModal: React.FC<CreateManualSignalModalProps> = (
       confirmLoading={createMutation.isPending}
       okText="Яратиш"
       cancelText="Бекор қилиш"
-      destroyOnClose
+      destroyOnHidden
     >
       <Form
         form={form}

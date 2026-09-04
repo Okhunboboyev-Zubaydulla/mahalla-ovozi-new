@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Table,
   Card,
@@ -7,6 +7,8 @@ import {
   Tag,
   Input,
   Select,
+  AutoComplete,
+  DatePicker,
   Typography,
   theme,
   Alert,
@@ -23,7 +25,9 @@ import {
   SearchOutlined,
   SyncOutlined,
   DeleteOutlined,
+  ClearOutlined,
 } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
 import type {
   ListSignalsQuery,
@@ -31,6 +35,7 @@ import type {
   QualifyingLane,
 } from '@mahalla-ovozi/api-contracts';
 import { districtClient } from '../../district/district-client.js';
+import { useDistrictMahallas } from '../../topics/district-topics-client.js';
 import { useSignalMessages, useBatchDeleteSignals } from '../../hooks/useSignalMessages.js';
 import { SignalInspectionDrawer } from './SignalInspectionDrawer.js';
 import { CreateManualSignalModal } from './CreateManualSignalModal.js';
@@ -54,6 +59,18 @@ const EXCLUSION_LABELS: Record<string, string> = {
   UNRESOLVED_AMBIGUOUS_FRAGMENT: 'Ноаниқ қисқа матн',
 };
 
+const SIGNAL_DATE_PRESETS: { label: string; value: () => [dayjs.Dayjs, dayjs.Dayjs] }[] = [
+  { label: 'Бугун', value: () => [dayjs().startOf('day'), dayjs().endOf('day')] },
+  {
+    label: 'Сўнгги 7 кун',
+    value: () => [dayjs().subtract(6, 'day').startOf('day'), dayjs().endOf('day')],
+  },
+  {
+    label: 'Сўнгги 30 кун',
+    value: () => [dayjs().subtract(29, 'day').startOf('day'), dayjs().endOf('day')],
+  },
+];
+
 export interface SignalMonitoringTableProps {
   initialDistrictId?: string | null;
 }
@@ -68,11 +85,14 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
     initialDistrictId || undefined,
   );
   const [mahallaName, setMahallaName] = useState<string>('');
+  const [debouncedMahallaName, setDebouncedMahallaName] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'true' | 'false'>('all');
   const [laneFilter, setLaneFilter] = useState<QualifyingLane | undefined>(undefined);
   const [searchText, setSearchText] = useState<string>('');
   const [debouncedSearchText, setDebouncedSearchText] = useState<string>('');
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
   const [autoRefreshSec, setAutoRefreshSec] = useState<number | false>(15_000);
+  const [pageSize, setPageSize] = useState<number>(20);
 
   // Pagination Cursor State & History Stack
   const [cursor, setCursor] = useState<string | undefined>(undefined);
@@ -81,6 +101,8 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
   // Sync with initialDistrictId changes from header
   useEffect(() => {
     setDistrictId(initialDistrictId || undefined);
+    setMahallaName('');
+    setDebouncedMahallaName('');
     setCursor(undefined);
     setCursorHistory([]);
   }, [initialDistrictId]);
@@ -94,6 +116,17 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
     }, 300);
     return () => clearTimeout(timer);
   }, [searchText]);
+
+  // Debounce mahalla input by 300ms
+  useEffect(() => {
+    if (mahallaName === debouncedMahallaName) return;
+    const timer = setTimeout(() => {
+      setDebouncedMahallaName(mahallaName);
+      setCursor(undefined);
+      setCursorHistory([]);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [mahallaName, debouncedMahallaName]);
 
   // Modals / Drawer State
   const [selectedSignalId, setSelectedSignalId] = useState<string | null>(null);
@@ -129,17 +162,64 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
     staleTime: 60_000,
   });
 
+  // Query District Mahallas
+  const { data: districtMahallasData } = useDistrictMahallas(districtId || null);
+
+  const mahallaOptions = useMemo(() => {
+    if (!districtMahallasData?.mahallas) return [];
+    return districtMahallasData.mahallas.map((name) => ({
+      value: name,
+      label: name,
+    }));
+  }, [districtMahallasData]);
+
+  const handleDistrictChange = (val?: string) => {
+    setDistrictId(val);
+    setMahallaName('');
+    setDebouncedMahallaName('');
+    setCursor(undefined);
+    setCursorHistory([]);
+  };
+
+  const hasActiveFilters = Boolean(
+    districtId !== (initialDistrictId || undefined) ||
+      (mahallaName && mahallaName.trim().length > 0) ||
+      statusFilter !== 'all' ||
+      laneFilter ||
+      (searchText && searchText.trim().length > 0) ||
+      (dateRange && (dateRange[0] || dateRange[1])),
+  );
+
+  const handleResetFilters = () => {
+    setDistrictId(initialDistrictId || undefined);
+    setMahallaName('');
+    setDebouncedMahallaName('');
+    setStatusFilter('all');
+    setLaneFilter(undefined);
+    setSearchText('');
+    setDebouncedSearchText('');
+    setDateRange(null);
+    setCursor(undefined);
+    setCursorHistory([]);
+  };
+
   // Query Signals
   const queryFilters: ListSignalsQuery = {
     districtId: districtId || undefined,
-    mahallaName: mahallaName.trim() || undefined,
+    mahallaName: (debouncedMahallaName || '').trim() || undefined,
     isRelevant: statusFilter === 'all' ? undefined : (statusFilter === 'true' ? true : false),
     lane: laneFilter,
-    search: debouncedSearchText.trim() || undefined,
+    search: (debouncedSearchText || '').trim() || undefined,
+    startDate: dateRange?.[0]?.isValid() ? dateRange[0].startOf('day').toISOString() : undefined,
+    endDate: dateRange?.[1]?.isValid() ? dateRange[1].endOf('day').toISOString() : undefined,
     cursor,
-    limit: 30,
+    limit: pageSize,
     direction: 'forward',
   };
+
+  const isModalOrDrawerOpen = inspectionDrawerOpen || createModalOpen || batchDeleteModalOpen;
+  const isBrowsingHistory = Boolean(cursor);
+  const shouldPauseRefresh = isModalOrDrawerOpen || isBrowsingHistory;
 
   const {
     data: signalsData,
@@ -149,7 +229,7 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
     error,
     refetch,
   } = useSignalMessages(queryFilters, {
-    refetchInterval: autoRefreshSec,
+    refetchInterval: shouldPauseRefresh ? false : autoRefreshSec,
   });
 
   const handleNextPage = () => {
@@ -286,6 +366,7 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
       title: 'AI изоҳи / Асос (Reasoning)',
       dataIndex: 'reasoning',
       key: 'reasoning',
+      width: 260,
       render: (reasoning: string | null, record: SignalMessageListItemDto) => {
         if (reasoning) {
           return (
@@ -378,6 +459,7 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
                   { label: 'Авто-янгилаш: 10с', value: 10_000 },
                   { label: 'Авто-янгилаш: 15с', value: 15_000 },
                   { label: 'Авто-янгилаш: 30с', value: 30_000 },
+                  { label: 'Авто-янгилаш: 60с', value: 60_000 },
                   { label: 'Ўчирилган', value: false },
                 ]}
               />
@@ -412,10 +494,7 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
               allowClear
               placeholder="Барча туманлар"
               value={districtId}
-              onChange={(val) => {
-                setDistrictId(val);
-                setCursor(undefined);
-              }}
+              onChange={handleDistrictChange}
               style={{ width: 180 }}
               options={districtsData?.districts.map((d) => ({
                 label: d.name,
@@ -423,15 +502,27 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
               }))}
             />
 
-            <Input
+            <AutoComplete
               allowClear
               placeholder="Маҳалла бўйича қидириш"
               value={mahallaName}
-              onChange={(e) => {
-                setMahallaName(e.target.value);
+              onChange={(val) => setMahallaName(val || '')}
+              onSelect={(val) => {
+                setMahallaName(val);
+                setDebouncedMahallaName(val);
                 setCursor(undefined);
+                setCursorHistory([]);
               }}
-              style={{ width: 190 }}
+              options={mahallaOptions}
+              filterOption={(inputValue, option) =>
+                Boolean(
+                  option?.value &&
+                    String(option.value)
+                      .toUpperCase()
+                      .includes((inputValue || '').toUpperCase()),
+                )
+              }
+              style={{ width: 210 }}
             />
 
             <Select
@@ -439,8 +530,9 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
               onChange={(val) => {
                 setStatusFilter(val);
                 setCursor(undefined);
+                setCursorHistory([]);
               }}
-              style={{ width: 180 }}
+              style={{ width: 170 }}
               options={[
                 { label: 'Барча қарорлар', value: 'all' },
                 { label: 'Қабул қилинганлар', value: 'true' },
@@ -455,12 +547,25 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
               onChange={(val) => {
                 setLaneFilter(val);
                 setCursor(undefined);
+                setCursorHistory([]);
               }}
-              style={{ width: 160 }}
+              style={{ width: 150 }}
               options={Object.entries(LANE_LABELS).map(([k, v]) => ({
                 label: v.label,
                 value: k,
               }))}
+            />
+
+            <DatePicker.RangePicker
+              value={dateRange}
+              onChange={(dates) => {
+                setDateRange(dates as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null);
+                setCursor(undefined);
+                setCursorHistory([]);
+              }}
+              presets={SIGNAL_DATE_PRESETS}
+              placeholder={['Бошланғич сана', 'Якуний сана']}
+              style={{ width: 260 }}
             />
 
             <Input
@@ -468,12 +573,18 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
               prefix={<SearchOutlined />}
               placeholder="Матн бўйича қидириш..."
               value={searchText}
-              onChange={(e) => {
-                setSearchText(e.target.value);
-                setCursor(undefined);
-              }}
-              style={{ width: 220 }}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: 200 }}
             />
+
+            {hasActiveFilters && (
+              <Button
+                icon={<ClearOutlined />}
+                onClick={handleResetFilters}
+              >
+                Филтрларни тозалаш
+              </Button>
+            )}
           </div>
         </Space>
       </Card>
@@ -545,7 +656,7 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
           dataSource={signalsData?.items || []}
           loading={isLoading}
           pagination={false}
-          scroll={{ x: 1100 }}
+          scroll={{ y: 560, x: 1100 }}
           size="middle"
           onRow={(record) => ({
             onClick: (e) => {
@@ -571,25 +682,53 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
         <div
           style={{
             display: 'flex',
-            justifyContent: 'flex-end',
-            padding: '16px 24px',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 24px',
             borderTop: `1px solid ${token.colorBorderSecondary}`,
-            gap: 8,
+            flexWrap: 'wrap',
+            gap: 12,
           }}
         >
-          <Button
-            disabled={cursorHistory.length === 0}
-            onClick={handlePrevPage}
-          >
-            Олдингиси
-          </Button>
-          <Button
-            type="primary"
-            disabled={!signalsData?.pagination?.hasNextPage}
-            onClick={handleNextPage}
-          >
-            Кейингиси
-          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              Кўрсатилмоқда: {signalsData?.items?.length || 0} та сигнал
+            </Text>
+            <Tag color="default" style={{ margin: 0 }}>
+              {cursorHistory.length + 1}-саҳифа
+            </Tag>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Select
+              value={pageSize}
+              onChange={(val) => {
+                setPageSize(val);
+                setCursor(undefined);
+                setCursorHistory([]);
+              }}
+              size="small"
+              style={{ width: 120 }}
+              options={[
+                { label: '10 / саҳифа', value: 10 },
+                { label: '20 / саҳифа', value: 20 },
+                { label: '50 / саҳифа', value: 50 },
+              ]}
+            />
+            <Button
+              disabled={cursorHistory.length === 0}
+              onClick={handlePrevPage}
+            >
+              Олдингиси
+            </Button>
+            <Button
+              type="primary"
+              disabled={!signalsData?.pagination?.hasNextPage}
+              onClick={handleNextPage}
+            >
+              Кейингиси
+            </Button>
+          </div>
         </div>
       </Card>
 
