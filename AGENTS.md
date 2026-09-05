@@ -29,7 +29,7 @@ Package manager: prefer pnpm for new JS/TS tooling; follow existing lockfile/pac
 Comments in English only.
 Prefer functional programming over OOP. Use OOP classes only for connectors/interfaces to external systems.
 Write pure functions: modify return values only, never input params or global state.
-Architecture: apply KISS, YAGNI, DRY, separation of concerns, SOLID where applicable. On tension: simplicity and YAGNI beat forced speculative scalability; never trade correctness or security for simplicity. Prefer cohesive single-purpose domain logic; keep mutations at clear system boundaries.
+Architecture: apply KISS, YAGNI, DRY, separation of concerns, SOLID where applicable. Never trade correctness or security for simplicity. Prefer cohesive single-purpose domain logic; keep mutations at clear system boundaries.
 Prefer simple, native, vendor-recommended solutions. Avoid premature abstraction.
 Strict typing for returns, variables, collections, complex data. Validate external/API data at runtime. Require needed fields, ignore unrelated extras. Prefer structured models over loose dicts. Avoid weak types (`Any`, `unknown`, `List[Dict[str, Any]]`).
 Check if logic already exists before writing new code.
