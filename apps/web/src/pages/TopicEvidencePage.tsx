@@ -317,7 +317,7 @@ export const TopicEvidencePage: React.FC = () => {
                     letterSpacing: '0.03em',
                   }}
                 >
-                  Асосий далил иқтибоси:
+                  Дастлабки хабар иқтибоси:
                 </Text>
                 <Text
                   italic

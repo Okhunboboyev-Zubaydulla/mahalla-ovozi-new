@@ -249,7 +249,7 @@ describe('Story 4.5: DistrictTopicsView Component Tests (AC 1, 2, 3, 4, 5, 7, 8,
 
     await waitFor(() => {
       expect(screen.getByText('Мавзу тафсилотлари ва далиллар')).toBeTruthy();
-      expect(screen.getByText('Асосий далил матни (Anchor):')).toBeTruthy();
+      expect(screen.getByText('Дастлабки хабар иқтибоси:')).toBeTruthy();
       expect(screen.getByText('@alisher_resident')).toBeTruthy();
     });
   });

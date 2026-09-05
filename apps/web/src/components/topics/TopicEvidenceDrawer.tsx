@@ -318,7 +318,7 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
                   letterSpacing: '0.03em',
                 }}
               >
-                Асосий далил иқтибоси:
+                Дастлабки хабар иқтибоси:
               </Text>
               <Text
                 italic

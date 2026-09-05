@@ -135,14 +135,14 @@ describe('TopicEvidenceDrawer Component Tests', () => {
     // Verify summary and anchor quote callout
     expect(screen.getByText('Сув қувури ёрилиши сабабли кўчани сув босмоқда.')).toBeTruthy();
     expect(screen.getByText('«Қувур ёрилиб кўчани сув босди!»')).toBeTruthy();
-    expect(screen.getByText('Асосий далил иқтибоси:')).toBeTruthy();
+    expect(screen.getByText('Дастлабки хабар иқтибоси:')).toBeTruthy();
 
     // Verify evidence items
     expect(screen.getByText('1-хабар: Сув босими пасайди.')).toBeTruthy();
     expect(screen.getByText('2-хабар: Қувур ёрилиб кўчани сув босди!')).toBeTruthy();
 
     // Verify in-situ anchor badge
-    expect(screen.getByText('Асосий далил')).toBeTruthy();
+    expect(screen.getByText('Дастлабки хабар')).toBeTruthy();
 
     // Verify Telegram link buttons
     const telegramLinks = screen.getAllByRole('link', { name: /Telegramда очиш/i });

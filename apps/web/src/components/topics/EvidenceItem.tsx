@@ -152,7 +152,7 @@ export const EvidenceItem: React.FC<EvidenceItemProps> = ({ evidence }) => {
                   margin: 0,
                 }}
               >
-                Асосий далил
+                Дастлабки хабар
               </Tag>
             )}
             <Space size={4} style={{ color: '#64748B', fontSize: 12 }}>

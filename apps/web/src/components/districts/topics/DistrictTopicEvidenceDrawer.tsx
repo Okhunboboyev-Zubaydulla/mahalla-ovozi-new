@@ -196,7 +196,7 @@ export const DistrictTopicEvidenceDrawer: React.FC<DistrictTopicEvidenceDrawerPr
               }}
             >
               <Text strong style={{ color: '#1E40AF', fontSize: 13, display: 'block', marginBottom: 4 }}>
-                Асосий далил матни (Anchor):
+                Дастлабки хабар иқтибоси:
               </Text>
               <Paragraph
                 style={{
