@@ -77,26 +77,38 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
     <Drawer
       open={Boolean(topicId)}
       onClose={onClose}
-      mask={false}
-      rootStyle={{ pointerEvents: 'none' }}
-      width={520}
+      mask={true}
+      width={typeof window !== 'undefined' ? Math.min(540, window.innerWidth - 32) : 540}
       aria-label="Мавзу далиллари"
-      aria-modal={false}
-      keyboard={false}
+      aria-modal={true}
+      keyboard={true}
       closeIcon={<CloseOutlined aria-label="Ёпиш" style={{ fontSize: 16, color: '#64748B' }} />}
       styles={{
+        mask: {
+          backgroundColor: 'rgba(15, 23, 42, 0.25)',
+          backdropFilter: 'blur(2px)',
+        },
         wrapper: {
-          boxShadow: 'none',
-          pointerEvents: 'auto',
+          top: 16,
+          right: 16,
+          bottom: 16,
+          height: 'calc(100vh - 32px)',
+          maxHeight: 'calc(100vh - 32px)',
+          borderRadius: 16,
+          overflow: 'hidden',
+          boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.14), 0 8px 10px -6px rgba(15, 23, 42, 0.08)',
         },
         content: {
-          boxShadow: 'none',
-          borderLeft: '1px solid #E2E8F0',
+          borderRadius: 16,
+          overflow: 'hidden',
+          border: '1px solid #E2E8F0',
           backgroundColor: '#FFFFFF',
+          boxShadow: 'none',
         },
         header: {
           borderBottom: '1px solid #E2E8F0',
           padding: '14px 20px',
+          backgroundColor: '#FFFFFF',
         },
         body: {
           padding: '20px',
@@ -105,6 +117,8 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
           height: '100%',
           overflowY: 'auto',
           backgroundColor: '#F8FAFC',
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#CBD5E1 transparent',
         },
       }}
       title={
@@ -112,8 +126,22 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
           ref={headingRef}
           tabIndex={-1}
           id="topic-evidence-heading"
-          style={{ outline: 'none' }}
+          style={{ outline: 'none', display: 'flex', alignItems: 'center', gap: 10 }}
         >
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              backgroundColor: '#E0F2FE',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <MessageOutlined style={{ color: '#0284C7', fontSize: 16 }} />
+          </div>
           <Title
             level={5}
             style={{
@@ -176,12 +204,12 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
             style={{
               backgroundColor: '#FFFFFF',
               border: '1px solid #E2E8F0',
-              borderRadius: 8,
+              borderRadius: 12,
               padding: '16px',
               display: 'flex',
               flexDirection: 'column',
               gap: 10,
-              boxShadow: 'none',
+              boxShadow: '0 2px 4px -1px rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04)',
             }}
           >
             {/* Mahalla + Lane Tags */}
@@ -274,9 +302,9 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
                 backgroundColor: '#F0F9FF',
                 border: '1px solid #BAE6FD',
                 borderLeft: '4px solid #0284C7',
-                borderRadius: '0 8px 8px 0',
+                borderRadius: '0 10px 10px 0',
                 padding: '12px 14px',
-                boxShadow: 'none',
+                boxShadow: '0 1px 3px 0 rgba(2, 132, 199, 0.08)',
               }}
             >
               <Text
@@ -309,29 +337,49 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
           )}
 
           {/* Evidence Section Header */}
-          <div style={{ marginTop: 4 }}>
+          <div
+            style={{
+              marginTop: 4,
+              marginBottom: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
             <Text
               strong
               style={{
                 fontSize: 14,
                 color: '#0F172A',
-                display: 'block',
-                marginBottom: 8,
               }}
             >
-              Сақланган далиллар рўйхати ({evidenceList.length} / {totalCount})
+              Сақланган далиллар рўйхати
             </Text>
-
-            {/* Evidence Timeline */}
-            <EvidenceTimeline
-              evidenceList={evidenceList}
-              totalCount={totalCount}
-              hasNextPage={hasNextPage}
-              isFetchingNextPage={isFetchingNextPage}
-              isFetchNextPageError={isFetchNextPageError}
-              onFetchNextPage={fetchNextPage}
-            />
+            <Tag
+              style={{
+                backgroundColor: '#E0F2FE',
+                color: '#0284C7',
+                borderColor: '#BAE6FD',
+                borderRadius: 12,
+                fontWeight: 600,
+                fontSize: 12,
+                margin: 0,
+                padding: '1px 8px',
+              }}
+            >
+              {evidenceList.length} / {totalCount}
+            </Tag>
           </div>
+
+          {/* Evidence Timeline */}
+          <EvidenceTimeline
+            evidenceList={evidenceList}
+            totalCount={totalCount}
+            hasNextPage={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            isFetchNextPageError={isFetchNextPageError}
+            onFetchNextPage={fetchNextPage}
+          />
         </div>
       )}
       </section>
