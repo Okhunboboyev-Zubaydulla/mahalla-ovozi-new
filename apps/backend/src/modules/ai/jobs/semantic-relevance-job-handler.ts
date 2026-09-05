@@ -155,6 +155,7 @@ export async function processSemanticRelevanceJobs(
             contentType,
             replyMetadata,
             snapshot,
+            burstMessages,
           });
 
           // Gate 2: Pre-Commit District Lifecycle Verification (AC 13 / Matrix #21)
@@ -250,6 +251,42 @@ export async function processSemanticRelevanceJobs(
 
             if (isRelevant) {
               // 3. Enqueue Story 2.4 Topic Assignment job (AC 3, 9)
+              const acceptedIds = new Set(
+                Array.isArray(aiResult.data.accepted_message_ids) &&
+                aiResult.data.accepted_message_ids.length > 0
+                  ? aiResult.data.accepted_message_ids
+                  : burstMessages && burstMessages.length > 0
+                    ? burstMessages.map((m) => m.telegramMessageId)
+                    : [telegramMessageId],
+              );
+
+              const filteredBurstMessages = burstMessages
+                ? burstMessages.filter((m) => acceptedIds.has(m.telegramMessageId))
+                : undefined;
+
+              const excludedBurstItems = burstMessages
+                ? burstMessages.filter((m) => !acceptedIds.has(m.telegramMessageId))
+                : [];
+
+              if (excludedBurstItems.length > 0) {
+                const excludedIntakeIds = excludedBurstItems.map((m) => m.intakeId);
+                const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+                await tx
+                  .update(telegramIntakeRecords)
+                  .set({
+                    rawPayload: {
+                      status: 'EXCLUDED',
+                      exclusionReason: 'GENERAL_CHATTER',
+                      reasoning:
+                        'Кетма-кет ёзилган хабарлардан ушбу қисмда соҳага оид муаммо ёки манзил аниқланмади',
+                      expiresAt,
+                      purgedAt: null,
+                    },
+                    updatedAt: new Date(),
+                  })
+                  .where(inArray(telegramIntakeRecords.id, excludedIntakeIds));
+              }
+
               const topicJobData: TelegramTopicAssignmentJobData = {
                 intakeId,
                 districtId,
@@ -265,7 +302,10 @@ export async function processSemanticRelevanceJobs(
                 aiOperationId,
                 relevantLanes: aiResult.data.relevant_lanes,
                 reasoning: aiResult.data.reasoning,
-                burstMessages,
+                burstMessages:
+                  filteredBurstMessages && filteredBurstMessages.length > 0
+                    ? filteredBurstMessages
+                    : undefined,
               };
 
               const singletonKey = JobSingletonKeys.forTopicAssignment(districtId, telegramChatId, telegramMessageId);

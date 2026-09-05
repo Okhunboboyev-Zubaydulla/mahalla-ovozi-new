@@ -360,8 +360,8 @@ export class HokimTopicService {
       if (decoded) {
         const cursorDate = new Date(decoded.t);
         cursorPredicate = sql`AND (
-          date_trunc('milliseconds', tp.latest_meaningful_activity_timestamp) < ${cursorDate}
-          OR (date_trunc('milliseconds', tp.latest_meaningful_activity_timestamp) = ${cursorDate} AND t.id < ${decoded.id})
+          date_trunc('milliseconds', COALESCE(tp.latest_meaningful_activity_timestamp, t.latest_relevant_evidence_timestamp, t.created_at)) < ${cursorDate}
+          OR (date_trunc('milliseconds', COALESCE(tp.latest_meaningful_activity_timestamp, t.latest_relevant_evidence_timestamp, t.created_at)) = ${cursorDate} AND t.id < ${decoded.id})
         )`;
       }
     }
@@ -417,15 +417,15 @@ export class HokimTopicService {
         t.primary_lane AS "primaryLane", 
         t.created_at AS "createdAt", 
         t.updated_at AS "updatedAt",
-        tp.summary, 
-        tp.lanes, 
-        tp.is_hokim_related AS "isHokimRelated", 
-        tp.latest_meaningful_activity_timestamp AS "latestMeaningfulActivityTimestamp",
+        COALESCE(tp.summary, 'Мавзу хулосаси тайёрланмоқда...') AS summary, 
+        COALESCE(tp.lanes, jsonb_build_array(t.primary_lane)) AS lanes, 
+        COALESCE(tp.is_hokim_related, (t.primary_lane = 'HOKIM_RELATED')) AS "isHokimRelated", 
+        COALESCE(tp.latest_meaningful_activity_timestamp, t.latest_relevant_evidence_timestamp, t.created_at) AS "latestMeaningfulActivityTimestamp",
         tp.updated_at AS "projectionUpdatedAt",
         COUNT(ae.id)::int AS "evidenceCount",
         ${badgeSelect}
       FROM topics t
-      JOIN topic_projections tp ON tp.topic_id = t.id
+      LEFT JOIN topic_projections tp ON tp.topic_id = t.id
       LEFT JOIN accepted_evidence ae ON ae.topic_id = t.id
       WHERE t.district_id = ${districtId}
         AND ${datePredicate}
@@ -436,7 +436,7 @@ export class HokimTopicService {
         ${cursorPredicate}
         ${searchPredicate}
       GROUP BY t.id, tp.id
-      ORDER BY tp.latest_meaningful_activity_timestamp DESC, t.id DESC
+      ORDER BY COALESCE(tp.latest_meaningful_activity_timestamp, t.latest_relevant_evidence_timestamp, t.created_at) DESC, t.id DESC
       LIMIT ${limit + 1};
     `;
 
@@ -539,7 +539,7 @@ export class HokimTopicService {
     const countQuery = sql<{ count: number }>`
       SELECT COUNT(DISTINCT t.id)::int AS count
       FROM topics t
-      JOIN topic_projections tp ON tp.topic_id = t.id
+      LEFT JOIN topic_projections tp ON tp.topic_id = t.id
       WHERE t.district_id = ${districtId}
         AND ${datePredicate}
         ${mahallaPredicate}
@@ -652,7 +652,7 @@ export class HokimTopicService {
           tp.lanes,
           tp.is_hokim_related
         FROM topics t
-        JOIN topic_projections tp ON tp.topic_id = t.id
+        LEFT JOIN topic_projections tp ON tp.topic_id = t.id
         WHERE t.district_id = ${districtId}
           AND t.status = 'ACTIVE'
           AND t.retention_expires_at > NOW()

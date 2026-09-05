@@ -663,15 +663,20 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
       expect(prompt).not.toContain('other topic 1 message 1');
     });
 
-    it('ensures system prompt defines mandatory location and landmark prefixing for localized infrastructure issues', () => {
-      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('MANDATORY LOCATION & LANDMARK PREFIX FOR LOCALIZED INFRASTRUCTURE FAILURES');
-      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('elektroset arqasideyi kucada');
+    it('ensures system prompt defines location and landmark policy for communal outages vs acute point hazards', () => {
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('LOCATION & LANDMARK POLICY (HIGH-LEVEL OUTAGES VS. ACUTE POINT HAZARDS)');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('DO NOT prefix or enumerate specific street names or landmarks in the summary title!');
       expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('Электросеть орқасидаги кўчада');
       expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('NEVER strip the landmark or street reference');
     });
 
     it('ensures system prompt defines HOKIM_RELATED multi-lane derivation strictly for explicit appeals', () => {
-      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('Include HOKIM_RELATED if and only if the evidence involves explicit civic appeals, complaints, or accountability directed to the District Hokim or Hokimiyat, and their direct follow-ups.');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('HOKIM_RELATED QUALIFICATION CRITERIA');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('Include HOKIM_RELATED if and only if at least one evidence item in the topic explicitly contains designated Hokim/Hokimiyat terms');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('"xokim", "hakim", "xakim", "hokimyat", "xokimyat", "hokimat", "xokimat", "hokim buva", "hokimbobo", "hokimimiz"');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('"zamhokim", "hokim yordamchisi"');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('Road defects, mud, or unpaved street issues without explicit Hokim/Hokimiyat mentions must NEVER derive HOKIM_RELATED');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('"mahalla raisi" or "oqsoqol" alone does NOT qualify for HOKIM_RELATED');
     });
 
     it('extracts landmark prefix into summary title for localized pipe leak (Card 1 Navbahor case)', async () => {
@@ -725,6 +730,335 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
       expect(result.anchorEvidenceId).toBe('evi_elektroset_1');
       expect(result.lanes).toEqual(['WATER']);
       expect(result.isHokimRelated).toBe(false);
+    });
+
+    it('ensures system prompt defines instructions for sarcasm, rhetorical questions, and exasperated escalations', () => {
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('RHETORICAL EXASPERATION, SARCASM & CYNICAL ESCALATIONS');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('hokimiyatga chiqish shartmi?');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('ACTIVE EXPRESSIONS OF GRIEVANCE / DISSATISFACTION');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('Ҳокимликка мурожаат қилиш зарурати юзасидан сўров қабул қилинди');
+    });
+
+    it('ensures system prompt strictly forbids bureaucratic ticketing and intake placeholders', () => {
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('...сўрови қабул қилинди');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('...мурожаати рўйхатга олинди');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('...кўриб чиқилмоқда');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('...мурожаат қайд этилди');
+    });
+
+    it('ensures system prompt defines causal grounding for HOKIM_RELATED summaries', () => {
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('HOKIM_RELATED (CAUSAL GROUNDING)');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('мутасаддилар эътиборсизлиги юзасидан ҳокимликка эътироз билдирилгани хабар қилинмоқда');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('Ҳокимлик ва мутасадди идоралар фаолияти юзасидан эътироз билдирилгани хабар қилинмоқда');
+    });
+
+    it('projects HOKIM_RELATED topic grounded in water utility inaction rather than literal procedural inquiry', async () => {
+      const mockGateway = createMockAiGateway({
+        summary: 'Сув таъминотидаги муаммо бўйича мутасаддилар эътиборсизлиги юзасидан ҳокимликка эътироз билдирилгани хабар қилинмоқда.',
+        lanes: ['HOKIM_RELATED'],
+        anchor_evidence_id: 'evi_hokim_1',
+        anchor_quote: 'hokimiyatga ciqish shartmi',
+        latest_meaningful_activity_timestamp: '2026-09-04T08:38:00.000Z',
+        attribution: 'Маҳалла фуқароси',
+        is_hokim_related: true,
+      });
+      const evaluator = new TopicProjectionEvaluator(mockGateway);
+
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-04',
+        contextRevision: 3,
+        snapshotFingerprint: 'fp_navbahor_water_hokim',
+        evidence: [
+          {
+            id: 'evi_water_1',
+            topicId: 'top_water_inaction',
+            telegramMessageId: '181',
+            originalTimestamp: '2026-09-04T08:36:00.000Z',
+            verbatimText: 'hec kim ishi yu',
+            lane: 'WATER',
+          },
+          {
+            id: 'evi_water_2',
+            topicId: 'top_water_inaction',
+            telegramMessageId: '182',
+            originalTimestamp: '2026-09-04T08:37:00.000Z',
+            verbatimText: 'na vodokanal qaredi na boshqasi',
+            lane: 'WATER',
+          },
+          {
+            id: 'evi_hokim_1',
+            topicId: 'top_hokim_appeal',
+            telegramMessageId: '183',
+            originalTimestamp: '2026-09-04T08:38:00.000Z',
+            verbatimText: 'hokimiyatga ciqish shartmi',
+            lane: 'HOKIM_RELATED',
+          },
+        ],
+      };
+
+      // Ensure buildUserPrompt supplies both the target topic and the other same-day topic context
+      const userPrompt = evaluator.buildUserPrompt({
+        topicId: 'top_hokim_appeal',
+        primaryLane: 'HOKIM_RELATED',
+        generation: 1,
+        snapshot,
+      });
+
+      expect(userPrompt).toContain('hokimiyatga ciqish shartmi');
+      expect(userPrompt).toContain('Other Topic ID: top_water_inaction');
+      expect(userPrompt).toContain('na vodokanal qaredi na boshqasi');
+
+      const result = await evaluator.evaluateTopicProjection({
+        topicId: 'top_hokim_appeal',
+        primaryLane: 'HOKIM_RELATED',
+        generation: 1,
+        snapshot,
+      });
+
+      expect(result.summary).toBe('Сув таъминотидаги муаммо бўйича мутасаддилар эътиборсизлиги юзасидан ҳокимликка эътироз билдирилгани хабар қилинмоқда.');
+      expect(result.summary).not.toContain('сўрови қабул қилинди');
+      expect(result.summary).not.toContain('зарурати юзасидан');
+      expect(result.isHokimRelated).toBe(true);
+      expect(result.lanes).toEqual(['HOKIM_RELATED']);
+      expect(result.anchorEvidenceId).toBe('evi_hokim_1');
+      expect(isUzbekCyrillic(result.summary)).toBe(true);
+    });
+
+    it('projects topic with colloquial Hokim slang and derives HOKIM_RELATED lane', async () => {
+      const mockGateway = createMockAiGateway({
+        summary: 'Кўчадаги лой ва йўл таъмири бўйича ҳокимликка эътироз билдирилгани хабар қилинмоқда.',
+        lanes: ['HOKIM_RELATED'],
+        anchor_evidence_id: 'evi_slang_1',
+        anchor_quote: "xokim buva ko'chamizdagi loyga qachon qaraysiz?",
+        latest_meaningful_activity_timestamp: '2026-09-04T09:15:00.000Z',
+        attribution: 'Маҳалла фуқароси',
+        is_hokim_related: true,
+      });
+      const evaluator = new TopicProjectionEvaluator(mockGateway);
+
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-04',
+        contextRevision: 1,
+        snapshotFingerprint: 'fp_hokim_slang',
+        evidence: [
+          {
+            id: 'evi_slang_1',
+            topicId: 'top_slang_road',
+            telegramMessageId: '191',
+            originalTimestamp: '2026-09-04T09:15:00.000Z',
+            verbatimText: "xokim buva ko'chamizdagi loyga qachon qaraysiz?",
+            lane: 'HOKIM_RELATED',
+          },
+        ],
+      };
+
+      const result = await evaluator.evaluateTopicProjection({
+        topicId: 'top_slang_road',
+        primaryLane: 'HOKIM_RELATED',
+        generation: 1,
+        snapshot,
+      });
+
+      expect(result.summary).toBe('Кўчадаги лой ва йўл таъмири бўйича ҳокимликка эътироз билдирилгани хабар қилинмоқда.');
+      expect(result.isHokimRelated).toBe(true);
+      expect(result.lanes).toEqual(['HOKIM_RELATED']);
+      expect(result.anchorEvidenceId).toBe('evi_slang_1');
+    });
+
+    it('does not derive HOKIM_RELATED for road defect topic lacking explicit Hokim mentions', async () => {
+      const mockGateway = createMockAiGateway({
+        summary: 'Кўча таъмири бўйича муаммо хабар қилинмоқда.',
+        lanes: ['WATER'],
+        anchor_evidence_id: 'evi_road_1',
+        anchor_quote: "Ko'chamizda chuqurlar ko'p, mashinalar o'tolmayapti",
+        latest_meaningful_activity_timestamp: '2026-09-04T09:20:00.000Z',
+        attribution: 'Маҳалла фуқароси',
+        is_hokim_related: false,
+      });
+      const evaluator = new TopicProjectionEvaluator(mockGateway);
+
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-04',
+        contextRevision: 1,
+        snapshotFingerprint: 'fp_road_nohokim',
+        evidence: [
+          {
+            id: 'evi_road_1',
+            topicId: 'top_road_defect',
+            telegramMessageId: '192',
+            originalTimestamp: '2026-09-04T09:20:00.000Z',
+            verbatimText: "Ko'chamizda chuqurlar ko'p, mashinalar o'tolmayapti",
+            lane: 'WATER',
+          },
+        ],
+      };
+
+      const result = await evaluator.evaluateTopicProjection({
+        topicId: 'top_road_defect',
+        primaryLane: 'WATER',
+        generation: 1,
+        snapshot,
+      });
+
+      expect(result.isHokimRelated).toBe(false);
+      expect(result.lanes).not.toContain('HOKIM_RELATED');
+      expect(result.lanes).toEqual(['WATER']);
+    });
+
+    it('does not derive HOKIM_RELATED for mahalla raisi grievance without Hokim mention', async () => {
+      const mockGateway = createMockAiGateway({
+        summary: 'Маҳалла фаолияти юзасидан муҳокама билдирилди.',
+        lanes: ['WATER'],
+        anchor_evidence_id: 'evi_raisi_1',
+        anchor_quote: 'Mahalla raisi qachon hisobot beradi, qayerga qarayapti?',
+        latest_meaningful_activity_timestamp: '2026-09-04T09:25:00.000Z',
+        attribution: 'Маҳалла фуқароси',
+        is_hokim_related: false,
+      });
+      const evaluator = new TopicProjectionEvaluator(mockGateway);
+
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-04',
+        contextRevision: 1,
+        snapshotFingerprint: 'fp_raisi_nohokim',
+        evidence: [
+          {
+            id: 'evi_raisi_1',
+            topicId: 'top_raisi_topic',
+            telegramMessageId: '193',
+            originalTimestamp: '2026-09-04T09:25:00.000Z',
+            verbatimText: 'Mahalla raisi qachon hisobot beradi, qayerga qarayapti?',
+            lane: 'WATER',
+          },
+        ],
+      };
+
+      const result = await evaluator.evaluateTopicProjection({
+        topicId: 'top_raisi_topic',
+        primaryLane: 'WATER',
+        generation: 1,
+        snapshot,
+      });
+
+      expect(result.isHokimRelated).toBe(false);
+      expect(result.lanes).not.toContain('HOKIM_RELATED');
+    });
+
+    it('projects multi-street communal gas outage to high-level summary without street names in title and volume attribution', async () => {
+      const mockGateway = createMockAiGateway({
+        summary: 'Газ таъминотида узилиш ёки босим пастлиги хабар қилинмоқда.',
+        lanes: ['GAS'],
+        anchor_evidence_id: 'evi_gas_multi_1',
+        anchor_quote: "Bog'zor ko'chasida gaz yo'q, o'chib qoldi",
+        latest_meaningful_activity_timestamp: '2026-09-04T10:35:00.000Z',
+        attribution: 'Маҳалла аҳолиси',
+        is_hokim_related: false,
+      });
+      const evaluator = new TopicProjectionEvaluator(mockGateway);
+
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-04',
+        contextRevision: 3,
+        snapshotFingerprint: 'fp_gas_multi_streets',
+        evidence: [
+          {
+            id: 'evi_gas_multi_1',
+            topicId: 'top_gas_communal_multi',
+            telegramMessageId: '9001',
+            originalTimestamp: '2026-09-04T10:00:00.000Z',
+            verbatimText: "Bog'zor ko'chasida gaz yo'q, o'chib qoldi",
+            lane: 'GAS',
+          },
+          {
+            id: 'evi_gas_multi_2',
+            topicId: 'top_gas_communal_multi',
+            telegramMessageId: '9002',
+            originalTimestamp: '2026-09-04T10:15:00.000Z',
+            verbatimText: "Navro'z ko'chasidayam gaz o'chdi, sovuq bo'lib ketyapti",
+            lane: 'GAS',
+          },
+          {
+            id: 'evi_gas_multi_3',
+            topicId: 'top_gas_communal_multi',
+            telegramMessageId: '9003',
+            originalTimestamp: '2026-09-04T10:35:00.000Z',
+            verbatimText: 'Bizda ham gaz yoq, qachon beradi',
+            lane: 'GAS',
+          },
+        ],
+      };
+
+      const result = await evaluator.evaluateTopicProjection({
+        topicId: 'top_gas_communal_multi',
+        primaryLane: 'GAS',
+        generation: 1,
+        snapshot,
+      });
+
+      expect(result.summary).toBe('Газ таъминотида узилиш ёки босим пастлиги хабар қилинмоқда.');
+      expect(result.summary).not.toContain('Боғзор');
+      expect(result.summary).not.toContain('Наврўз');
+      expect(result.attribution).toBe('Маҳалла аҳолиси');
+      expect(result.lanes).toEqual(['GAS']);
+      expect(result.isHokimRelated).toBe(false);
+      expect(result.anchorEvidenceId).toBe('evi_gas_multi_1');
+      expect(result.anchorQuote).toBe("Bog'zor ko'chasida gaz yo'q, o'chib qoldi");
+      expect(isUzbekCyrillic(result.summary)).toBe(true);
+    });
+    it('projects canonical outage summary for continuous grid utility inquiry without literal question titles', async () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-05',
+        contextRevision: 1,
+        snapshotFingerprint: 'sha256_gas_inquiry_proj',
+        evidence: [
+          {
+            id: 'evi_gas_inquiry_1',
+            topicId: 'top_gas_inquiry_1',
+            telegramMessageId: '9712',
+            originalTimestamp: '2026-09-05T09:00:00.000Z',
+            verbatimText: 'Bugun gaz keladimi?',
+            lane: 'GAS',
+          },
+        ],
+      };
+
+      const mockGateway = createMockAiGateway({
+        summary: 'Газ таъминотида узилиш ёки босим пастлиги хабар қилинмоқда.',
+        lanes: ['GAS'],
+        anchor_evidence_id: 'evi_gas_inquiry_1',
+        anchor_quote: 'Bugun gaz keladimi?',
+        latest_meaningful_activity_timestamp: '2026-09-05T09:00:00.000Z',
+        attribution: 'Маҳалла фуқароси',
+        is_hokim_related: false,
+      });
+
+      const evaluator = new TopicProjectionEvaluator(mockGateway);
+      const result = await evaluator.evaluateTopicProjection({
+        topicId: 'top_gas_inquiry_1',
+        primaryLane: 'GAS',
+        generation: 1,
+        snapshot,
+        profileId: 'prof_proj_2026_08_v1',
+      });
+
+      expect(result.summary).toBe('Газ таъминотида узилиш ёки босим пастлиги хабар қилинмоқда.');
+      expect(result.summary).not.toContain('сўралмоқда');
+      expect(result.summary).not.toContain('Бугун газ');
+      expect(result.lanes).toEqual(['GAS']);
+      expect(result.anchorEvidenceId).toBe('evi_gas_inquiry_1');
+      expect(result.anchorQuote).toBe('Bugun gaz keladimi?');
     });
   });
 });

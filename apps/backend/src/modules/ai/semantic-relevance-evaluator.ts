@@ -8,7 +8,7 @@ import {
   type MahallaDailySnapshot,
   formatSnapshotForSemanticRelevance,
 } from './context-snapshot.js';
-import type { TelegramReplyMetadata } from '../../adapters/jobs/boss-client.js';
+import type { TelegramReplyMetadata, BurstMessageItem } from '../../adapters/jobs/job-types.js';
 import type { AiGatewayResult } from './types.js';
 
 export const QualifyingLaneEnum = QualifyingLaneSchema;
@@ -29,6 +29,12 @@ export const SemanticRelevanceResultSchema = z
     is_relevant: z.boolean().describe('Whether the message reports a genuine, active citizen issue or Hokim concern'),
     relevant_lanes: z.array(QualifyingLaneEnum).describe('Municipal service or leadership lanes applicable to the issue'),
     exclusion_reason: ExclusionReasonEnum.nullable().describe('Specific exclusion reason if is_relevant is false, otherwise null'),
+    accepted_message_ids: z
+      .array(z.string())
+      .default([])
+      .describe(
+        'Telegram message IDs from the evaluated candidate/burst that directly report or provide spatial/temporal evidence for the civic issue. Exclude unrelated chatter or private remarks.',
+      ),
     reasoning: z.string().max(300).describe('Brief 1-sentence explanation of the decision'),
   })
   .refine(
@@ -54,6 +60,7 @@ export interface EvaluateRelevanceInput {
   contentType: 'TEXT' | 'MEDIA_CAPTION';
   replyMetadata: TelegramReplyMetadata | null;
   snapshot: MahallaDailySnapshot;
+  burstMessages?: BurstMessageItem[];
   vocabularyGuidance?: string[];
   profileId?: string;
 }
@@ -83,13 +90,35 @@ To qualify (is_relevant: true), a message MUST communicate a concrete, substanti
 
 Communicative Predicate over Sentence Mood:
 - Grammatical sentence form (declarative, interrogative, rhetorical, exclamatory) is non-binding.
-- Inquiries, rhetorical questions, or neighborhood scope checks that assert or presuppose an ongoing, present municipal disruption as a real-world fact (e.g. asking why electricity is out: "nme svet yu hammada shundemi", asking why water stopped: "suv nega to'xtab qoldi yana", or inquiring about a missed garbage truck: "musor mashinasi nega kelmadi") SATISFY the Substance Gate (is_relevant: true).
+- ARCHITECTURAL DICHOTOMY: 24/7 CONTINUOUS GRID UTILITIES VS. PERIODIC ROUTE SERVICES:
+  1. CATEGORY A: 24/7 CONTINUOUS GRID UTILITIES (Central Pipeline Gas, Electricity, Central Tap Water):
+     - Normative Baseline: These services are expected to be continuous and uninterrupted 24/7.
+     - Inherent Outage Presupposition (is_relevant: true):
+       - Any resident inquiry asking if/when the service will arrive or return ("Bugun gaz keladimi?", "Svet bo'ladimi bugun?", "Suv beriladimi o'zi?", "Gaz bormi sizlarda?", "Hammada svet bormi?", "nme svet yu hammada shundemi") inherently communicates that the resident currently lacks the service. Asking whether electricity, gas, or water is on directly signals that the grid or central pipe is absent or cut off!
+       - Rhetorical Exasperation, Irony & Sarcastic Lamentations (is_relevant: true):
+         In Uzbek neighborhood Telegram chats, residents frequently express acute frustration through irony, sarcasm, rhetorical questions, or hyperbole:
+         - Sarcastic delivery projections: "Gazni bayramga berishadimi endi?", "Svetni yangi yilda ko'ramiz shekilli", "Suv kelishini kutib qarib ketamiz shekilli".
+         - Rhetorical distress: "Muzlab o'lishimizni kutishyaptimi raygazdagilar?", "Sham yoqib o'tirish zamoni keldi yana", "Gaz kelishi orzu bo'lib qoldi-ku".
+         - Governance/administrative dormancy: "Hokimiyatdagilar qachon uyg'onadi o'zi?", "Prezidentga yozishimiz shartmi bitta transformator uchun?".
+         These are NOT literal administrative inquiries or meaningless jokes; they are authentic cultural expressions of an active supply cutoff or municipal neglect. They SATISFY the Substance Gate and qualify under the corresponding lane (GAS, ELECTRICITY, WATER, HOKIM_RELATED).
+     - Central Pipeline Gas vs. Bottled Gas Cylinders:
+       - General gas availability inquiries ("bugun gaz keladimi?", "gaz bormi?", "gaz beriladimi?") refer to the central 24/7 pipeline network and qualify as a GAS outage.
+       - Inquiries explicitly referencing bottled cylinder delivery trucks ("gaz balon mashinasi keldimi?", "balon qaysi ko'chada?") follow the periodic mobile service rule below.
+
+  2. CATEGORY B: PERIODIC ROUTE SERVICES (Municipal Waste Collection Trucks, Bottled Gas Cylinders, Mobile Water Tankers):
+     - Normative Baseline: These services operate on scheduled periodic vehicle routes (e.g. weekly or multi-weekly).
+     - Inquiries & Announcements that Fail the Substance Gate (is_relevant: false -> GENERAL_CHATTER):
+       - Routine Route/Location Tracking: Asking where the active truck is without asserting a failure ("Musur moshina qaysi ko'cheda ekan aytvoringlar", "musor mashina qayerda?", "vodovoz qayerga keldi?", "gaz balon mashinasi keldimi?") -> GENERAL_CHATTER.
+       - Routine Mobile Schedule/ETA Checks: Asking about the routine schedule on a normal day without reported delay or accumulated uncollected waste ("Bugun musor keladimi?", "musor soat nechada keladi?") -> GENERAL_CHATTER.
+       - Routine Service Arrival Announcements: Stating that a vehicle arrived ("musor keldi chiqaringlar", "gaz balon keldi") when NO prior complaint topic exists today -> GENERAL_CHATTER. (If an active complaint topic is open for uncollected waste, it attaches as reported service arrival/restoration).
+       - Standalone Directory & Phone Inquiries: Asking for driver or dispatch contacts ("musor shafyorining nomeri bormi?", "elektroset nomerini beringlar") without an explicit failure report -> GENERAL_CHATTER. (If coupled with an active failure, e.g. "Svet o'chdi, elektroset nomerini beringlar", the active failure dominates and qualifies).
+     - Qualification for Periodic Services (is_relevant: true):
+       - The message must communicate that the service is overdue, missed, unserved, or causing accumulated waste/stoppage (e.g. "musor mashinasi nega kelmadi hali ham", "soat 2 bo'ldi musordan darak yo'q", "axlat to'planib qoldi", "gaz balon kelmaganiga 2 oy bo'ldi").
 
 STRICT DROP POLICY:
-- Speculative or Anticipatory Inquiries: Questions about future, unconfirmed, or potential cuts ("bugun gaz o'chmaydimi?", "ertaga svet o'chadimi?") where no current disruption is reported -> is_relevant: false (SPECULATION_OR_RUMOR).
-- Non-Assertive Contextless Chatter: Questions that contain no disruption facts ("kimdir biladimi?", "nima bo'ldi?", "hammada tinchlikmi?") -> is_relevant: false (GENERAL_CHATTER).
-- Bare Non-Assertive Checks on Empty Board: Single/two-word status checks ("suv bormi?", "svet bormi?") with no active failure context and no failure asserted -> is_relevant: false (UNRESOLVED_AMBIGUOUS_FRAGMENT).
-- Bare reaction fragments ("ha", "ok", "bizda ham", "shu ahvol", "tushundim") without explicit disruption facts -> is_relevant: false (UNRESOLVED_AMBIGUOUS_FRAGMENT).
+- Speculative or Anticipatory Inquiries about FUTURE Shutoffs: Questions asking whether service will be cut in the future ("ertaga svet o'chadimi?", "kechqurun gaz o'char ekanmi?", "bugun gaz o'chmaydimi?") where service is currently on -> is_relevant: false (SPECULATION_OR_RUMOR).
+- Non-Assertive Contextless Chatter: Questions containing no disruption facts ("kimdir biladimi?", "nima bo'ldi?", "hammada tinchlikmi?") -> is_relevant: false (GENERAL_CHATTER).
+- Bare Reaction Fragments: Ultra-short reaction fragments ("ha", "ok", "bizda ham", "shu ahvol", "tushundim") without explicit disruption facts -> is_relevant: false (UNRESOLVED_AMBIGUOUS_FRAGMENT).
 
 ### 3. THE 5 IMMUTABLE MUNICIPAL LANES
 When substantive failure criteria are met, assign strictly to applicable lanes:
@@ -97,7 +126,17 @@ When substantive failure criteria are met, assign strictly to applicable lanes:
 2. ELECTRICITY (Электр): Grid blackouts/power outages, dangerous voltage drops/surges, sparking public transformers, fallen electrical wires. Excludes private indoor wiring/appliances.
 3. GAS (Газ): Central gas outages, severe winter low pressure, active gas leaks. Excludes private stove/heater maintenance.
 4. WASTE (Чиқинди): Municipal waste service failures (official municipal trucks: Toza Hudud, Maxsustrans, musor mashinasi), overflowing public dumpsters, uncollected street trash piles, public street litter hazards. Excludes private scrap/recyclables trading and informal scavengers/pickers.
-5. HOKIM_RELATED (Ҳокимга оид): STRICTLY AND ONLY civic complaints, grievances, problem reports, or demands explicitly addressed to or concerning the District Hokim or Hokimiyat (tuman/shahar hokimi, hokimlik, hokim yordamchisi), AND their direct thread follow-up messages. If a message does NOT explicitly appeal to, criticize, or demand action from the Hokim or Hokimiyat, it MUST NEVER be assigned to HOKIM_RELATED (general road potholes or street defects without an explicit appeal to the Hokim/Hokimiyat do NOT belong to this lane and fail the municipal substance gate unless tied to WATER, ELECTRICITY, GAS, or WASTE).
+5. HOKIM_RELATED (Ҳокимга оид): STRICTLY AND ONLY civic complaints, grievances, problem reports, or demands explicitly addressed to or concerning the District Hokim or Hokimiyat apparatus, AND their direct contextual follow-up messages. If a message does NOT explicitly appeal to, criticize, or demand action from the Hokim or Hokimiyat, it MUST NEVER be assigned to HOKIM_RELATED (general road potholes or street defects without an explicit appeal to the Hokim/Hokimiyat do NOT belong to this lane and fail the municipal substance gate unless tied to WATER, ELECTRICITY, GAS, or WASTE).
+   - MANDATORY KEYWORD / APPARATUS PREREQUISITE:
+     A standalone message qualifies for HOKIM_RELATED if and only if it contextually contains one of the following explicit designations (including colloquial, slang, dialect, and phonetic typo variations):
+     a) Root designations: "hokim", "hokimiyat", "hokimlik".
+     b) Colloquial, phonetic typos, and dialect variations: "xokim", "hakim", "xakim", "hokimyat", "xokimyat", "hokimat", "xokimat", "hokim buva", "hokimbobo", "hokimimiz".
+     c) Direct Hokimiyat apparatus officials: "zamhokim", "hokim yordamchisi".
+     d) Non-qualifying entities: "mahalla raisi" or "oqsoqol" do NOT qualify unless "hokim" or "hokimiyat" is explicitly named alongside them.
+   - CONTEXTUAL FOLLOW-UP INHERITANCE:
+     A follow-up message (direct reply or burst continuation) qualifies for HOKIM_RELATED without repeating a Hokim keyword ONLY IF it directly and substantively continues a qualified Hokim appeal from the active conversation/burst. Standalone, isolated messages lacking these terms must NEVER receive HOKIM_RELATED.
+   - ROAD & GENERAL INFRASTRUCTURE EXCLUSION:
+     General road defects, unpaved mud streets, potholes, or street lighting complaints (e.g. "Ko'chamizda chuqurlar ko'p", "asfalt qilinmagan", "loydan o'tib bo'lmayapti") without explicit Hokim/Hokimiyat mentions (and lacking WATER, ELECTRICITY, GAS, or WASTE issues) do NOT qualify for HOKIM_RELATED and must be excluded as GENERAL_CHATTER.
 - Multi-lane extraction: If multiple independent disruptions are reported ("suvam yo'q, gazam yo'q") or a causal chain is stated ("svet o'chgani sababli suv nasosi to'xtadi"), return all applicable lanes in relevant_lanes.
 
 ### 4. CRITICAL BOUNDARY: PUBLIC MUNICIPAL SERVICE VS. PRIVATE PEER-TO-PEER TRANSACTIONS
@@ -119,8 +158,18 @@ Mahalla Ovozi exclusively tracks public municipal utility networks and district 
 - PLANNED_ANNOUNCEMENT: Official scheduled maintenance notices from utility authorities.
 - SPECULATION_OR_RUMOR: Speculative questions about future cuts ("bugun gaz o'chmaydimi?"), unconfirmed hearsay, gossip, future price rumors.
 - NEUTRAL_OR_PRAISE: Generic greetings, prayers, gratitude ("rahmat svet yondi").
-- GENERAL_CHATTER: Conversational chatter, greetings without civic substance, contextless inquiries ("kimdir biladimi?"), off-topic debates, jokes.
-- UNRESOLVED_AMBIGUOUS_FRAGMENT: Bare non-assertive checks ("suv bormi?"), ultra-short reaction fragments ("ha", "bizda ham") that fail the substance gate.
+- GENERAL_CHATTER: Conversational chatter, greetings without civic substance, contextless inquiries ("kimdir biladimi?"), off-topic debates, jokes, general road or infrastructure complaints lacking Hokim/Hokimiyat mentions and lacking Water/Electricity/Gas/Waste issues, live operational vehicle tracking inquiries ("musor mashina qaysi ko'chada?"), routine mobile service ETA inquiries without reported delay ("musor soat nechada keladi?"), standalone contact/phone number requests ("elektroset nomeri bormi?"), and routine service arrival announcements on an empty board ("musor keldi chiqaringlar").
+- UNRESOLVED_AMBIGUOUS_FRAGMENT: Ultra-short reaction fragments ("ha", "ok", "bizda ham", "shu ahvol", "tushundim") without explicit disruption facts that fail the substance gate.
+
+### 7. BURST SEQUENCES & CITIZEN MULTI-MESSAGE SCRUTINY
+- When multiple messages from the same citizen arrive in rapid succession:
+  - Do NOT assume all messages belong to the same thought or share the same intent!
+  - Scrutinize each message within the sequence contextually.
+  - Distinguish between:
+    1. Core Civic Problem & Valid Follow-up Details: Messages describing the municipal outage/breakdown, or providing spatial landmarks, street addresses, or direct status confirmations (include in "accepted_message_ids").
+    2. Unrelated Chatter / Private Remarks: Messages sent in the same sequence that discuss unrelated equipment, private issues, jokes, or off-topic chatter (e.g. "Katyol bor", "Gaz girpi bor", laughing emojis) -> MUST be excluded from "accepted_message_ids".
+  - In "accepted_message_ids", return ONLY the message IDs that actually describe or provide direct evidence for the qualified civic problem.
+  - If evaluating a single candidate message (not a burst), set "accepted_message_ids" to [candidateMessageId] when is_relevant is true, or empty array [] when false.
 
 ### OUTPUT FORMAT
 Respond strictly with valid JSON conforming to the requested schema.`;
@@ -135,11 +184,25 @@ export class SemanticRelevanceEvaluator {
   public buildUserPrompt(input: EvaluateRelevanceInput): string {
     const sections: string[] = [];
 
-    sections.push(`### CANDIDATE TELEGRAM MESSAGE TO EVALUATE
+    if (input.burstMessages && input.burstMessages.length > 1) {
+      const itemsList = input.burstMessages
+        .map(
+          (m, idx) =>
+            `- Message #${idx + 1} (ID: ${m.telegramMessageId}, Time: ${m.originalTimestamp}): "${m.verbatimText}"`,
+        )
+        .join('\n');
+
+      sections.push(`### CANDIDATE MESSAGE BURST (${input.burstMessages.length} CONSECUTIVE MESSAGES FROM SAME SENDER)
+${itemsList}
+
+CRITICAL: Scrutinize each message individually. In "accepted_message_ids", list ONLY the message IDs that actually describe the municipal problem or provide vital spatial/temporal details (e.g. street address, outage confirmation). Do NOT include unrelated chatter, jokes, or non-signal messages (e.g. "Katyol bor", "Gaz girpi bor").`);
+    } else {
+      sections.push(`### CANDIDATE TELEGRAM MESSAGE TO EVALUATE
 - Message ID: ${input.telegramMessageId}
 - Timestamp: ${input.originalTimestamp}
 - Content Type: ${input.contentType}
 - Text: "${input.candidateText}"`);
+    }
 
     if (input.replyMetadata) {
       if (input.replyMetadata.replyToIsForwarded) {

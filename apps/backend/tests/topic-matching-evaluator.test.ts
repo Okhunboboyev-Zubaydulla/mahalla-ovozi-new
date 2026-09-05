@@ -1029,6 +1029,213 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
       expect(newTopicResult.data.primary_lane).toBe('WASTE');
       expect(newTopicResult.data.primary_lane).not.toBe('ELECTRICITY');
     });
+
+    describe('High-Level Communal Outage & Domain Consolidation Rules', () => {
+      it('ensures system prompt defines location-agnostic communal consolidation and Hokim causal aggregation', () => {
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('COMMUNAL UTILITY & SERVICE DISRUPTIONS ARE MAHALLA-WIDE (LOCATION-AGNOSTIC)');
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('Street names, landmarks, or lack of address in supply outage reports are SPATIAL DETAILS / EVIDENCE, NOT indicators of separate incidents!');
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('You MUST NOT create separate topics simply because residents name different streets when reporting the same general utility disruption');
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('Same-Day Community-Wide Outage Consolidation (Location-Agnostic)');
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('Causal Domain Aggregation for HOKIM_RELATED');
+      });
+
+      it('consolidates multi-street gas outage reports into single communal GAS topic', async () => {
+        const snapshot: MahallaDailySnapshot = {
+          districtId: 'dist_sharof_rashidov',
+          mahallaName: 'Navbahor',
+          calendarDay: '2026-09-04',
+          contextRevision: 2,
+          snapshotFingerprint: 'fp_communal_gas',
+          evidence: [
+            {
+              id: 'evi_gas_1',
+              topicId: 'top_gas_communal',
+              telegramMessageId: '9001',
+              originalTimestamp: '2026-09-04T10:00:00.000Z',
+              verbatimText: "Bog'zor ko'chasida gaz yo'q, o'chib qoldi",
+              lane: 'GAS',
+              topicSummary: 'Газ таъминотида узилиш ёки босим пастлиги хабар қилинмоқда.',
+            },
+          ],
+        };
+
+        // Candidate 1: Resident naming Navro'z street
+        mockAdapter.setNextResponse({
+          decision: 'MATCH_EXISTING_TOPIC',
+          matched_topic_id: 'top_gas_communal',
+          primary_lane: null,
+          reasoning: 'Communal gas outage affects Mahalla across streets; matches active communal gas topic',
+        });
+        const matchNavroz = await evaluator.evaluateTopicAssignment({
+          candidateText: "Navro'z ko'chasidayam gaz o'chdi, sovuq bo'lib ketyapti",
+          telegramMessageId: '9002',
+          originalTimestamp: '2026-09-04T10:15:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          relevantLanes: ['GAS'],
+          snapshot,
+          profileId: 'prof_match_2026_08_v1',
+        });
+        expect(matchNavroz.data.decision).toBe('MATCH_EXISTING_TOPIC');
+        expect(matchNavroz.data.matched_topic_id).toBe('top_gas_communal');
+
+        // Candidate 2: Resident with no street address
+        mockAdapter.setNextResponse({
+          decision: 'MATCH_EXISTING_TOPIC',
+          matched_topic_id: 'top_gas_communal',
+          primary_lane: null,
+          reasoning: 'Unaddressed gas outage complaint matches ongoing communal gas topic',
+        });
+        const matchNoAddress = await evaluator.evaluateTopicAssignment({
+          candidateText: "Bizda ham gaz yo'q, qachon keladi?",
+          telegramMessageId: '9003',
+          originalTimestamp: '2026-09-04T10:20:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          relevantLanes: ['GAS'],
+          snapshot,
+          profileId: 'prof_match_2026_08_v1',
+        });
+        expect(matchNoAddress.data.decision).toBe('MATCH_EXISTING_TOPIC');
+        expect(matchNoAddress.data.matched_topic_id).toBe('top_gas_communal');
+
+        // Candidate 3: Low pressure report on a 3rd street
+        mockAdapter.setNextResponse({
+          decision: 'MATCH_EXISTING_TOPIC',
+          matched_topic_id: 'top_gas_communal',
+          primary_lane: null,
+          reasoning: 'Low pressure report on Amir Temur street merges into communal gas disruption',
+        });
+        const matchPressure = await evaluator.evaluateTopicAssignment({
+          candidateText: "Amir Temur ko'chasida ham gaz bosimi nolga tushdi",
+          telegramMessageId: '9004',
+          originalTimestamp: '2026-09-04T10:35:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          relevantLanes: ['GAS'],
+          snapshot,
+          profileId: 'prof_match_2026_08_v1',
+        });
+        expect(matchPressure.data.decision).toBe('MATCH_EXISTING_TOPIC');
+        expect(matchPressure.data.matched_topic_id).toBe('top_gas_communal');
+      });
+
+      it('consolidates multi-street road repair Hokim grievances into single HOKIM_RELATED topic', async () => {
+        const snapshot: MahallaDailySnapshot = {
+          districtId: 'dist_sharof_rashidov',
+          mahallaName: 'Navbahor',
+          calendarDay: '2026-09-04',
+          contextRevision: 2,
+          snapshotFingerprint: 'fp_hokim_roads',
+          evidence: [
+            {
+              id: 'evi_hokim_road_1',
+              topicId: 'top_hokim_road_communal',
+              telegramMessageId: '9010',
+              originalTimestamp: '2026-09-04T11:00:00.000Z',
+              verbatimText: "Tuman hokimi qachon 4-ko'chadagi chuqurlarni yamaydi?",
+              lane: 'HOKIM_RELATED',
+              topicSummary: 'Йўл таъмири бўйича мутасаддилар эътиборсизлиги юзасидан ҳокимликка эътироз билдирилгани хабар қилинмоқда.',
+            },
+          ],
+        };
+
+        mockAdapter.setNextResponse({
+          decision: 'MATCH_EXISTING_TOPIC',
+          matched_topic_id: 'top_hokim_road_communal',
+          primary_lane: null,
+          reasoning: 'Road mud grievance addressed to Hokim merges into active Hokim road repair topic',
+        });
+
+        const matchRoad = await evaluator.evaluateTopicAssignment({
+          candidateText: "Xokim buva Bog'zor ko'chasidagi loyga qachon qaraysiz?",
+          telegramMessageId: '9011',
+          originalTimestamp: '2026-09-04T11:30:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          relevantLanes: ['HOKIM_RELATED'],
+          snapshot,
+          profileId: 'prof_match_2026_08_v1',
+        });
+
+        expect(matchRoad.data.decision).toBe('MATCH_EXISTING_TOPIC');
+        expect(matchRoad.data.matched_topic_id).toBe('top_hokim_road_communal');
+      });
+      it('evaluates isolated operational vehicle tracking inquiry to UNASSIGNABLE_VAGUE', async () => {
+        const snapshot: MahallaDailySnapshot = {
+          districtId: 'dist_sharof_rashidov',
+          mahallaName: 'Navbahor',
+          calendarDay: '2026-09-05',
+          contextRevision: 0,
+          snapshotFingerprint: 'sha256_empty_v1',
+          evidence: [],
+        };
+
+        mockAdapter.setNextResponse({
+          decision: 'UNASSIGNABLE_VAGUE',
+          matched_topic_id: null,
+          primary_lane: null,
+          reasoning: 'Vehicle tracking inquiry lacks an active failure report and cannot seed a municipal topic',
+        });
+
+        const result = await evaluator.evaluateTopicAssignment({
+          candidateText: "Musur moshina qaysi ko'cheda ekan aytvoringlar",
+          telegramMessageId: '9610',
+          originalTimestamp: '2026-09-05T12:02:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          relevantLanes: ['WASTE'],
+          snapshot,
+          profileId: 'prof_match_2026_08_v1',
+        });
+
+        expect(result.data.decision).toBe('UNASSIGNABLE_VAGUE');
+        expect(result.data.matched_topic_id).toBeNull();
+        expect(result.data.primary_lane).toBeNull();
+      });
+      it('matches 24/7 continuous utility inquiry ("Bugun gaz keladimi?") into active communal gas topic', async () => {
+        const snapshot: MahallaDailySnapshot = {
+          districtId: 'dist_sharof_rashidov',
+          mahallaName: 'Navbahor',
+          calendarDay: '2026-09-05',
+          contextRevision: 2,
+          snapshotFingerprint: 'sha256_gas_inquiry_communal',
+          evidence: [
+            {
+              id: 'evi_gas_1',
+              topicId: 'top_gas_communal',
+              telegramMessageId: '9001',
+              originalTimestamp: '2026-09-05T08:00:00.000Z',
+              verbatimText: "Bog'zor ko'chasida gaz yo'q, o'chib qoldi",
+              lane: 'GAS',
+              topicSummary: 'Газ таъминотида узилиш ёки босим пастлиги хабар қилинмоқда.',
+            },
+          ],
+        };
+
+        mockAdapter.setNextResponse({
+          decision: 'MATCH_EXISTING_TOPIC',
+          matched_topic_id: 'top_gas_communal',
+          primary_lane: null,
+          reasoning: 'Continuous grid gas presence inquiry inherently refers to ongoing communal gas outage',
+        });
+
+        const result = await evaluator.evaluateTopicAssignment({
+          candidateText: 'Bugun gaz keladimi?',
+          telegramMessageId: '9711',
+          originalTimestamp: '2026-09-05T08:45:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          relevantLanes: ['GAS'],
+          snapshot,
+          profileId: 'prof_match_2026_08_v1',
+        });
+
+        expect(result.data.decision).toBe('MATCH_EXISTING_TOPIC');
+        expect(result.data.matched_topic_id).toBe('top_gas_communal');
+        expect(result.data.primary_lane).toBeNull();
+      });
+    });
   });
 });
 

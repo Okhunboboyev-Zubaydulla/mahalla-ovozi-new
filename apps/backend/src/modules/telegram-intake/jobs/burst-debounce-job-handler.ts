@@ -158,12 +158,56 @@ export async function processBurstDebounceJobs(
         continue;
       }
 
-      // 4. Batch Flush: Qualify eligible messages
+      // 4. Batch Flush: Partition contiguous burst by originalTimestamp delta <= 25s
+      const currentBurstRecords: typeof pendingRecords = [pendingRecords[0]!];
+      let splitIndex = pendingRecords.length;
+
+      for (let i = 1; i < pendingRecords.length; i++) {
+        const prevTime = new Date(pendingRecords[i - 1]!.originalTimestamp).getTime();
+        const currTime = new Date(pendingRecords[i]!.originalTimestamp).getTime();
+        const gapSeconds = Math.abs(currTime - prevTime) / 1000;
+
+        if (gapSeconds > SLIDING_DEBOUNCE_WINDOW_SECONDS) {
+          splitIndex = i;
+          break;
+        }
+        currentBurstRecords.push(pendingRecords[i]!);
+      }
+
+      const remainingRecords = pendingRecords.slice(splitIndex);
+
+      if (remainingRecords.length > 0) {
+        const nextFirstTimestamp = remainingRecords[0]!.originalTimestamp.toISOString();
+        const singletonKey = JobSingletonKeys.forBurstDebounce(
+          districtId,
+          telegramChatId,
+          telegramUserId,
+        );
+        await sendQueueJob(
+          boss,
+          TELEGRAM_BURST_DEBOUNCE_QUEUE,
+          {
+            districtId,
+            mahallaName,
+            calendarDay: remainingRecords[0]!.calendarDay,
+            telegramChatId,
+            telegramUserId,
+            telegramBotId: remainingRecords[0]!.telegramBotId,
+            firstMessageTimestamp: nextFirstTimestamp,
+          },
+          {
+            startAfter: 0,
+            singletonKey,
+          },
+        );
+      }
+
+      // Qualify eligible messages in current contiguous burst
       const supportedItems: BurstMessageItem[] = [];
       const excludedIds: string[] = [];
       let latestReplyMetadata: any = null;
 
-      for (const rec of pendingRecords) {
+      for (const rec of currentBurstRecords) {
         const qual = qualifyTelegramContent({
           id: rec.id,
           districtId: rec.districtId,
@@ -211,9 +255,9 @@ export async function processBurstDebounceJobs(
       }
 
       const batchId = `batch_${crypto.randomUUID()}`;
-      const allIntakeIds = pendingRecords.map((r) => r.id);
+      const allIntakeIds = currentBurstRecords.map((r) => r.id);
 
-      // Mark all records in this burst as processed with batchId
+      // Mark all records in this contiguous burst as processed with batchId
       await burstBufferRepo.markBurstIntakesProcessed(db, allIntakeIds, batchId);
 
       if (supportedItems.length === 0) {

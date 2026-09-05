@@ -219,24 +219,42 @@ export async function processTopicProjectionJobs(
               }
 
               // 7a. Record ai_operations with targetId = `${topicId}:${generation}` (AC 10)
-              await tx.insert(aiOperations).values({
-                id: projectionOpId,
-                districtId,
-                mahallaName,
-                calendarDay,
-                operationType: 'TOPIC_DERIVED_PROJECTION',
-                targetId: opTargetId,
-                pinnedProfileId: evaluation.aiResult.profileId,
-                contextRevision: snapshot.contextRevision,
-                snapshotFingerprint: snapshot.snapshotFingerprint,
-                finalStatus: 'COMPLETED',
-                resultPayload: {
-                  summary: evaluation.summary,
-                  lanes: evaluation.lanes,
-                  anchorEvidenceId: evaluation.anchorEvidenceId,
-                  isHokimRelated: evaluation.isHokimRelated,
-                },
-              });
+              await tx
+                .insert(aiOperations)
+                .values({
+                  id: projectionOpId,
+                  districtId,
+                  mahallaName,
+                  calendarDay,
+                  operationType: 'TOPIC_DERIVED_PROJECTION',
+                  targetId: opTargetId,
+                  pinnedProfileId: evaluation.aiResult.profileId,
+                  contextRevision: snapshot.contextRevision,
+                  snapshotFingerprint: snapshot.snapshotFingerprint,
+                  finalStatus: 'COMPLETED',
+                  resultPayload: {
+                    summary: evaluation.summary,
+                    lanes: evaluation.lanes,
+                    anchorEvidenceId: evaluation.anchorEvidenceId,
+                    isHokimRelated: evaluation.isHokimRelated,
+                  },
+                })
+                .onConflictDoUpdate({
+                  target: [aiOperations.districtId, aiOperations.operationType, aiOperations.targetId],
+                  set: {
+                    pinnedProfileId: evaluation.aiResult.profileId,
+                    contextRevision: snapshot.contextRevision,
+                    snapshotFingerprint: snapshot.snapshotFingerprint,
+                    finalStatus: 'COMPLETED',
+                    resultPayload: {
+                      summary: evaluation.summary,
+                      lanes: evaluation.lanes,
+                      anchorEvidenceId: evaluation.anchorEvidenceId,
+                      isHokimRelated: evaluation.isHokimRelated,
+                    },
+                    updatedAt: new Date(),
+                  },
+                });
 
               // 7b. Record ai_provider_attempts
               // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tx from withTransactionalIntake is structurally DbOrTx; module-identity mismatch in TS
@@ -332,6 +350,41 @@ export async function processTopicProjectionJobs(
                 error: err instanceof Error ? err.message : String(err),
               }),
             );
+
+            // Record failure in ai_operations for health check telemetry
+            try {
+              const failedOpId = `aiop_${crypto.randomUUID()}`;
+              await db
+                .insert(aiOperations)
+                .values({
+                  id: failedOpId,
+                  districtId,
+                  mahallaName,
+                  calendarDay,
+                  operationType: 'TOPIC_DERIVED_PROJECTION',
+                  targetId: `${topicId}:${generation}`,
+                  pinnedProfileId: 'prof_proj_2026_08_v1',
+                  contextRevision: 0,
+                  snapshotFingerprint: 'error',
+                  finalStatus: 'FAILED',
+                  resultPayload: {
+                    error: err instanceof Error ? err.message : String(err),
+                  },
+                })
+                .onConflictDoUpdate({
+                  target: [aiOperations.districtId, aiOperations.operationType, aiOperations.targetId],
+                  set: {
+                    finalStatus: 'FAILED',
+                    resultPayload: {
+                      error: err instanceof Error ? err.message : String(err),
+                    },
+                    updatedAt: new Date(),
+                  },
+                });
+            } catch (telemetryErr) {
+              console.warn('Failed to record projection failure telemetry:', telemetryErr);
+            }
+
             throw err;
           } finally {
             if (job.data?.issueId) {

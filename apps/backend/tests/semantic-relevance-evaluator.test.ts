@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   SemanticRelevanceEvaluator,
   SemanticRelevanceResultSchema,
@@ -21,6 +21,7 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
         is_relevant: true,
         relevant_lanes: ['WATER'],
         exclusion_reason: null,
+        accepted_message_ids: ['101'],
         reasoning: 'Tap water outage reported',
       };
 
@@ -33,6 +34,7 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
         is_relevant: true,
         relevant_lanes: ['WATER', 'HOKIM_RELATED'],
         exclusion_reason: null,
+        accepted_message_ids: ['102'],
         reasoning: 'Direct Hokim appeal regarding water pipe repair',
       };
 
@@ -45,6 +47,7 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
         is_relevant: false,
         relevant_lanes: [],
         exclusion_reason: 'PLANNED_ANNOUNCEMENT',
+        accepted_message_ids: [],
         reasoning: 'Official electricity maintenance announcement',
       };
 
@@ -584,10 +587,10 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
         is_relevant: true,
         relevant_lanes: ['HOKIM_RELATED'],
         exclusion_reason: null,
-        reasoning: 'Public street infrastructure defect with unpaved road and potholes',
+        reasoning: 'Public street infrastructure defect addressed directly to Hokim',
       });
       const hokimPublic = await evaluator.evaluateRelevance({
-        candidateText: "Ko'chamizdagi chuqurlardan mashinalar o'tolmayapti, asfalt qilib berishsin mas'ullar",
+        candidateText: "Ko'chamizdagi chuqurlardan mashinalar o'tolmayapti, tuman hokimi qachon asfalt qilib beradi?",
         telegramMessageId: '9108',
         originalTimestamp: '2026-09-03T10:35:00.000Z',
         contentType: 'TEXT',
@@ -610,6 +613,12 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
       expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('HOKIM_RELATED (Ҳокимга оид): STRICTLY AND ONLY civic complaints');
       expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('explicitly addressed to or concerning the District Hokim or Hokimiyat');
       expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('If a message does NOT explicitly appeal to, criticize, or demand action from the Hokim or Hokimiyat, it MUST NEVER be assigned to HOKIM_RELATED');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('MANDATORY KEYWORD / APPARATUS PREREQUISITE');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('"xokim", "hakim", "xakim", "hokimyat", "xokimyat", "hokimat", "xokimat", "hokim buva", "hokimbobo", "hokimimiz"');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('"zamhokim", "hokim yordamchisi"');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('"mahalla raisi" or "oqsoqol" do NOT qualify unless "hokim" or "hokimiyat" is explicitly named');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('CONTEXTUAL FOLLOW-UP INHERITANCE');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('ROAD & GENERAL INFRASTRUCTURE EXCLUSION');
     });
 
     it('ensures system prompt defines communicative predicate over sentence mood and signal dominance', () => {
@@ -617,6 +626,7 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
       expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Grammatical sentence form (declarative, interrogative, rhetorical, exclamatory) is non-binding');
       expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Signal Dominance over Conversational Padding');
       expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Colloquial Phonetics & Dialect Normalization');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('ARCHITECTURAL DICHOTOMY: 24/7 CONTINUOUS GRID UTILITIES VS. PERIODIC ROUTE SERVICES');
       expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('nme svet yu hammada shundemi');
     });
 
@@ -725,15 +735,15 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
       expect(generalChat.data.is_relevant).toBe(false);
       expect(generalChat.data.exclusion_reason).toBe('GENERAL_CHATTER');
 
-      // 6. Bare Non-Assertive Check on Empty Board
+      // 6. Ultra-short Reaction Fragment on Empty Board
       mockAdapter.setNextResponse({
         is_relevant: false,
         relevant_lanes: [],
         exclusion_reason: 'UNRESOLVED_AMBIGUOUS_FRAGMENT',
-        reasoning: 'Bare status check without asserting a disruption on empty board',
+        reasoning: 'Ultra-short reaction fragment without civic facts on empty board',
       });
       const bareCheck = await evaluator.evaluateRelevance({
-        candidateText: 'Suv bormi?',
+        candidateText: 'ha shu ahvol',
         telegramMessageId: '9306',
         originalTimestamp: '2026-09-04T12:25:00.000Z',
         contentType: 'TEXT',
@@ -933,6 +943,796 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
       expect(raygazSuv.data.is_relevant).toBe(true);
       expect(raygazSuv.data.relevant_lanes).toEqual(['WATER']);
       expect(raygazSuv.data.relevant_lanes).not.toContain('GAS');
+    });
+
+    it('ensures system prompt defines Section 7: BURST SEQUENCES & CITIZEN MULTI-MESSAGE SCRUTINY', () => {
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('### 7. BURST SEQUENCES & CITIZEN MULTI-MESSAGE SCRUTINY');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Do NOT assume all messages belong to the same thought');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('accepted_message_ids');
+      expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Katyol bor');
+    });
+
+    it('formats multi-message burst in buildUserPrompt with message enumeration and scrutiny guidance', () => {
+      const emptySnapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navro\'z',
+        calendarDay: '2026-09-04',
+        contextRevision: 1,
+        snapshotFingerprint: 'fp_test',
+        evidence: [],
+      };
+
+      const prompt = evaluator.buildUserPrompt({
+        candidateText: 'Bogi baland kucamz 3 hafta kimadi...\nElektrosvetni yon tarafidegi kuca\nKatyol bor',
+        telegramMessageId: '66065',
+        originalTimestamp: '2026-09-04T10:20:06.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot: emptySnapshot,
+        burstMessages: [
+          {
+            intakeId: 'intake_1',
+            telegramMessageId: '66065',
+            originalTimestamp: '2026-09-04T10:20:06.000Z',
+            verbatimText: 'Bogi baland kucamz 3 hafta kimadi...',
+            contentType: 'TEXT',
+            replyMetadata: null,
+          },
+          {
+            intakeId: 'intake_2',
+            telegramMessageId: '66066',
+            originalTimestamp: '2026-09-04T10:20:19.000Z',
+            verbatimText: 'Elektrosvetni yon tarafidegi kuca',
+            contentType: 'TEXT',
+            replyMetadata: null,
+          },
+          {
+            intakeId: 'intake_3',
+            telegramMessageId: '66067',
+            originalTimestamp: '2026-09-04T10:20:26.000Z',
+            verbatimText: 'Katyol bor',
+            contentType: 'TEXT',
+            replyMetadata: null,
+          },
+        ],
+      });
+
+      expect(prompt).toContain('### CANDIDATE MESSAGE BURST (3 CONSECUTIVE MESSAGES FROM SAME SENDER)');
+      expect(prompt).toContain('Message #1 (ID: 66065');
+      expect(prompt).toContain('Message #2 (ID: 66066');
+      expect(prompt).toContain('Message #3 (ID: 66067');
+      expect(prompt).toContain('CRITICAL: Scrutinize each message individually. In "accepted_message_ids", list ONLY the message IDs');
+    });
+
+    it('scrutinizes burst messages and separates genuine waste failure and address from unrelated chatter (Navro\'z case)', async () => {
+      const mockGateway: any = {
+        generateStructured: vi.fn().mockResolvedValue({
+          data: {
+            is_relevant: true,
+            relevant_lanes: ['WASTE'],
+            exclusion_reason: null,
+            accepted_message_ids: ['66065', '66066'],
+            reasoning: 'Municipal waste failure reported on Bogi baland street; Katyol and Gaz girpi excluded as unrelated chatter',
+          },
+          profileId: 'prof_rel_2026_08_v1',
+          provider: 'OLLAMA',
+          modelId: 'gemma4:12b',
+          providerRequestId: 'mock_req',
+          durationMs: 40,
+          tokens: { inputTokens: 20, outputTokens: 10, cachedTokens: 0 },
+          estimatedCostUsd: '0.0001',
+          attempts: [],
+        }),
+      };
+      const customEvaluator = new SemanticRelevanceEvaluator(mockGateway);
+
+      const emptySnapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navro\'z',
+        calendarDay: '2026-09-04',
+        contextRevision: 1,
+        snapshotFingerprint: 'fp_test_navroz',
+        evidence: [],
+      };
+
+      const result = await customEvaluator.evaluateRelevance({
+        candidateText: 'Bogi baland kucamz 3 hafta kimadi...\nElektrosvetni yon tarafidegi kuca\nKatyol bor\nGaz girpi bor',
+        telegramMessageId: '66065',
+        originalTimestamp: '2026-09-04T10:20:06.000Z',
+        contentType: 'TEXT',
+        replyMetadata: null,
+        snapshot: emptySnapshot,
+        burstMessages: [
+          {
+            intakeId: 'intake_65',
+            telegramMessageId: '66065',
+            originalTimestamp: '2026-09-04T10:20:06.000Z',
+            verbatimText: 'Bogi baland kucamz 3 hafta kimadi...',
+            contentType: 'TEXT',
+            replyMetadata: null,
+          },
+          {
+            intakeId: 'intake_66',
+            telegramMessageId: '66066',
+            originalTimestamp: '2026-09-04T10:20:19.000Z',
+            verbatimText: 'Elektrosvetni yon tarafidegi kuca',
+            contentType: 'TEXT',
+            replyMetadata: null,
+          },
+          {
+            intakeId: 'intake_67',
+            telegramMessageId: '66067',
+            originalTimestamp: '2026-09-04T10:20:26.000Z',
+            verbatimText: 'Katyol bor',
+            contentType: 'TEXT',
+            replyMetadata: null,
+          },
+          {
+            intakeId: 'intake_68',
+            telegramMessageId: '66068',
+            originalTimestamp: '2026-09-04T10:20:32.000Z',
+            verbatimText: 'Gaz girpi bor',
+            contentType: 'TEXT',
+            replyMetadata: null,
+          },
+        ],
+      });
+
+      expect(result.data.is_relevant).toBe(true);
+      expect(result.data.relevant_lanes).toEqual(['WASTE']);
+      expect(result.data.accepted_message_ids).toEqual(['66065', '66066']);
+      expect(result.data.accepted_message_ids).not.toContain('66067');
+      expect(result.data.accepted_message_ids).not.toContain('66068');
+    });
+
+    describe('Strict Contextual Hokim/Hokimiyat Lane Qualification & Exclusion Rules', () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-04',
+        contextRevision: 1,
+        snapshotFingerprint: 'sha256_hokim_strict_qualification',
+        evidence: [],
+      };
+
+      it('qualifies colloquial, slang, and misspelled Hokim variants under HOKIM_RELATED', async () => {
+        // 1. "xokim buva"
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['HOKIM_RELATED'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9501'],
+          reasoning: 'Grievance addressed colloquially to Hokim (xokim buva)',
+        });
+        const slang1 = await evaluator.evaluateRelevance({
+          candidateText: "Xokim buva ko'chamizdagi loyga qachon qaraysiz?",
+          telegramMessageId: '9501',
+          originalTimestamp: '2026-09-04T12:00:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+        expect(slang1.data.is_relevant).toBe(true);
+        expect(slang1.data.relevant_lanes).toEqual(['HOKIM_RELATED']);
+
+        // 2. "hokimyatga" (phonetic typo)
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['HOKIM_RELATED'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9502'],
+          reasoning: 'Appeal addressed to Hokimiyat with phonetic typo',
+        });
+        const slang2 = await evaluator.evaluateRelevance({
+          candidateText: "Hokimyatga necha marta murojaat qildik, hech kim quloq solmayapti",
+          telegramMessageId: '9502',
+          originalTimestamp: '2026-09-04T12:01:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+        expect(slang2.data.is_relevant).toBe(true);
+        expect(slang2.data.relevant_lanes).toEqual(['HOKIM_RELATED']);
+
+        // 3. "zamhokim" (direct apparatus title)
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['HOKIM_RELATED'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9503'],
+          reasoning: 'Complaint concerning Hokimiyat apparatus official (zamhokim)',
+        });
+        const slang3 = await evaluator.evaluateRelevance({
+          candidateText: "Zamhokim kelib va'da berib ketuvdi, amalda hech narsa qilinmadi",
+          telegramMessageId: '9503',
+          originalTimestamp: '2026-09-04T12:02:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+        expect(slang3.data.is_relevant).toBe(true);
+        expect(slang3.data.relevant_lanes).toEqual(['HOKIM_RELATED']);
+
+        // 4. "hokim yordamchisi" (direct apparatus title)
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['HOKIM_RELATED'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9504'],
+          reasoning: 'Complaint concerning Hokim assistant (hokim yordamchisi)',
+        });
+        const slang4 = await evaluator.evaluateRelevance({
+          candidateText: "Hokim yordamchisiga aytdik ko'cha masalasida, lekin qaramayapti",
+          telegramMessageId: '9504',
+          originalTimestamp: '2026-09-04T12:03:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+        expect(slang4.data.is_relevant).toBe(true);
+        expect(slang4.data.relevant_lanes).toEqual(['HOKIM_RELATED']);
+      });
+
+      it('excludes general road and infrastructure complaints lacking Hokim terms as GENERAL_CHATTER', async () => {
+        // Road potholes without Hokim mention
+        mockAdapter.setNextResponse({
+          is_relevant: false,
+          relevant_lanes: [],
+          exclusion_reason: 'GENERAL_CHATTER',
+          accepted_message_ids: [],
+          reasoning: 'Road pothole complaint lacks explicit Hokim appeal or utility breakdown',
+        });
+        const road1 = await evaluator.evaluateRelevance({
+          candidateText: "Ko'chamizda chuqurlar ko'p, mashinalar buzilyapti",
+          telegramMessageId: '9505',
+          originalTimestamp: '2026-09-04T12:05:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+        expect(road1.data.is_relevant).toBe(false);
+        expect(road1.data.relevant_lanes).toEqual([]);
+        expect(road1.data.exclusion_reason).toBe('GENERAL_CHATTER');
+
+        // Unpaved mud road without Hokim mention
+        mockAdapter.setNextResponse({
+          is_relevant: false,
+          relevant_lanes: [],
+          exclusion_reason: 'GENERAL_CHATTER',
+          accepted_message_ids: [],
+          reasoning: 'Unpaved road defect without Hokim appeal is excluded as non-monitored general chatter',
+        });
+        const road2 = await evaluator.evaluateRelevance({
+          candidateText: "Ko'chamizda asfalt qilinmagan, loydan o'tib bo'lmayapti",
+          telegramMessageId: '9506',
+          originalTimestamp: '2026-09-04T12:06:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+        expect(road2.data.is_relevant).toBe(false);
+        expect(road2.data.relevant_lanes).toEqual([]);
+        expect(road2.data.exclusion_reason).toBe('GENERAL_CHATTER');
+      });
+
+      it('excludes mahalla raisi complaints lacking explicit Hokim mention as GENERAL_CHATTER', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: false,
+          relevant_lanes: [],
+          exclusion_reason: 'GENERAL_CHATTER',
+          accepted_message_ids: [],
+          reasoning: 'Mahalla raisi grievance without Hokim/Hokimiyat apparatus mention is excluded',
+        });
+        const raisiCheck = await evaluator.evaluateRelevance({
+          candidateText: "Mahalla raisi qachon hisobot beradi, qayerga qarayapti?",
+          telegramMessageId: '9507',
+          originalTimestamp: '2026-09-04T12:07:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+        expect(raisiCheck.data.is_relevant).toBe(false);
+        expect(raisiCheck.data.relevant_lanes).toEqual([]);
+        expect(raisiCheck.data.exclusion_reason).toBe('GENERAL_CHATTER');
+      });
+
+      it('inherits HOKIM_RELATED on direct contextual reply continuing a qualified Hokim appeal', async () => {
+        const snapshotWithHokimAppeal: MahallaDailySnapshot = {
+          ...snapshot,
+          evidence: [
+            {
+              id: 'evi_hokim_appeal',
+              topicId: 'top_hokim_road',
+              telegramMessageId: '9510',
+              originalTimestamp: '2026-09-04T12:10:00.000Z',
+              verbatimText: "Tuman hokimi qachon 4-ko'chadagi chuqurlarni yamaydi?",
+              lane: 'HOKIM_RELATED',
+            },
+          ],
+        };
+
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['HOKIM_RELATED'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9511'],
+          reasoning: 'Direct reply continuing substantive Hokim road repair complaint',
+        });
+
+        const replyResult = await evaluator.evaluateRelevance({
+          candidateText: "Biz ham kutib charchadik shu masalada, hech qanday o'zgarish yo'q",
+          telegramMessageId: '9511',
+          originalTimestamp: '2026-09-04T12:11:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: {
+            replyToMessageId: '9510',
+            replyToIsForwarded: false,
+            replyToIsBot: false,
+          },
+          snapshot: snapshotWithHokimAppeal,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(replyResult.data.is_relevant).toBe(true);
+        expect(replyResult.data.relevant_lanes).toEqual(['HOKIM_RELATED']);
+        expect(replyResult.data.accepted_message_ids).toEqual(['9511']);
+      });
+    });
+    describe('Live Operational Tracking, Routine ETA, and Directory Inquiries Rules', () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-05',
+        contextRevision: 0,
+        snapshotFingerprint: 'sha256_empty_v1',
+        evidence: [],
+      };
+
+      it('excludes live vehicle tracking inquiry (e.g. "Musur moshina qaysi ko\'cheda ekan aytvoringlar") as GENERAL_CHATTER', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: false,
+          relevant_lanes: [],
+          exclusion_reason: 'GENERAL_CHATTER',
+          accepted_message_ids: [],
+          reasoning: 'Operational inquiry asking for the current location of the active garbage truck without asserting any failure or missed schedule',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: "Musur moshina qaysi ko'cheda ekan aytvoringlar",
+          telegramMessageId: '9601',
+          originalTimestamp: '2026-09-05T12:02:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(false);
+        expect(result.data.relevant_lanes).toEqual([]);
+        expect(result.data.exclusion_reason).toBe('GENERAL_CHATTER');
+      });
+
+      it('excludes water tanker location inquiry as GENERAL_CHATTER', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: false,
+          relevant_lanes: [],
+          exclusion_reason: 'GENERAL_CHATTER',
+          accepted_message_ids: [],
+          reasoning: 'Routine inquiry asking where the water delivery tanker has arrived without reporting an outage',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: "Vodovoz mashinasi qayerga keldi?",
+          telegramMessageId: '9602',
+          originalTimestamp: '2026-09-05T12:05:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(false);
+        expect(result.data.relevant_lanes).toEqual([]);
+        expect(result.data.exclusion_reason).toBe('GENERAL_CHATTER');
+      });
+
+      it('excludes standalone directory/phone contact inquiry as GENERAL_CHATTER', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: false,
+          relevant_lanes: [],
+          exclusion_reason: 'GENERAL_CHATTER',
+          accepted_message_ids: [],
+          reasoning: 'Peer-to-peer phone directory request without an explicit disruption statement is excluded',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: "Elektroset nomerini beringlar",
+          telegramMessageId: '9603',
+          originalTimestamp: '2026-09-05T12:10:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(false);
+        expect(result.data.relevant_lanes).toEqual([]);
+        expect(result.data.exclusion_reason).toBe('GENERAL_CHATTER');
+      });
+
+      it('excludes routine mobile schedule/ETA inquiry on empty board as GENERAL_CHATTER', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: false,
+          relevant_lanes: [],
+          exclusion_reason: 'GENERAL_CHATTER',
+          accepted_message_ids: [],
+          reasoning: 'Routine morning ETA inquiry without reported delay or accumulated uncollected waste',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: "Bugun musor mashina soat nechada keladi?",
+          telegramMessageId: '9604',
+          originalTimestamp: '2026-09-05T08:30:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(false);
+        expect(result.data.relevant_lanes).toEqual([]);
+        expect(result.data.exclusion_reason).toBe('GENERAL_CHATTER');
+      });
+
+      it('excludes routine service arrival announcement on empty board as GENERAL_CHATTER', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: false,
+          relevant_lanes: [],
+          exclusion_reason: 'GENERAL_CHATTER',
+          accepted_message_ids: [],
+          reasoning: 'Routine peer reminder that garbage truck arrived without prior complaint topic',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: "Musor mashina keldi, axlatlarni chiqaringlar",
+          telegramMessageId: '9605',
+          originalTimestamp: '2026-09-05T09:00:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(false);
+        expect(result.data.relevant_lanes).toEqual([]);
+        expect(result.data.exclusion_reason).toBe('GENERAL_CHATTER');
+      });
+
+      it('qualifies genuine interrogative complaint about missed garbage truck under WASTE (substance over mood)', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['WASTE'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9606'],
+          reasoning: 'Communicative intent asserts active municipal service failure regarding uncollected waste and missed schedule',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: "Musor mashinasi nega kelmadi hali ham, ko'chada axlat to'planib qoldi?",
+          telegramMessageId: '9606',
+          originalTimestamp: '2026-09-05T14:00:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(true);
+        expect(result.data.relevant_lanes).toEqual(['WASTE']);
+        expect(result.data.accepted_message_ids).toEqual(['9606']);
+      });
+
+      it('qualifies contact request coupled with explicit active failure under ELECTRICITY', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['ELECTRICITY'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9607'],
+          reasoning: 'Active power outage asserted alongside request for dispatch contact number',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: "Svet o'chdi, elektroset nomerini beringlar",
+          telegramMessageId: '9607',
+          originalTimestamp: '2026-09-05T15:00:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(true);
+        expect(result.data.relevant_lanes).toEqual(['ELECTRICITY']);
+        expect(result.data.accepted_message_ids).toEqual(['9607']);
+      });
+
+      it('qualifies fixed utility restoration ETA inquiry under ELECTRICITY (outage presupposed)', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['ELECTRICITY'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9608'],
+          reasoning: 'Inquiring when electricity will return presupposes an active power outage',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: "Svet qachon keladi o'zi?",
+          telegramMessageId: '9608',
+          originalTimestamp: '2026-09-05T15:30:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(true);
+        expect(result.data.relevant_lanes).toEqual(['ELECTRICITY']);
+        expect(result.data.accepted_message_ids).toEqual(['9608']);
+      });
+    });
+    describe('Continuous 24/7 Grid Utility Inquiries vs Periodic Route Inquiries', () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-05',
+        contextRevision: 0,
+        snapshotFingerprint: 'sha256_grid_dichotomy_v1',
+        evidence: [],
+      };
+
+      it('qualifies pipeline gas presence inquiry as GAS outage (presupposition of absence)', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['GAS'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9701'],
+          reasoning: 'Asking if gas will arrive inherently communicates absence of 24/7 continuous utility',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: 'Bugun gaz keladimi?',
+          telegramMessageId: '9701',
+          originalTimestamp: '2026-09-05T09:00:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(true);
+        expect(result.data.relevant_lanes).toEqual(['GAS']);
+        expect(result.data.accepted_message_ids).toEqual(['9701']);
+      });
+
+      it('qualifies electricity presence inquiry as ELECTRICITY blackout (presupposition of absence)', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['ELECTRICITY'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9702'],
+          reasoning: 'Asking if electricity will be available communicates active blackout',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: "Svet bo'ladimi bugun?",
+          telegramMessageId: '9702',
+          originalTimestamp: '2026-09-05T09:15:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(true);
+        expect(result.data.relevant_lanes).toEqual(['ELECTRICITY']);
+        expect(result.data.accepted_message_ids).toEqual(['9702']);
+      });
+
+      it('qualifies tap water presence inquiry as WATER outage (presupposition of absence)', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['WATER'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9703'],
+          reasoning: 'Asking whether water will be given communicates lack of tap water supply',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: "Suv beriladimi o'zi?",
+          telegramMessageId: '9703',
+          originalTimestamp: '2026-09-05T09:30:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(true);
+        expect(result.data.relevant_lanes).toEqual(['WATER']);
+        expect(result.data.accepted_message_ids).toEqual(['9703']);
+      });
+
+      it('qualifies neighborhood scope check as ELECTRICITY outage', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['ELECTRICITY'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9704'],
+          reasoning: 'Checking if everyone has power signals current outage at sender location',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: 'Hammada svet bormi yoki bizdami faqat?',
+          telegramMessageId: '9704',
+          originalTimestamp: '2026-09-05T09:45:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(true);
+        expect(result.data.relevant_lanes).toEqual(['ELECTRICITY']);
+        expect(result.data.accepted_message_ids).toEqual(['9704']);
+      });
+
+      it('qualifies authentic Uzbek sarcastic holiday delivery lamentation under GAS', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['GAS'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9705'],
+          reasoning: 'Sarcastic holiday delivery question communicates active gas supply failure',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: 'Gazni bayramga berishadimi endi?',
+          telegramMessageId: '9705',
+          originalTimestamp: '2026-09-05T10:00:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(true);
+        expect(result.data.relevant_lanes).toEqual(['GAS']);
+        expect(result.data.accepted_message_ids).toEqual(['9705']);
+      });
+
+      it('qualifies ironic New Year electricity lamentation under ELECTRICITY', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['ELECTRICITY'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9706'],
+          reasoning: 'Ironic New Year projection expresses active prolonged power outage',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: "Svetni yangi yilda ko'ramiz shekilli",
+          telegramMessageId: '9706',
+          originalTimestamp: '2026-09-05T10:15:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(true);
+        expect(result.data.relevant_lanes).toEqual(['ELECTRICITY']);
+        expect(result.data.accepted_message_ids).toEqual(['9706']);
+      });
+
+      it('qualifies rhetorical municipal dormancy complaint under HOKIM_RELATED', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: true,
+          relevant_lanes: ['HOKIM_RELATED'],
+          exclusion_reason: null,
+          accepted_message_ids: ['9707'],
+          reasoning: 'Rhetorical inquiry regarding Hokimiyat inaction expresses civic grievance against district administration',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: "Hokimiyatdagilar qachon uyg'onadi o'zi?",
+          telegramMessageId: '9707',
+          originalTimestamp: '2026-09-05T10:30:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(true);
+        expect(result.data.relevant_lanes).toEqual(['HOKIM_RELATED']);
+        expect(result.data.accepted_message_ids).toEqual(['9707']);
+      });
+
+      it('excludes routine periodic waste ETA check as GENERAL_CHATTER', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: false,
+          relevant_lanes: [],
+          exclusion_reason: 'GENERAL_CHATTER',
+          accepted_message_ids: [],
+          reasoning: 'Routine mobile service ETA inquiry without reported delay or accumulated uncollected waste',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: 'Bugun musor keladimi?',
+          telegramMessageId: '9708',
+          originalTimestamp: '2026-09-05T10:45:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(false);
+        expect(result.data.exclusion_reason).toBe('GENERAL_CHATTER');
+      });
+
+      it('excludes bottled gas cylinder truck tracking as GENERAL_CHATTER', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: false,
+          relevant_lanes: [],
+          exclusion_reason: 'GENERAL_CHATTER',
+          accepted_message_ids: [],
+          reasoning: 'Periodic bottled gas cylinder delivery inquiry without failure or overdue report',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: 'Gaz balon mashinasi keldimi?',
+          telegramMessageId: '9709',
+          originalTimestamp: '2026-09-05T11:00:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(false);
+        expect(result.data.exclusion_reason).toBe('GENERAL_CHATTER');
+      });
+
+      it('excludes future speculative shutoff inquiry as SPECULATION_OR_RUMOR', async () => {
+        mockAdapter.setNextResponse({
+          is_relevant: false,
+          relevant_lanes: [],
+          exclusion_reason: 'SPECULATION_OR_RUMOR',
+          accepted_message_ids: [],
+          reasoning: 'Speculative inquiry about future electricity cut without asserting an active power failure',
+        });
+
+        const result = await evaluator.evaluateRelevance({
+          candidateText: "Ertaga svet o'chadimi kimdir biladimi?",
+          telegramMessageId: '9710',
+          originalTimestamp: '2026-09-05T11:15:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          snapshot,
+          profileId: 'prof_rel_2026_08_v1',
+        });
+
+        expect(result.data.is_relevant).toBe(false);
+        expect(result.data.exclusion_reason).toBe('SPECULATION_OR_RUMOR');
+      });
     });
   });
 });

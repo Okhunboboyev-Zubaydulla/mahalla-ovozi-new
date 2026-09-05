@@ -100,9 +100,9 @@ export const GlobalAnalysisSettingsDtoSchema = z.object({
   modelId: z.string().min(1),
   temperature: z.number().min(0.0).max(1.0),
   maxOutputTokens: z.number().int().min(100).max(2000),
-  relevanceSystemPrompt: z.string().min(20).max(10000),
-  topicMatchingSystemPrompt: z.string().min(20).max(10000),
-  topicProjectionSystemPrompt: z.string().min(20).max(10000),
+  relevanceSystemPrompt: z.string().min(20).max(20000),
+  topicMatchingSystemPrompt: z.string().min(20).max(20000),
+  topicProjectionSystemPrompt: z.string().min(20).max(20000),
   globalServiceVocabulary: z.array(GlobalServiceVocabularyItemSchema),
   isActive: z.boolean(),
   activatedAt: z.string().datetime().nullable(),
@@ -121,9 +121,9 @@ export const GlobalAnalysisSettingsDraftDtoSchema = z.object({
   modelId: z.string().min(1),
   temperature: z.number().min(0.0).max(1.0),
   maxOutputTokens: z.number().int().min(100).max(2000),
-  relevanceSystemPrompt: z.string().min(20).max(10000),
-  topicMatchingSystemPrompt: z.string().min(20).max(10000),
-  topicProjectionSystemPrompt: z.string().min(20).max(10000),
+  relevanceSystemPrompt: z.string().min(20).max(20000),
+  topicMatchingSystemPrompt: z.string().min(20).max(20000),
+  topicProjectionSystemPrompt: z.string().min(20).max(20000),
   globalServiceVocabulary: z.array(GlobalServiceVocabularyItemSchema),
   updatedBy: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
@@ -153,17 +153,17 @@ export const SaveGlobalAnalysisSettingsDraftSchema = z.object({
     .string()
     .trim()
     .min(20, 'Долзарблик тизим кўрсатмаси камида 20 та белгидан иборат бўлиши керак.')
-    .max(10000, 'Долзарблик тизим кўрсатмаси 10000 та белгидан ошмаслиги керак.'),
+    .max(20000, 'Долзарблик тизим кўрсатмаси 20000 та белгидан ошмаслиги керак.'),
   topicMatchingSystemPrompt: z
     .string()
     .trim()
     .min(20, 'Мавзу бирлаштириш тизим кўрсатмаси камида 20 та белгидан иборат бўлиши керак.')
-    .max(10000, 'Мавзу бирлаштириш тизим кўрсатмаси 10000 та белгидан ошмаслиги керак.'),
+    .max(20000, 'Мавзу бирлаштириш тизим кўрсатмаси 20000 та белгидан ошмаслиги керак.'),
   topicProjectionSystemPrompt: z
     .string()
     .trim()
     .min(20, 'Мавзу проекцияси тизим кўрсатмаси камида 20 та белгидан иборат бўлиши керак.')
-    .max(10000, 'Мавзу проекцияси тизим кўрсатмаси 10000 та белгидан ошмаслиги керак.'),
+    .max(20000, 'Мавзу проекцияси тизим кўрсатмаси 20000 та белгидан ошмаслиги керак.'),
   globalServiceVocabulary: z
     .array(GlobalServiceVocabularyItemSchema)
     .min(1, 'Камида 1 та хизмат луғати атамаси киритилиши керак.')

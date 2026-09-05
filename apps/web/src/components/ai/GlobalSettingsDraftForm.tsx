@@ -430,7 +430,7 @@ export const GlobalSettingsDraftForm: React.FC<GlobalSettingsDraftFormProps> = (
           <TextArea
             id="draft-relevanceSystemPrompt"
             rows={5}
-            maxLength={10000}
+            maxLength={20000}
             showCount
             style={{ fontFamily: token.fontFamilyCode, fontSize: 13 }}
             placeholder="Долзарблик таҳлили учун тизим кўрсатмаси..."
@@ -449,7 +449,7 @@ export const GlobalSettingsDraftForm: React.FC<GlobalSettingsDraftFormProps> = (
           <TextArea
             id="draft-topicMatchingSystemPrompt"
             rows={5}
-            maxLength={10000}
+            maxLength={20000}
             showCount
             style={{ fontFamily: token.fontFamilyCode, fontSize: 13 }}
             placeholder="Мавзу бирлаштириш учун тизим кўрсатмаси..."
@@ -468,7 +468,7 @@ export const GlobalSettingsDraftForm: React.FC<GlobalSettingsDraftFormProps> = (
           <TextArea
             id="draft-topicProjectionSystemPrompt"
             rows={5}
-            maxLength={10000}
+            maxLength={20000}
             showCount
             style={{ fontFamily: token.fontFamilyCode, fontSize: 13 }}
             placeholder="Мавзу проекцияси учун тизим кўрсатмаси..."

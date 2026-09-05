@@ -533,6 +533,42 @@ describe('Story 3.1: Hokim Topic Board & Keyset Pagination Integration Tests', (
       expect(secondPageIds.length).toBeGreaterThanOrEqual(5);
     });
 
+
+    it('displays newly created unprojected topic with fallback summary "Мавзу хулосаси тайёрланмоқда..." via LEFT JOIN', async () => {
+      const unprojectedTopicId = `top_unproj_${crypto.randomUUID().slice(0, 8)}`;
+      const now = new Date();
+      await db.insert(topics).values({
+        id: unprojectedTopicId,
+        districtId: districtAId,
+        mahallaName: 'Гулистон',
+        calendarDay: testCalendarDay,
+        primaryLane: 'WATER',
+        status: 'ACTIVE',
+        latestRelevantEvidenceTimestamp: now,
+        retentionExpiresAt: new Date(now.getTime() + 86400000),
+        requiredDerivedGeneration: 1,
+        appliedDerivedGeneration: 0,
+      });
+
+      // Query board
+      const res = await server.inject({
+        method: 'GET',
+        url: `/api/v1/hokim/topics/board?calendarDay=${testCalendarDay}`,
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.body);
+      const waterTopics = data.lanes.WATER.topics;
+      const found = waterTopics.find((t: { id: string }) => t.id === unprojectedTopicId);
+      expect(found).toBeDefined();
+      expect(found.summary).toBe('Мавзу хулосаси тайёрланмоқда...');
+      expect(found.primaryLane).toBe('WATER');
+      expect(found.lanes).toEqual(['WATER']);
+    });
+
     it('rejects invalid calendarDay format on GET /board with 400 VALIDATION_ERROR', async () => {
       const res = await server.inject({
         method: 'GET',

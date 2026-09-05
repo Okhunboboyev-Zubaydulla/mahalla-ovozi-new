@@ -294,15 +294,15 @@ describe('Story 2.3: Worker Semantic Relevance 25-Row Verification Matrix Integr
     expect((op.resultPayload as any).relevant_lanes).toEqual(['WATER', 'HOKIM_RELATED']);
   });
 
-  it('Matrix #7: Road Problem without Explicit Hokim Mention qualifies under HOKIM_RELATED', async () => {
+  it('Matrix #7: Road Problem with Colloquial Hokim Mention qualifies under HOKIM_RELATED', async () => {
     aiController.mockAdapter.setNextResponse({
       is_relevant: true,
       relevant_lanes: ['HOKIM_RELATED'],
       exclusion_reason: null,
-      reasoning: 'Muddy unpaved road infrastructure problem',
+      reasoning: 'Muddy unpaved road infrastructure problem addressed to Hokimiyat',
     });
 
-    const text = "Ko'chamizda asfalt qilinmagan, loydan o'tib bo'lmayapti";
+    const text = "Ko'chamizda loy, asfalt yo'q, xokimiyat qachon qaraydi?";
     const intakeId = await createTestIntake(text, '107');
     await processCandidateJob(intakeId, text, '107');
 
@@ -310,6 +310,34 @@ describe('Story 2.3: Worker Semantic Relevance 25-Row Verification Matrix Integr
     expect(op).toBeDefined();
     expect(op.finalStatus).toBe('COMPLETED_RELEVANT');
     expect((op.resultPayload as any).relevant_lanes).toEqual(['HOKIM_RELATED']);
+  });
+
+  it('Matrix #7b: Road Problem without Explicit Hokim Mention is excluded as GENERAL_CHATTER', async () => {
+    aiController.mockAdapter.setNextResponse({
+      is_relevant: false,
+      relevant_lanes: [],
+      exclusion_reason: 'GENERAL_CHATTER',
+      reasoning: 'Unpaved road complaint without Hokim mention or utility breakdown excluded',
+    });
+
+    const text = "Ko'chamizda asfalt qilinmagan, loydan o'tib bo'lmayapti";
+    const intakeId = await createTestIntake(text, '107b');
+    await processCandidateJob(intakeId, text, '107b');
+
+    const op = await waitForOperation(intakeId);
+    expect(op).toBeDefined();
+    expect(op.finalStatus).toBe('COMPLETED_IRRELEVANT');
+    expect((op.resultPayload as any).exclusion_reason).toBe('GENERAL_CHATTER');
+
+    const [intake] = await db
+      .select()
+      .from(telegramIntakeRecords)
+      .where(eq(telegramIntakeRecords.id, intakeId));
+    expect(intake).toBeDefined();
+    expect(intake!.rawPayload).toMatchObject({
+      status: 'EXCLUDED',
+      exclusionReason: 'GENERAL_CHATTER',
+    });
   });
 
   // ──────────────────────────────────────────────────────────────────────────

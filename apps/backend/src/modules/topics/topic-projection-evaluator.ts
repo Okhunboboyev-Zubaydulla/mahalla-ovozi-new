@@ -111,7 +111,14 @@ Your objective is to recalculate the single, authoritative, multi-lane derived r
 1. PRAGMATIC CORE CIVIC DISRUPTION SUMMARY (TUB MOHIYAT):
    - Provide a concise 1-2 sentence summary strictly in authentic Uzbek Cyrillic.
    - Focus directly on the UNDERLYING CIVIC DISRUPTION, outage, infrastructure failure, or municipal living condition reported by residents.
-   - When a resident posts questions, colloquial inquiries, or status checks (e.g., "svet hammada o'chdimi yoki bizdami?", "chiroq bormi?", "suv keldimi?", "suv qachon keladi?"), extract the core municipal failure (e.g. "Электр таъминотида узилиш юз бергани хабар қилинмоқда").
+   - When a resident posts questions, availability inquiries, or status checks for 24/7 continuous utilities (e.g., "bugun gaz keladimi?", "svet hammada o'chdimi yoki bizdami?", "chiroq bormi?", "suv keldimi?", "suv qachon keladi?"), extract the core municipal failure directly into the canonical template (e.g. "Газ таъминотида узилиш ёки босим пастлиги хабар қилинмоқда", "Электр таъминотида узилиш юз бергани хабар қилинмоқда"). NEVER generate literal question titles (e.g. NEVER write "Бугун газ келиши сўралмоқда").
+
+   - RHETORICAL EXASPERATION, SARCASM & CYNICAL ESCALATIONS:
+     - Residents frequently express frustration using rhetorical questions, irony, or sarcasm regarding authority intervention:
+       - Examples: "hokimiyatga chiqish shartmi?", "prezidentga yozaylikmi endi?", "vodokanal uxlayaptimi?", "hech kimning ishi yo'qmi?", "biror narsa ishlaydimi o'zi?".
+     - IN REAL CONTEXT: These are NOT literal inquiries about administrative procedures or legal necessity, nor requests for guidance.
+     - They are ACTIVE EXPRESSIONS OF GRIEVANCE / DISSATISFACTION regarding service breakdown and municipal/utility inaction.
+     - You MUST NEVER interpret them literally (e.g. NEVER write "Ҳокимликка мурожаат қилиш зарурати юзасидан сўров қабул қилинди" or similar bureaucratic absurdities).
 
    - UZBEK COLLOQUIAL LAMENTATIONS & PAST-CONTINUOUS OUTAGE EXPRESSIONS:
      - Recognize colloquial expressions where residents state past continuous availability ("-ib turgandi", "-ayotgandi", "-ib turgandedi") combined with restrictive or lamenting particles ("hech bo'lmasa", "hec bumasa", "kamiga", "bor edi-da"):
@@ -123,9 +130,16 @@ Your objective is to recalculate the single, authoritative, multi-lane derived r
        - GAS: "Газ таъминотида узилиш юз бергани хабар қилинмоқда."
      - NEVER interpret past availability ("...kelib turgandi") literally as positive service stability or as an inquiry into supply stability!
 
-   - STRICT PROHIBITION OF BUREAUCRATIC FILLER & INVESTIGATIVE PLACEHOLDERS:
-     - NEVER describe conversational chatter, resident intentions to inquire, or meta-commentary.
-     - You MUST NEVER use vague bureaucratic formulas, meta-commentary, or administrative placeholders such as:
+   - STRICT PROHIBITION OF BUREAUCRATIC FILLER & INTAKE PLACEHOLDERS:
+     - NEVER describe conversational chatter, resident intentions to inquire, or administrative meta-commentary.
+     - Topic Card summaries MUST ALWAYS describe an active civic disruption, supply outage, infrastructure breakdown, uncollected waste, or administrative grievance. NEVER generate summaries describing peer-to-peer tracking inquiries (e.g. asking where a garbage truck or repair brigade is), vehicle arrival questions, or contact number requests.
+     - Mahalla Ovozi is an observational situational awareness platform, NOT an official government single window or ticketing intake desk.
+     - You MUST NEVER use vague bureaucratic formulas, meta-commentary, or ticketing placeholders such as:
+       - "...сўрови қабул қилинди" (STRICTLY FORBIDDEN)
+       - "...мурожаати рўйхатга олинди" (STRICTLY FORBIDDEN)
+       - "...кўриб чиқилмоқда" (STRICTLY FORBIDDEN)
+       - "...аризаси олинди" (STRICTLY FORBIDDEN)
+       - "...мурожаат қайд этилди" (STRICTLY FORBIDDEN)
        - "...барқарорлиги ҳақида маълумот олинмоқда" (STRICTLY FORBIDDEN)
        - "...ҳолати ўрганилмоқда" (STRICTLY FORBIDDEN)
        - "...аниқлик киритилмоқда" (STRICTLY FORBIDDEN)
@@ -133,27 +147,35 @@ Your objective is to recalculate the single, authoritative, multi-lane derived r
        - "...барқарорлиги ҳақида хабар бермоқда" (STRICTLY FORBIDDEN)
        - "...маълумот алмашилмоқда" (STRICTLY FORBIDDEN)
        - "...ҳолати юзасидан маълумот олинмоқда" (STRICTLY FORBIDDEN)
-     - A Topic Card is an alert to the District Hokim and municipal departments about a real-world citizen problem. Stating that "information is being gathered about stability" completely hides the citizen's suffering. State the core failure directly (e.g. "Сув таъминотида узилиш юз бергани хабар қилинмоқда.").
+     - A Topic Card is an alert to the District Hokim and municipal departments about a real-world citizen problem. Stating that "a request was received" or "information is being gathered about stability" completely obscures the citizen's actual suffering. State the core failure or grievance directly.
 
-    - CANONICAL OUTAGE TEMPLATES BY LANE:
-      - WATER: "Сув таъминотида узилиш юз бергани хабар қилинмоқда." (low pressure: "Сув босими пастлиги хабар қилинмоқда."; pipe leak: "[Кўча/мўлжал бўлса: <Кўча номи ёки Мўлжал>да] Сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда.")
-      - ELECTRICITY: "Электр таъминотида узилиш юз бергани хабар қилинмоқда." (low voltage: "Электр кучланиши (вольтаж) пастлиги хабар қилинмоқда.")
-      - GAS: "Газ таъминотида узилиш юз бергани хабар қилинмоқда." (low pressure: "Газ босими пастлиги хабар қилинмоқда.")
-      - WASTE: "Чиқиндилар олиб кетилмагани хабар қилинмоқда."
+   - CANONICAL HIGH-LEVEL OUTAGE & GRIEVANCE TEMPLATES BY LANE:
+     - For communal supply/service disruptions, ALWAYS use clean, high-level canonical summaries without street prefixes:
+       - WATER (Supply Outage / Low Pressure): "Сув таъминотида узилиш ёки босим пастлиги хабар қилинмоқда."
+       - ELECTRICITY (Blackout): "Электр таъминотида узилиш юз бергани хабар қилинмоқда." (low voltage: "Электр кучланиши (вольтаж) пастлиги хабар қилинмоқда.")
+       - GAS: "Газ таъминотида узилиш ёки босим пастлиги хабар қилинмоқда."
+       - WASTE: "Чиқиндилар олиб кетилмагани хабар қилинмоқда."
+       - HOKIM_RELATED (CAUSAL GROUNDING):
+         - If the escalation/complaint stems from an unaddressed utility/infrastructure disruption or utility inaction (e.g. water, electricity, gas, waste, road) present in the target evidence or same-day Mahalla context:
+           Concise template: "[Муаммо соҳаси] бўйича мутасаддилар эътиборсизлиги юзасидан ҳокимликка эътироз билдирилгани хабар қилинмоқда."
+           (e.g., "Сув таъминотидаги муаммо бўйича мутасаддилар эътиборсизлиги юзасидан ҳокимликка эътироз билдирилгани хабар қилинмоқда.", or road: "Йўл таъмири бўйича мутасаддилар эътиборсизлиги юзасидан ҳокимликка эътироз билдирилгани хабар қилинмоқда.")
+         - If no specific utility breakdown exists anywhere in context (pure general governance complaint):
+           Concise template: "Ҳокимлик ва мутасадди идоралар фаолияти юзасидан эътироз билдирилгани хабар қилинмоқда."
 
-    - MANDATORY LOCATION & LANDMARK PREFIX FOR LOCALIZED INFRASTRUCTURE FAILURES:
-      - For localized physical issues (pipe leaks/bursts, sewage overflow, broken streetlights, transformer sparking/fires, road potholes/collapse):
-      - When accepted evidence mentions ANY street name, landmark, building reference, or colloquial location (e.g. "Bog'zor ko'chasida", "elektroset arqasidagi ko'chada", "14-maktab yonida", "bozor orqasida", "Amir Temur ko'chasida"):
-      - You MUST ALWAYS extract this location/landmark and prefix it in authentic Uzbek Cyrillic into the summary title.
-      - Examples:
-        - "elektroset arqasideyi kucada suv oqib yotipti" -> "Электросеть орқасидаги кўчада сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда."
-        - "bogzor kucada suv oqib yotpti" -> "Боғзор кўчасида сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда."
-        - "14-maktab yonida kanalizatsiya toshdi" -> "14-мактаб ёнида канализация тошгани хабар қилинмоқда."
-      - NEVER strip the landmark or street reference to produce a generic unlocalized template when location details exist in the evidence!
-      - If NO location or street is mentioned anywhere in the evidence, use the general unlocalized template: "Сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда."
+   - LOCATION & LANDMARK POLICY (HIGH-LEVEL OUTAGES VS. ACUTE POINT HAZARDS):
+     - Communal Supply Outages (Gas, Electricity, Tap Water cuts, Waste collection):
+       - DO NOT prefix or enumerate specific street names or landmarks in the summary title!
+       - Different street names reported by residents belong to the same communal disruption; they are preserved in the accepted evidence items and anchor quote, NOT listed in the summary title.
+     - Acute Localized Physical Hazards (Pipe Bursts / Flooding / Transformer Fires Only):
+       - For dedicated acute physical emergency hazard topics (pipe leaks/bursts, sewage overflow, transformer fires):
+       - When accepted evidence for that acute hazard mentions a specific street name or landmark (e.g. "Bog'zor ko'chasida", "elektroset arqasidagi ko'chada", "14-maktab yonida"):
+       - Extract this landmark and prefix it in authentic Uzbek Cyrillic into the title (e.g. "Электросеть орқасидаги кўчада сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда.", "Боғзор кўчасида сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда.", "14-мактаб ёнида канализация тошгани хабар қилинмоқда.").
+       - NEVER strip the landmark or street reference to produce a generic unlocalized template when the topic is dedicated to an acute localized physical hazard!
+       - If NO location or street is mentioned anywhere in the acute hazard evidence, use: "Сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда."
 
-   - CAUTIOUS REPORTED FRAMING:
-     - Citizen reports are reported claims, NOT verified ground truth (use framing like "... хабар қилинмоқда", "... маълум қилинди", "... билдирилди").
+   - CAUTIOUS REPORTED PROBABILITY FRAMING:
+     - Citizen reports are unverified reported claims, NOT established ground truth.
+     - ALWAYS use reported probability framing: "... хабар қилинмоқда", "... экани билдирилмоқда", "... эътироз билдирилмоқда", "... маълум қилинмоқда".
      - Preserve reported contradictions, disagreements, voltage fluctuations, recurrences ("яна ўчди" -> "такрорий узилиш кузатилмоқда"), and reported restoration ("чироқ ёнди" -> "таъминот тиклангани билдирилди").
      - A reported restoration must be described as reported (e.g. "Электр таъминоти тиклангани билдирилди"), NEVER asserting official resolution or closing the issue.
      - Do NOT invent Hokim recommendations, sentiment, urgency scores, or required actions.
@@ -167,7 +189,10 @@ Your objective is to recalculate the single, authoritative, multi-lane derived r
 3. MULTI-LANE DERIVATION:
    - Identify all applicable municipal/governance lanes from: WATER, ELECTRICITY, GAS, WASTE, HOKIM_RELATED.
    - The target Topic's initial primaryLane is IMMUTABLE and MUST be included in the lanes array.
-   - Include HOKIM_RELATED if and only if the evidence involves explicit civic appeals, complaints, or accountability directed to the District Hokim or Hokimiyat, and their direct follow-ups.
+   - HOKIM_RELATED QUALIFICATION CRITERIA:
+     - Include HOKIM_RELATED if and only if at least one evidence item in the topic explicitly contains designated Hokim/Hokimiyat terms (including root terms "hokim", "hokimiyat", "hokimlik"; slang/typos/dialect "xokim", "hakim", "xakim", "hokimyat", "xokimyat", "hokimat", "xokimat", "hokim buva", "hokimbobo", "hokimimiz"; or apparatus officials "zamhokim", "hokim yordamchisi") OR is a direct contextual reply/burst continuation of such an appeal.
+     - Road defects, mud, or unpaved street issues without explicit Hokim/Hokimiyat mentions must NEVER derive HOKIM_RELATED.
+     - "mahalla raisi" or "oqsoqol" alone does NOT qualify for HOKIM_RELATED unless "hokim" or "hokimiyat" is explicitly named.
    - "is_hokim_related" MUST be true if and only if HOKIM_RELATED is present in "lanes".
 
 4. ANCHOR SELECTION & AUTHORITATIVE QUOTE (FOUNDATIONAL GENESIS & SELF-CONTAINED PRINCIPLE):

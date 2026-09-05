@@ -720,4 +720,108 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
     expect(record).toBeDefined();
     expect(record!.telegramMessageId).toBe(String(untrackedMsgId));
   });
+
+  it('Test 9 (Delta-Time Gating & Backlog Partitioning): Partitions backlog messages with originalTimestamp gap > 25s into separate burst jobs', async () => {
+    const userId = '999901';
+    const msgId1 = `901_${crypto.randomUUID().slice(0, 4)}`;
+    const msgId2 = `902_${crypto.randomUUID().slice(0, 4)}`;
+    const msgId3 = `903_${crypto.randomUUID().slice(0, 4)}`;
+    const baseTime = new Date('2026-08-21T21:00:00Z');
+
+    // Simulate 3 messages from same user during offline backlog
+    // Msg 1 and 2 have a 10s gap (<= 25s)
+    // Msg 3 arrives 45s after Msg 2 (> 25s gap)
+    await processTelegramWebhookUpdate(pool, boss, activeBotId, {
+      update_id: 9001,
+      message: {
+        message_id: Number(msgId1.split('_')[0]),
+        date: Math.floor(baseTime.getTime() / 1000),
+        chat: { id: validChatId, title: 'Navbahor' },
+        from: { id: Number(userId), first_name: 'Resident 9' },
+        text: 'Bogi baland kucamzda musr olinmadi',
+      },
+    });
+
+    await processTelegramWebhookUpdate(pool, boss, activeBotId, {
+      update_id: 9002,
+      message: {
+        message_id: Number(msgId2.split('_')[0]),
+        date: Math.floor((baseTime.getTime() + 10000) / 1000),
+        chat: { id: validChatId, title: 'Navbahor' },
+        from: { id: Number(userId), first_name: 'Resident 9' },
+        text: 'Elektrosvet yonidagi kuca',
+      },
+    });
+
+    await processTelegramWebhookUpdate(pool, boss, activeBotId, {
+      update_id: 9003,
+      message: {
+        message_id: Number(msgId3.split('_')[0]),
+        date: Math.floor((baseTime.getTime() + 55000) / 1000),
+        chat: { id: validChatId, title: 'Navbahor' },
+        from: { id: Number(userId), first_name: 'Resident 9' },
+        text: 'Katyol bor',
+      },
+    });
+
+    // Simulate offline backlog execution: Date.now is well past the burst window
+    const realDateNow = Date.now;
+    Date.now = () => baseTime.getTime() + 120000;
+
+    let enqueuedSemanticJobs: any[] = [];
+    let enqueuedDebounceJobs: any[] = [];
+
+    vi.spyOn(boss, 'send').mockImplementation(async (queue: any, data: any) => {
+      if (queue === TELEGRAM_SEMANTIC_RELEVANCE_QUEUE) {
+        enqueuedSemanticJobs.push(data);
+      } else if (queue === TELEGRAM_BURST_DEBOUNCE_QUEUE) {
+        enqueuedDebounceJobs.push(data);
+      }
+      return 'mock_job_id';
+    });
+
+    try {
+      const initialJob: any = {
+        id: 'job_burst_backlog_1',
+        data: {
+          districtId: activeDistrictId,
+          mahallaName: 'Navbahor',
+          calendarDay: '2026-08-21',
+          telegramChatId: validChatId,
+          telegramUserId: userId,
+          telegramBotId: activeBotId,
+          firstMessageTimestamp: baseTime.toISOString(),
+        },
+      };
+
+      // Run first burst debounce pass
+      await processBurstDebounceJobs([initialJob], { db, boss });
+
+      // First burst should have processed only msg 1 and msg 2 (gap 10s <= 25s)
+      expect(enqueuedSemanticJobs.length).toBe(1);
+      const burst1 = enqueuedSemanticJobs[0];
+      expect(burst1.burstMessages).toBeDefined();
+      expect(burst1.burstMessages.length).toBe(2);
+      expect(burst1.verbatimText).toContain('Bogi baland kucamzda musr olinmadi');
+      expect(burst1.verbatimText).toContain('Elektrosvet yonidagi kuca');
+      expect(burst1.verbatimText).not.toContain('Katyol bor');
+
+      // The partitioner must have enqueued the next burst debounce job for remaining msg 3
+      expect(enqueuedDebounceJobs.length).toBe(1);
+
+      // Now process the enqueued second debounce job
+      const secondJob: any = {
+        id: 'job_burst_backlog_2',
+        data: enqueuedDebounceJobs[0],
+      };
+      await processBurstDebounceJobs([secondJob], { db, boss });
+
+      // Second burst should have processed msg 3 separately as single message
+      expect(enqueuedSemanticJobs.length).toBe(2);
+      const burst2 = enqueuedSemanticJobs[1];
+      expect(burst2.verbatimText).toBe('Katyol bor');
+    } finally {
+      Date.now = realDateNow;
+    }
+  });
 });

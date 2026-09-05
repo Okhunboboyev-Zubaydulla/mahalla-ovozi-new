@@ -193,8 +193,8 @@ export class DistrictTopicsService {
       }
       const cursorDate = new Date(decoded.t);
       cursorPredicate = sql`AND (
-        tp.latest_meaningful_activity_timestamp < ${cursorDate}
-        OR (tp.latest_meaningful_activity_timestamp = ${cursorDate} AND t.id < ${decoded.id})
+        COALESCE(tp.latest_meaningful_activity_timestamp, t.latest_relevant_evidence_timestamp, t.created_at) < ${cursorDate}
+        OR (COALESCE(tp.latest_meaningful_activity_timestamp, t.latest_relevant_evidence_timestamp, t.created_at) = ${cursorDate} AND t.id < ${decoded.id})
       )`;
     }
 
@@ -209,13 +209,13 @@ export class DistrictTopicsService {
         t.primary_lane AS "primaryLane", 
         t.created_at AS "createdAt", 
         t.updated_at AS "updatedAt",
-        tp.summary, 
-        tp.lanes, 
-        tp.latest_meaningful_activity_timestamp AS "latestMeaningfulActivityTimestamp",
+        COALESCE(tp.summary, 'Мавзу хулосаси тайёрланмоқда...') AS summary, 
+        COALESCE(tp.lanes, jsonb_build_array(t.primary_lane)) AS lanes, 
+        COALESCE(tp.latest_meaningful_activity_timestamp, t.latest_relevant_evidence_timestamp, t.created_at) AS "latestMeaningfulActivityTimestamp",
         COUNT(ae.id)::int AS "evidenceCount",
         ${badgeSelect}
       FROM topics t
-      JOIN topic_projections tp ON tp.topic_id = t.id
+      LEFT JOIN topic_projections tp ON tp.topic_id = t.id
       LEFT JOIN accepted_evidence ae ON ae.topic_id = t.id AND ae.district_id = ${districtId}
       WHERE t.district_id = ${districtId}
         AND ${datePredicate}
@@ -226,14 +226,14 @@ export class DistrictTopicsService {
         ${cursorPredicate}
         ${searchPredicate}
       GROUP BY t.id, tp.id
-      ORDER BY tp.latest_meaningful_activity_timestamp DESC, t.id DESC
+      ORDER BY COALESCE(tp.latest_meaningful_activity_timestamp, t.latest_relevant_evidence_timestamp, t.created_at) DESC, t.id DESC
       LIMIT ${limit + 1};
     `;
 
     const countQuery = sql<{ count: number }>`
       SELECT COUNT(t.id)::int AS count
       FROM topics t
-      JOIN topic_projections tp ON tp.topic_id = t.id
+      LEFT JOIN topic_projections tp ON tp.topic_id = t.id
       WHERE t.district_id = ${districtId}
         AND ${datePredicate}
         ${mahallaPredicate}
