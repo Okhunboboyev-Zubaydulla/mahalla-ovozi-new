@@ -57,7 +57,10 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
 
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const isMountedRef = useRef<boolean>(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const isProgrammaticScrollRef = useRef<boolean>(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | number | null>(null);
+  const lastAnnouncedIndexRef = useRef<number>(0);
 
   // Build card descriptors
   const card1: CardDescriptor = {
@@ -163,37 +166,93 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
   };
 
   const cards: CardDescriptor[] = [card1, card2, card3, card4, card5];
-  const activeCardTitle = cards[currentIndex]?.title;
 
-  // Announce and scroll when mobile index changes
+  // Cleanup timer on unmount
   useEffect(() => {
-    if (!isMountedRef.current) {
-      isMountedRef.current = true;
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleScroll = () => {
+    if (isProgrammaticScrollRef.current) {
       return;
     }
 
-    if (!isDesktop) {
-      const activeCard = cardRefs.current[currentIndex];
-      if (activeCard && typeof activeCard.scrollIntoView === 'function') {
-        activeCard.scrollIntoView({
-          behavior: prefersReducedMotion ? 'auto' : 'smooth',
-          inline: 'center',
-          block: 'nearest',
-        });
-      }
+    const container = containerRef.current;
+    if (!container) return;
 
-      if (liveAnnouncer?.announce && activeCardTitle) {
-        liveAnnouncer.announce(`Кўрсаткич ${currentIndex + 1} / 5: ${activeCardTitle}`);
-      }
+    const firstCard = cardRefs.current[0];
+    const cardWidth = firstCard?.offsetWidth || container.clientWidth * 0.85;
+    const gap = 16;
+    const stride = cardWidth + gap;
+    if (stride <= 0) return;
+
+    const rawIndex = Math.round(container.scrollLeft / stride);
+    const nextIndex = Math.max(0, Math.min(cards.length - 1, rawIndex));
+
+    if (nextIndex !== currentIndex) {
+      setCurrentIndex(nextIndex);
     }
-  }, [currentIndex, isDesktop, prefersReducedMotion, liveAnnouncer, activeCardTitle]);
+
+    // Debounce announcement until scrolling settles (150ms)
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      if (lastAnnouncedIndexRef.current !== nextIndex) {
+        lastAnnouncedIndexRef.current = nextIndex;
+        const announcedTitle = cards[nextIndex]?.title;
+        if (liveAnnouncer?.announce && announcedTitle) {
+          liveAnnouncer.announce(`Кўрсаткич ${nextIndex + 1} / 5: ${announcedTitle}`);
+        }
+      }
+    }, 150);
+  };
+
+  const scrollToCard = (targetIndex: number) => {
+    isProgrammaticScrollRef.current = true;
+    setCurrentIndex(targetIndex);
+    lastAnnouncedIndexRef.current = targetIndex;
+
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+
+    const announcedTitle = cards[targetIndex]?.title;
+    if (liveAnnouncer?.announce && announcedTitle) {
+      liveAnnouncer.announce(`Кўрсаткич ${targetIndex + 1} / 5: ${announcedTitle}`);
+    }
+
+    const targetCard = cardRefs.current[targetIndex];
+    if (targetCard && typeof targetCard.scrollIntoView === 'function') {
+      targetCard.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        inline: 'start',
+        block: 'nearest',
+      });
+    }
+
+    // Release programmatic scroll lock after smooth scrolling animation completes
+    scrollTimeoutRef.current = setTimeout(() => {
+      isProgrammaticScrollRef.current = false;
+    }, 450);
+  };
 
   const handlePrev = () => {
-    setCurrentIndex((prev) => Math.max(0, prev - 1));
+    const prevIndex = Math.max(0, currentIndex - 1);
+    if (prevIndex !== currentIndex) {
+      scrollToCard(prevIndex);
+    }
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => Math.min(cards.length - 1, prev + 1));
+    const nextIndex = Math.min(cards.length - 1, currentIndex + 1);
+    if (nextIndex !== currentIndex) {
+      scrollToCard(nextIndex);
+    }
   };
 
   return (
@@ -323,6 +382,9 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
       ) : (
         /* Cards Layout: 5-column grid on desktop, smooth horizontal snap on mobile */
         <div
+          ref={containerRef}
+          onScroll={!isDesktop ? handleScroll : undefined}
+          data-testid="statistics-scroll-container"
           style={{
             display: isDesktop ? 'grid' : 'flex',
             gridTemplateColumns: isDesktop ? 'repeat(5, minmax(0, 1fr))' : undefined,
@@ -331,6 +393,7 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
             scrollSnapType: isDesktop ? undefined : 'x mandatory',
             scrollbarWidth: 'none',
             WebkitOverflowScrolling: 'touch',
+            touchAction: isDesktop ? undefined : 'pan-x pan-y',
             paddingBottom: isDesktop ? 0 : 4,
           }}
         >
@@ -341,10 +404,11 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
                 cardRefs.current[index] = el;
               }}
               style={{
-                flex: isDesktop ? undefined : '0 0 85%',
+                flex: isDesktop ? undefined : '0 0 min(85%, 320px)',
                 minWidth: isDesktop ? 0 : 260,
                 maxWidth: isDesktop ? undefined : 320,
-                scrollSnapAlign: isDesktop ? undefined : 'center',
+                scrollSnapAlign: isDesktop ? undefined : 'start',
+                scrollSnapStop: isDesktop ? undefined : 'always',
               }}
             >
               <TopicStatisticCard
@@ -361,6 +425,19 @@ export const TopicStatisticsStrip: React.FC<TopicStatisticsStripProps> = ({
               />
             </div>
           ))}
+          {/* Mobile Trailing Spacer Buffer: guarantees Card 5 snaps to start without bouncing back */}
+          {!isDesktop && (
+            <div
+              aria-hidden="true"
+              data-testid="carousel-trailing-spacer"
+              style={{
+                flex: '0 0 calc(100% - min(85%, 320px))',
+                minWidth: 'calc(100% - min(85%, 320px))',
+                scrollSnapAlign: 'none',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
         </div>
       )}
     </section>

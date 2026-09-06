@@ -44,6 +44,62 @@ export const DateScopeSelect: React.FC<DateScopeSelectProps> = ({
   const [manualError, setManualError] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const customBtnRef = useRef<HTMLSpanElement>(null);
+  const [overlayStyle, setOverlayStyle] = useState<React.CSSProperties>({
+    position: 'absolute',
+    top: 'calc(100% + 6px)',
+    right: 0,
+    zIndex: 1050,
+  });
+
+  // Calculate centered overlay position relative to custom date button
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const calculatePosition = () => {
+      const width = 270;
+      if (!customBtnRef.current || !containerRef.current) {
+        setOverlayStyle({
+          position: 'absolute',
+          top: 'calc(100% + 6px)',
+          right: 0,
+          width,
+          zIndex: 1050,
+        });
+        return;
+      }
+
+      const customRect = customBtnRef.current.getBoundingClientRect();
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const btnCenter = customRect.left + customRect.width / 2 - containerRect.left;
+
+      let leftPos = btnCenter - width / 2;
+
+      // Viewport collision avoidance
+      if (typeof window !== 'undefined') {
+        const viewportWidth = window.innerWidth;
+        const overlayAbsRight = containerRect.left + leftPos + width;
+        if (overlayAbsRight > viewportWidth - 16) {
+          leftPos = viewportWidth - 16 - width - containerRect.left;
+        }
+        if (containerRect.left + leftPos < 16) {
+          leftPos = 16 - containerRect.left;
+        }
+      }
+
+      setOverlayStyle({
+        position: 'absolute',
+        top: 'calc(100% + 6px)',
+        left: leftPos,
+        width,
+        zIndex: 1050,
+      });
+    };
+
+    calculatePosition();
+    window.addEventListener('resize', calculatePosition);
+    return () => window.removeEventListener('resize', calculatePosition);
+  }, [isOpen]);
 
   // Sync inputs when external value changes (e.g. reset) or overlay opens
   useEffect(() => {
@@ -150,6 +206,7 @@ export const DateScopeSelect: React.FC<DateScopeSelectProps> = ({
 
   const customLabel = (
     <span
+      ref={customBtnRef}
       onClick={(e) => {
         if (disabled) return;
         if (dateScope === 'custom') {
@@ -208,70 +265,63 @@ export const DateScopeSelect: React.FC<DateScopeSelectProps> = ({
         />
       </ConfigProvider>
 
-      {/* Custom date range overlay — no calendar, inputs + presets + apply */}
+      {/* Custom date range overlay — responsive 2-row design centered on custom date button */}
       {isOpen && (
         <div
           role="dialog"
           aria-label="Сана оралиғини танлаш"
           style={{
-            position: 'absolute',
-            top: 'calc(100% + 6px)',
-            right: 0,
-            zIndex: 1050,
+            ...overlayStyle,
             backgroundColor: '#FFFFFF',
             border: '1px solid #E2E8F0',
             borderRadius: 8,
             boxShadow: '0 6px 16px 0 rgba(0,0,0,0.08), 0 3px 6px -4px rgba(0,0,0,0.12)',
             padding: '10px 12px',
-            minWidth: 420,
             display: 'flex',
             flexDirection: 'column',
-            gap: 0,
+            gap: 8,
           }}
         >
-          {/* Row: date inputs + presets + apply */}
+          {/* Row 1: Date inputs */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+            <Input
+              placeholder="КК.ОО.ЙЙЙЙ"
+              value={manualFrom}
+              onChange={(e) => {
+                setManualFrom(e.target.value);
+                setManualError(null);
+              }}
+              onPressEnter={applyManual}
+              status={manualError ? 'error' : undefined}
+              style={{ flex: 1, minWidth: 0, height: 30, fontSize: 12, borderRadius: 4 }}
+              aria-label="Бошланғич санани қўлда киритиш"
+            />
+            <span style={{ color: '#94A3B8', fontSize: 13, flexShrink: 0 }}>—</span>
+            <Input
+              placeholder="КК.ОО.ЙЙЙЙ"
+              value={manualTo}
+              onChange={(e) => {
+                setManualTo(e.target.value);
+                setManualError(null);
+              }}
+              onPressEnter={applyManual}
+              status={manualError ? 'error' : undefined}
+              style={{ flex: 1, minWidth: 0, height: 30, fontSize: 12, borderRadius: 4 }}
+              aria-label="Якуний санани қўлда киритиш"
+            />
+          </div>
+
+          {/* Row 2: Presets + Apply */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
-              flexWrap: 'nowrap',
+              justifyContent: 'space-between',
+              gap: 4,
+              width: '100%',
             }}
           >
-            {/* Date inputs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              <Input
-                placeholder="КК.ОО.ЙЙЙЙ"
-                value={manualFrom}
-                onChange={(e) => {
-                  setManualFrom(e.target.value);
-                  setManualError(null);
-                }}
-                onPressEnter={applyManual}
-                status={manualError ? 'error' : undefined}
-                style={{ width: 108, height: 30, fontSize: 12, borderRadius: 4 }}
-                aria-label="Бошланғич санани қўлда киритиш"
-              />
-              <span style={{ color: '#94A3B8', fontSize: 13, flexShrink: 0 }}>—</span>
-              <Input
-                placeholder="КК.ОО.ЙЙЙЙ"
-                value={manualTo}
-                onChange={(e) => {
-                  setManualTo(e.target.value);
-                  setManualError(null);
-                }}
-                onPressEnter={applyManual}
-                status={manualError ? 'error' : undefined}
-                style={{ width: 108, height: 30, fontSize: 12, borderRadius: 4 }}
-                aria-label="Якуний санани қўлда киритиш"
-              />
-            </div>
-
-            {/* Divider */}
-            <div style={{ width: 1, height: 18, backgroundColor: '#E2E8F0', flexShrink: 0 }} />
-
-            {/* Quick preset buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               {PRESETS.map(({ label, days }) => {
                 const isActive = activePresetDays === days;
                 return (
@@ -283,7 +333,7 @@ export const DateScopeSelect: React.FC<DateScopeSelectProps> = ({
                       height: 28,
                       fontSize: 12,
                       borderRadius: 4,
-                      padding: '0 9px',
+                      padding: '0 8px',
                       fontWeight: isActive ? 600 : 400,
                       color: isActive ? '#0284C7' : '#475569',
                       borderColor: isActive ? '#0284C7' : '#CBD5E1',
@@ -296,10 +346,6 @@ export const DateScopeSelect: React.FC<DateScopeSelectProps> = ({
               })}
             </div>
 
-            {/* Divider */}
-            <div style={{ width: 1, height: 18, backgroundColor: '#E2E8F0', flexShrink: 0 }} />
-
-            {/* Apply button */}
             <Button
               type="primary"
               size="small"
@@ -312,6 +358,7 @@ export const DateScopeSelect: React.FC<DateScopeSelectProps> = ({
                 padding: '0 10px',
                 fontWeight: 500,
                 flexShrink: 0,
+                backgroundColor: '#0284C7',
               }}
               aria-label="Киритилган саналарни қўллаш"
             >
@@ -323,7 +370,6 @@ export const DateScopeSelect: React.FC<DateScopeSelectProps> = ({
           {manualError && (
             <div
               style={{
-                marginTop: 6,
                 padding: '4px 6px',
                 backgroundColor: '#FEF2F2',
                 color: '#DC2626',

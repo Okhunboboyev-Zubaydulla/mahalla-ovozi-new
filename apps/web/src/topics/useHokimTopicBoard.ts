@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useContext, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   QualifyingLane,
   TopicCardItem,
   HokimLaneBoardData,
+  HokimTopicBoardResponse,
 } from '@mahalla-ovozi/api-contracts';
 import { hokimTopicsClient } from './hokim-topics-client.js';
 import { useAuth } from '../auth/auth-context.js';
@@ -26,6 +27,55 @@ const CANONICAL_LANES: QualifyingLane[] = [
   'WASTE',
 ];
 
+function buildInitialLanesState(
+  incomingLanes?: Partial<Record<QualifyingLane, HokimLaneBoardData>>,
+): Record<QualifyingLane, LaneLocalState> {
+  const result = {} as Record<QualifyingLane, LaneLocalState>;
+  for (const k of CANONICAL_LANES) {
+    const laneData = incomingLanes?.[k];
+    result[k] = {
+      lane: k,
+      topics: laneData?.topics || [],
+      bufferedNewTopics: [],
+      newItemsCount: 0,
+      totalCount: laneData?.totalCount || 0,
+      nextCursor: laneData?.nextCursor ?? null,
+      hasNextPage: Boolean(laneData?.hasNextPage),
+      isLoadingMore: false,
+      loadMoreError: null,
+    };
+  }
+  return result;
+}
+
+function extractTopicIds(
+  incomingLanes?: Partial<Record<QualifyingLane, HokimLaneBoardData>>,
+): Set<string> {
+  const ids = new Set<string>();
+  if (incomingLanes) {
+    for (const k of CANONICAL_LANES) {
+      for (const t of incomingLanes[k]?.topics || []) {
+        ids.add(t.id);
+      }
+    }
+  }
+  return ids;
+}
+
+function extractTopicTimestamps(
+  incomingLanes?: Partial<Record<QualifyingLane, HokimLaneBoardData>>,
+): Map<string, string> {
+  const map = new Map<string, string>();
+  if (incomingLanes) {
+    for (const k of CANONICAL_LANES) {
+      for (const t of incomingLanes[k]?.topics || []) {
+        map.set(t.id, t.updatedAt);
+      }
+    }
+  }
+  return map;
+}
+
 export function useHokimTopicBoard(
   appliedFilters?: DashboardFilterState | string,
   searchQuery?: string,
@@ -36,11 +86,7 @@ export function useHokimTopicBoard(
   const liveAnnouncerRef = useRef(liveAnnouncer);
   liveAnnouncerRef.current = liveAnnouncer;
 
-  const baselineTimestampRef = useRef<string | null>(null);
-  const isInitialLoadRef = useRef<boolean>(true);
-  const previousKnownTopicIdsRef = useRef<Set<string>>(new Set());
-  const previousTopicTimestampsRef = useRef<Map<string, string>>(new Map());
-  const laneAbortControllersRef = useRef<Map<QualifyingLane, AbortController>>(new Map());
+  const queryClient = useQueryClient();
 
   const filterState: DashboardFilterState = useMemo(() => {
     if (typeof appliedFilters === 'string') {
@@ -56,18 +102,59 @@ export function useHokimTopicBoard(
 
   const trimmedSearch = searchQuery?.trim() || '';
 
+  const queryKey = [
+    'hokim-board',
+    districtId,
+    filterState.dateScope,
+    filterState.dateFrom ?? null,
+    filterState.dateTo ?? null,
+    filterState.mahallaName ?? null,
+    filterState.lanes.join(','),
+    trimmedSearch || null,
+  ];
+
   // Reset baseline, known topic tracking, and in-flight requests when scope changes
   const currentScopeKey = `${districtId}:${filterState.dateScope}:${filterState.dateFrom || ''}:${filterState.dateTo || ''}:${filterState.mahallaName || ''}:${filterState.lanes.join(',')}:${trimmedSearch}`;
   const currentScopeKeyRef = useRef<string>(currentScopeKey);
   currentScopeKeyRef.current = currentScopeKey;
 
+  const cachedBoard = queryClient.getQueryData<HokimTopicBoardResponse>(queryKey);
+
+  const [lanesState, setLanesState] = useState<Record<QualifyingLane, LaneLocalState>>(() =>
+    buildInitialLanesState(cachedBoard?.lanes),
+  );
+
+  const lanesStateRef = useRef(lanesState);
+  lanesStateRef.current = lanesState;
+
+  const baselineTimestampRef = useRef<string | null>(
+    cachedBoard?.currentVisitTimestamp ?? null,
+  );
+  const isInitialLoadRef = useRef<boolean>(!cachedBoard?.lanes);
+  const previousKnownTopicIdsRef = useRef<Set<string>>(extractTopicIds(cachedBoard?.lanes));
+  const previousTopicTimestampsRef = useRef<Map<string, string>>(extractTopicTimestamps(cachedBoard?.lanes));
+  const laneAbortControllersRef = useRef<Map<QualifyingLane, AbortController>>(new Map());
+
   const prevScopeKeyRef = useRef<string>(currentScopeKey);
   if (prevScopeKeyRef.current !== currentScopeKey) {
     prevScopeKeyRef.current = currentScopeKey;
-    isInitialLoadRef.current = true;
-    baselineTimestampRef.current = null;
-    previousKnownTopicIdsRef.current.clear();
-    previousTopicTimestampsRef.current.clear();
+    const scopedCachedData = queryClient.getQueryData<HokimTopicBoardResponse>(queryKey);
+    if (scopedCachedData?.lanes) {
+      isInitialLoadRef.current = false;
+      baselineTimestampRef.current = scopedCachedData.currentVisitTimestamp;
+      previousKnownTopicIdsRef.current = extractTopicIds(scopedCachedData.lanes);
+      previousTopicTimestampsRef.current = extractTopicTimestamps(scopedCachedData.lanes);
+      const cachedLanes = buildInitialLanesState(scopedCachedData.lanes);
+      lanesStateRef.current = cachedLanes;
+      setLanesState(cachedLanes);
+    } else {
+      isInitialLoadRef.current = true;
+      baselineTimestampRef.current = null;
+      previousKnownTopicIdsRef.current.clear();
+      previousTopicTimestampsRef.current.clear();
+      // Keep existing displayed lanes via placeholderData while the new filter scope loads
+      // to avoid flashing an empty board banner.
+    }
     laneAbortControllersRef.current.forEach((ctrl) => ctrl.abort());
     laneAbortControllersRef.current.clear();
   }
@@ -79,17 +166,6 @@ export function useHokimTopicBoard(
       laneAbortControllersRef.current.clear();
     };
   }, []);
-
-  const queryKey = [
-    'hokim-board',
-    districtId,
-    filterState.dateScope,
-    filterState.dateFrom ?? null,
-    filterState.dateTo ?? null,
-    filterState.mahallaName ?? null,
-    filterState.lanes.join(','),
-    trimmedSearch || null,
-  ];
 
   const boardQuery = useQuery({
     queryKey,
@@ -136,67 +212,6 @@ export function useHokimTopicBoard(
     retry: false,
   });
 
-  const [lanesState, setLanesState] = useState<Record<QualifyingLane, LaneLocalState>>({
-    HOKIM_RELATED: {
-      lane: 'HOKIM_RELATED',
-      topics: [],
-      bufferedNewTopics: [],
-      newItemsCount: 0,
-      totalCount: 0,
-      nextCursor: null,
-      hasNextPage: false,
-      isLoadingMore: false,
-      loadMoreError: null,
-    },
-    WATER: {
-      lane: 'WATER',
-      topics: [],
-      bufferedNewTopics: [],
-      newItemsCount: 0,
-      totalCount: 0,
-      nextCursor: null,
-      hasNextPage: false,
-      isLoadingMore: false,
-      loadMoreError: null,
-    },
-    ELECTRICITY: {
-      lane: 'ELECTRICITY',
-      topics: [],
-      bufferedNewTopics: [],
-      newItemsCount: 0,
-      totalCount: 0,
-      nextCursor: null,
-      hasNextPage: false,
-      isLoadingMore: false,
-      loadMoreError: null,
-    },
-    GAS: {
-      lane: 'GAS',
-      topics: [],
-      bufferedNewTopics: [],
-      newItemsCount: 0,
-      totalCount: 0,
-      nextCursor: null,
-      hasNextPage: false,
-      isLoadingMore: false,
-      loadMoreError: null,
-    },
-    WASTE: {
-      lane: 'WASTE',
-      topics: [],
-      bufferedNewTopics: [],
-      newItemsCount: 0,
-      totalCount: 0,
-      nextCursor: null,
-      hasNextPage: false,
-      isLoadingMore: false,
-      loadMoreError: null,
-    },
-  });
-
-  const lanesStateRef = useRef(lanesState);
-  lanesStateRef.current = lanesState;
-
   // Reconcile board data on initial load and subsequent background/manual refreshes (AC 1, 2, 3, 4)
   useEffect(() => {
     if (boardQuery.isPlaceholderData || !boardQuery.data?.lanes) {
@@ -237,6 +252,7 @@ export function useHokimTopicBoard(
 
       previousKnownTopicIdsRef.current = initialIds;
       previousTopicTimestampsRef.current = initialTimestamps;
+      lanesStateRef.current = newLanes;
       setLanesState(newLanes);
     } else {
       // 2. In-Session Reconciliation: Preserve existing card positions & pagination batches, buffer new cards
@@ -313,6 +329,7 @@ export function useHokimTopicBoard(
         };
       }
 
+      lanesStateRef.current = updatedLanes;
       setLanesState(updatedLanes);
 
       // Deduplicate: remove any ID from updated if it is newly added (AC 4)
@@ -343,34 +360,59 @@ export function useHokimTopicBoard(
   }, [boardQuery.data, boardQuery.isPlaceholderData]);
 
   // Reveal buffered new topics for a specific lane (AC 3)
-  const revealNewTopics = useCallback((lane: QualifyingLane) => {
-    setLanesState((prev) => {
-      const targetLane = prev[lane];
-      if (!targetLane || targetLane.bufferedNewTopics.length === 0) {
-        return prev;
-      }
-
-      const existingIds = new Set(targetLane.topics.map((t) => t.id));
-      const itemsToPrepend: TopicCardItem[] = [];
-
-      for (const item of targetLane.bufferedNewTopics) {
-        if (!existingIds.has(item.id)) {
-          itemsToPrepend.push(item);
-          existingIds.add(item.id);
+  const revealNewTopics = useCallback(
+    (lane: QualifyingLane) => {
+      setLanesState((prev) => {
+        const targetLane = prev[lane];
+        if (!targetLane || targetLane.bufferedNewTopics.length === 0) {
+          return prev;
         }
-      }
 
-      return {
-        ...prev,
-        [lane]: {
-          ...targetLane,
-          topics: [...itemsToPrepend, ...targetLane.topics],
-          bufferedNewTopics: [],
-          newItemsCount: 0,
-        },
-      };
-    });
-  }, []);
+        const existingIds = new Set(targetLane.topics.map((t) => t.id));
+        const itemsToPrepend: TopicCardItem[] = [];
+
+        for (const item of targetLane.bufferedNewTopics) {
+          if (!existingIds.has(item.id)) {
+            itemsToPrepend.push(item);
+            existingIds.add(item.id);
+          }
+        }
+
+        const updatedTopics = [...itemsToPrepend, ...targetLane.topics];
+
+        const nextState = {
+          ...prev,
+          [lane]: {
+            ...targetLane,
+            topics: updatedTopics,
+            bufferedNewTopics: [],
+            newItemsCount: 0,
+          },
+        };
+        lanesStateRef.current = nextState;
+
+        // Synchronize with TanStack Query cache so revealed topics remain in cache across unmounts
+        queryClient.setQueryData<HokimTopicBoardResponse>(queryKey, (oldBoard) => {
+          if (!oldBoard?.lanes) return oldBoard;
+          const oldLane = oldBoard.lanes[lane];
+          if (!oldLane) return oldBoard;
+          return {
+            ...oldBoard,
+            lanes: {
+              ...oldBoard.lanes,
+              [lane]: {
+                ...oldLane,
+                topics: updatedTopics,
+              },
+            },
+          };
+        });
+
+        return nextState;
+      });
+    },
+    [queryClient, queryKey],
+  );
 
   const loadMore = useCallback(
     async (lane: QualifyingLane) => {
@@ -394,14 +436,18 @@ export function useHokimTopicBoard(
 
       const scopeKeyAtInvocation = currentScopeKeyRef.current;
 
-      setLanesState((prev) => ({
-        ...prev,
-        [lane]: {
-          ...prev[lane],
-          isLoadingMore: true,
-          loadMoreError: null,
-        },
-      }));
+      setLanesState((prev) => {
+        const nextState = {
+          ...prev,
+          [lane]: {
+            ...prev[lane],
+            isLoadingMore: true,
+            loadMoreError: null,
+          },
+        };
+        lanesStateRef.current = nextState;
+        return nextState;
+      });
 
       try {
         const response = trimmedSearch
@@ -451,7 +497,7 @@ export function useHokimTopicBoard(
             }
           }
 
-          return {
+          const nextState = {
             ...prev,
             [lane]: {
               ...prevLane,
@@ -462,6 +508,28 @@ export function useHokimTopicBoard(
               loadMoreError: null,
             },
           };
+          lanesStateRef.current = nextState;
+
+          // Synchronize paginated topics to TanStack Query cache so back-navigation retains all loaded cards
+          queryClient.setQueryData<HokimTopicBoardResponse>(queryKey, (oldBoard) => {
+            if (!oldBoard?.lanes) return oldBoard;
+            const oldLane = oldBoard.lanes[lane];
+            if (!oldLane) return oldBoard;
+            return {
+              ...oldBoard,
+              lanes: {
+                ...oldBoard.lanes,
+                [lane]: {
+                  ...oldLane,
+                  topics: newTopics,
+                  nextCursor: response.nextCursor,
+                  hasNextPage: response.hasNextPage,
+                },
+              },
+            };
+          });
+
+          return nextState;
         });
       } catch (err: unknown) {
         if (
@@ -479,35 +547,51 @@ export function useHokimTopicBoard(
           err instanceof ApiError &&
           (err.code === 'INVALID_CURSOR' || err.code === 'STALE_CURSOR')
         ) {
-          setLanesState((prev) => ({
-            ...prev,
-            [lane]: {
-              ...prev[lane],
-              nextCursor: null,
-              hasNextPage: false,
-              isLoadingMore: false,
-              loadMoreError: null,
-            },
-          }));
+          setLanesState((prev) => {
+            const nextState = {
+              ...prev,
+              [lane]: {
+                ...prev[lane],
+                nextCursor: null,
+                hasNextPage: false,
+                isLoadingMore: false,
+                loadMoreError: null,
+              },
+            };
+            lanesStateRef.current = nextState;
+            return nextState;
+          });
           void boardQuery.refetch();
           return;
         }
 
-        setLanesState((prev) => ({
-          ...prev,
-          [lane]: {
-            ...prev[lane],
-            isLoadingMore: false,
-            loadMoreError: 'Юклаб бўлмади. Қайта уриниш.',
-          },
-        }));
+        setLanesState((prev) => {
+          const nextState = {
+            ...prev,
+            [lane]: {
+              ...prev[lane],
+              isLoadingMore: false,
+              loadMoreError: 'Юклаб бўлмади. Қайта уриниш.',
+            },
+          };
+          lanesStateRef.current = nextState;
+          return nextState;
+        });
       } finally {
         if (laneAbortControllersRef.current.get(lane) === controller) {
           laneAbortControllersRef.current.delete(lane);
         }
       }
     },
-    [filterState, trimmedSearch, boardQuery.isFetching, boardQuery.isPlaceholderData, boardQuery.refetch],
+    [
+      filterState,
+      trimmedSearch,
+      queryClient,
+      queryKey,
+      boardQuery.isFetching,
+      boardQuery.isPlaceholderData,
+      boardQuery.refetch,
+    ],
   );
 
   const manualRefresh = useCallback(() => {

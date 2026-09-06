@@ -234,47 +234,140 @@ describe('TopicStatisticsStrip Component Tests', () => {
     expect(card1?.getAttribute('aria-label')).toContain('Юкланмоқда');
   });
 
+  const mockMobileMedia = () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes('max-width'),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+  };
+
   it('renders mobile carousel navigation and handles Next/Prev clicks (AC 14)', () => {
-    // Force mobile breakpoint by mocking matchMedia to report non-lg
-    vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
-      if (query.includes('1024px') || query.includes('lg')) {
-        return {
-          matches: false,
-          media: query,
-          onchange: null,
-          addListener: vi.fn(),
-          removeListener: vi.fn(),
-          addEventListener: vi.fn(),
-          removeEventListener: vi.fn(),
-          dispatchEvent: vi.fn(),
-        } as unknown as MediaQueryList;
-      }
-      return {
-        matches: true,
-        media: query,
-        onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      } as unknown as MediaQueryList;
-    });
+    mockMobileMedia();
 
     renderWithProviders(<TopicStatisticsStrip statistics={mockDefaultStats} />);
 
-    const nextBtn = screen.queryByRole('button', { name: /кейинги кўрсаткич/i });
-    const prevBtn = screen.queryByRole('button', { name: /олдинги кўрсаткич/i });
+    const nextBtn = screen.getByRole('button', { name: /кейинги кўрсаткич/i });
+    const prevBtn = screen.getByRole('button', { name: /олдинги кўрсаткич/i });
 
-    if (nextBtn && prevBtn) {
-      // Previous button initially disabled at index 0
-      expect((prevBtn as HTMLButtonElement).disabled).toBe(true);
-      expect((nextBtn as HTMLButtonElement).disabled).toBe(false);
+    // Previous button initially disabled at index 0
+    expect((prevBtn as HTMLButtonElement).disabled).toBe(true);
+    expect((nextBtn as HTMLButtonElement).disabled).toBe(false);
 
-      // Click Next
+    // Click Next
+    fireEvent.click(nextBtn);
+    expect((prevBtn as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  describe('Mobile Carousel & Touch Snapping Mechanics', () => {
+    beforeEach(() => {
+      mockMobileMedia();
+    });
+
+    it('renders start-aligned cards and trailing spacer buffer on mobile viewports', () => {
+      renderWithProviders(<TopicStatisticsStrip statistics={mockDefaultStats} />);
+
+      const container = screen.getByTestId('statistics-scroll-container');
+      expect(container).toBeTruthy();
+      expect(container.style.scrollSnapType).toBe('x mandatory');
+      expect(container.style.touchAction).toBe('pan-x pan-y');
+
+      const trailingSpacer = screen.getByTestId('carousel-trailing-spacer');
+      expect(trailingSpacer).toBeTruthy();
+      expect(trailingSpacer.getAttribute('aria-hidden')).toBe('true');
+
+      const card1 = document.getElementById('statistic-card-1');
+      const card1Wrapper = card1?.parentElement;
+      expect(card1Wrapper?.style.scrollSnapAlign).toBe('start');
+      expect(card1Wrapper?.style.scrollSnapStop).toBe('always');
+    });
+
+    it('updates currentIndex and counter header when scrolling the container', () => {
+      renderWithProviders(<TopicStatisticsStrip statistics={mockDefaultStats} />);
+
+      expect(screen.getByText(/Кўрсаткич 1 \/ 5: Жами мавзулар/)).toBeTruthy();
+
+      const container = screen.getByTestId('statistics-scroll-container');
+      const card1 = document.getElementById('statistic-card-1')?.parentElement;
+      if (card1) {
+        Object.defineProperty(card1, 'offsetWidth', { value: 300, configurable: true });
+      }
+      Object.defineProperty(container, 'clientWidth', { value: 360, configurable: true });
+      // stride = 300 + 16 = 316. Scrolling to 316 should snap to card 2 (index 1)
+      Object.defineProperty(container, 'scrollLeft', { value: 316, configurable: true });
+
+      fireEvent.scroll(container);
+
+      expect(screen.getByText(/Кўрсаткич 2 \/ 5: Ҳокимга оид/)).toBeTruthy();
+    });
+
+    it('debounces liveAnnouncer announcement on touch scroll until motion settles', () => {
+      vi.useFakeTimers();
+      renderWithProviders(<TopicStatisticsStrip statistics={mockDefaultStats} />);
+
+      const container = screen.getByTestId('statistics-scroll-container');
+      const card1 = document.getElementById('statistic-card-1')?.parentElement;
+      if (card1) {
+        Object.defineProperty(card1, 'offsetWidth', { value: 300, configurable: true });
+      }
+      Object.defineProperty(container, 'clientWidth', { value: 360, configurable: true });
+      Object.defineProperty(container, 'scrollLeft', { value: 316, configurable: true });
+
+      fireEvent.scroll(container);
+
+      // Announce should not be called immediately (debounced by 150ms)
+      expect(announceMock).not.toHaveBeenCalled();
+
+      // Fast-forward by 150ms
+      vi.advanceTimersByTime(150);
+
+      expect(announceMock).toHaveBeenCalledWith('Кўрсаткич 2 / 5: Ҳокимга оид');
+      vi.useRealTimers();
+    });
+
+    it('locks programmatic scroll during Prev/Next clicks to prevent touch conflict', () => {
+      renderWithProviders(<TopicStatisticsStrip statistics={mockDefaultStats} />);
+
+      const nextBtn = screen.getByRole('button', { name: /кейинги кўрсаткич/i });
       fireEvent.click(nextBtn);
-      expect((prevBtn as HTMLButtonElement).disabled).toBe(false);
-    }
+
+      expect(window.HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
+        behavior: 'smooth',
+        inline: 'start',
+        block: 'nearest',
+      });
+      expect(screen.getByText(/Кўрсаткич 2 \/ 5: Ҳокимга оид/)).toBeTruthy();
+      expect(announceMock).toHaveBeenCalledWith('Кўрсаткич 2 / 5: Ҳокимга оид');
+    });
+
+    it('does not reset card index or trample scroll on passive re-renders', () => {
+      const { rerender } = renderWithProviders(<TopicStatisticsStrip statistics={mockDefaultStats} />);
+
+      const nextBtn = screen.getByRole('button', { name: /кейинги кўрсаткич/i });
+      fireEvent.click(nextBtn);
+      expect(screen.getByText(/Кўрсаткич 2 \/ 5: Ҳокимга оид/)).toBeTruthy();
+
+      // Clear scrollIntoView mock to check whether re-render invokes it
+      vi.mocked(window.HTMLElement.prototype.scrollIntoView).mockClear();
+
+      // Re-render with new reference of stats (simulating background polling refetch)
+      rerender(
+        <ConfigProvider theme={mahallaTheme}>
+          <LiveAnnouncerContext.Provider value={liveAnnouncerValue}>
+            <TopicStatisticsStrip statistics={{ ...mockDefaultStats, totalUniqueTopics: 18 }} />
+          </LiveAnnouncerContext.Provider>
+        </ConfigProvider>,
+      );
+
+      // Header remains on Card 2, no scrollIntoView trample
+      expect(screen.getByText(/Кўрсаткич 2 \/ 5: Ҳокимга оид/)).toBeTruthy();
+      expect(window.HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
+    });
   });
 
   describe('Story 3.9: Card 1 Prior-Period Trend & Accessibility (AC 1, AC 3, AC 7)', () => {
@@ -452,30 +545,7 @@ describe('TopicStatisticsStrip Component Tests', () => {
     });
 
     it('suppresses mobile carousel counter header during cold error state (AC 4, 7)', () => {
-      vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
-        if (query.includes('1024px') || query.includes('lg')) {
-          return {
-            matches: false,
-            media: query,
-            onchange: null,
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            dispatchEvent: vi.fn(),
-          } as unknown as MediaQueryList;
-        }
-        return {
-          matches: true,
-          media: query,
-          onchange: null,
-          addListener: vi.fn(),
-          removeListener: vi.fn(),
-          addEventListener: vi.fn(),
-          removeEventListener: vi.fn(),
-          dispatchEvent: vi.fn(),
-        } as unknown as MediaQueryList;
-      });
+      mockMobileMedia();
 
       renderWithProviders(
         <TopicStatisticsStrip

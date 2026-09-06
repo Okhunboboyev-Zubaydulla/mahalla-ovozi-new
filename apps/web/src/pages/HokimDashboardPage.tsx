@@ -159,12 +159,15 @@ export const HokimDashboardPage: React.FC = () => {
       setOriginatingLane(topic.primaryLane);
       setHelpDrawerOpen(false);
       if (window.innerWidth < 1024) {
-        navigate(`/topics/${topic.id}/evidence`);
+        navigate({
+          pathname: `/topics/${topic.id}/evidence`,
+          search: location.search,
+        });
       } else {
         setSelectedTopicId(topic.id);
       }
     },
-    [navigate],
+    [navigate, location.search],
   );
 
   const handleCloseDrawer = useCallback(() => {

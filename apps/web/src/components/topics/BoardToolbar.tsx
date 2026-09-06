@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Button, Typography, Grid, Popover, Tag, Divider, Tooltip, Badge, Spin } from 'antd';
+import { Button, Typography, Grid, Popover, Tag, Divider, Tooltip, Badge, Spin, Drawer } from 'antd';
 import {
   LogoutOutlined,
   EnvironmentOutlined,
@@ -11,6 +11,7 @@ import {
   ClearOutlined,
   LoadingOutlined,
   ClockCircleOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../auth/auth-context.js';
 import { formatTashkentTime } from '../../lib/formatters.js';
@@ -128,10 +129,13 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
 }) => {
   const { actor, signOut, isSigningOut } = useAuth();
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
   const profileButtonRef = useRef<HTMLButtonElement | null>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
   const screens = useBreakpoint();
-  const isMobile = screens.lg === false;
+  const isDesktop = screens.lg ?? true;
+  const isPhone = Boolean(screens.xs);
+  const isMobile = !isDesktop;
 
   const formattedRefreshTime = lastRefreshedAt ? formatTashkentTime(lastRefreshedAt) : null;
   const isSearchActive = Boolean(searchQuery.trim());
@@ -139,9 +143,11 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
   const formattedDistrictName = districtName.toLowerCase().includes('туман')
     ? districtName
     : `${districtName} тумани`;
+  const mobileDistrictName = districtName.replace(/\s*тумани\s*$/i, '');
 
   return (
     <header
+      aria-labelledby="dashboard-main-heading"
       style={{
         position: 'sticky',
         top: 0,
@@ -156,22 +162,23 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
     >
       <div
         style={{
-          padding: '8px 20px',
+          padding: isPhone ? '8px 12px' : '8px 20px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 12,
+          gap: isPhone ? 8 : 12,
           minHeight: 50,
           maxHeight: 52,
         }}
       >
         {/* Left Section: Logo & District */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isPhone ? 6 : 10, minWidth: 0, flexShrink: 1 }}>
           <MahallaOvoziLogo />
           <Title
             level={4}
             id="dashboard-main-heading"
             tabIndex={-1}
+            className={isPhone ? 'sr-only' : undefined}
             style={{
               margin: 0,
               color: '#0F172A',
@@ -179,24 +186,50 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
               fontSize: 18,
               outline: 'none',
               whiteSpace: 'nowrap',
+              ...(isPhone
+                ? {
+                    position: 'absolute',
+                    width: 1,
+                    height: 1,
+                    padding: 0,
+                    margin: -1,
+                    overflow: 'hidden',
+                    clipPath: 'inset(50%)',
+                    border: 0,
+                  }
+                : {}),
             }}
           >
             Маҳалла Овози
           </Title>
-          <div style={{ width: 1, height: 18, backgroundColor: '#E2E8F0' }} />
-          <Text
-            strong
-            style={{
-              fontSize: 14,
-              color: '#0F172A',
-              display: 'flex',
-              alignItems: 'center',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <EnvironmentOutlined style={{ color: '#0284C7', fontSize: 14, marginRight: 6 }} />
-            <span>{formattedDistrictName}</span>
-          </Text>
+          {!isPhone && <div style={{ width: 1, height: 18, backgroundColor: '#E2E8F0', flexShrink: 0 }} />}
+          <Tooltip title={formattedDistrictName} placement="bottom">
+            <Text
+              strong
+              style={{
+                fontSize: isPhone ? 13 : 14,
+                color: '#0F172A',
+                display: 'flex',
+                alignItems: 'center',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: isPhone ? 150 : 260,
+              }}
+            >
+              <EnvironmentOutlined
+                style={{
+                  color: '#0284C7',
+                  fontSize: isPhone ? 13 : 14,
+                  marginRight: isPhone ? 4 : 6,
+                  flexShrink: 0,
+                }}
+              />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {isPhone ? mobileDistrictName : formattedDistrictName}
+              </span>
+            </Text>
+          </Tooltip>
         </div>
 
         {/* Center Section: Desktop Filters */}
@@ -317,7 +350,7 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
         )}
 
         {/* Right Section: Live Clock, Smart Refresh, Help, Profile Popover */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isPhone ? 6 : 8, flexShrink: 0 }}>
           {!isMobile && (
             <>
               <LiveClock />
@@ -325,32 +358,70 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
             </>
           )}
 
-          {onOpenFilters && (
-            <Button
-              id="mobile-filter-button"
-              ref={mobileFilterButtonRef}
-              icon={
-                <FilterOutlined
-                  style={{ color: activeFilterCount > 0 ? '#0284C7' : '#64748B' }}
+          {onOpenFilters && isMobile && (
+            isPhone ? (
+              <Badge
+                count={activeFilterCount}
+                size="small"
+                offset={[-2, 2]}
+                styles={{ root: { display: 'inline-flex' } }}
+              >
+                <Button
+                  id="mobile-filter-button"
+                  ref={mobileFilterButtonRef}
+                  type="default"
+                  icon={
+                    <FilterOutlined
+                      style={{ color: activeFilterCount > 0 ? '#0284C7' : '#64748B', fontSize: 14 }}
+                    />
+                  }
+                  onClick={onOpenFilters}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 0,
+                    borderRadius: 6,
+                    borderColor: activeFilterCount > 0 ? '#0284C7' : '#CBD5E1',
+                    backgroundColor: activeFilterCount > 0 ? '#F0F9FF' : '#FFFFFF',
+                    boxShadow: 'none',
+                  }}
+                  aria-label={
+                    activeFilterCount > 0
+                      ? `Фильтрлар: ${activeFilterCount} та фаол`
+                      : 'Фильтрлар панелини очиш'
+                  }
                 />
-              }
-              onClick={onOpenFilters}
-              style={{
-                display: isMobile ? 'inline-flex' : 'none',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 12,
-                fontWeight: 500,
-                height: 30,
-                color: activeFilterCount > 0 ? '#0284C7' : '#334155',
-                borderColor: activeFilterCount > 0 ? '#0284C7' : '#CBD5E1',
-                backgroundColor: activeFilterCount > 0 ? '#F0F9FF' : '#FFFFFF',
-                boxShadow: 'none',
-              }}
-              aria-label={`Фильтрлар: ${activeFilterCount} та фаол`}
-            >
-              Фильтрлар {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
-            </Button>
+              </Badge>
+            ) : (
+              <Button
+                id="mobile-filter-button"
+                ref={mobileFilterButtonRef}
+                icon={
+                  <FilterOutlined
+                    style={{ color: activeFilterCount > 0 ? '#0284C7' : '#64748B' }}
+                  />
+                }
+                onClick={onOpenFilters}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  height: 30,
+                  color: activeFilterCount > 0 ? '#0284C7' : '#334155',
+                  borderColor: activeFilterCount > 0 ? '#0284C7' : '#CBD5E1',
+                  backgroundColor: activeFilterCount > 0 ? '#F0F9FF' : '#FFFFFF',
+                  boxShadow: 'none',
+                }}
+                aria-label={`Фильтрлар: ${activeFilterCount} та фаол`}
+              >
+                Фильтрлар {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+              </Button>
+            )
           )}
 
           <Tooltip
@@ -453,25 +524,138 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
             />
           </Tooltip>
 
-          <div style={{ width: 1, height: 18, backgroundColor: '#E2E8F0' }} />
+          {!isPhone && <div style={{ width: 1, height: 18, backgroundColor: '#E2E8F0' }} />}
 
-          <Popover
-            content={
-              <div
-                role="dialog"
-                aria-label="Ҳоким профили"
+          {isMobile ? (
+            <>
+              <Button
+                id="dashboard-profile-button"
+                ref={profileButtonRef}
+                type={isPhone ? 'default' : 'text'}
+                icon={<UserOutlined style={{ color: '#0284C7', fontSize: 15 }} />}
+                onClick={() => setMobileProfileOpen(true)}
+                aria-label="Ҳоким профили ва сессия созламалари"
+                aria-haspopup="dialog"
+                aria-expanded={mobileProfileOpen}
                 style={{
-                  minWidth: 220,
-                  padding: '4px 0',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: '#0F172A',
+                  boxShadow: 'none',
+                  height: 32,
+                  width: isPhone ? 32 : 'auto',
+                  padding: isPhone ? 0 : '0 8px',
+                  borderRadius: 6,
+                  borderColor: isPhone ? '#CBD5E1' : undefined,
+                  backgroundColor: isPhone ? '#FFFFFF' : undefined,
                 }}
               >
-                <div>
-                  <Text strong style={{ fontSize: 15, color: '#0F172A', display: 'block' }}>
-                    {actor?.username || 'Ҳоким'}
-                  </Text>
+                {!isPhone ? (actor?.username || 'Ҳоким') : null}
+              </Button>
+
+              <Drawer
+                placement="bottom"
+                height="auto"
+                open={mobileProfileOpen}
+                onClose={() => {
+                  setMobileProfileOpen(false);
+                  profileButtonRef.current?.focus();
+                }}
+                mask={true}
+                maskClosable={true}
+                closable={false}
+                destroyOnHidden={true}
+                aria-label="Ҳоким профили"
+                aria-modal={true}
+                styles={{
+                  wrapper: {
+                    borderTopLeftRadius: 16,
+                    borderTopRightRadius: 16,
+                    overflow: 'hidden',
+                  },
+                  content: {
+                    borderTopLeftRadius: 16,
+                    borderTopRightRadius: 16,
+                    backgroundColor: '#FFFFFF',
+                  },
+                  body: {
+                    padding: '16px 20px 24px 20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 14,
+                  },
+                }}
+              >
+                {/* Drag Handle Indicator */}
+                <div
+                  aria-hidden="true"
+                  style={{
+                    width: 36,
+                    height: 4,
+                    borderRadius: 2,
+                    backgroundColor: '#CBD5E1',
+                    margin: '0 auto 6px auto',
+                  }}
+                />
+
+                {/* Header row with Title and Close Button */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Title level={5} style={{ margin: 0, color: '#0F172A', fontSize: 16, fontWeight: 700 }}>
+                    Ҳоким профили
+                  </Title>
+                  <Button
+                    type="text"
+                    icon={<CloseOutlined style={{ fontSize: 15, color: '#64748B' }} />}
+                    onClick={() => {
+                      setMobileProfileOpen(false);
+                      profileButtonRef.current?.focus();
+                    }}
+                    aria-label="Ёпиш"
+                    style={{
+                      width: 32,
+                      height: 32,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                    }}
+                  />
+                </div>
+
+                {/* User details card */}
+                <div
+                  style={{
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 10,
+                    padding: '12px 14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text strong style={{ fontSize: 16, color: '#0F172A' }}>
+                      {actor?.username || 'Ҳоким'}
+                    </Text>
+                    <Tag
+                      color="cyan"
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        margin: 0,
+                      }}
+                    >
+                      Туман ҳокими
+                    </Tag>
+                  </div>
+
                   <Text
                     type="secondary"
                     style={{
@@ -480,7 +664,6 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 4,
-                      marginTop: 2,
                     }}
                   >
                     <EnvironmentOutlined style={{ color: '#0284C7' }} />
@@ -488,101 +671,166 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
                   </Text>
                 </div>
 
-                <div>
-                  <Tag
-                    color="cyan"
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      padding: '2px 8px',
-                      borderRadius: 4,
-                      margin: 0,
-                    }}
-                  >
-                    Туман ҳокими
-                  </Tag>
-                </div>
-
-                <Divider style={{ margin: '6px 0', borderColor: '#E2E8F0' }} />
-
+                {/* 44px-tall Touch-Friendly Sign Out Button */}
                 <Button
-                  type="text"
+                  type="primary"
                   danger
                   icon={<LogoutOutlined />}
                   loading={isSigningOut}
                   onClick={() => {
-                    setPopoverOpen(false);
+                    setMobileProfileOpen(false);
                     signOut();
                   }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 6,
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: '#EF4444',
-                    padding: '4px 8px',
-                    height: 36,
+                    justifyContent: 'center',
+                    gap: 8,
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: '#FFFFFF',
+                    backgroundColor: '#EF4444',
+                    borderColor: '#EF4444',
+                    height: 44,
                     width: '100%',
-                    justifyContent: 'flex-start',
+                    borderRadius: 8,
                     boxShadow: 'none',
-                    borderRadius: 6,
+                    marginTop: 4,
                   }}
                   aria-label="Тизимдан чиқиш"
                 >
                   Чиқиш
                 </Button>
-              </div>
-            }
-            trigger="click"
-            open={popoverOpen}
-            onOpenChange={(nextOpen) => {
-              setPopoverOpen(nextOpen);
-              if (!nextOpen) {
-                profileButtonRef.current?.focus();
+              </Drawer>
+            </>
+          ) : (
+            <Popover
+              content={
+                <div
+                  role="dialog"
+                  aria-label="Ҳоким профили"
+                  style={{
+                    minWidth: 220,
+                    padding: '4px 0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                  }}
+                >
+                  <div>
+                    <Text strong style={{ fontSize: 15, color: '#0F172A', display: 'block' }}>
+                      {actor?.username || 'Ҳоким'}
+                    </Text>
+                    <Text
+                      type="secondary"
+                      style={{
+                        fontSize: 13,
+                        color: '#64748B',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        marginTop: 2,
+                      }}
+                    >
+                      <EnvironmentOutlined style={{ color: '#0284C7' }} />
+                      {districtName}
+                    </Text>
+                  </div>
+
+                  <div>
+                    <Tag
+                      color="cyan"
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        margin: 0,
+                      }}
+                    >
+                      Туман ҳокими
+                    </Tag>
+                  </div>
+
+                  <Divider style={{ margin: '6px 0', borderColor: '#E2E8F0' }} />
+
+                  <Button
+                    type="text"
+                    danger
+                    icon={<LogoutOutlined />}
+                    loading={isSigningOut}
+                    onClick={() => {
+                      setPopoverOpen(false);
+                      signOut();
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 14,
+                      fontWeight: 500,
+                      color: '#EF4444',
+                      padding: '4px 8px',
+                      height: 36,
+                      width: '100%',
+                      justifyContent: 'flex-start',
+                      boxShadow: 'none',
+                      borderRadius: 6,
+                    }}
+                    aria-label="Тизимдан чиқиш"
+                  >
+                    Чиқиш
+                  </Button>
+                </div>
               }
-            }}
-            placement="bottomRight"
-            styles={{
-              body: {
-                boxShadow: 'none',
-                border: '1px solid #E2E8F0',
-                backgroundColor: '#FFFFFF',
-                borderRadius: 10,
-                padding: '12px 16px',
-              },
-            }}
-            overlayInnerStyle={{
-              boxShadow: 'none',
-              border: '1px solid #E2E8F0',
-              backgroundColor: '#FFFFFF',
-              borderRadius: 10,
-              padding: '12px 16px',
-            }}
-          >
-            <Button
-              id="dashboard-profile-button"
-              ref={profileButtonRef}
-              type="text"
-              icon={<UserOutlined style={{ color: '#0284C7', fontSize: 15 }} />}
-              aria-label="Ҳоким профили ва сессия созламалари"
-              aria-haspopup="dialog"
-              aria-expanded={popoverOpen}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 14,
-                fontWeight: 500,
-                color: '#0F172A',
-                boxShadow: 'none',
-                height: 32,
-                padding: '0 8px',
+              trigger="click"
+              open={popoverOpen}
+              onOpenChange={(nextOpen) => {
+                setPopoverOpen(nextOpen);
+                if (!nextOpen) {
+                  profileButtonRef.current?.focus();
+                }
+              }}
+              placement="bottomRight"
+              autoAdjustOverflow={true}
+              destroyOnHidden={true}
+              styles={{
+                body: {
+                  boxShadow: 'none',
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 10,
+                  padding: '12px 16px',
+                },
               }}
             >
-              {actor?.username || 'Ҳоким'}
-            </Button>
-          </Popover>
+              <Button
+                id="dashboard-profile-button"
+                ref={profileButtonRef}
+                type="text"
+                icon={<UserOutlined style={{ color: '#0284C7', fontSize: 15 }} />}
+                aria-label="Ҳоким профили ва сессия созламалари"
+                aria-haspopup="dialog"
+                aria-expanded={popoverOpen}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: '#0F172A',
+                  boxShadow: 'none',
+                  height: 32,
+                  width: 'auto',
+                  padding: '0 8px',
+                  borderRadius: 6,
+                }}
+              >
+                {actor?.username || 'Ҳоким'}
+              </Button>
+            </Popover>
+          )}
         </div>
       </div>
     </header>

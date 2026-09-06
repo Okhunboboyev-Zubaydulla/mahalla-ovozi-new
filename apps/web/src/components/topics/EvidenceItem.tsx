@@ -1,5 +1,5 @@
 import React from 'react';
-import { Typography, Tag, Button, Space } from 'antd';
+import { Typography, Tag, Button } from 'antd';
 import {
   ClockCircleOutlined,
   UserOutlined,
@@ -60,6 +60,7 @@ export const EvidenceItem: React.FC<EvidenceItemProps> = ({ evidence }) => {
           position: 'relative',
           flex: 1,
           minWidth: 0,
+          maxWidth: '100%',
           backgroundColor: '#FFFFFF',
           border: '1px solid #E2E8F0',
           borderRadius: '14px 14px 14px 2px',
@@ -69,6 +70,7 @@ export const EvidenceItem: React.FC<EvidenceItemProps> = ({ evidence }) => {
           gap: '6px',
           boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.07), 0 1px 2px -1px rgba(15, 23, 42, 0.04)',
           outline: 'none',
+          boxSizing: 'border-box',
         }}
       >
         {/* Seamless speech bubble tail protruding to bottom-left */}
@@ -110,14 +112,17 @@ export const EvidenceItem: React.FC<EvidenceItemProps> = ({ evidence }) => {
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             gap: 6,
+            width: '100%',
           }}
         >
-          <Space size={6} style={{ minWidth: 0 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0, maxWidth: '100%' }}>
             <Text
               strong
               style={{
                 fontSize: 13,
                 color: '#0F172A',
+                overflowWrap: 'anywhere',
+                wordBreak: 'normal',
               }}
             >
               {senderDisplay}
@@ -132,14 +137,15 @@ export const EvidenceItem: React.FC<EvidenceItemProps> = ({ evidence }) => {
                   backgroundColor: '#F1F5F9',
                   color: '#475569',
                   borderColor: '#CBD5E1',
+                  flexShrink: 0,
                 }}
               >
                 Медиа
               </Tag>
             )}
-          </Space>
+          </div>
 
-          <Space size={8} style={{ flexShrink: 0 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {evidence.isAnchor && (
               <Tag
                 style={{
@@ -155,11 +161,11 @@ export const EvidenceItem: React.FC<EvidenceItemProps> = ({ evidence }) => {
                 Дастлабки хабар
               </Tag>
             )}
-            <Space size={4} style={{ color: '#64748B', fontSize: 12 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#64748B', fontSize: 12 }}>
               <ClockCircleOutlined style={{ fontSize: 12, color: '#94A3B8' }} />
               <Text style={{ fontSize: 12, color: '#64748B' }}>{evidence.formattedTime}</Text>
-            </Space>
-          </Space>
+            </span>
+          </div>
         </div>
 
         {/* Body: Verbatim message text preserving line breaks */}
@@ -170,7 +176,8 @@ export const EvidenceItem: React.FC<EvidenceItemProps> = ({ evidence }) => {
             color: '#1E293B',
             margin: '2px 0 0 0',
             whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
+            overflowWrap: 'anywhere',
+            wordBreak: 'normal',
           }}
         >
           {evidence.verbatimText}
@@ -178,7 +185,7 @@ export const EvidenceItem: React.FC<EvidenceItemProps> = ({ evidence }) => {
 
         {/* Footer Action: Best-effort Telegram deep link button (AC 6) */}
         {evidence.telegramDeepLink && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4, width: '100%' }}>
             <Button
               size="small"
               type="default"

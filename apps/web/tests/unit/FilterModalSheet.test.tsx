@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { ConfigProvider } from 'antd';
@@ -12,6 +12,22 @@ import { DashboardFilterState } from '../../src/hooks/useDashboardFilterParams.j
 
 describe('FilterModalSheet Component Tests', () => {
   let queryClient: QueryClient;
+
+  beforeAll(() => {
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+  });
 
   const defaultFilters: DashboardFilterState = {
     dateScope: 'today',
@@ -76,7 +92,8 @@ describe('FilterModalSheet Component Tests', () => {
     expect(screen.getByText('Сана оралиғи')).toBeTruthy();
     expect(screen.getByText('Маҳалла')).toBeTruthy();
     expect(screen.getByText(/Йўналишлар/)).toBeTruthy();
-    expect(screen.getByText('Фильтрларни тозалаш')).toBeTruthy();
+    expect(screen.getByText('Тозалаш')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Барча фильтрларни тозалаш/ })).toBeTruthy();
     expect(screen.getByText('Бекор қилиш')).toBeTruthy();
     expect(screen.getByText('Қўллаш')).toBeTruthy();
   });
@@ -112,9 +129,37 @@ describe('FilterModalSheet Component Tests', () => {
       />,
     );
 
-    const resetButton = screen.getByText('Фильтрларни тозалаш');
+    const resetButton = screen.getByText('Тозалаш');
     fireEvent.click(resetButton);
 
     expect(handleReset).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders 2-tier footer on mobile phones (<576px) without overflow', () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes('max-width: 575px'),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    renderWithProviders(
+      <FilterModalSheet
+        open={true}
+        onClose={vi.fn()}
+        filters={defaultFilters}
+        onApplyFilters={vi.fn()}
+        onResetFilters={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Бекор қилиш')).toBeTruthy();
+    expect(screen.getByText('Қўллаш')).toBeTruthy();
+    expect(screen.getByText('Тозалаш')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Барча фильтрларни тозалаш/ })).toBeTruthy();
   });
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Typography, Space, Checkbox, Tag, Divider } from 'antd';
+import { Modal, Button, Typography, Space, Checkbox, Tag, Divider, Grid } from 'antd';
 import { FilterOutlined, CheckOutlined, ClearOutlined } from '@ant-design/icons';
 import { QualifyingLane } from '@mahalla-ovozi/api-contracts';
 import { DateScopeSelect } from './DateScopeSelect.js';
@@ -32,6 +32,9 @@ export const FilterModalSheet: React.FC<FilterModalSheetProps> = ({
   searchQuery = '',
   onSearchChange,
 }) => {
+  const screens = Grid.useBreakpoint();
+  const isMobile = Boolean(screens.xs);
+
   const [pendingFilters, setPendingFilters] = useState<DashboardFilterState>(filters);
   const [pendingSearch, setPendingSearch] = useState<string>(searchQuery);
 
@@ -110,7 +113,7 @@ export const FilterModalSheet: React.FC<FilterModalSheetProps> = ({
       styles={{
         content: {
           borderRadius: 12,
-          padding: '20px 24px',
+          padding: isMobile ? '20px 16px' : '20px 24px',
           boxShadow: 'none',
           border: '1px solid #E2E8F0',
         },
@@ -245,43 +248,81 @@ export const FilterModalSheet: React.FC<FilterModalSheetProps> = ({
         <Divider style={{ margin: 0, borderColor: '#F1F5F9' }} />
 
         {/* Modal Actions Footer */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingTop: 4,
-          }}
-        >
-          <Button
-            type="text"
-            icon={<ClearOutlined />}
-            onClick={handleReset}
-            style={{ color: '#DC2626', fontWeight: 500, height: 44, display: 'flex', alignItems: 'center' }}
+        {isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, width: '100%' }}>
+              <Button onClick={handleClose} style={{ borderRadius: 8, height: 44, fontSize: 14 }}>
+                Бекор қилиш
+              </Button>
+              <Button
+                type="primary"
+                icon={<CheckOutlined />}
+                onClick={handleApply}
+                style={{
+                  borderRadius: 8,
+                  height: 44,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  backgroundColor: '#0284C7',
+                  boxShadow: 'none',
+                }}
+              >
+                Қўллаш
+              </Button>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+              <Button
+                type="text"
+                icon={<ClearOutlined />}
+                onClick={handleReset}
+                aria-label="Барча фильтрларни тозалаш"
+                style={{ color: '#DC2626', fontWeight: 500, height: 36, display: 'inline-flex', alignItems: 'center' }}
+              >
+                Тозалаш
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingTop: 4,
+              width: '100%',
+            }}
           >
-            Фильтрларни тозалаш
-          </Button>
-
-          <Space size={10}>
-            <Button onClick={handleClose} style={{ borderRadius: 8, height: 44 }}>
-              Бекор қилиш
-            </Button>
             <Button
-              type="primary"
-              icon={<CheckOutlined />}
-              onClick={handleApply}
-              style={{
-                borderRadius: 8,
-                height: 44,
-                fontWeight: 600,
-                backgroundColor: '#0284C7',
-                boxShadow: 'none',
-              }}
+              type="text"
+              icon={<ClearOutlined />}
+              onClick={handleReset}
+              aria-label="Барча фильтрларни тозалаш"
+              style={{ color: '#DC2626', fontWeight: 500, height: 44, display: 'inline-flex', alignItems: 'center' }}
             >
-              Қўллаш
+              Тозалаш
             </Button>
-          </Space>
-        </div>
+
+            <Space size={10}>
+              <Button onClick={handleClose} style={{ borderRadius: 8, height: 44 }}>
+                Бекор қилиш
+              </Button>
+              <Button
+                type="primary"
+                icon={<CheckOutlined />}
+                onClick={handleApply}
+                style={{
+                  borderRadius: 8,
+                  height: 44,
+                  fontWeight: 600,
+                  backgroundColor: '#0284C7',
+                  boxShadow: 'none',
+                }}
+              >
+                Қўллаш
+              </Button>
+            </Space>
+          </div>
+        )}
       </div>
     </Modal>
   );

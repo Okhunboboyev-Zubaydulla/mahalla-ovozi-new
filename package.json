@@ -11,7 +11,9 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @mahalla-ovozi/backend db:migrate",
-    "reconcile-restore": "pnpm --filter @mahalla-ovozi/backend reconcile-restore"
+    "reconcile-restore": "pnpm --filter @mahalla-ovozi/backend reconcile-restore",
+    "preview:web": "pnpm --filter @mahalla-ovozi/web preview",
+    "tunnel": "cloudflared tunnel --url http://localhost:5173"
   },
   "devDependencies": {
     "typescript": "catalog:"

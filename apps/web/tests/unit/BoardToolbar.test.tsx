@@ -214,4 +214,134 @@ describe('Story 3.3 & 3.6: BoardToolbar Component Tests', () => {
     expect(screen.queryByRole('navigation')).toBeNull();
     expect(screen.queryByLabelText(/туманни ўзгартириш/i)).toBeNull();
   });
+
+  it('Test 10: Phone responsive mode (<576px) renders compact header with all 4 accessible controls', () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes('max-width: 575px'),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    const handleOpenFilters = vi.fn();
+    const handleRefresh = vi.fn();
+    const handleOpenHelp = vi.fn();
+
+    renderWithProviders(
+      <BoardToolbar
+        districtName="Шароф Рашидов тумани"
+        calendarDay="2026-08-24"
+        onOpenFilters={handleOpenFilters}
+        activeFilterCount={2}
+        onRefresh={handleRefresh}
+        onOpenHelp={handleOpenHelp}
+      />,
+    );
+
+    // 1. Heading remains in DOM with id="dashboard-main-heading" for focus restoration & WCAG
+    const heading = document.getElementById('dashboard-main-heading');
+    expect(heading).toBeTruthy();
+    expect(heading?.classList.contains('sr-only')).toBe(true);
+
+    // 2. District name strips redundant "тумани" suffix on mobile
+    expect(screen.getByText('Шароф Рашидов')).toBeTruthy();
+
+    // 3. Filter button is 32x32 icon button with badge and proper aria-label
+    const filterBtn = screen.getByRole('button', { name: /Фильтрлар: 2 та фаол/ });
+    expect(filterBtn).toBeTruthy();
+    expect(filterBtn.id).toBe('mobile-filter-button');
+
+    // 4. Refresh button is present
+    const refreshBtn = screen.getByRole('button', { name: /Маълумотларни янгилаш/ });
+    expect(refreshBtn).toBeTruthy();
+
+    // 5. Help button is present
+    const helpBtn = screen.getByRole('button', { name: 'Тизим ёрдами' });
+    expect(helpBtn).toBeTruthy();
+
+    // 6. Profile button is present as compact button
+    const profileBtn = screen.getByRole('button', { name: 'Ҳоким профили ва сессия созламалари' });
+    expect(profileBtn).toBeTruthy();
+    expect(profileBtn.id).toBe('dashboard-profile-button');
+  });
+
+  it('Test 11: Phone responsive mode (<576px) opens and closes Profile Bottom Sheet (Drawer) on mobile', async () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes('max-width: 575px'),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    renderWithProviders(
+      <BoardToolbar
+        districtName="Шароф Рашидов тумани"
+        calendarDay="2026-08-24"
+      />,
+    );
+
+    const profileBtn = await screen.findByRole('button', { name: 'Ҳоким профили ва сессия созламалари' });
+    expect(profileBtn).toBeTruthy();
+
+    // 1. Initial state: bottom sheet is closed
+    expect(screen.queryByText('Ҳоким профили')).toBeNull();
+    expect(screen.queryByText('Туман ҳокими')).toBeNull();
+
+    // 2. Click profile button to open bottom sheet
+    fireEvent.click(profileBtn);
+
+    // 3. Mobile Bottom Sheet content is visible
+    expect(await screen.findByText('Ҳоким профили')).toBeTruthy();
+    expect(screen.getByText('hokim_user')).toBeTruthy();
+    expect(screen.getByText('Туман ҳокими')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Тизимдан чиқиш' })).toBeTruthy();
+
+    // 4. Click Close button ("Ёпиш") to close bottom sheet
+    const closeBtn = screen.getByRole('button', { name: 'Ёпиш' });
+    fireEvent.click(closeBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Ҳоким профили')).toBeNull();
+    });
+  });
+
+  it('Test 12: Mobile Profile Bottom Sheet sign out executes signOut on activation', async () => {
+    const signOutSpy = vi.spyOn(authClient, 'signOut').mockResolvedValue({ success: true });
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes('max-width: 575px'),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    renderWithProviders(
+      <BoardToolbar
+        districtName="Шароф Рашидов тумани"
+        calendarDay="2026-08-24"
+      />,
+    );
+
+    const profileBtn = await screen.findByRole('button', { name: 'Ҳоким профили ва сессия созламалари' });
+    fireEvent.click(profileBtn);
+
+    const signOutBtn = await screen.findByRole('button', { name: 'Тизимдан чиқиш' });
+    fireEvent.click(signOutBtn);
+
+    await waitFor(() => {
+      expect(signOutSpy).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText('Ҳоким профили')).toBeNull();
+    });
+  });
 });

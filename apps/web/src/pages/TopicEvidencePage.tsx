@@ -1,6 +1,6 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Typography, Tag, Space, Skeleton, Alert } from 'antd';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { Button, Typography, Tag, Space, Skeleton, Alert, Grid } from 'antd';
 import {
   ArrowLeftOutlined,
   EnvironmentOutlined,
@@ -18,6 +18,17 @@ const { Title, Text, Paragraph } = Typography;
 export const TopicEvidencePage: React.FC = () => {
   const { topicId } = useParams<{ topicId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const screens = Grid.useBreakpoint();
+  const isMobile = Boolean(screens.xs);
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate({ pathname: '/', search: location.search });
+    }
+  };
 
   const {
     topic,
@@ -48,6 +59,9 @@ export const TopicEvidencePage: React.FC = () => {
     <div
       style={{
         minHeight: '100vh',
+        width: '100%',
+        maxWidth: '100vw',
+        overflowX: 'hidden',
         backgroundColor: '#F4F6F8',
         display: 'flex',
         flexDirection: 'column',
@@ -58,7 +72,7 @@ export const TopicEvidencePage: React.FC = () => {
         style={{
           backgroundColor: '#FFFFFF',
           borderBottom: '1px solid #E2E8F0',
-          padding: '12px 20px',
+          padding: isMobile ? '10px 14px' : '12px 20px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -66,18 +80,23 @@ export const TopicEvidencePage: React.FC = () => {
           top: 0,
           zIndex: 20,
           boxShadow: 'none',
+          width: '100%',
+          maxWidth: '100vw',
+          boxSizing: 'border-box',
         }}
       >
-        <Space size={12}>
+        <Space size={10} style={{ minWidth: 0 }}>
           <Button
             type="text"
             icon={<ArrowLeftOutlined />}
-            onClick={() => navigate('/')}
+            onClick={handleBack}
             aria-label="Бош саҳифага қайтиш"
             style={{
               fontWeight: 600,
               fontSize: 14,
               color: '#0F172A',
+              height: 38,
+              padding: '4px 8px',
             }}
           >
             Орқага
@@ -87,9 +106,12 @@ export const TopicEvidencePage: React.FC = () => {
             level={4}
             style={{
               margin: 0,
-              fontSize: 16,
+              fontSize: isMobile ? 15 : 16,
               fontWeight: 700,
               color: '#0F172A',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
             }}
           >
             Мавзу далиллари
@@ -104,10 +126,11 @@ export const TopicEvidencePage: React.FC = () => {
           maxWidth: 720,
           width: '100%',
           margin: '0 auto',
-          padding: '20px 16px 40px 16px',
+          padding: isMobile ? '14px 12px 32px 12px' : '20px 16px 40px 16px',
           display: 'flex',
           flexDirection: 'column',
-          gap: 16,
+          gap: 14,
+          boxSizing: 'border-box',
         }}
       >
         {/* Loading Skeleton */}
@@ -117,8 +140,10 @@ export const TopicEvidencePage: React.FC = () => {
               backgroundColor: '#FFFFFF',
               border: '1px solid #E2E8F0',
               borderRadius: 10,
-              padding: '24px',
+              padding: isMobile ? '16px' : '24px',
               boxShadow: 'none',
+              boxSizing: 'border-box',
+              width: '100%',
             }}
           >
             <Skeleton active paragraph={{ rows: 8 }} />
@@ -132,9 +157,11 @@ export const TopicEvidencePage: React.FC = () => {
               backgroundColor: '#FFFFFF',
               border: '1px solid #E2E8F0',
               borderRadius: 10,
-              padding: '32px 24px',
+              padding: isMobile ? '24px 16px' : '32px 24px',
               textAlign: 'center',
               boxShadow: 'none',
+              boxSizing: 'border-box',
+              width: '100%',
             }}
           >
             <Alert
@@ -169,9 +196,11 @@ export const TopicEvidencePage: React.FC = () => {
               backgroundColor: '#FFFFFF',
               border: '1px solid #E2E8F0',
               borderRadius: 10,
-              padding: '32px 24px',
+              padding: isMobile ? '24px 16px' : '32px 24px',
               textAlign: 'center',
               boxShadow: 'none',
+              boxSizing: 'border-box',
+              width: '100%',
             }}
           >
             <Alert
@@ -190,7 +219,7 @@ export const TopicEvidencePage: React.FC = () => {
             />
             <Button
               type="default"
-              onClick={() => navigate('/')}
+              onClick={handleBack}
               style={{ fontWeight: 600, borderRadius: 6, boxShadow: 'none' }}
             >
               Тахтага қайтиш
@@ -207,11 +236,13 @@ export const TopicEvidencePage: React.FC = () => {
                 backgroundColor: '#FFFFFF',
                 border: '1px solid #E2E8F0',
                 borderRadius: 10,
-                padding: '18px 20px',
+                padding: isMobile ? '14px 14px' : '18px 20px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 12,
                 boxShadow: 'none',
+                boxSizing: 'border-box',
+                width: '100%',
               }}
             >
               <div
@@ -223,7 +254,7 @@ export const TopicEvidencePage: React.FC = () => {
                   gap: 8,
                 }}
               >
-                <Space size={6}>
+                <Space size={6} style={{ minWidth: 0 }}>
                   <EnvironmentOutlined style={{ color: '#0284C7', fontSize: 15 }} />
                   <Text strong style={{ fontSize: 16, color: '#0F172A' }}>
                     {topic.mahallaName}
@@ -261,7 +292,8 @@ export const TopicEvidencePage: React.FC = () => {
                   color: '#1E293B',
                   margin: 0,
                   whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
+                  overflowWrap: 'anywhere',
+                  wordBreak: 'normal',
                 }}
               >
                 {topic.summary}
@@ -272,10 +304,13 @@ export const TopicEvidencePage: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 8,
                   paddingTop: 10,
                   borderTop: '1px solid #F1F5F9',
                   fontSize: 13,
                   color: '#64748B',
+                  width: '100%',
                 }}
               >
                 <Space size={4}>
@@ -302,8 +337,10 @@ export const TopicEvidencePage: React.FC = () => {
                   border: '1px solid #BAE6FD',
                   borderLeft: '4px solid #0284C7',
                   borderRadius: '0 8px 8px 0',
-                  padding: '14px 16px',
+                  padding: isMobile ? '12px 14px' : '14px 16px',
                   boxShadow: 'none',
+                  boxSizing: 'border-box',
+                  width: '100%',
                 }}
               >
                 <Text
@@ -327,7 +364,8 @@ export const TopicEvidencePage: React.FC = () => {
                     lineHeight: '20px',
                     display: 'block',
                     whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
+                    wordBreak: 'normal',
                   }}
                 >
                   «{anchorQuote}»
