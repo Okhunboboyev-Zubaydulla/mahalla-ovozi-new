@@ -50,7 +50,12 @@ const PROVIDER_MODEL_PRESETS: Record<AiModelProvider, string[]> = {
   OLLAMA: ['gemma4:12b', 'qwen2.5:7b', 'llama3.1:8b'],
   OPENAI: ['gpt-4o-mini', 'gpt-4o', 'gpt-4o-mini-2024-07-18'],
   GEMINI: ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'],
-  GROQ: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile'],
+  GROQ: [
+    'openai/gpt-oss-120b',
+    'openai/gpt-oss-20b',
+    'qwen/qwen3.6-27b',
+    'llama-3.3-70b-versatile',
+  ],
 };
 
 interface GlobalSettingsDraftFormProps {

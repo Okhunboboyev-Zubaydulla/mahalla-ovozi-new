@@ -123,7 +123,14 @@ export class AiGateway implements AiGatewayPort {
       // Gemini 2.0 / 1.5 Flash: $0.075 / 1M input, $0.30 / 1M output
       return Number(((inputTokens * 0.000000075) + (outputTokens * 0.0000003)).toFixed(6));
     }
-    // OpenAI / Groq default: $0.15 / 1M input, $0.60 / 1M output
+    if (provider === 'GROQ') {
+      // Groq Llama 3.3 70B: $0.59 / 1M input, $0.79 / 1M output; Llama 3.1 8B: $0.05 / 1M input, $0.08 / 1M output
+      const is8b = _modelId.toLowerCase().includes('8b');
+      const inputRate = is8b ? 0.00000005 : 0.00000059;
+      const outputRate = is8b ? 0.00000008 : 0.00000079;
+      return Number(((inputTokens * inputRate) + (outputTokens * outputRate)).toFixed(6));
+    }
+    // OpenAI default: $0.15 / 1M input, $0.60 / 1M output
     return Number(((inputTokens * 0.00000015) + (outputTokens * 0.0000006)).toFixed(6));
   }
 

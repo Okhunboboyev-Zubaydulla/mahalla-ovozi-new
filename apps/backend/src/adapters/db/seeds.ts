@@ -16,17 +16,30 @@ import {
   DEFAULT_HOKIM_RECOGNITION_TERMS,
 } from '@mahalla-ovozi/api-contracts';
 
+const defaultProvider: 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA' =
+  (process.env.AI_PROVIDER as 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA') || 'OLLAMA';
+const defaultModelId: string =
+  process.env.AI_MODEL_ID ||
+  (defaultProvider === 'GROQ'
+    ? 'llama-3.3-70b-versatile'
+    : defaultProvider === 'GEMINI'
+      ? 'gemini-2.0-flash'
+      : defaultProvider === 'OPENAI'
+        ? 'gpt-4o-mini'
+        : 'gemma4:12b');
+const defaultTimeoutMs = defaultProvider === 'GROQ' ? 15000 : 30000;
+
 export const defaultSemanticRelevanceProfile: NewAiProfile = {
   id: 'prof_rel_2026_08_v1',
   version: 1,
   operationType: 'SEMANTIC_RELEVANCE',
-  provider: 'OLLAMA',
-  modelId: 'gemma4:12b',
+  provider: defaultProvider,
+  modelId: defaultModelId,
   promptVersion: 'prom_rel_v1',
   schemaVersion: 'sch_rel_v1',
   temperature: 0.0,
   maxOutputTokens: 500,
-  timeoutMs: 30000,
+  timeoutMs: defaultTimeoutMs,
   retryPolicy: {
     maxAttempts: 3,
     backoffFactor: 2,
@@ -43,13 +56,13 @@ export const defaultTopicMatchingProfile: NewAiProfile = {
   id: 'prof_match_2026_08_v1',
   version: 1,
   operationType: 'TOPIC_MATCHING',
-  provider: 'OLLAMA',
-  modelId: 'gemma4:12b',
+  provider: defaultProvider,
+  modelId: defaultModelId,
   promptVersion: 'prom_match_v1',
   schemaVersion: 'sch_match_v1',
   temperature: 0.0,
   maxOutputTokens: 500,
-  timeoutMs: 30000,
+  timeoutMs: defaultTimeoutMs,
   retryPolicy: {
     maxAttempts: 3,
     backoffFactor: 2,
@@ -66,13 +79,13 @@ export const defaultTopicProjectionProfile: NewAiProfile = {
   id: 'prof_proj_2026_08_v1',
   version: 1,
   operationType: 'TOPIC_DERIVED_PROJECTION',
-  provider: 'OLLAMA',
-  modelId: 'gemma4:12b',
+  provider: defaultProvider,
+  modelId: defaultModelId,
   promptVersion: 'prom_proj_v1',
   schemaVersion: 'sch_proj_v1',
   temperature: 0.0,
   maxOutputTokens: 600,
-  timeoutMs: 30000,
+  timeoutMs: defaultTimeoutMs,
   retryPolicy: {
     maxAttempts: 3,
     backoffFactor: 2,

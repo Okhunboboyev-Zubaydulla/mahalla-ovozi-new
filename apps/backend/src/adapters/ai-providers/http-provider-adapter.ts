@@ -62,10 +62,11 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
           });
         }
         headers['Authorization'] = `Bearer ${apiKey}`;
+        const groqSystemPrompt = `${payload.systemPrompt}\n\nCRITICAL JSON INSTRUCTION: You are a JSON-only engine. Output ONLY a valid, parseable JSON object adhering strictly to the provided schema. Start immediately with '{'. Do not include markdown fences, preambles, or conversational commentary.`;
         body = {
           model: payload.modelId,
           messages: [
-            { role: 'system', content: payload.systemPrompt },
+            { role: 'system', content: groqSystemPrompt },
             { role: 'user', content: payload.userPrompt },
           ],
           temperature: payload.temperature,
