@@ -1060,5 +1060,59 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
       expect(result.anchorEvidenceId).toBe('evi_gas_inquiry_1');
       expect(result.anchorQuote).toBe('Bugun gaz keladimi?');
     });
+
+    it('summarizes dialect burst ("uyam qurib yotoradimi", "pulini tulekkan busek") as water outage without construction hallucinations', async () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Gulbodom',
+        calendarDay: '2026-09-06',
+        contextRevision: 1,
+        snapshotFingerprint: 'sha256_water_dialect_proj',
+        evidence: [
+          {
+            id: 'evi_water_dialect_1',
+            topicId: 'top_water_dialect_1',
+            telegramMessageId: '30',
+            originalTimestamp: '2026-09-06T06:40:25.000Z',
+            verbatimText: 'suvchi\nuyam qurib yotoradimi endi\npul tulamasogam mayli tekin disek pulini tulekkan busek.\nxohlagan payti bor xohlasa yu',
+            lane: 'WATER',
+          },
+        ],
+      };
+
+      const mockGateway = createMockAiGateway({
+        summary: 'Сув таъминотида узилиш ёки беқарорлик хабар қилинмоқда.',
+        lanes: ['WATER'],
+        anchor_evidence_id: 'evi_water_dialect_1',
+        anchor_quote: 'pulini tulekkan busek. xohlagan payti bor xohlasa yu',
+        latest_meaningful_activity_timestamp: '2026-09-06T06:40:25.000Z',
+        attribution: 'Маҳалла фуқароси',
+        is_hokim_related: false,
+      });
+
+      const evaluator = new TopicProjectionEvaluator(mockGateway);
+      const result = await evaluator.evaluateTopicProjection({
+        topicId: 'top_water_dialect_1',
+        primaryLane: 'WATER',
+        generation: 1,
+        snapshot,
+        profileId: 'prof_proj_2026_08_v1',
+      });
+
+      expect(result.summary).toBe('Сув таъминотида узилиш ёки беқарорлик хабар қилинмоқда.');
+      expect(result.summary).not.toContain('қурилиш');
+      expect(result.summary).not.toContain('уй қуриш');
+      expect(result.summary).not.toContain('сантехник');
+      expect(result.lanes).toEqual(['WATER']);
+      expect(result.anchorEvidenceId).toBe('evi_water_dialect_1');
+    });
+
+    it('verifies TOPIC_PROJECTION_SYSTEM_PROMPT contains two-tier architecture (Core Invariants and Empirical Learnings)', () => {
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('PART I: CORE PROJECTION PRINCIPLES & GUARDRAILS');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('PART II: EMPIRICAL TELEGRAM FIELD LEARNINGS & DIALECT TRANSLATION KEYS');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('UZBEK DIALECT HOMONYM & TARIFF/INTERMITTENCY DISAMBIGUATION');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('qurimoq');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('уй қурилиши');
+    });
   });
 });

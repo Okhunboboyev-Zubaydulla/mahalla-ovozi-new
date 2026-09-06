@@ -1733,6 +1733,124 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
         expect(result.data.is_relevant).toBe(false);
         expect(result.data.exclusion_reason).toBe('SPECULATION_OR_RUMOR');
       });
+
+      describe('Dialect, Homonym & Multi-Message Burst Invariants (Gulbodom Case)', () => {
+        it('qualifies dialectal multi-message burst with payment and intermittency under WATER', async () => {
+          const burstItems = [
+            { intakeId: 'int_1', telegramMessageId: '30', originalTimestamp: '2026-09-06T06:39:40.000Z', verbatimText: 'suvchi', contentType: 'TEXT' as const, replyMetadata: null },
+            { intakeId: 'int_2', telegramMessageId: '31', originalTimestamp: '2026-09-06T06:39:46.000Z', verbatimText: 'uyam qurib yotoradimi endi', contentType: 'TEXT' as const, replyMetadata: null },
+            { intakeId: 'int_3', telegramMessageId: '32', originalTimestamp: '2026-09-06T06:40:02.000Z', verbatimText: 'pul tulamasogam mayli', contentType: 'TEXT' as const, replyMetadata: null },
+            { intakeId: 'int_4', telegramMessageId: '33', originalTimestamp: '2026-09-06T06:40:07.000Z', verbatimText: 'tekin disek', contentType: 'TEXT' as const, replyMetadata: null },
+            { intakeId: 'int_5', telegramMessageId: '34', originalTimestamp: '2026-09-06T06:40:18.000Z', verbatimText: 'pulini tulekkan busek.', contentType: 'TEXT' as const, replyMetadata: null },
+            { intakeId: 'int_6', telegramMessageId: '35', originalTimestamp: '2026-09-06T06:40:25.000Z', verbatimText: 'xohlagan payti bor xohlasa yu', contentType: 'TEXT' as const, replyMetadata: null },
+          ];
+
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['WATER'],
+            exclusion_reason: null,
+            accepted_message_ids: ['30', '31', '32', '33', '34', '35'],
+            reasoning: 'Citizen reports erratic tap water supply despite paying utility bills',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: burstItems.map((b) => b.verbatimText).join('\n'),
+            telegramMessageId: '30',
+            originalTimestamp: burstItems[0]!.originalTimestamp,
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            burstMessages: burstItems,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['WATER']);
+          expect(result.data.exclusion_reason).toBeNull();
+          expect(result.data.accepted_message_ids).toEqual(['30', '31', '32', '33', '34', '35']);
+        });
+
+        it('excludes isolated single-word "suvchi" without burst or context as UNRESOLVED_AMBIGUOUS_FRAGMENT', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'UNRESOLVED_AMBIGUOUS_FRAGMENT',
+            accepted_message_ids: [],
+            reasoning: 'Isolated single-word inquiry without disruption facts or prior context',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'suvchi',
+            telegramMessageId: '9801',
+            originalTimestamp: '2026-09-06T07:00:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(false);
+          expect(result.data.exclusion_reason).toBe('UNRESOLVED_AMBIGUOUS_FRAGMENT');
+          expect(result.data.accepted_message_ids).toEqual([]);
+        });
+
+        it('qualifies "kranta qurib yotibdi" under WATER (qurimoq = desiccate/no water)', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['WATER'],
+            exclusion_reason: null,
+            accepted_message_ids: ['9802'],
+            reasoning: 'Tap water outage reported using colloquial desiccation expression',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'Kranta suv yoq qurib yotibdi',
+            telegramMessageId: '9802',
+            originalTimestamp: '2026-09-06T07:15:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['WATER']);
+          expect(result.data.accepted_message_ids).toEqual(['9802']);
+        });
+
+        it('excludes true private plumber/craftsman hire as ADVERTISEMENT_OR_SPAM', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'ADVERTISEMENT_OR_SPAM',
+            accepted_message_ids: [],
+            reasoning: 'Private plumber craftsman hire for residential home renovation',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'Uyni remont qilyapmiz yaxshi santexnik bormi nomeri kerak',
+            telegramMessageId: '9803',
+            originalTimestamp: '2026-09-06T07:30:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(false);
+          expect(result.data.exclusion_reason).toBe('ADVERTISEMENT_OR_SPAM');
+        });
+
+        it('verifies SEMANTIC_RELEVANCE_SYSTEM_PROMPT contains two-tier architecture (Core Invariants and Empirical Learnings)', () => {
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('PART I: CORE ARCHITECTURAL INVARIANTS & SUBSTANCE GATES');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('PART II: EMPIRICAL TELEGRAM FIELD LEARNINGS & DIALECT ADAPTATIONS');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('PREDICATE DOMINANCE & TARIFF/INTERMITTENCY DISSATISFACTION');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('UZBEK LINGUISTIC HOMONYM & DIALECT DISAMBIGUATION CONTRACT');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('MULTI-MESSAGE SYNTACTIC SPLITTING INVARIANT');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('qurimoq');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('suvchi');
+        });
+      });
     });
   });
 });

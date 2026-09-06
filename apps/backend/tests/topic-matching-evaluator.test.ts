@@ -1235,6 +1235,46 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
         expect(result.data.matched_topic_id).toBe('top_gas_communal');
         expect(result.data.primary_lane).toBeNull();
       });
+
+      it('seeds NEW_TOPIC under WATER for dialect burst mentioning "suvchi" and fee dissatisfaction (not UNASSIGNABLE_VAGUE)', async () => {
+        const emptySnapshot: MahallaDailySnapshot = {
+          districtId: 'dist_sharof_rashidov',
+          mahallaName: 'Gulbodom',
+          calendarDay: '2026-09-06',
+          contextRevision: 0,
+          snapshotFingerprint: 'sha256_empty_v1',
+          evidence: [],
+        };
+
+        mockAdapter.setNextResponse({
+          decision: 'NEW_TOPIC',
+          matched_topic_id: null,
+          primary_lane: 'WATER',
+          reasoning: 'First report today of intermittent tap water supply and billing grievance',
+        });
+
+        const result = await evaluator.evaluateTopicAssignment({
+          candidateText: 'suvchi\nuyam qurib yotoradimi endi\npul tulamasogam mayli tekin disek pulini tulekkan busek.\nxohlagan payti bor xohlasa yu',
+          telegramMessageId: '30',
+          originalTimestamp: '2026-09-06T06:40:25.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          relevantLanes: ['WATER'],
+          snapshot: emptySnapshot,
+          profileId: 'prof_match_2026_08_v1',
+        });
+
+        expect(result.data.decision).toBe('NEW_TOPIC');
+        expect(result.data.matched_topic_id).toBeNull();
+        expect(result.data.primary_lane).toBe('WATER');
+      });
+
+      it('verifies TOPIC_MATCHING_SYSTEM_PROMPT contains two-tier architecture (Core Invariants and Empirical Learnings)', () => {
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('PART I: CORE CLUSTERING & DOMAIN INVARIANTS');
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('PART II: EMPIRICAL TELEGRAM FIELD LEARNINGS & DISAMBIGUATION KEYS');
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('CRITICAL DISTINCTION (MUNICIPAL PERSONNEL & TARIFF GRIEVANCES VS. PRIVATE HANDYMEN)');
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('suvchi');
+      });
     });
   });
 });
