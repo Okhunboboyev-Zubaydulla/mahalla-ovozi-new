@@ -30,7 +30,6 @@ const { TextArea } = Input;
 
 export interface AnalysisSettingsRollbackModalProps {
   open: boolean;
-  scope?: 'district';
   districtId: string;
   districtName: string;
   activeVersion: DistrictAnalysisSettingsDto;
@@ -268,7 +267,7 @@ export const AnalysisSettingsRollbackModal: React.FC<
               rows={3}
               maxLength={500}
               showCount
-              placeholder="Масалан: V2 даги тасдиқланган луғат ва модел параметрларига қайтиш"
+              placeholder="Масалан: V2 даги тасдиқланган туман атамалари ва луғатига қайтиш"
               disabled={isSubmitting || isOffline}
             />
           </Form.Item>

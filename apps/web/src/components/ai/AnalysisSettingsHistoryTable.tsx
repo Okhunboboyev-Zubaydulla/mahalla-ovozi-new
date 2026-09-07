@@ -13,7 +13,6 @@ import { formatTashkentDate } from '../../lib/formatters.js';
 const { Text } = Typography;
 
 export interface AnalysisSettingsHistoryTableProps {
-  scope?: 'district';
   items: Array<DistrictAnalysisSettingsDto>;
   loading?: boolean;
   onRollbackClick: (

@@ -152,7 +152,6 @@ export const AnalysisSettingsHistoryPanel: React.FC = () => {
           }}
         >
           <AnalysisSettingsHistoryTable
-            scope="district"
             items={districtHistoryData.items}
             loading={isDistrictHistoryLoading}
             onRollbackClick={(target) => setSelectedTargetVersion(target)}

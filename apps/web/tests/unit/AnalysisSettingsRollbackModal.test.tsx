@@ -71,7 +71,6 @@ describe('AnalysisSettingsRollbackModal Component Tests (Story 5.4)', () => {
   ) {
     const defaultProps: AnalysisSettingsRollbackModalProps = {
       open: true,
-      scope: 'district',
       districtId: 'dist_123',
       districtName: 'Чилонзор тумани',
       activeVersion: mockActiveDistrict,
@@ -127,7 +126,7 @@ describe('AnalysisSettingsRollbackModal Component Tests (Story 5.4)', () => {
 
     // 2. Submit with short reason (< 5 chars)
     const input = screen.getByPlaceholderText(
-      /V2 даги тасдиқланган луғат ва модел параметрларига қайтиш/i,
+      /V2 даги тасдиқланган туман атамалари ва луғатига қайтиш/i,
     );
     fireEvent.change(input, { target: { value: 'Тест' } });
     fireEvent.click(submitBtn);
@@ -159,7 +158,7 @@ describe('AnalysisSettingsRollbackModal Component Tests (Story 5.4)', () => {
     renderModal({ onConfirm });
 
     const input = screen.getByPlaceholderText(
-      /V2 даги тасдиқланган луғат ва модел параметрларига қайтиш/i,
+      /V2 даги тасдиқланган туман атамалари ва луғатига қайтиш/i,
     );
     fireEvent.change(input, {
       target: { value: 'V1 дастлабки барқарор туман созламаларига қайтиш' },
@@ -202,7 +201,7 @@ describe('AnalysisSettingsRollbackModal Component Tests (Story 5.4)', () => {
     renderModal({ onConfirm });
 
     const input = screen.getByPlaceholderText(
-      /V2 даги тасдиқланган луғат ва модел параметрларига қайтиш/i,
+      /V2 даги тасдиқланган туман атамалари ва луғатига қайтиш/i,
     );
     fireEvent.change(input, {
       target: { value: 'V1 дастлабки барқарор туман созламаларига қайтиш' },

@@ -365,7 +365,6 @@ export const DistrictSettingsDraftForm: React.FC<
 
       <AnalysisSettingsActivationModal
         open={isActivationModalOpen}
-        scope="district"
         districtId={districtId}
         districtName={districtName}
         activeVersionId={activeSettings.id}

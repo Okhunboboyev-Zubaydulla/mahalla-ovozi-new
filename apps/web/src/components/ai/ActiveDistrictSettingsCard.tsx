@@ -24,6 +24,8 @@ export const ActiveDistrictSettingsCard: React.FC<
   ActiveDistrictSettingsCardProps
 > = ({ districtName, settings }) => {
   const { token } = theme.useToken();
+  const hokimTerms = settings.hokimRecognitionTerms || [];
+  const localVocab = settings.localVocabularyAdditions || [];
 
   return (
     <Card
@@ -87,12 +89,12 @@ export const ActiveDistrictSettingsCard: React.FC<
             key: 'hokimTerms',
             label: (
               <Text strong>
-                Ҳокимга оид атамалар ({settings.hokimRecognitionTerms.length} та)
+                Ҳокимга оид атамалар ({hokimTerms.length} та)
               </Text>
             ),
             children: (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {settings.hokimRecognitionTerms.map((term, i) => (
+                {hokimTerms.map((term, i) => (
                   <Tag key={`${term}-${i}`} color="cyan" style={{ fontSize: 13, padding: '2px 8px' }}>
                     {term}
                   </Tag>
@@ -104,16 +106,16 @@ export const ActiveDistrictSettingsCard: React.FC<
             key: 'localVocab',
             label: (
               <Text strong>
-                Қўшимча маҳаллий луғат ({settings.localVocabularyAdditions.length} та)
+                Қўшимча маҳаллий луғат ({localVocab.length} та)
               </Text>
             ),
             children: (
               <div>
-                {settings.localVocabularyAdditions.length === 0 ? (
+                {localVocab.length === 0 ? (
                   <Text type="secondary">Маҳаллий қўшимча луғат киритилмаган.</Text>
                 ) : (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {settings.localVocabularyAdditions.map((item, i) => (
+                    {localVocab.map((item, i) => (
                       <Tag key={`${item.term}-${i}`} color="geekblue" style={{ fontSize: 13, padding: '2px 8px' }}>
                         {item.term} <Text type="secondary">({item.category})</Text>
                       </Tag>

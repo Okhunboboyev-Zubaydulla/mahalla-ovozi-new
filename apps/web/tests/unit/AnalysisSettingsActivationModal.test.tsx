@@ -77,7 +77,6 @@ describe('AnalysisSettingsActivationModal Component Tests (Story 5.3)', () => {
   function renderModal(props: Partial<AnalysisSettingsActivationModalProps> = {}) {
     const defaultProps: AnalysisSettingsActivationModalProps = {
       open: true,
-      scope: 'district',
       districtId: 'dist_123',
       districtName: 'Чилонзор тумани',
       activeVersionId: 'dcfg_dist_123_v1',

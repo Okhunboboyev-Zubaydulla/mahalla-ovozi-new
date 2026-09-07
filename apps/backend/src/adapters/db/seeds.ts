@@ -7,11 +7,15 @@ import {
 } from './schema/ai.js';
 import { DEFAULT_HOKIM_RECOGNITION_TERMS } from '@mahalla-ovozi/api-contracts';
 import type { DbOrTx } from './client.js';
+import { activeAiConfig } from '../../modules/ai/ai-config.js';
 
 const defaultProvider: 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA' =
-  (process.env.AI_PROVIDER as 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA') || 'OLLAMA';
+  (process.env.AI_PROVIDER as 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA') ||
+  activeAiConfig.modelProvider ||
+  'OLLAMA';
 const defaultModelId: string =
   process.env.AI_MODEL_ID ||
+  (activeAiConfig.modelProvider === defaultProvider ? activeAiConfig.modelId : '') ||
   (defaultProvider === 'GROQ'
     ? 'llama-3.3-70b-versatile'
     : defaultProvider === 'GEMINI'
@@ -29,8 +33,8 @@ export const defaultSemanticRelevanceProfile: NewAiProfile = {
   modelId: defaultModelId,
   promptVersion: 'prom_rel_v1',
   schemaVersion: 'sch_rel_v1',
-  temperature: 0.0,
-  maxOutputTokens: 500,
+  temperature: activeAiConfig.temperature,
+  maxOutputTokens: activeAiConfig.maxOutputTokens,
   timeoutMs: defaultTimeoutMs,
   retryPolicy: {
     maxAttempts: 3,
@@ -111,6 +115,8 @@ export async function ensureDefaultAiProfiles(db: DbOrTx): Promise<void> {
       set: {
         provider: defaultSemanticRelevanceProfile.provider,
         modelId: defaultSemanticRelevanceProfile.modelId,
+        temperature: defaultSemanticRelevanceProfile.temperature,
+        maxOutputTokens: defaultSemanticRelevanceProfile.maxOutputTokens,
         timeoutMs: defaultSemanticRelevanceProfile.timeoutMs,
         isActive: true,
       },

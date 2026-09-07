@@ -9,91 +9,6 @@ export const AiModelProviderEnumSchema = z.enum([
 ]);
 export type AiModelProvider = z.infer<typeof AiModelProviderEnumSchema>;
 
-export const GlobalServiceVocabularyItemSchema = z.object({
-  term: z
-    .string()
-    .trim()
-    .min(1, 'Атама бўш бўлиши мумкин эмас.')
-    .max(100, 'Атама 100 та белгидан ошмаслиги керак.'),
-  category: z
-    .string()
-    .trim()
-    .min(1, 'Тоифа бўш бўлиши мумкин эмас.')
-    .max(100, 'Тоифа 100 та белгидан ошмаслиги керак.'),
-  description: z
-    .string()
-    .trim()
-    .max(500, 'Тавсиф 500 та белгидан ошмаслиги керак.')
-    .optional(),
-});
-export type GlobalServiceVocabularyItem = z.infer<
-  typeof GlobalServiceVocabularyItemSchema
->;
-
-export const DEFAULT_GLOBAL_SERVICE_VOCABULARY: GlobalServiceVocabularyItem[] = [
-  {
-    term: 'Ичимлик суви',
-    category: 'Сув таъминоти',
-    description: 'Тоза ичимлик суви таъминоти, қувурлар ва босим',
-  },
-  {
-    term: 'Оқова сув',
-    category: 'Сув таъминоти',
-    description: 'Канализация ва оқова сув тизимлари',
-  },
-  {
-    term: 'Табиий газ',
-    category: 'Газ таъминоти',
-    description: 'Табиий газ тармоғи, босим ва таъминот',
-  },
-  {
-    term: 'Суюлтирилган газ',
-    category: 'Газ таъминоти',
-    description: 'Маиший газ баллонлари таъминоти',
-  },
-  {
-    term: 'Электр таъминоти',
-    category: 'Электр энергияси',
-    description: 'Трансформаторлар, симлар ва электр узилишлари',
-  },
-  {
-    term: 'Кўча ёритгичлари',
-    category: 'Электр энергияси',
-    description: 'Тунги кўча чироқлари ва ёритиш тизими',
-  },
-  {
-    term: 'Маиший чиқиндилар',
-    category: 'Чиқинди ва тозалик',
-    description: 'Чиқиндиларни олиб чиқиб кетиш ва тозалик',
-  },
-  {
-    term: 'Ноқонуний чиқиндихона',
-    category: 'Чиқинди ва тозалик',
-    description: 'Ноқонуний ташланган чиқиндилар ва полигонлар',
-  },
-  {
-    term: 'Ички йўллар',
-    category: 'Йўл ва инфратузилма',
-    description: 'Асфальт ётқизиш, чуқурлар ва йўл таъмири',
-  },
-  {
-    term: 'Пиёдалар йўлаги',
-    category: 'Йўл ва инфратузилма',
-    description: 'Тротуарлар ва пиёдалар хавфсизлиги',
-  },
-  {
-    term: 'Маҳалла фуқаролар йиғини',
-    category: 'Ҳокимият ва бошқарув',
-    description: 'МФЙ биноси, раис ва ходимлар фаолияти',
-  },
-  {
-    term: 'Ободонлаштириш',
-    category: 'Ҳокимият ва бошқарув',
-    description: 'Ҳудудларни ободонлаштириш ва кўкаламзорлаштириш',
-  },
-];
-
-
 // ==========================================
 // District Analysis Settings Contracts (Story 5.2)
 // ==========================================
@@ -372,16 +287,4 @@ export const RollbackDistrictAnalysisSettingsResponseSchema = z.object({
 });
 export type RollbackDistrictAnalysisSettingsResponse = z.infer<
   typeof RollbackDistrictAnalysisSettingsResponseSchema
->;
-
-// ==========================================
-// Ollama Models Discovery Contract
-// ==========================================
-
-export const GetOllamaModelsResponseSchema = z.object({
-  isAvailable: z.boolean(),
-  models: z.array(z.string()),
-});
-export type GetOllamaModelsResponse = z.infer<
-  typeof GetOllamaModelsResponseSchema
 >;

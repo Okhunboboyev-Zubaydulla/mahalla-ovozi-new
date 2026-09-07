@@ -62,7 +62,6 @@ const mockDistrictHistory: DistrictAnalysisSettingsDto[] = [
 describe('AnalysisSettingsHistoryTable Component Tests (Story 5.4)', () => {
   function renderTable(props: Partial<AnalysisSettingsHistoryTableProps> = {}) {
     const defaultProps: AnalysisSettingsHistoryTableProps = {
-      scope: 'district',
       items: mockDistrictHistory,
       loading: false,
       onRollbackClick: vi.fn(),

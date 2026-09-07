@@ -35,7 +35,6 @@ const { TextArea } = Input;
 
 export interface AnalysisSettingsActivationModalProps {
   open: boolean;
-  scope?: 'district';
   districtId?: string;
   districtName?: string;
   activeVersionId: string;
