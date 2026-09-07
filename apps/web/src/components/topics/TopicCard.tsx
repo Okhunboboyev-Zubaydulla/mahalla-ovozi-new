@@ -14,6 +14,7 @@ import { formatTashkentCalendarDate, formatTashkentTime } from '../../lib/format
 import { HighlightText } from './HighlightText.js';
 import { themeColors } from '../../theme/antd-theme.js';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
+import { useTopicReadState } from '../../hooks/useTopicReadState.js';
 
 const { Text, Paragraph } = Typography;
 
@@ -64,6 +65,8 @@ export interface TopicCardProps {
   isSelected?: boolean;
   searchQuery?: string;
   onClick?: () => void;
+  showNewBadge?: boolean;
+  unreadDelta?: number | '+' | null;
 }
 
 const TopicCardComponent: React.FC<TopicCardProps> = ({
@@ -72,10 +75,20 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
   isSelected = false,
   searchQuery,
   onClick,
+  showNewBadge,
+  unreadDelta,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const prefersReducedMotion = usePrefersReducedMotion();
+  const readState = useTopicReadState();
+  const freshness = readState.getTopicFreshness(topic);
+  const effectiveShowNewBadge = showNewBadge !== undefined ? showNewBadge : freshness.showNewBadge;
+  const effectiveUnreadDelta = unreadDelta !== undefined ? unreadDelta : freshness.unreadDelta;
+  const displayedEvidenceCount =
+    typeof effectiveUnreadDelta === 'number'
+      ? Math.max(0, topic.evidenceCount - effectiveUnreadDelta)
+      : topic.evidenceCount;
 
   const formattedMahallaName = topic.mahallaName.toLowerCase().includes('маҳалла')
     ? topic.mahallaName
@@ -191,7 +204,7 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
               Фойдаланувчида топилди
             </Tag>
           )}
-          {topic.isNew && (
+          {effectiveShowNewBadge && (
             <Tag
               color="#DC2626"
               style={{
@@ -205,22 +218,6 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
               }}
             >
               Янги мавзу
-            </Tag>
-          )}
-          {!topic.isNew && topic.isUpdated && (
-            <Tag
-              color="#D97706"
-              style={{
-                backgroundColor: '#FEF3C7',
-                color: '#D97706',
-                borderColor: '#FDE68A',
-                fontWeight: 600,
-                fontSize: 12,
-                margin: 0,
-                borderRadius: 4,
-              }}
-            >
-              Янги хабар
             </Tag>
           )}
         </div>
@@ -281,11 +278,35 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
           marginTop: 2,
         }}
       >
-        <Space size={4} style={{ color: '#64748B', fontSize: 13 }}>
+        <Space size={6} style={{ color: '#64748B', fontSize: 13, alignItems: 'center' }}>
           <MessageOutlined style={{ fontSize: 13, color: '#94A3B8' }} />
           <Text style={{ fontSize: 13, color: '#64748B' }}>
-            <span style={{ fontWeight: 600, color: '#0F172A' }}>{topic.evidenceCount}</span> та хабар
+            <span style={{ fontWeight: 600, color: '#0F172A' }}>{displayedEvidenceCount}</span> та хабар
           </Text>
+          {effectiveUnreadDelta !== null && (
+            <span
+              style={{
+                backgroundColor: '#FEF3C7',
+                color: '#D97706',
+                border: '1px solid #FDE68A',
+                borderRadius: 10,
+                padding: '0 6px',
+                fontSize: 11,
+                fontWeight: 700,
+                lineHeight: '16px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                userSelect: 'none',
+              }}
+              aria-label={
+                effectiveUnreadDelta === '+'
+                  ? 'Янги хабарлар мавжуд'
+                  : `${effectiveUnreadDelta} та янги хабар`
+              }
+            >
+              {effectiveUnreadDelta === '+' ? '+' : `+${effectiveUnreadDelta}`}
+            </span>
+          )}
         </Space>
 
         {formattedTimestamp && (

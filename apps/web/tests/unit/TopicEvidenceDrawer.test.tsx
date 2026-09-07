@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { ConfigProvider } from 'antd';
 import { TopicEvidenceDrawer } from '../../src/components/topics/TopicEvidenceDrawer.js';
+import { TopicReadStateProvider } from '../../src/hooks/useTopicReadState.js';
 import { hokimTopicsClient } from '../../src/topics/hokim-topics-client.js';
 import { mahallaTheme } from '../../src/theme/antd-theme.js';
 import {
@@ -255,5 +256,29 @@ describe('TopicEvidenceDrawer Component Tests', () => {
 
     expect(screen.getByText('Электр таъминоти узилган.')).toBeTruthy();
     expect(screen.getByText('«Сим узилиб тушган.»')).toBeTruthy();
+  });
+
+  it('synchronizes topic read status into localStorage when drawer opens and evidence loads', async () => {
+    vi.spyOn(hokimTopicsClient, 'getTopicEvidence').mockResolvedValueOnce(mockEvidenceResponse1);
+
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <ConfigProvider theme={mahallaTheme}>
+          <TopicReadStateProvider districtId="dist_test_1" userId="acc_hokim_1">
+            <TopicEvidenceDrawer topicId="top_1" onClose={vi.fn()} />
+          </TopicReadStateProvider>
+        </ConfigProvider>
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      const raw = window.localStorage.getItem('mahalla_ovozi_topic_reads_dist_test_1_acc_hokim_1');
+      expect(raw).toBeTruthy();
+      const parsed = JSON.parse(raw!);
+      expect(parsed['top_1']).toEqual({
+        lastReadCount: 2,
+        isNewDismissed: true,
+      });
+    });
   });
 });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button, Typography, Tag, Space, Skeleton, Alert, Grid } from 'antd';
 import {
@@ -9,6 +9,7 @@ import {
   MessageOutlined,
 } from '@ant-design/icons';
 import { useTopicEvidence } from '../topics/useTopicEvidence.js';
+import { useTopicReadState } from '../hooks/useTopicReadState.js';
 import { LANE_LABELS, LANE_STYLES } from '../components/topics/TopicCard.js';
 import { EvidenceTimeline } from '../components/topics/EvidenceTimeline.js';
 import { formatTashkentActivityTime } from '../lib/formatters.js';
@@ -44,6 +45,14 @@ export const TopicEvidencePage: React.FC = () => {
     fetchNextPage,
     refetch,
   } = useTopicEvidence(topicId);
+
+  const { markTopicAsRead } = useTopicReadState();
+
+  useEffect(() => {
+    if (topic) {
+      markTopicAsRead(topic.id, topic.evidenceCount);
+    }
+  }, [topic, markTopicAsRead]);
 
   const formattedActivityTime = topic
     ? formatTashkentActivityTime(

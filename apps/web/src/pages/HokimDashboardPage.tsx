@@ -16,6 +16,7 @@ import { useDashboardFilterParams } from '../hooks/useDashboardFilterParams.js';
 import { useFocusFallback } from '../hooks/useFocusFallback.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { LiveAnnouncerContext, formatSearchAnnouncement } from '../hooks/useLiveAnnouncer.js';
+import { useTopicReadState } from '../hooks/useTopicReadState.js';
 import { FullPageLoader } from '../components/FullPageLoader.js';
 import { formatTashkentTime } from '../lib/formatters.js';
 
@@ -27,6 +28,7 @@ export const HokimDashboardPage: React.FC = () => {
   const { returnFocus } = useFocusFallback();
   const isOffline = useOnlineStatus();
   const liveAnnouncer = useContext(LiveAnnouncerContext);
+  const { markTopicAsRead } = useTopicReadState();
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [originatingLane, setOriginatingLane] = useState<string | undefined>(undefined);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
@@ -156,6 +158,7 @@ export const HokimDashboardPage: React.FC = () => {
 
   const handleSelectTopic = useCallback(
     (topic: TopicCardItem) => {
+      markTopicAsRead(topic.id, topic.evidenceCount);
       setOriginatingLane(topic.primaryLane);
       setHelpDrawerOpen(false);
       if (window.innerWidth < 1024) {
@@ -167,7 +170,7 @@ export const HokimDashboardPage: React.FC = () => {
         setSelectedTopicId(topic.id);
       }
     },
-    [navigate, location.search],
+    [navigate, location.search, markTopicAsRead],
   );
 
   const handleCloseDrawer = useCallback(() => {

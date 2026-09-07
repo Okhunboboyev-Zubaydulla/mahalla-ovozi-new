@@ -8,6 +8,7 @@ import {
   MessageOutlined,
 } from '@ant-design/icons';
 import { useTopicEvidence } from '../../topics/useTopicEvidence.js';
+import { useTopicReadState } from '../../hooks/useTopicReadState.js';
 import { LANE_LABELS, LANE_STYLES } from './TopicCard.js';
 import { EvidenceTimeline } from './EvidenceTimeline.js';
 import { formatTashkentActivityTime } from '../../lib/formatters.js';
@@ -39,6 +40,15 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
     fetchNextPage,
     refetch,
   } = useTopicEvidence(topicId);
+
+  const { markTopicAsRead } = useTopicReadState();
+
+  // Synchronize read state when topic evidence loads or updates in drawer
+  useEffect(() => {
+    if (topic) {
+      markTopicAsRead(topic.id, Math.max(totalCount, topic.evidenceCount));
+    }
+  }, [topic, totalCount, markTopicAsRead]);
 
   // Programmatic focus on drawer heading when topicId opens or changes (AC 7)
   useEffect(() => {

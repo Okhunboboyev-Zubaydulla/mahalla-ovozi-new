@@ -131,9 +131,9 @@ describe('Story 3.6: Dashboard Help & Factual Guidance Tests', () => {
       expect(screen.getByText('Йўналишлар ва кўп йўналишли мавзулар')).toBeTruthy();
       expect(screen.getByText(/Ҳокимга оид, Сув, Электр, Газ ва Чиқинди/)).toBeTruthy();
 
-      // Section 3: «Янги мавзу» ва «Янги хабар» белгилари
-      expect(screen.getByText('«Янги мавзу» ва «Янги хабар» белгилари')).toBeTruthy();
-      expect(screen.getByText(/Ушбу белгилар фаол сессия давомида ўзгармайди/)).toBeTruthy();
+      // Section 3: «Янги мавзу» ва «+ [N]» хабарлар белгилари
+      expect(screen.getByText('«Янги мавзу» ва «+ [N]» хабарлар белгилари')).toBeTruthy();
+      expect(screen.getByText(/мавзу очилганда ўчирилади/)).toBeTruthy();
 
       // Section 4: Далиллар кетма-кетлиги ва асл матн
       expect(screen.getByText('Далиллар кетма-кетлиги ва асл матн')).toBeTruthy();

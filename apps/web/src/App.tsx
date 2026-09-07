@@ -8,6 +8,7 @@ import { DistrictProvider } from './district/district-context.js';
 import { ProtectedRoute } from './auth/ProtectedRoute.js';
 import { ConsoleLayout } from './components/ConsoleLayout.js';
 import { LiveAnnouncerProvider } from './components/topics/LiveRegionAnnouncer.js';
+import { TopicReadStateProvider } from './hooks/useTopicReadState.js';
 import { AppErrorBoundary } from './components/AppErrorBoundary.js';
 import { FullPageLoader } from './components/FullPageLoader.js';
 import { useAuth } from './auth/auth-context.js';
@@ -103,7 +104,8 @@ export function App() {
               <BrowserRouter>
                 <DistrictProvider>
                   <LiveAnnouncerProvider>
-                    <Suspense fallback={<FullPageLoader />}>
+                    <TopicReadStateProvider>
+                      <Suspense fallback={<FullPageLoader />}>
                       <Routes>
                         <Route path="/sign-in" element={<SignInPage />} />
                         <Route
@@ -157,7 +159,8 @@ export function App() {
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </Suspense>
-                  </LiveAnnouncerProvider>
+                  </TopicReadStateProvider>
+                </LiveAnnouncerProvider>
                 </DistrictProvider>
               </BrowserRouter>
             </AuthProvider>

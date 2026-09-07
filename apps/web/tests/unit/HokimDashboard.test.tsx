@@ -183,7 +183,7 @@ describe('Hokim Dashboard Component & Integration Tests (Story 3.1)', () => {
       expect(screen.getByText('Ҳокимга оид')).toBeTruthy();
     });
 
-    it('renders updated badge when isUpdated is true and isNew is false', () => {
+    it('renders unread delta badge in footer when isUpdated is true and isNew is false', () => {
       const updatedTopic: TopicCardItem = {
         ...mockTopic,
         isNew: false,
@@ -196,8 +196,21 @@ describe('Hokim Dashboard Component & Integration Tests (Story 3.1)', () => {
         </ConfigProvider>,
       );
 
-      expect(screen.getByText('Янги хабар')).toBeTruthy();
+      expect(screen.getByText('+')).toBeTruthy();
       expect(screen.queryByText('Янги мавзу')).toBeNull();
+      expect(screen.queryByText('Янги хабар')).toBeNull();
+    });
+
+    it('renders explicit numeric unread delta badge when provided and displays base count correctly', () => {
+      render(
+        <ConfigProvider theme={mahallaTheme}>
+          <TopicCard topic={mockTopic} currentLane="WATER" unreadDelta={1} />
+        </ConfigProvider>,
+      );
+
+      expect(screen.getByText('+1')).toBeTruthy();
+      // mockTopic has evidenceCount: 4. With unreadDelta: 1, displayedEvidenceCount is 4 - 1 = 3.
+      expect(screen.getByText('3')).toBeTruthy();
     });
   });
 
