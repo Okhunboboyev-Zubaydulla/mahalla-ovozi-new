@@ -18,48 +18,32 @@ import {
   DisconnectOutlined,
 } from '@ant-design/icons';
 import {
-  type GlobalAnalysisSettingsDto,
   type DistrictAnalysisSettingsDto,
   containsProhibitedSecrets,
 } from '@mahalla-ovozi/api-contracts';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
-import {
-  computeGlobalSettingsDiff,
-  computeDistrictSettingsDiff,
-} from './diff-utils.js';
+import { computeDistrictSettingsDiff } from './diff-utils.js';
 import { ConfigurationDiffViewer } from './ConfigurationDiffViewer.js';
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
-export type AnalysisSettingsRollbackModalProps =
-  | {
-      open: boolean;
-      scope: 'global';
-      districtId?: never;
-      districtName?: never;
-      activeVersion: GlobalAnalysisSettingsDto;
-      targetVersion: GlobalAnalysisSettingsDto;
-      onConfirm: (reason: string) => Promise<void>;
-      onCancel: () => void;
-    }
-  | {
-      open: boolean;
-      scope: 'district';
-      districtId: string;
-      districtName: string;
-      activeVersion: DistrictAnalysisSettingsDto;
-      targetVersion: DistrictAnalysisSettingsDto;
-      onConfirm: (reason: string) => Promise<void>;
-      onCancel: () => void;
-    };
+export interface AnalysisSettingsRollbackModalProps {
+  open: boolean;
+  scope?: 'district';
+  districtId: string;
+  districtName: string;
+  activeVersion: DistrictAnalysisSettingsDto;
+  targetVersion: DistrictAnalysisSettingsDto;
+  onConfirm: (reason: string) => Promise<void>;
+  onCancel: () => void;
+}
 
 export const AnalysisSettingsRollbackModal: React.FC<
   AnalysisSettingsRollbackModalProps
 > = (props) => {
   const {
     open,
-    scope,
     districtId,
     districtName,
     activeVersion,
@@ -107,21 +91,10 @@ export const AnalysisSettingsRollbackModal: React.FC<
     }
   };
 
-  const globalDiff =
-    props.scope === 'global'
-      ? computeGlobalSettingsDiff(
-          props.activeVersion,
-          props.targetVersion,
-        )
-      : undefined;
-
-  const districtDiff =
-    props.scope === 'district'
-      ? computeDistrictSettingsDiff(
-          props.activeVersion,
-          props.targetVersion,
-        )
-      : undefined;
+  const districtDiff = computeDistrictSettingsDiff(
+    props.activeVersion,
+    props.targetVersion,
+  );
 
   return (
     <Modal
@@ -158,9 +131,7 @@ export const AnalysisSettingsRollbackModal: React.FC<
               Қамров (Scope):
             </Text>
             <Text strong>
-              {scope === 'global'
-                ? 'Глобал таҳлил созламалари'
-                : `Туман: ${districtName || districtId}`}
+              Туман: {districtName || districtId}
             </Text>
           </div>
           <Space size="middle">
@@ -237,8 +208,6 @@ export const AnalysisSettingsRollbackModal: React.FC<
             Ўзгаришлар фарқи (Жорий фаол ➔ Қайтариладиган V{targetVersion.version}):
           </Text>
           <ConfigurationDiffViewer
-            scope={scope}
-            globalDiff={globalDiff}
             districtDiff={districtDiff}
             mode="rollback"
           />

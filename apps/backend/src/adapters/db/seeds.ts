@@ -2,19 +2,11 @@ import { and, ne } from 'drizzle-orm';
 import {
   aiProfiles,
   NewAiProfile,
-  globalAnalysisSettingsVersions,
-  NewGlobalAnalysisSettingsVersion,
   districtAnalysisSettingsVersions,
   NewDistrictAnalysisSettingsVersion,
 } from './schema/ai.js';
+import { DEFAULT_HOKIM_RECOGNITION_TERMS } from '@mahalla-ovozi/api-contracts';
 import type { DbOrTx } from './client.js';
-import { SEMANTIC_RELEVANCE_SYSTEM_PROMPT } from '../../modules/ai/semantic-relevance-evaluator.js';
-import { TOPIC_MATCHING_SYSTEM_PROMPT } from '../../modules/topics/topic-matching-evaluator.js';
-import { TOPIC_PROJECTION_SYSTEM_PROMPT } from '../../modules/topics/topic-projection-evaluator.js';
-import {
-  DEFAULT_GLOBAL_SERVICE_VOCABULARY,
-  DEFAULT_HOKIM_RECOGNITION_TERMS,
-} from '@mahalla-ovozi/api-contracts';
 
 const defaultProvider: 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA' =
   (process.env.AI_PROVIDER as 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA') || 'OLLAMA';
@@ -98,38 +90,6 @@ export const defaultTopicProjectionProfile: NewAiProfile = {
   isActive: true,
 };
 
-export const defaultGlobalAnalysisSettingsVersion: NewGlobalAnalysisSettingsVersion = {
-  id: 'gcfg_v1',
-  version: 1,
-  modelProvider: 'OLLAMA',
-  modelId: 'gemma4:12b',
-  temperature: 0.0,
-  maxOutputTokens: 500,
-  relevanceSystemPrompt: SEMANTIC_RELEVANCE_SYSTEM_PROMPT,
-  topicMatchingSystemPrompt: TOPIC_MATCHING_SYSTEM_PROMPT,
-  topicProjectionSystemPrompt: TOPIC_PROJECTION_SYSTEM_PROMPT,
-  globalServiceVocabulary: DEFAULT_GLOBAL_SERVICE_VOCABULARY,
-  isActive: true,
-  activatedAt: new Date('2026-08-01T00:00:00.000Z'),
-  activatedBy: null,
-  changeReason: 'Тизимнинг дастлабки фаол глобал таҳлил конфигурацияси',
-};
-
-export async function ensureDefaultGlobalAnalysisSettings(db: DbOrTx): Promise<void> {
-  await db
-    .insert(globalAnalysisSettingsVersions)
-    .values(defaultGlobalAnalysisSettingsVersion)
-    .onConflictDoUpdate({
-      target: globalAnalysisSettingsVersions.id,
-      set: {
-        modelProvider: defaultGlobalAnalysisSettingsVersion.modelProvider,
-        modelId: defaultGlobalAnalysisSettingsVersion.modelId,
-        relevanceSystemPrompt: defaultGlobalAnalysisSettingsVersion.relevanceSystemPrompt,
-        topicMatchingSystemPrompt: defaultGlobalAnalysisSettingsVersion.topicMatchingSystemPrompt,
-        topicProjectionSystemPrompt: defaultGlobalAnalysisSettingsVersion.topicProjectionSystemPrompt,
-      },
-    });
-}
 
 export async function ensureDefaultAiProfiles(db: DbOrTx): Promise<void> {
   await db
@@ -179,7 +139,6 @@ export async function ensureDefaultAiProfiles(db: DbOrTx): Promise<void> {
         isActive: true,
       },
     });
-  await ensureDefaultGlobalAnalysisSettings(db);
 }
 
 export function createDefaultDistrictAnalysisSettingsVersion(

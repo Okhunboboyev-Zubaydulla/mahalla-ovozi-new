@@ -6,7 +6,6 @@ import {
   RollbackOutlined,
 } from '@ant-design/icons';
 import type {
-  GlobalAnalysisSettingsDto,
   DistrictAnalysisSettingsDto,
 } from '@mahalla-ovozi/api-contracts';
 import { formatTashkentDate } from '../../lib/formatters.js';
@@ -14,17 +13,17 @@ import { formatTashkentDate } from '../../lib/formatters.js';
 const { Text } = Typography;
 
 export interface AnalysisSettingsHistoryTableProps {
-  scope: 'global' | 'district';
-  items: Array<GlobalAnalysisSettingsDto | DistrictAnalysisSettingsDto>;
+  scope?: 'district';
+  items: Array<DistrictAnalysisSettingsDto>;
   loading?: boolean;
   onRollbackClick: (
-    version: GlobalAnalysisSettingsDto | DistrictAnalysisSettingsDto,
+    version: DistrictAnalysisSettingsDto,
   ) => void;
 }
 
 export const AnalysisSettingsHistoryTable: React.FC<
   AnalysisSettingsHistoryTableProps
-> = ({ scope, items, loading = false, onRollbackClick }) => {
+> = ({ items, loading = false, onRollbackClick }) => {
   const { token } = theme.useToken();
 
   const columns = [
@@ -33,7 +32,7 @@ export const AnalysisSettingsHistoryTable: React.FC<
       dataIndex: 'version',
       key: 'version',
       width: 140,
-      render: (_: number, record: GlobalAnalysisSettingsDto | DistrictAnalysisSettingsDto) => (
+      render: (_: number, record: DistrictAnalysisSettingsDto) => (
         <Space direction="vertical" size={2}>
           <Tag color="blue" style={{ fontWeight: 600 }}>
             V{record.version}
@@ -114,38 +113,22 @@ export const AnalysisSettingsHistoryTable: React.FC<
       title: 'Созламалар хулосаси',
       key: 'summary',
       width: 220,
-      render: (_: unknown, record: GlobalAnalysisSettingsDto | DistrictAnalysisSettingsDto) => {
-        if (scope === 'global') {
-          const g = record as GlobalAnalysisSettingsDto;
-          return (
-            <Space direction="vertical" size={2}>
-              <Text strong style={{ fontSize: 12 }}>
-                {g.modelProvider}: <Text code>{g.modelId}</Text>
-              </Text>
-              <Text type="secondary" style={{ fontSize: 11 }}>
-                Луғат: {g.globalServiceVocabulary?.length || 0} та атама
-              </Text>
-            </Space>
-          );
-        }
-        const d = record as DistrictAnalysisSettingsDto;
-        return (
-          <Space direction="vertical" size={2}>
-            <Text style={{ fontSize: 12 }}>
-              Ҳоким атамалари: {d.hokimRecognitionTerms?.length || 0} та
-            </Text>
-            <Text type="secondary" style={{ fontSize: 11 }}>
-              Маҳаллий луғат: {d.localVocabularyAdditions?.length || 0} та
-            </Text>
-          </Space>
-        );
-      },
+      render: (_: unknown, record: DistrictAnalysisSettingsDto) => (
+        <Space direction="vertical" size={2}>
+          <Text style={{ fontSize: 12 }}>
+            Ҳоким атамалари: {record.hokimRecognitionTerms?.length || 0} та
+          </Text>
+          <Text type="secondary" style={{ fontSize: 11 }}>
+            Маҳаллий луғат: {record.localVocabularyAdditions?.length || 0} та
+          </Text>
+        </Space>
+      ),
     },
     {
       title: 'Амаллар',
       key: 'actions',
       width: 130,
-      render: (_: unknown, record: GlobalAnalysisSettingsDto | DistrictAnalysisSettingsDto) => {
+      render: (_: unknown, record: DistrictAnalysisSettingsDto) => {
         if (record.isActive) {
           return (
             <Tooltip title="Жорий фаол версия">

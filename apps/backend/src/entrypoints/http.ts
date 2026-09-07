@@ -18,7 +18,6 @@ import { registerHealthRoutes } from '../modules/health/health-routes.js';
 import { registerIssueRoutes } from '../modules/issues/issue-routes.js';
 import { registerAuditRoutes } from '../modules/audit/audit-routes.js';
 import { registerDistrictTopicsRoutes } from '../modules/topics/district-topics-routes.js';
-import { registerGlobalAnalysisSettingsRoutes } from '../modules/ai/global-analysis-settings-routes.js';
 import { registerDistrictAnalysisSettingsRoutes } from '../modules/ai/district-analysis-settings-routes.js';
 import { registerSubscriptionRoutes } from '../modules/subscriptions/subscriptions-routes.js';
 import type { BackupRetentionVerifier } from '../modules/subscriptions/ports/backup-retention-verifier.js';
@@ -66,7 +65,6 @@ export function registerAllDomainRoutes(
   registerIssueRoutes(server, { db: ctx.db, pool: ctx.pool, boss: ctx.boss });
   registerAuditRoutes(server, ctx.db);
   registerDistrictTopicsRoutes(server, ctx.db);
-  registerGlobalAnalysisSettingsRoutes(server, ctx.db);
   registerDistrictAnalysisSettingsRoutes(server, ctx.db);
   registerSubscriptionRoutes(server, {
     db: ctx.db,

@@ -20,18 +20,12 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import {
-  type GlobalAnalysisSettingsDto,
-  type GlobalAnalysisSettingsDraftDto,
-  type SaveGlobalAnalysisSettingsDraftRequest,
   type DistrictAnalysisSettingsDto,
   type DistrictAnalysisSettingsDraftDto,
   type SaveDistrictAnalysisSettingsDraftRequest,
   containsProhibitedSecrets,
 } from '@mahalla-ovozi/api-contracts';
-import {
-  computeGlobalSettingsDiff,
-  computeDistrictSettingsDiff,
-} from './diff-utils.js';
+import { computeDistrictSettingsDiff } from './diff-utils.js';
 import { ConfigurationDiffViewer } from './ConfigurationDiffViewer.js';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
 import { ApiError } from '../../lib/api-client.js';
@@ -41,15 +35,13 @@ const { TextArea } = Input;
 
 export interface AnalysisSettingsActivationModalProps {
   open: boolean;
-  scope: 'global' | 'district';
+  scope?: 'district';
   districtId?: string;
   districtName?: string;
   activeVersionId: string;
-  activeSettings: GlobalAnalysisSettingsDto | DistrictAnalysisSettingsDto;
+  activeSettings: DistrictAnalysisSettingsDto;
   draftSettings:
-    | GlobalAnalysisSettingsDraftDto
     | DistrictAnalysisSettingsDraftDto
-    | SaveGlobalAnalysisSettingsDraftRequest
     | SaveDistrictAnalysisSettingsDraftRequest
     | null;
   onConfirm: (changeReason: string) => Promise<void>;
@@ -61,7 +53,6 @@ export const AnalysisSettingsActivationModal: React.FC<
   AnalysisSettingsActivationModalProps
 > = ({
   open,
-  scope,
   districtId,
   districtName,
   activeVersionId,
@@ -80,35 +71,13 @@ export const AnalysisSettingsActivationModal: React.FC<
   const [isStaleConflict, setIsStaleConflict] = useState(false);
 
   // Compute diff
-  const globalDiff =
-    scope === 'global'
-      ? computeGlobalSettingsDiff(
-          activeSettings as GlobalAnalysisSettingsDto,
-          draftSettings as
-            | GlobalAnalysisSettingsDraftDto
-            | SaveGlobalAnalysisSettingsDraftRequest
-            | null,
-        )
-      : undefined;
+  const districtDiff = computeDistrictSettingsDiff(
+    activeSettings,
+    draftSettings,
+  );
 
-  const districtDiff =
-    scope === 'district'
-      ? computeDistrictSettingsDiff(
-          activeSettings as DistrictAnalysisSettingsDto,
-          draftSettings as
-            | DistrictAnalysisSettingsDraftDto
-            | SaveDistrictAnalysisSettingsDraftRequest
-            | null,
-        )
-      : undefined;
-
-  const hasEffectiveChanges =
-    scope === 'global' ? globalDiff?.hasChanges : districtDiff?.hasChanges;
-
-  const totalChangesCount =
-    scope === 'global'
-      ? globalDiff?.totalChangesCount || 0
-      : districtDiff?.totalChangesCount || 0;
+  const hasEffectiveChanges = districtDiff.hasChanges;
+  const totalChangesCount = districtDiff.totalChangesCount;
 
   useEffect(() => {
     if (open) {
@@ -253,13 +222,9 @@ export const AnalysisSettingsActivationModal: React.FC<
           style={{ background: token.colorFillAlter }}
         >
           <Descriptions.Item label="Таҳлил доираси (Scope)">
-            {scope === 'global' ? (
-              <Tag color="blue">Глобал таҳлил созламалари</Tag>
-            ) : (
-              <Tag color="cyan">
-                {districtName || 'Туман'} (ID: {districtId})
-              </Tag>
-            )}
+            <Tag color="cyan">
+              {districtName || 'Туман'} (ID: {districtId})
+            </Tag>
           </Descriptions.Item>
           <Descriptions.Item label="Жорий фаол версия">
             <Text strong code>
@@ -303,8 +268,6 @@ export const AnalysisSettingsActivationModal: React.FC<
           </div>
 
           <ConfigurationDiffViewer
-            scope={scope}
-            globalDiff={globalDiff}
             districtDiff={districtDiff}
           />
         </div>

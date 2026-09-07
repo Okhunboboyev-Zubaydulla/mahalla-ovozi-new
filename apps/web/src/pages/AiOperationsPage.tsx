@@ -9,7 +9,6 @@ import {
   Space,
 } from 'antd';
 import {
-  SettingOutlined,
   ApartmentOutlined,
   HistoryOutlined,
   DashboardOutlined,
@@ -18,10 +17,7 @@ import {
 } from '@ant-design/icons';
 import { useDistrict } from '../district/district-context.js';
 import { DistrictSelector } from '../components/DistrictSelector.js';
-import { useGlobalAnalysisSettings } from '../hooks/useGlobalAnalysisSettings.js';
 import { useDistrictAnalysisSettings } from '../hooks/useDistrictAnalysisSettings.js';
-import { ActiveGlobalSettingsCard } from '../components/ai/ActiveGlobalSettingsCard.js';
-import { GlobalSettingsDraftForm } from '../components/ai/GlobalSettingsDraftForm.js';
 import { ActiveDistrictSettingsCard } from '../components/ai/ActiveDistrictSettingsCard.js';
 import { DistrictSettingsDraftForm } from '../components/ai/DistrictSettingsDraftForm.js';
 import { AnalysisSettingsHistoryPanel } from '../components/ai/AnalysisSettingsHistoryPanel.js';
@@ -32,15 +28,7 @@ const { Title, Text, Paragraph } = Typography;
 export const AiOperationsPage: React.FC = () => {
   const { token } = theme.useToken();
   const { activeDistrictId, attemptTransition } = useDistrict();
-  const [activeTabKey, setActiveTabKey] = useState<string>('global');
-
-  const {
-    data: globalSettingsData,
-    isLoading: isGlobalLoading,
-    isError: isGlobalError,
-    error: globalError,
-    refetch: refetchGlobal,
-  } = useGlobalAnalysisSettings();
+  const [activeTabKey, setActiveTabKey] = useState<string>('monitoring');
 
   const {
     data: districtSettingsData,
@@ -59,53 +47,14 @@ export const AiOperationsPage: React.FC = () => {
 
   const tabItems = [
     {
-      key: 'global',
+      key: 'monitoring',
       label: (
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <SettingOutlined />
-          Глобал созламалар
+          <DashboardOutlined />
+          Операциялар мониторинги
         </span>
       ),
-      children: (
-        <div>
-          {isGlobalLoading && (
-            <div style={{ textAlign: 'center', padding: '40px 0' }}>
-              <Spin size="large" tip="Глобал созламалар юкланмоқда..." />
-            </div>
-          )}
-
-          {isGlobalError && (
-            <Alert
-              message="Созламаларни юклашда хатолик"
-              description={
-                globalError instanceof Error
-                  ? globalError.message
-                  : 'Маълумотларни сервердан олишнинг имкони бўлмади.'
-              }
-              type="error"
-              showIcon
-              action={
-                <a onClick={() => refetchGlobal()} style={{ cursor: 'pointer' }}>
-                  <ReloadOutlined /> Қайта уриниш
-                </a>
-              }
-              style={{ marginBottom: 16 }}
-            />
-          )}
-
-          {globalSettingsData && (
-            <div>
-              <ActiveGlobalSettingsCard
-                settings={globalSettingsData.activeConfiguration}
-              />
-              <GlobalSettingsDraftForm
-                activeSettings={globalSettingsData.activeConfiguration}
-                draft={globalSettingsData.draft}
-              />
-            </div>
-          )}
-        </div>
-      ),
+      children: <SignalMonitoringTable initialDistrictId={activeDistrictId} />,
     },
     {
       key: 'district',
@@ -201,16 +150,6 @@ export const AiOperationsPage: React.FC = () => {
       ),
       children: <AnalysisSettingsHistoryPanel />,
     },
-    {
-      key: 'monitoring',
-      label: (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <DashboardOutlined />
-          Операциялар мониторинги
-        </span>
-      ),
-      children: <SignalMonitoringTable initialDistrictId={activeDistrictId} />,
-    },
   ];
 
   return (
@@ -220,7 +159,7 @@ export const AiOperationsPage: React.FC = () => {
           АИ операциялари ва созламалари
         </Title>
         <Text type="secondary">
-          Глобал таҳлил модел параметрлари, тизим кўрсатмалари ва туманларга хос атамаларни бошқариш.
+          АИ операциялари мониторинги, туманларга хос атамалар ва таҳлил созламалари тарихини бошқариш.
         </Text>
       </div>
 

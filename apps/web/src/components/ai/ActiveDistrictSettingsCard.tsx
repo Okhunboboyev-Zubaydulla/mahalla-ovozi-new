@@ -11,7 +11,7 @@ import {
 } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import type { DistrictAnalysisSettingsDto } from '@mahalla-ovozi/api-contracts';
-import { formatTashkentTime } from './ActiveGlobalSettingsCard.js';
+import { formatTashkentTime } from '../../lib/formatters.js';
 
 const { Text } = Typography;
 

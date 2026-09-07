@@ -6,7 +6,7 @@ import {
   type AnalysisSettingsRollbackModalProps,
 } from '../../src/components/ai/AnalysisSettingsRollbackModal.js';
 import {
-  type GlobalAnalysisSettingsDto,
+  type DistrictAnalysisSettingsDto,
 } from '@mahalla-ovozi/api-contracts';
 import { mahallaTheme } from '../../src/theme/antd-theme.js';
 
@@ -30,17 +30,12 @@ beforeAll(() => {
   setupMatchMedia();
 });
 
-const mockActiveGlobal: GlobalAnalysisSettingsDto = {
-  id: 'gcfg_v3',
+const mockActiveDistrict: DistrictAnalysisSettingsDto = {
+  id: 'dcfg_v3',
+  districtId: 'dist_123',
   version: 3,
-  modelProvider: 'GEMINI',
-  modelId: 'gemini-2.0-flash',
-  temperature: 0.35,
-  maxOutputTokens: 600,
-  relevanceSystemPrompt: 'Active V3 relevance prompt.',
-  topicMatchingSystemPrompt: 'Active V3 topic matching prompt.',
-  topicProjectionSystemPrompt: 'Active V3 topic projection prompt.',
-  globalServiceVocabulary: [
+  hokimRecognitionTerms: ['Ҳоким', 'Сектор раҳбари'],
+  localVocabularyAdditions: [
     { term: 'Сув таъминоти', category: 'Коммунал' },
   ],
   isActive: true,
@@ -48,18 +43,13 @@ const mockActiveGlobal: GlobalAnalysisSettingsDto = {
   createdAt: '2026-08-26T12:00:00.000Z',
 };
 
-const mockTargetGlobal: GlobalAnalysisSettingsDto = {
-  id: 'gcfg_v1',
+const mockTargetDistrict: DistrictAnalysisSettingsDto = {
+  id: 'dcfg_v1',
+  districtId: 'dist_123',
   version: 1,
-  modelProvider: 'OPENAI',
-  modelId: 'gpt-4o-mini',
-  temperature: 0.0,
-  maxOutputTokens: 500,
-  relevanceSystemPrompt: 'Historical V1 relevance prompt.',
-  topicMatchingSystemPrompt: 'Historical V1 topic matching prompt.',
-  topicProjectionSystemPrompt: 'Historical V1 topic projection prompt.',
-  globalServiceVocabulary: [
-    { term: 'Ичимлик суви', category: 'Сув таъминоти' },
+  hokimRecognitionTerms: ['Ҳоким', 'Туман ҳокими'],
+  localVocabularyAdditions: [
+    { term: 'Ичимлик суви', category: 'Сув ҳавзалари' },
   ],
   isActive: false,
   activatedAt: '2026-08-01T00:00:00.000Z',
@@ -77,13 +67,15 @@ describe('AnalysisSettingsRollbackModal Component Tests (Story 5.4)', () => {
   });
 
   function renderModal(
-    props?: Partial<Extract<AnalysisSettingsRollbackModalProps, { scope: 'global' }>>,
+    props?: Partial<AnalysisSettingsRollbackModalProps>,
   ) {
     const defaultProps: AnalysisSettingsRollbackModalProps = {
       open: true,
-      scope: 'global',
-      activeVersion: mockActiveGlobal,
-      targetVersion: mockTargetGlobal,
+      scope: 'district',
+      districtId: 'dist_123',
+      districtName: 'Чилонзор тумани',
+      activeVersion: mockActiveDistrict,
+      targetVersion: mockTargetDistrict,
       onConfirm: vi.fn().mockResolvedValue(undefined),
       onCancel: vi.fn(),
       ...props,
@@ -105,13 +97,15 @@ describe('AnalysisSettingsRollbackModal Component Tests (Story 5.4)', () => {
     expect(
       screen.getByText(/Келажак учун янги версия яратиш қоидаси/i),
     ).toBeTruthy();
-    expect(screen.getByText(/V3 \(gcfg_v3\)/)).toBeTruthy();
-    expect(screen.getByText(/V1 \(gcfg_v1\)/)).toBeTruthy();
+    expect(screen.getByText(/Чилонзор тумани/)).toBeTruthy();
+    expect(screen.getByText(/V3 \(dcfg_v3\)/)).toBeTruthy();
+    expect(screen.getByText(/V1 \(dcfg_v1\)/)).toBeTruthy();
 
-    // Check Diff viewer renders scalar changes
-    expect(screen.getByText(/Асосий модел параметрлари ўзгариши/)).toBeTruthy();
-    expect(screen.getByText('GEMINI')).toBeTruthy();
-    expect(screen.getByText('OPENAI')).toBeTruthy();
+    // Check Diff viewer renders district hokim terms and vocabulary differences
+    expect(screen.getByText(/Ҳокимга оид атамалар/)).toBeTruthy();
+    expect(screen.getByText(/Қўшимча маҳаллий луғат/)).toBeTruthy();
+    expect(screen.getByText('+ Туман ҳокими')).toBeTruthy();
+    expect(screen.getByText('- Сектор раҳбари')).toBeTruthy();
   });
 
   it('validates change reason: rejects empty, <5 characters, and prohibited secrets', async () => {
@@ -168,7 +162,7 @@ describe('AnalysisSettingsRollbackModal Component Tests (Story 5.4)', () => {
       /V2 даги тасдиқланган луғат ва модел параметрларига қайтиш/i,
     );
     fireEvent.change(input, {
-      target: { value: 'V1 дастлабки барқарор модел созламаларига қайтиш' },
+      target: { value: 'V1 дастлабки барқарор туман созламаларига қайтиш' },
     });
 
     const submitBtn = screen.getByRole('button', {
@@ -179,7 +173,7 @@ describe('AnalysisSettingsRollbackModal Component Tests (Story 5.4)', () => {
     await waitFor(() => {
       expect(onConfirm).toHaveBeenCalledTimes(1);
       expect(onConfirm).toHaveBeenCalledWith(
-        'V1 дастлабки барқарор модел созламаларига қайтиш',
+        'V1 дастлабки барқарор туман созламаларига қайтиш',
       );
     });
   });
@@ -187,7 +181,7 @@ describe('AnalysisSettingsRollbackModal Component Tests (Story 5.4)', () => {
   it('restores focus to trigger button and invokes onCancel on Cancel button click', () => {
     const onCancel = vi.fn();
     const btn = document.createElement('button');
-    btn.id = 'btn-rollback-gcfg_v1';
+    btn.id = 'btn-rollback-dcfg_v1';
     document.body.appendChild(btn);
 
     renderModal({ onCancel });
@@ -211,7 +205,7 @@ describe('AnalysisSettingsRollbackModal Component Tests (Story 5.4)', () => {
       /V2 даги тасдиқланган луғат ва модел параметрларига қайтиш/i,
     );
     fireEvent.change(input, {
-      target: { value: 'V1 дастлабки барқарор модел созламаларига қайтиш' },
+      target: { value: 'V1 дастлабки барқарор туман созламаларига қайтиш' },
     });
 
     const submitBtn = screen.getByRole('button', {

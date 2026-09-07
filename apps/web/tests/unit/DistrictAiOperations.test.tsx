@@ -6,11 +6,9 @@ import {
   type GetDistrictAnalysisSettingsResponse,
   type DistrictAnalysisSettingsDto,
   type DistrictAnalysisSettingsDraftDto,
-  type GetGlobalAnalysisSettingsResponse,
 } from '@mahalla-ovozi/api-contracts';
 import { AiOperationsPage } from '../../src/pages/AiOperationsPage.js';
 import { districtSettingsClient } from '../../src/api/district-settings-client.js';
-import { globalSettingsClient } from '../../src/api/global-settings-client.js';
 import { DistrictProvider, useDistrict } from '../../src/district/district-context.js';
 import { mahallaTheme } from '../../src/theme/antd-theme.js';
 import React, { useEffect } from 'react';
@@ -40,29 +38,6 @@ function setupMatchMedia() {
 beforeAll(() => {
   setupMatchMedia();
 });
-
-const mockGlobalData: GetGlobalAnalysisSettingsResponse = {
-  activeConfiguration: {
-    id: 'gcfg_v1',
-    version: 1,
-    modelProvider: 'OPENAI',
-    modelId: 'gpt-4o-mini-2024-07-18',
-    temperature: 0.0,
-    maxOutputTokens: 500,
-    relevanceSystemPrompt: 'Global relevance prompt template (20+ chars).',
-    topicMatchingSystemPrompt: 'Global topic matching prompt template (20+ chars).',
-    topicProjectionSystemPrompt: 'Global topic projection prompt template (20+ chars).',
-    globalServiceVocabulary: [
-      { term: 'Ичимлик суви', category: 'Сув таъминоти' },
-    ],
-    isActive: true,
-    activatedAt: '2026-08-01T05:00:00.000Z',
-    activatedBy: null,
-    changeReason: 'Initial',
-    createdAt: '2026-08-01T05:00:00.000Z',
-  },
-  draft: null,
-};
 
 const mockDistrictActiveSettings: DistrictAnalysisSettingsDto = {
   id: 'dcfg_dist_chilonzor_v1',
@@ -139,10 +114,6 @@ function renderDistrictAiOperationsPage(
   },
   initialDistrictId: string | null = 'dist_chilonzor',
 ) {
-  vi.spyOn(globalSettingsClient, 'getGlobalSettings').mockResolvedValue(
-    mockGlobalData,
-  );
-
   if (districtData) {
     vi.spyOn(
       districtSettingsClient,

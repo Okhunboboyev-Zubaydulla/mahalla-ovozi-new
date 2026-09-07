@@ -2,18 +2,16 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import pg from 'pg';
 import {
-  type GlobalAnalysisSettingsHistoryResponse,
   type DistrictAnalysisSettingsHistoryResponse,
-  type RollbackGlobalAnalysisSettingsResponse,
   type RollbackDistrictAnalysisSettingsResponse,
 } from '@mahalla-ovozi/api-contracts';
 import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/client.js';
 import { buildHttpServer } from '../src/entrypoints/http.js';
-import { accounts, districts, auditEvents, aiOperations, topics, globalAnalysisSettingsVersions, globalAnalysisSettingsDrafts, districtAnalysisSettingsVersions, districtAnalysisSettingsDrafts } from '../src/adapters/db/schema/index.js';
-import { ensureDefaultAiProfiles, ensureDefaultGlobalAnalysisSettings, ensureDefaultDistrictAnalysisSettings } from '../src/adapters/db/seeds.js';
+import { accounts, districts, auditEvents, aiOperations, topics, districtAnalysisSettingsVersions, districtAnalysisSettingsDrafts } from '../src/adapters/db/schema/index.js';
+import { ensureDefaultAiProfiles, ensureDefaultDistrictAnalysisSettings } from '../src/adapters/db/seeds.js';
 import { createOrResetProductOwner } from '../src/modules/auth/account-service.js';
 import { hashPassword } from '../src/adapters/crypto/argon2.js';
-import { eq, and, ne, desc } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import crypto from 'node:crypto';
 
 const SAME_ORIGIN_HEADERS = {
@@ -40,9 +38,8 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
     server = await buildHttpServer({ db, pool });
     await server.ready();
 
-    // 1. Ensure seed profiles and global config
+    // 1. Ensure seed profiles
     await ensureDefaultAiProfiles(db);
-    await ensureDefaultGlobalAnalysisSettings(db);
 
     // 2. Seed Product Owner
     const poUsername = `po_hist_test_${Date.now()}`;
@@ -109,18 +106,6 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
   });
 
   afterAll(async () => {
-    // Cleanup test records and restore initial global settings baseline
-    await db
-      .delete(globalAnalysisSettingsDrafts)
-      .where(eq(globalAnalysisSettingsDrafts.id, 'global'));
-    await db
-      .delete(globalAnalysisSettingsVersions)
-      .where(ne(globalAnalysisSettingsVersions.id, 'gcfg_v1'));
-    await db
-      .update(globalAnalysisSettingsVersions)
-      .set({ isActive: true })
-      .where(eq(globalAnalysisSettingsVersions.id, 'gcfg_v1'));
-
     // Cleanup district records
     await db
       .delete(districtAnalysisSettingsDrafts)
@@ -144,32 +129,6 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
     if (server) await server.close();
   });
 
-  // --------------------------------------------------------------------------
-  // AC 1: Global Configuration History Presentation
-  // --------------------------------------------------------------------------
-  describe('Global Configuration History Query (AC 1)', () => {
-    it('returns all global versions ordered by version DESC and identifies active version', async () => {
-      const res = await server.inject({
-        method: 'GET',
-        url: '/api/v1/ai/settings/global/history',
-        headers: {
-          cookie: poCookie,
-          ...SAME_ORIGIN_HEADERS,
-        },
-      });
-
-      expect(res.statusCode).toBe(200);
-      const data: GlobalAnalysisSettingsHistoryResponse = JSON.parse(res.payload);
-      expect(data.items.length).toBeGreaterThanOrEqual(1);
-      expect(data.totalCount).toBe(data.items.length);
-
-      const activeItem = data.items.find((item) => item.isActive);
-      expect(activeItem).toBeDefined();
-      expect(activeItem?.id).toBe('gcfg_v1');
-      expect(activeItem?.modelProvider).toBeDefined();
-      expect(activeItem?.modelId).toBeDefined();
-    });
-  });
 
   // --------------------------------------------------------------------------
   // AC 2: District Configuration History Query & Isolation
@@ -232,120 +191,6 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
     });
   });
 
-  // --------------------------------------------------------------------------
-  // AC 4, 7, 8, 12: Global Rollback Atomic Execution
-  // --------------------------------------------------------------------------
-  describe('Global Configuration Rollback (AC 4, 7, 8, 12, AD-8)', () => {
-    it('creates new monotonic version V3 copying V1 after V2 was activated', async () => {
-      // 1. Create and activate V2 with modified temperature
-      await server.inject({
-        method: 'POST',
-        url: '/api/v1/ai/settings/global/draft',
-        headers: { cookie: poCookie, ...SAME_ORIGIN_HEADERS },
-        payload: {
-          modelProvider: 'GEMINI',
-          modelId: 'gemini-2.0-flash',
-          temperature: 0.35,
-          maxOutputTokens: 600,
-          relevanceSystemPrompt: 'Updated global relevance system prompt test text.',
-          topicMatchingSystemPrompt: 'Updated global topic matching prompt test text.',
-          topicProjectionSystemPrompt: 'Updated global topic projection prompt test text.',
-          globalServiceVocabulary: [
-            { term: 'Сув таъминоти', category: 'Коммунал' },
-            { term: 'Газ таъминоти', category: 'Коммунал' },
-          ],
-        },
-      });
-
-      const activateRes = await server.inject({
-        method: 'POST',
-        url: '/api/v1/ai/settings/global/activate',
-        headers: { cookie: poCookie, ...SAME_ORIGIN_HEADERS },
-        payload: {
-          baseActiveVersionId: 'gcfg_v1',
-          changeReason: 'V2 фаоллаштириш синови',
-        },
-      });
-      expect(activateRes.statusCode).toBe(200);
-
-      // Verify V2 is now active
-      const historyBefore = await server.inject({
-        method: 'GET',
-        url: '/api/v1/ai/settings/global/history',
-        headers: { cookie: poCookie, ...SAME_ORIGIN_HEADERS },
-      });
-      const histDataBefore: GlobalAnalysisSettingsHistoryResponse = JSON.parse(
-        historyBefore.payload,
-      );
-      expect(histDataBefore.items.length).toBe(2);
-      expect(histDataBefore.items[0]?.id).toBe('gcfg_v2');
-      expect(histDataBefore.items[0]?.isActive).toBe(true);
-      expect(histDataBefore.items[1]?.id).toBe('gcfg_v1');
-      expect(histDataBefore.items[1]?.isActive).toBe(false);
-
-      // 2. Perform rollback to V1 from active baseline V2
-      const rollbackRes = await server.inject({
-        method: 'POST',
-        url: '/api/v1/ai/settings/global/rollback',
-        headers: { cookie: poCookie, ...SAME_ORIGIN_HEADERS },
-        payload: {
-          baseActiveVersionId: 'gcfg_v2',
-          targetVersionId: 'gcfg_v1',
-          changeReason: 'V1 дастлабки модел ва параметрларига қайтиш',
-        },
-      });
-
-      expect(rollbackRes.statusCode).toBe(200);
-      const rollbackData: RollbackGlobalAnalysisSettingsResponse = JSON.parse(
-        rollbackRes.payload,
-      );
-      expect(rollbackData.activeConfiguration.id).toBe('gcfg_v3');
-      expect(rollbackData.activeConfiguration.version).toBe(3);
-      expect(rollbackData.activeConfiguration.isActive).toBe(true);
-      expect(rollbackData.restoredFromVersionId).toBe('gcfg_v1');
-      expect(rollbackData.previousActiveVersionId).toBe('gcfg_v2');
-
-      // Check that V3 copied V1's parameters (OLLAMA provider, gemma4:12b)
-      expect(rollbackData.activeConfiguration.modelProvider).toBe('OLLAMA');
-      expect(rollbackData.activeConfiguration.modelId).toBe('gemma4:12b');
-
-      // 3. Verify history table now has 3 versions with V3 active
-      const historyAfter = await server.inject({
-        method: 'GET',
-        url: '/api/v1/ai/settings/global/history',
-        headers: { cookie: poCookie, ...SAME_ORIGIN_HEADERS },
-      });
-      const histDataAfter: GlobalAnalysisSettingsHistoryResponse = JSON.parse(
-        historyAfter.payload,
-      );
-      expect(histDataAfter.items.length).toBe(3);
-      expect(histDataAfter.items[0]?.id).toBe('gcfg_v3');
-      expect(histDataAfter.items[0]?.isActive).toBe(true);
-      expect(histDataAfter.items[1]?.id).toBe('gcfg_v2');
-      expect(histDataAfter.items[1]?.isActive).toBe(false);
-      expect(histDataAfter.items[2]?.id).toBe('gcfg_v1');
-      expect(histDataAfter.items[2]?.isActive).toBe(false);
-
-      // 4. Verify audit event
-      const [auditEvent] = await db
-        .select()
-        .from(auditEvents)
-        .where(eq(auditEvents.action, 'GLOBAL_ANALYSIS_SETTINGS_ROLLED_BACK'))
-        .orderBy(desc(auditEvents.createdAt))
-        .limit(1);
-
-      expect(auditEvent).toBeDefined();
-      expect(auditEvent?.actorId).toBe(poAccountId);
-      expect(auditEvent?.actorRole).toBe('PRODUCT_OWNER');
-      expect(auditEvent?.metadata).toMatchObject({
-        previousActiveVersionId: 'gcfg_v2',
-        targetSourceVersionId: 'gcfg_v1',
-        newVersionId: 'gcfg_v3',
-        newVersion: 3,
-        changeReason: 'V1 дастлабки модел ва параметрларига қайтиш',
-      });
-    });
-  });
 
   // --------------------------------------------------------------------------
   // AC 4, 7, 8, 12: District Rollback Atomic Execution & Scope Isolation
@@ -457,11 +302,11 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
     it('rejects rollback to currently active version with 400 NO_EFFECTIVE_ROLLBACK', async () => {
       const res = await server.inject({
         method: 'POST',
-        url: '/api/v1/ai/settings/global/rollback',
+        url: `/api/v1/ai/settings/districts/${districtAId}/rollback`,
         headers: { cookie: poCookie, ...SAME_ORIGIN_HEADERS },
         payload: {
-          baseActiveVersionId: 'gcfg_v3',
-          targetVersionId: 'gcfg_v3',
+          baseActiveVersionId: `dcfg_${districtAId}_v3`,
+          targetVersionId: `dcfg_${districtAId}_v3`,
           changeReason: 'No-op rollback test on current active',
         },
       });
@@ -474,11 +319,11 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
     it('rejects stale baseline version ID with 409 STALE_BASELINE_VERSION', async () => {
       const res = await server.inject({
         method: 'POST',
-        url: '/api/v1/ai/settings/global/rollback',
+        url: `/api/v1/ai/settings/districts/${districtAId}/rollback`,
         headers: { cookie: poCookie, ...SAME_ORIGIN_HEADERS },
         payload: {
-          baseActiveVersionId: 'gcfg_v1', // Stale! Active is gcfg_v3
-          targetVersionId: 'gcfg_v2',
+          baseActiveVersionId: `dcfg_${districtAId}_v1`, // Stale! Active is v3
+          targetVersionId: `dcfg_${districtAId}_v2`,
           changeReason: 'Stale baseline version test',
         },
       });
@@ -491,11 +336,11 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
     it('rejects nonexistent target version ID with 404 VERSION_NOT_FOUND', async () => {
       const res = await server.inject({
         method: 'POST',
-        url: '/api/v1/ai/settings/global/rollback',
+        url: `/api/v1/ai/settings/districts/${districtAId}/rollback`,
         headers: { cookie: poCookie, ...SAME_ORIGIN_HEADERS },
         payload: {
-          baseActiveVersionId: 'gcfg_v3',
-          targetVersionId: 'gcfg_v999',
+          baseActiveVersionId: `dcfg_${districtAId}_v3`,
+          targetVersionId: `dcfg_${districtAId}_v999`,
           changeReason: 'Missing target version test',
         },
       });
@@ -508,11 +353,11 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
     it('rejects changeReason with less than 5 characters with 400 VALIDATION_ERROR', async () => {
       const res = await server.inject({
         method: 'POST',
-        url: '/api/v1/ai/settings/global/rollback',
+        url: `/api/v1/ai/settings/districts/${districtAId}/rollback`,
         headers: { cookie: poCookie, ...SAME_ORIGIN_HEADERS },
         payload: {
-          baseActiveVersionId: 'gcfg_v3',
-          targetVersionId: 'gcfg_v2',
+          baseActiveVersionId: `dcfg_${districtAId}_v3`,
+          targetVersionId: `dcfg_${districtAId}_v2`,
           changeReason: '123',
         },
       });
@@ -525,11 +370,11 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
     it('rejects changeReason containing prohibited secrets with 400 VALIDATION_ERROR', async () => {
       const res = await server.inject({
         method: 'POST',
-        url: '/api/v1/ai/settings/global/rollback',
+        url: `/api/v1/ai/settings/districts/${districtAId}/rollback`,
         headers: { cookie: poCookie, ...SAME_ORIGIN_HEADERS },
         payload: {
-          baseActiveVersionId: 'gcfg_v3',
-          targetVersionId: 'gcfg_v2',
+          baseActiveVersionId: `dcfg_${districtAId}_v3`,
+          targetVersionId: `dcfg_${districtAId}_v2`,
           changeReason: 'Rollback with bot token 123456789:ABCdefGHIjklMNOpqrsTUVwxyz1234567890',
         },
       });
@@ -548,31 +393,31 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
     it('returns 401 Unauthorized for unauthenticated history and rollback requests', async () => {
       const histRes = await server.inject({
         method: 'GET',
-        url: '/api/v1/ai/settings/global/history',
+        url: `/api/v1/ai/settings/districts/${districtAId}/history`,
         headers: SAME_ORIGIN_HEADERS,
       });
       expect(histRes.statusCode).toBe(401);
 
       const rollRes = await server.inject({
         method: 'POST',
-        url: '/api/v1/ai/settings/global/rollback',
+        url: `/api/v1/ai/settings/districts/${districtAId}/rollback`,
         headers: SAME_ORIGIN_HEADERS,
         payload: {
-          baseActiveVersionId: 'gcfg_v3',
-          targetVersionId: 'gcfg_v2',
+          baseActiveVersionId: `dcfg_${districtAId}_v3`,
+          targetVersionId: `dcfg_${districtAId}_v2`,
           changeReason: 'Unauth attempt',
         },
       });
       expect(rollRes.statusCode).toBe(401);
     });
 
-    it('returns 403 Forbidden for District Hokim on global and district history/rollback endpoints', async () => {
-      const histGlobal = await server.inject({
+    it('returns 403 Forbidden for District Hokim on district history and rollback endpoints', async () => {
+      const histDistrict = await server.inject({
         method: 'GET',
-        url: '/api/v1/ai/settings/global/history',
+        url: `/api/v1/ai/settings/districts/${districtAId}/history`,
         headers: { cookie: hokimCookie, ...SAME_ORIGIN_HEADERS },
       });
-      expect(histGlobal.statusCode).toBe(403);
+      expect(histDistrict.statusCode).toBe(403);
 
       const rollDistrict = await server.inject({
         method: 'POST',
@@ -624,14 +469,14 @@ describe('Story 5.4: Review Configuration History and Roll Back Integration Test
         updatedAt: new Date('2026-08-10T10:00:00.000Z'),
       });
 
-      // 2. Perform another global rollback
+      // 2. Perform another district rollback
       const rollbackRes = await server.inject({
         method: 'POST',
-        url: '/api/v1/ai/settings/global/rollback',
+        url: `/api/v1/ai/settings/districts/${districtAId}/rollback`,
         headers: { cookie: poCookie, ...SAME_ORIGIN_HEADERS },
         payload: {
-          baseActiveVersionId: 'gcfg_v3',
-          targetVersionId: 'gcfg_v2',
+          baseActiveVersionId: `dcfg_${districtAId}_v3`,
+          targetVersionId: `dcfg_${districtAId}_v2`,
           changeReason: 'Future-only verification rollback to V2',
         },
       });

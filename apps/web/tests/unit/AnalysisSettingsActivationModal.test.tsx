@@ -7,8 +7,6 @@ import {
   type AnalysisSettingsActivationModalProps,
 } from '../../src/components/ai/AnalysisSettingsActivationModal.js';
 import {
-  type GlobalAnalysisSettingsDto,
-  type GlobalAnalysisSettingsDraftDto,
   type DistrictAnalysisSettingsDto,
   type DistrictAnalysisSettingsDraftDto,
 } from '@mahalla-ovozi/api-contracts';
@@ -35,37 +33,27 @@ beforeAll(() => {
   setupMatchMedia();
 });
 
-const mockGlobalActiveSettings: GlobalAnalysisSettingsDto = {
-  id: 'gcfg_v1',
+const mockDistrictActiveSettings: DistrictAnalysisSettingsDto = {
+  id: 'dcfg_dist_123_v1',
+  districtId: 'dist_123',
   version: 1,
-  modelProvider: 'OPENAI',
-  modelId: 'gpt-4o-mini',
-  temperature: 0.0,
-  maxOutputTokens: 500,
-  relevanceSystemPrompt: 'Baseline relevance prompt text here for test.',
-  topicMatchingSystemPrompt: 'Baseline topic matching prompt text here for test.',
-  topicProjectionSystemPrompt: 'Baseline topic projection prompt text here for test.',
-  globalServiceVocabulary: [
-    { term: 'Ичимлик суви', category: 'Сув таъминоти' },
+  hokimRecognitionTerms: ['Ҳоким'],
+  localVocabularyAdditions: [
+    { term: 'Чилонзор', category: 'Мўлжал' },
   ],
   isActive: true,
   activatedAt: '2026-08-01T00:00:00.000Z',
   createdAt: '2026-08-01T00:00:00.000Z',
 };
 
-const mockGlobalDraftWithChanges: GlobalAnalysisSettingsDraftDto = {
-  id: 'global',
-  baseActiveVersionId: 'gcfg_v1',
-  modelProvider: 'GEMINI',
-  modelId: 'gemini-2.0-flash',
-  temperature: 0.2,
-  maxOutputTokens: 600,
-  relevanceSystemPrompt: 'Modified relevance prompt text here for test.',
-  topicMatchingSystemPrompt: 'Modified topic matching prompt text here for test.',
-  topicProjectionSystemPrompt: 'Modified topic projection prompt text here for test.',
-  globalServiceVocabulary: [
-    { term: 'Ичимлик суви', category: 'Сув таъминоти' },
-    { term: 'Иссиқ сув', category: 'Иссиқлик таъминоти' },
+const mockDistrictDraftWithChanges: DistrictAnalysisSettingsDraftDto = {
+  id: 'draft_dist_123',
+  districtId: 'dist_123',
+  baseActiveVersionId: 'dcfg_dist_123_v1',
+  hokimRecognitionTerms: ['Ҳоким', 'Туман ҳокими'],
+  localVocabularyAdditions: [
+    { term: 'Чилонзор', category: 'Мўлжал' },
+    { term: 'Оқтепа', category: 'Мўлжал' },
   ],
   createdAt: '2026-08-25T00:00:00.000Z',
   updatedAt: '2026-08-25T00:00:00.000Z',
@@ -89,10 +77,12 @@ describe('AnalysisSettingsActivationModal Component Tests (Story 5.3)', () => {
   function renderModal(props: Partial<AnalysisSettingsActivationModalProps> = {}) {
     const defaultProps: AnalysisSettingsActivationModalProps = {
       open: true,
-      scope: 'global',
-      activeVersionId: 'gcfg_v1',
-      activeSettings: mockGlobalActiveSettings,
-      draftSettings: mockGlobalDraftWithChanges,
+      scope: 'district',
+      districtId: 'dist_123',
+      districtName: 'Чилонзор тумани',
+      activeVersionId: 'dcfg_dist_123_v1',
+      activeSettings: mockDistrictActiveSettings,
+      draftSettings: mockDistrictDraftWithChanges,
       onConfirm: vi.fn().mockResolvedValue(undefined),
       onCancel: vi.fn(),
       ...props,
@@ -113,8 +103,8 @@ describe('AnalysisSettingsActivationModal Component Tests (Story 5.3)', () => {
     expect(
       screen.getByText('Таҳлил созламаларини фаоллаштириш'),
     ).toBeTruthy();
-    expect(screen.getByText('Глобал таҳлил созламалари')).toBeTruthy();
-    expect(screen.getByText('gcfg_v1')).toBeTruthy();
+    expect(screen.getByText('Чилонзор тумани (ID: dist_123)')).toBeTruthy();
+    expect(screen.getByText('dcfg_dist_123_v1')).toBeTruthy();
 
     // Future-only invariant warning notice (AC 4, AD-8)
     expect(
@@ -122,44 +112,7 @@ describe('AnalysisSettingsActivationModal Component Tests (Story 5.3)', () => {
     ).toBeTruthy();
 
     // Diff items rendered
-    expect(screen.getByText('Асосий модел параметрлари ўзгариши')).toBeTruthy();
-    expect(screen.getByText('OPENAI')).toBeTruthy();
-    expect(screen.getByText('GEMINI')).toBeTruthy();
-    expect(screen.getByText('+ Иссиқ сув')).toBeTruthy();
-  });
-
-  it('renders district scope with district name and ID for district activation (AC 1)', async () => {
-    const mockDistrictActive: DistrictAnalysisSettingsDto = {
-      id: 'dcfg_dist_123_v1',
-      districtId: 'dist_123',
-      version: 1,
-      hokimRecognitionTerms: ['Ҳоким'],
-      localVocabularyAdditions: [],
-      isActive: true,
-      activatedAt: '2026-08-01T00:00:00.000Z',
-      createdAt: '2026-08-01T00:00:00.000Z',
-    };
-
-    const mockDistrictDraft: DistrictAnalysisSettingsDraftDto = {
-      id: 'draft_dist_123',
-      districtId: 'dist_123',
-      baseActiveVersionId: 'dcfg_dist_123_v1',
-      hokimRecognitionTerms: ['Ҳоким', 'Туман ҳокими'],
-      localVocabularyAdditions: [{ term: 'Оқтепа', category: 'Мўлжал' }],
-      createdAt: '2026-08-25T00:00:00.000Z',
-      updatedAt: '2026-08-25T00:00:00.000Z',
-    };
-
-    renderModal({
-      scope: 'district',
-      districtId: 'dist_123',
-      districtName: 'Чилонзор тумани',
-      activeVersionId: 'dcfg_dist_123_v1',
-      activeSettings: mockDistrictActive,
-      draftSettings: mockDistrictDraft,
-    });
-
-    expect(screen.getByText('Чилонзор тумани (ID: dist_123)')).toBeTruthy();
+    expect(screen.getByText('Ҳокимга оид атамалар (Hokim Recognition Terms)')).toBeTruthy();
     expect(screen.getByText('+ Туман ҳокими')).toBeTruthy();
     expect(screen.getByText('+ Оқтепа')).toBeTruthy();
   });
@@ -167,9 +120,9 @@ describe('AnalysisSettingsActivationModal Component Tests (Story 5.3)', () => {
   it('blocks activation when draft has no effective changes (AC 3)', async () => {
     renderModal({
       draftSettings: {
-        ...mockGlobalActiveSettings,
-        id: 'global',
-        baseActiveVersionId: 'gcfg_v1',
+        ...mockDistrictActiveSettings,
+        id: 'draft_dist_123',
+        baseActiveVersionId: 'dcfg_dist_123_v1',
         createdAt: '2026-08-25T00:00:00.000Z',
         updatedAt: '2026-08-25T00:00:00.000Z',
       },

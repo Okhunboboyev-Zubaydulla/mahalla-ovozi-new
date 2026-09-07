@@ -2,17 +2,15 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import pg from 'pg';
 import {
-  ActivateGlobalAnalysisSettingsResponse,
   ActivateDistrictAnalysisSettingsResponse,
-  ActivateGlobalAnalysisSettingsRequest,
 } from '@mahalla-ovozi/api-contracts';
 import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/client.js';
 import { buildHttpServer } from '../src/entrypoints/http.js';
-import { accounts, districts, auditEvents, aiOperations, globalAnalysisSettingsVersions, globalAnalysisSettingsDrafts, districtAnalysisSettingsVersions, districtAnalysisSettingsDrafts } from '../src/adapters/db/schema/index.js';
-import { ensureDefaultAiProfiles, ensureDefaultGlobalAnalysisSettings, ensureDefaultDistrictAnalysisSettings } from '../src/adapters/db/seeds.js';
+import { accounts, districts, auditEvents, aiOperations, districtAnalysisSettingsVersions, districtAnalysisSettingsDrafts } from '../src/adapters/db/schema/index.js';
+import { ensureDefaultAiProfiles, ensureDefaultDistrictAnalysisSettings } from '../src/adapters/db/seeds.js';
 import { createOrResetProductOwner } from '../src/modules/auth/account-service.js';
 import { hashPassword } from '../src/adapters/crypto/argon2.js';
-import { eq, and, desc, ne } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import crypto from 'node:crypto';
 
 const SAME_ORIGIN_HEADERS = {
@@ -38,9 +36,8 @@ describe('Story 5.3: Review and Activate Analysis Configuration Version Integrat
     server = await buildHttpServer({ db, pool });
     await server.ready();
 
-    // 1. Ensure seed profiles and global config
+    // 1. Ensure seed profiles
     await ensureDefaultAiProfiles(db);
-    await ensureDefaultGlobalAnalysisSettings(db);
 
     // 2. Seed Product Owner
     const poUsername = `po_act_test_${Date.now()}`;
@@ -107,18 +104,6 @@ describe('Story 5.3: Review and Activate Analysis Configuration Version Integrat
   });
 
   afterAll(async () => {
-    // Cleanup test records and restore initial global settings baseline
-    await db
-      .delete(globalAnalysisSettingsDrafts)
-      .where(eq(globalAnalysisSettingsDrafts.id, 'global'));
-    await db
-      .delete(globalAnalysisSettingsVersions)
-      .where(ne(globalAnalysisSettingsVersions.id, 'gcfg_v1'));
-    await db
-      .update(globalAnalysisSettingsVersions)
-      .set({ isActive: true })
-      .where(eq(globalAnalysisSettingsVersions.id, 'gcfg_v1'));
-
     // Cleanup district records
     await db
       .delete(districtAnalysisSettingsDrafts)
@@ -140,220 +125,6 @@ describe('Story 5.3: Review and Activate Analysis Configuration Version Integrat
     if (pool) await pool.end();
   });
 
-  describe('Global Settings Activation (AC 1, 3, 5, 6, 7, 8, 9, 13)', () => {
-    it('successfully activates a modified global draft as a new immutable version (gcfg_v2)', async () => {
-      // 1. Fetch current active configuration (should be gcfg_v1)
-      const currentActive = await db
-        .select()
-        .from(globalAnalysisSettingsVersions)
-        .where(eq(globalAnalysisSettingsVersions.isActive, true))
-        .orderBy(desc(globalAnalysisSettingsVersions.version))
-        .limit(1);
-      expect(currentActive.length).toBe(1);
-      const activeBaselineId = currentActive[0]!.id;
-
-      // 2. Save a valid global draft with changes
-      const draftSave = await server.inject({
-        method: 'POST',
-        url: '/api/v1/ai/settings/global/draft',
-        headers: {
-          'content-type': 'application/json',
-          cookie: poCookie,
-          ...SAME_ORIGIN_HEADERS,
-        },
-        payload: {
-          modelProvider: 'GEMINI',
-          modelId: 'gemini-2.0-flash',
-          temperature: 0.15,
-          maxOutputTokens: 600,
-          relevanceSystemPrompt:
-            'Updated relevance prompt for future analysis operations only.',
-          topicMatchingSystemPrompt:
-            'Updated topic matching prompt for future analysis operations only.',
-          topicProjectionSystemPrompt:
-            'Updated topic projection prompt for future analysis operations only.',
-          globalServiceVocabulary: [
-            {
-              term: 'Иссиқ сув таъминоти',
-              category: 'Иссиқлик таъминоти',
-              description: 'Марказий иссиқ сув ва қозонхоналар фаолияти',
-            },
-            {
-              term: 'Ичимлик суви',
-              category: 'Сув таъминоти',
-              description: 'Тоза ичимлик суви таъминоти, қувурлар ва босим',
-            },
-          ],
-        },
-      });
-      expect(draftSave.statusCode).toBe(200);
-
-      // 3. Activate the draft
-      const activationPayload: ActivateGlobalAnalysisSettingsRequest = {
-        baseActiveVersionId: activeBaselineId,
-        changeReason:
-          'Модель аниқлигини ошириш ва иссиқлик таъминоти атамаларини киритиш',
-      };
-
-      const activateRes = await server.inject({
-        method: 'POST',
-        url: '/api/v1/ai/settings/global/activate',
-        headers: {
-          'content-type': 'application/json',
-          cookie: poCookie,
-          ...SAME_ORIGIN_HEADERS,
-        },
-        payload: activationPayload,
-      });
-
-      const expectedNextVersion = (currentActive[0]?.version ?? 1) + 1;
-      const expectedNextVersionId = `gcfg_v${expectedNextVersion}`;
-
-      expect(activateRes.statusCode).toBe(200);
-      const data = JSON.parse(
-        activateRes.payload,
-      ) as ActivateGlobalAnalysisSettingsResponse;
-
-      expect(data.activeConfiguration.version).toBe(expectedNextVersion);
-      expect(data.activeConfiguration.id).toBe(expectedNextVersionId);
-      expect(data.activeConfiguration.modelProvider).toBe('GEMINI');
-      expect(data.activeConfiguration.modelId).toBe('gemini-2.0-flash');
-      expect(data.activeConfiguration.isActive).toBe(true);
-      expect(data.previousVersionId).toBe(activeBaselineId);
-
-      // 4. Verify previous version is deactivated in DB
-      const [oldVersion] = await db
-        .select()
-        .from(globalAnalysisSettingsVersions)
-        .where(eq(globalAnalysisSettingsVersions.id, activeBaselineId));
-      expect(oldVersion?.isActive).toBe(false);
-
-      // 5. Verify draft is deleted
-      const [draft] = await db
-        .select()
-        .from(globalAnalysisSettingsDrafts)
-        .where(eq(globalAnalysisSettingsDrafts.id, 'global'));
-      expect(draft).toBeUndefined();
-
-      // 6. Verify audit event was logged
-      const [auditEvent] = await db
-        .select()
-        .from(auditEvents)
-        .where(
-          and(
-            eq(auditEvents.action, 'GLOBAL_ANALYSIS_SETTINGS_ACTIVATED'),
-            eq(auditEvents.actorId, poAccountId),
-          ),
-        )
-        .orderBy(desc(auditEvents.createdAt))
-        .limit(1);
-
-      expect(auditEvent).toBeDefined();
-      expect((auditEvent?.metadata as any)?.newVersion).toBe(expectedNextVersion);
-      expect((auditEvent?.metadata as any)?.previousVersionId).toBe(
-        activeBaselineId,
-      );
-    });
-
-    it('rejects global activation when draft has no effective changes (AC 3)', async () => {
-      // 1. Fetch current active configuration
-      const [currentActive] = await db
-        .select()
-        .from(globalAnalysisSettingsVersions)
-        .where(eq(globalAnalysisSettingsVersions.isActive, true))
-        .orderBy(desc(globalAnalysisSettingsVersions.version))
-        .limit(1);
-
-      expect(currentActive).toBeDefined();
-
-      // 2. Save a draft that is identical to current active
-      await server.inject({
-        method: 'POST',
-        url: '/api/v1/ai/settings/global/draft',
-        headers: {
-          'content-type': 'application/json',
-          cookie: poCookie,
-          ...SAME_ORIGIN_HEADERS,
-        },
-        payload: {
-          modelProvider: currentActive!.modelProvider as any,
-          modelId: currentActive!.modelId,
-          temperature: currentActive!.temperature,
-          maxOutputTokens: currentActive!.maxOutputTokens,
-          relevanceSystemPrompt: currentActive!.relevanceSystemPrompt,
-          topicMatchingSystemPrompt: currentActive!.topicMatchingSystemPrompt,
-          topicProjectionSystemPrompt:
-            currentActive!.topicProjectionSystemPrompt,
-          globalServiceVocabulary: currentActive!.globalServiceVocabulary,
-        },
-      });
-
-      // 3. Attempt activation -> should fail with NO_EFFECTIVE_CHANGES (400)
-      const activateRes = await server.inject({
-        method: 'POST',
-        url: '/api/v1/ai/settings/global/activate',
-        headers: {
-          'content-type': 'application/json',
-          cookie: poCookie,
-          ...SAME_ORIGIN_HEADERS,
-        },
-        payload: {
-          baseActiveVersionId: currentActive!.id,
-          changeReason: 'Ҳеч қандай ўзгаришсиз сақлашга уриниш',
-        },
-      });
-
-      expect(activateRes.statusCode).toBe(400);
-      const body = JSON.parse(activateRes.payload);
-      expect(body.error.code).toBe('NO_EFFECTIVE_CHANGES');
-    });
-
-    it('rejects global activation when base active version is stale (AC 9)', async () => {
-      // Save valid draft with changes
-      await server.inject({
-        method: 'POST',
-        url: '/api/v1/ai/settings/global/draft',
-        headers: {
-          'content-type': 'application/json',
-          cookie: poCookie,
-          ...SAME_ORIGIN_HEADERS,
-        },
-        payload: {
-          modelProvider: 'OPENAI',
-          modelId: 'gpt-4o',
-          temperature: 0.0,
-          maxOutputTokens: 700,
-          relevanceSystemPrompt:
-            'Testing stale baseline validation error response.',
-          topicMatchingSystemPrompt:
-            'Testing stale baseline validation error response.',
-          topicProjectionSystemPrompt:
-            'Testing stale baseline validation error response.',
-          globalServiceVocabulary: [
-            { term: 'Янги атама', category: 'Бошқа' },
-          ],
-        },
-      });
-
-      const activateRes = await server.inject({
-        method: 'POST',
-        url: '/api/v1/ai/settings/global/activate',
-        headers: {
-          'content-type': 'application/json',
-          cookie: poCookie,
-          ...SAME_ORIGIN_HEADERS,
-        },
-        payload: {
-          baseActiveVersionId: 'gcfg_v999_stale',
-          changeReason: 'Фаоллаштириш сабаби етарли узунликда',
-        },
-      });
-
-      expect(activateRes.statusCode).toBe(409);
-      const body = JSON.parse(activateRes.payload);
-      expect(body.error.code).toBe('STALE_BASELINE_VERSION');
-    });
-  });
 
   describe('District Settings Activation & Scope Isolation (AC 1, 3, 5, 6, 8, 9, 11)', () => {
     it('successfully activates District A draft without mutating District B or Global config (AC 6, 11)', async () => {
@@ -504,14 +275,14 @@ describe('Story 5.3: Review and Activate Analysis Configuration Version Integrat
     it('rejects change reason containing Telegram bot tokens', async () => {
       const activateRes = await server.inject({
         method: 'POST',
-        url: '/api/v1/ai/settings/global/activate',
+        url: `/api/v1/ai/settings/districts/${districtAId}/activate`,
         headers: {
           'content-type': 'application/json',
           cookie: poCookie,
           ...SAME_ORIGIN_HEADERS,
         },
         payload: {
-          baseActiveVersionId: 'gcfg_v2',
+          baseActiveVersionId: `dcfg_${districtAId}_v1`,
           changeReason:
             'Testing with bot token 123456789:AAFlkjdsflkjsdflkjsdflkjsdflkjsdfl in text',
         },
@@ -525,14 +296,14 @@ describe('Story 5.3: Review and Activate Analysis Configuration Version Integrat
     it('rejects change reason containing OpenAI API keys', async () => {
       const activateRes = await server.inject({
         method: 'POST',
-        url: '/api/v1/ai/settings/global/activate',
+        url: `/api/v1/ai/settings/districts/${districtAId}/activate`,
         headers: {
           'content-type': 'application/json',
           cookie: poCookie,
           ...SAME_ORIGIN_HEADERS,
         },
         payload: {
-          baseActiveVersionId: 'gcfg_v2',
+          baseActiveVersionId: `dcfg_${districtAId}_v1`,
           changeReason:
             'Added key sk-proj-12345678901234567890123456789012 to configuration',
         },
@@ -546,14 +317,14 @@ describe('Story 5.3: Review and Activate Analysis Configuration Version Integrat
     it('rejects change reason shorter than 5 characters', async () => {
       const activateRes = await server.inject({
         method: 'POST',
-        url: '/api/v1/ai/settings/global/activate',
+        url: `/api/v1/ai/settings/districts/${districtAId}/activate`,
         headers: {
           'content-type': 'application/json',
           cookie: poCookie,
           ...SAME_ORIGIN_HEADERS,
         },
         payload: {
-          baseActiveVersionId: 'gcfg_v2',
+          baseActiveVersionId: `dcfg_${districtAId}_v1`,
           changeReason: 'OK',
         },
       });
@@ -565,23 +336,6 @@ describe('Story 5.3: Review and Activate Analysis Configuration Version Integrat
   });
 
   describe('Authorization Boundaries (AC 12)', () => {
-    it('rejects District Hokim from activating Global settings (403 Forbidden)', async () => {
-      const activateRes = await server.inject({
-        method: 'POST',
-        url: '/api/v1/ai/settings/global/activate',
-        headers: {
-          'content-type': 'application/json',
-          cookie: hokimCookie,
-          ...SAME_ORIGIN_HEADERS,
-        },
-        payload: {
-          baseActiveVersionId: 'gcfg_v2',
-          changeReason: 'Ҳоким глобал созламаларни ўзгартирмоқчи',
-        },
-      });
-
-      expect(activateRes.statusCode).toBe(403);
-    });
 
     it('rejects District Hokim from activating District settings (403 Forbidden)', async () => {
       const activateRes = await server.inject({
@@ -604,13 +358,13 @@ describe('Story 5.3: Review and Activate Analysis Configuration Version Integrat
     it('rejects unauthenticated requests (401 Unauthorized)', async () => {
       const activateRes = await server.inject({
         method: 'POST',
-        url: '/api/v1/ai/settings/global/activate',
+        url: `/api/v1/ai/settings/districts/${districtAId}/activate`,
         headers: {
           'content-type': 'application/json',
           ...SAME_ORIGIN_HEADERS,
         },
         payload: {
-          baseActiveVersionId: 'gcfg_v2',
+          baseActiveVersionId: `dcfg_${districtAId}_v2`,
           changeReason: 'Авторизациясиз фаоллаштириш',
         },
       });
@@ -640,24 +394,18 @@ describe('Story 5.3: Review and Activate Analysis Configuration Version Integrat
         },
       });
 
-      // 2. Perform a new Global settings activation
+      // 2. Perform a new District settings activation
       await server.inject({
         method: 'POST',
-        url: '/api/v1/ai/settings/global/draft',
+        url: `/api/v1/ai/settings/districts/${districtAId}/draft`,
         headers: {
           'content-type': 'application/json',
           cookie: poCookie,
           ...SAME_ORIGIN_HEADERS,
         },
         payload: {
-          modelProvider: 'OPENAI',
-          modelId: 'gpt-4o',
-          temperature: 0.2,
-          maxOutputTokens: 800,
-          relevanceSystemPrompt: 'Brand new prompt for future operations.',
-          topicMatchingSystemPrompt: 'Brand new matching prompt.',
-          topicProjectionSystemPrompt: 'Brand new projection prompt.',
-          globalServiceVocabulary: [
+          hokimRecognitionTerms: ['Ҳоким', 'Янги ҳоким'],
+          localVocabularyAdditions: [
             { term: 'Янги сув', category: 'Сув таъминоти' },
           ],
         },
@@ -665,14 +413,19 @@ describe('Story 5.3: Review and Activate Analysis Configuration Version Integrat
 
       const [currentActive] = await db
         .select()
-        .from(globalAnalysisSettingsVersions)
-        .where(eq(globalAnalysisSettingsVersions.isActive, true))
-        .orderBy(desc(globalAnalysisSettingsVersions.version))
+        .from(districtAnalysisSettingsVersions)
+        .where(
+          and(
+            eq(districtAnalysisSettingsVersions.districtId, districtAId),
+            eq(districtAnalysisSettingsVersions.isActive, true),
+          ),
+        )
+        .orderBy(desc(districtAnalysisSettingsVersions.version))
         .limit(1);
 
       const activateRes = await server.inject({
         method: 'POST',
-        url: '/api/v1/ai/settings/global/activate',
+        url: `/api/v1/ai/settings/districts/${districtAId}/activate`,
         headers: {
           'content-type': 'application/json',
           cookie: poCookie,
