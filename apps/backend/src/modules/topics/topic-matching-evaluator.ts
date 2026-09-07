@@ -153,6 +153,8 @@ PART I: CORE CLUSTERING & DOMAIN INVARIANTS
    - The candidate is an isolated, subjectless conversational fragment without a clear link to any active topic; OR
    - The candidate is an operational vehicle tracking inquiry ("musor mashina qaysi ko'chada?"), routine schedule/ETA check without failure, or standalone contact lookup without an active disruption report. Such messages MUST NOT seed new topics nor attach to existing topics; OR
    - The candidate discusses private domestic errands, handyman/craftsman hire ("santexnik kerak", "usta kerak"), private house construction/renovation, scrap recycling ("bakalashka oladigan nomeri"), or private transport/debris hauling ("remont chiqindisiga muravey bormi"). Such messages MUST NOT be merged into active municipal topics nor seed new topics.
+   - MINIMAL BIPARTITE DISRUPTION REPORTS MUST NEVER BE UNASSIGNABLE_VAGUE:
+     A message asserting a minimal bipartite civic disruption ([utility subject] + [failure/non-arrival predicate], e.g. "suv kemadiku", "suv kelmadi", "gaz yo'q", "svet o'chdi") possesses a clear qualifying municipal lane. Because communal utility networks in a mahalla are location-agnostic, it MUST be assigned to MATCH_EXISTING_TOPIC (if an active topic in that lane exists) or NEW_TOPIC (if seeding the first topic of the day). It is STRICTLY FORBIDDEN to designate minimal bipartite disruption messages as UNASSIGNABLE_VAGUE!
    - Format: "decision": "UNASSIGNABLE_VAGUE", "matched_topic_id": null, "primary_lane": null.
 
 ### 3. DOMAIN BOUNDARIES & HOKIM_RELATED CAUSAL CONSOLIDATION
@@ -170,7 +172,7 @@ PART I: CORE CLUSTERING & DOMAIN INVARIANTS
 1. Same-Day Community-Wide Outage Consolidation (Location-Agnostic):
    - For public utilities (GAS, ELECTRICITY, WATER, WASTE), all reports of supply cuts, outages, pressure drops, voltage instability, or missed municipal collection in the same lane MUST merge into the active general lane topic (MATCH_EXISTING_TOPIC).
    - This applies REGARDLESS of whether different residents name Street A, Street B, or no address at all.
-   - Same-day inquiries ("suv keldimi?", "bugun gaz keladimi?", "chiroq yondimi?", "svet bo'ladimi?"), sarcastic/rhetorical reports ("gazni bayramga berishadimi?"), recurrences ("yana o'chdi"), or restoration reports belong to this ongoing general topic, even after several hours of silence.
+   - Same-day inquiries ("suv keldimi?", "bugun gaz keladimi?", "chiroq yondimi?", "svet bo'ladimi?"), negative delivery reports ("suv kemadiku", "suv kelmadi", "gaz kemapti"), sarcastic/rhetorical reports ("gazni bayramga berishadimi?"), recurrences ("yana o'chdi"), or restoration reports belong to this ongoing general topic, even after several hours of silence.
 2. Acute Physical Point Hazards vs. General Supply Outages:
    - A distinct acute physical hazard (e.g. central pipe rupture flooding a street, overflowing sewage manhole, sparking/exploding transformer, downed power lines) represents an immediate emergency hazard with an incompatible failure predicate from general quiet supply outages.
    - Such acute physical hazards seed a separate NEW_TOPIC if one does not already exist for that localized emergency.
@@ -186,6 +188,7 @@ These empirical rules capture real-world communication patterns in neighborhood 
 
 ### 5. CRITICAL DISTINCTION (MUNICIPAL PERSONNEL & TARIFF GRIEVANCES VS. PRIVATE HANDYMEN)
 - Mentions of municipal utility workers or question particles ("suvchi", "gazchi", "svetchi", "musorchi"), utility payment complaints ("pulini to'layotgan bo'lsak, xohlagan payti bor xohlasa yo'q", "pul tulamasogam mayli tekin disek pulini tulekkan busek"), or dialectal desiccation ("qurib yotibdi", "uyam qurib yotadimi") represent PUBLIC MUNICIPAL SIGNALS, NEVER private handyman errands.
+- Minimal bipartite delivery failure reports ("suv kemadiku", "suv kelmadi", "gaz kemapti", "svet o'chdi", "musor kelmadi") with or without modal particles represent communal supply failures.
 - They MUST be assigned to their qualifying lane (MATCH_EXISTING_TOPIC or NEW_TOPIC), NEVER designated as UNASSIGNABLE_VAGUE.
 - Contrast with genuine private requests: "santexnik kerak", "usta kerak", "boyler tuzatadigan odam bormi" -> private errands that are UNASSIGNABLE_VAGUE.
 
@@ -195,7 +198,7 @@ These empirical rules capture real-world communication patterns in neighborhood 
 - MUST strictly be chosen from the candidate's upstream Relevant Lanes.
 
 ### 7. CULTURAL EXPRESSIONS, RHETORICAL QUESTIONS & BURST SPLITS IN CLUSTERING
-- Rhetorical questions ("chiroq ko'ramizmi o'zi bugun?", "gaz bayramgami?") and multi-message bursts (e.g. Message 1: "suvchi", Message 2: "uyam qurib yotoradimi endi") that passed upstream semantic relevance represent communal outages in that lane.
+- Rhetorical questions ("chiroq ko'ramizmi o'zi bugun?", "gaz bayramgami?"), negative delivery statements ("suv kemadiku", "gaz kemapti"), and multi-message bursts (e.g. Message 1: "suvchi", Message 2: "uyam qurib yotoradimi endi") that passed upstream semantic relevance represent communal outages in that lane.
 - In clustering, these messages consolidate into the active same-day communal Topic for that lane (MATCH_EXISTING_TOPIC) or seed the first communal topic (NEW_TOPIC).
 - Do NOT isolate them as UNASSIGNABLE_VAGUE when they reflect the ongoing communal outage.
 

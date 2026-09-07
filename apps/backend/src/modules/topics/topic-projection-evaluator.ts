@@ -136,8 +136,8 @@ PART I: CORE PROJECTION PRINCIPLES & GUARDRAILS
   - A Topic Card is an alert to the District Hokim and municipal departments about a real-world citizen problem. Stating that "a request was received" or "information is being gathered about stability" completely obscures the citizen's actual suffering. State the core failure or grievance directly.
 
 - CANONICAL HIGH-LEVEL OUTAGE & GRIEVANCE TEMPLATES BY LANE:
-  - For communal supply/service disruptions, ALWAYS use clean, high-level canonical summaries without street prefixes:
-    - WATER (Supply Outage / Low Pressure): "Сув таъминотида узилиш ёки босим пастлиги хабар қилинмоқда."
+  - For communal supply/service disruptions (including inquiries and negative delivery reports like "suv kemadiku", "suv kelmadi", "gaz kemapti", "svet o'chdi"), ALWAYS use clean, high-level canonical summaries without street prefixes:
+    - WATER (Supply Outage / Non-arrival / Low Pressure): "Сув таъминотида узилиш ёки босим пастлиги хабар қилинмоқда."
     - ELECTRICITY (Blackout): "Электр таъминотида узилиш юз бергани хабар қилинмоқда." (low voltage: "Электр кучланиши (вольтаж) пастлиги хабар қилинмоқда.")
     - GAS: "Газ таъминотида узилиш ёки босим пастлиги хабар қилинмоқда."
     - WASTE: "Чиқиндилар олиб кетилмагани хабар қилинмоқда."
@@ -183,7 +183,9 @@ PART I: CORE PROJECTION PRINCIPLES & GUARDRAILS
 
 ### 4. ANCHOR SELECTION & AUTHORITATIVE QUOTE (FOUNDATIONAL GENESIS & SELF-CONTAINED PRINCIPLE)
 - The Anchor Evidence MUST be the foundational citizen report that established the Topic card, or the earliest self-contained report describing the disruption.
-- CRITICAL (SELF-CONTAINED QUOTE RULE): If the earliest evidence item (e.g. Evidence #1) is an uninformative fragment or split burst part without a clear subject/service (e.g. "qachon keladi", "bizda ham", "yana o'chdi"), you MUST NOT select that vague fragment as the anchor quote. Instead, select the earliest evidence item that contains the actual self-contained description of the disruption (e.g. "suv", "svet o'chdi", "gaz bosimi past") or quote the meaningful description of the issue.
+- CRITICAL (SELF-CONTAINED QUOTE RULE):
+  - Minimal bipartite failure reports (e.g. "suv kemadiku", "suv kelmadi", "gaz yo'q", "svet o'chdi") contain both a qualified utility subject and failure predicate. They are fully self-contained meaningful descriptions and MUST be selected as anchor evidence when earliest.
+  - If the earliest evidence item (e.g. Evidence #1) is an uninformative fragment or split burst part without a clear subject/service (e.g. "qachon keladi", "bizda ham", "yana o'chdi"), you MUST NOT select that vague fragment as the anchor quote. Instead, select the earliest evidence item that contains the actual self-contained description of the disruption (e.g. "suv kemadiku", "svet o'chdi", "gaz bosimi past") or quote the meaningful description of the issue.
 - Subsequent follow-up messages (e.g. confirmations, emotional reactions, cynical chatter like "kemasa kereya xaloyiq", "bizda ham") are supporting timeline evidence and MUST NOT replace the meaningful disruption report as the anchor.
 - "anchor_evidence_id" MUST strictly match the exact ID of that chosen evidence item.
 - "anchor_quote" MUST be the exact verbatim excerpt from that chosen evidence item.

@@ -1847,8 +1847,244 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
           expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('PREDICATE DOMINANCE & TARIFF/INTERMITTENCY DISSATISFACTION');
           expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('UZBEK LINGUISTIC HOMONYM & DIALECT DISAMBIGUATION CONTRACT');
           expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('MULTI-MESSAGE SYNTACTIC SPLITTING INVARIANT');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('SYNTACTIC BIPARTITE PROPOSITION CONTRACT');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('kemadi');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('-ku');
           expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('qurimoq');
           expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('suvchi');
+        });
+      });
+
+      describe('Syntactic Bipartite Proposition Contract & Verbal Contractions', () => {
+        it('qualifies minimal bipartite report "suv kemadiku" under WATER (subject + negative arrival predicate)', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['WATER'],
+            exclusion_reason: null,
+            accepted_message_ids: ['9901'],
+            reasoning: 'Minimal bipartite proposition asserting water utility delivery failure with emphatic particle',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'suv kemadiku',
+            telegramMessageId: '9901',
+            originalTimestamp: '2026-09-07T12:00:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['WATER']);
+          expect(result.data.exclusion_reason).toBeNull();
+          expect(result.data.accepted_message_ids).toEqual(['9901']);
+        });
+
+        it('qualifies verbal contraction "gaz kemapti" under GAS (/l/ elision in kelmapti)', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['GAS'],
+            exclusion_reason: null,
+            accepted_message_ids: ['9902'],
+            reasoning: 'Verbal contraction kemapti (kelmapti) asserts gas failure',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'gaz kemapti',
+            telegramMessageId: '9902',
+            originalTimestamp: '2026-09-07T12:05:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['GAS']);
+          expect(result.data.exclusion_reason).toBeNull();
+        });
+
+        it('qualifies verbal contraction "svet bo\'mayapti" under ELECTRICITY (bo\'lmayapti contraction)', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['ELECTRICITY'],
+            exclusion_reason: null,
+            accepted_message_ids: ['9903'],
+            reasoning: 'Verbal contraction bo\'mayapti asserts electricity outage',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: "svet bo'mayapti",
+            telegramMessageId: '9903',
+            originalTimestamp: '2026-09-07T12:10:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['ELECTRICITY']);
+          expect(result.data.exclusion_reason).toBeNull();
+        });
+
+        it('qualifies verbal contraction "suv kegani yo\'q" under WATER (kelgani yo\'q contraction)', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['WATER'],
+            exclusion_reason: null,
+            accepted_message_ids: ['9904'],
+            reasoning: 'Verbal contraction kegani yo\'q asserts water failure',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: "suv kegani yo'q",
+            telegramMessageId: '9904',
+            originalTimestamp: '2026-09-07T12:15:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['WATER']);
+          expect(result.data.exclusion_reason).toBeNull();
+        });
+
+        it('qualifies enclitic particle variations "suv yo\'qda" and "gaz o\'chdiya"', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['WATER'],
+            exclusion_reason: null,
+            accepted_message_ids: ['9905'],
+            reasoning: 'Enclitic particle -da with outage statement',
+          });
+
+          const res1 = await evaluator.evaluateRelevance({
+            candidateText: "suv yo'qda",
+            telegramMessageId: '9905',
+            originalTimestamp: '2026-09-07T12:20:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+          expect(res1.data.is_relevant).toBe(true);
+          expect(res1.data.relevant_lanes).toEqual(['WATER']);
+
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['GAS'],
+            exclusion_reason: null,
+            accepted_message_ids: ['9906'],
+            reasoning: 'Enclitic particle -ya with outage statement',
+          });
+
+          const res2 = await evaluator.evaluateRelevance({
+            candidateText: "gaz o'chdiya",
+            telegramMessageId: '9906',
+            originalTimestamp: '2026-09-07T12:25:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+          expect(res2.data.is_relevant).toBe(true);
+          expect(res2.data.relevant_lanes).toEqual(['GAS']);
+        });
+
+        it('excludes subjectless fragment "kemadiku" alone as UNRESOLVED_AMBIGUOUS_FRAGMENT', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'UNRESOLVED_AMBIGUOUS_FRAGMENT',
+            accepted_message_ids: [],
+            reasoning: 'Missing municipal subject without prior reply or burst context',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'kemadiku',
+            telegramMessageId: '9907',
+            originalTimestamp: '2026-09-07T12:30:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(false);
+          expect(result.data.exclusion_reason).toBe('UNRESOLVED_AMBIGUOUS_FRAGMENT');
+        });
+
+        it('excludes speculative future query "ertaga suv kemaydimi?" as SPECULATION_OR_RUMOR', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'SPECULATION_OR_RUMOR',
+            accepted_message_ids: [],
+            reasoning: 'Future speculative inquiry about hypothetical shutoff',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'ertaga suv kemaydimi?',
+            telegramMessageId: '9908',
+            originalTimestamp: '2026-09-07T12:35:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(false);
+          expect(result.data.exclusion_reason).toBe('SPECULATION_OR_RUMOR');
+        });
+
+        it('excludes private appliance issue "boylerga suv kemayapti" as ADVERTISEMENT_OR_SPAM', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'ADVERTISEMENT_OR_SPAM',
+            accepted_message_ids: [],
+            reasoning: 'Private appliance malfunction rather than public distribution network failure',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'boylerga suv kemayapti',
+            telegramMessageId: '9909',
+            originalTimestamp: '2026-09-07T12:40:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(false);
+          expect(result.data.exclusion_reason).toBe('ADVERTISEMENT_OR_SPAM');
+        });
+
+        it('excludes failure negation "svet o\'chmadi" as GENERAL_CHATTER', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'GENERAL_CHATTER',
+            accepted_message_ids: [],
+            reasoning: 'Negation of outage indicates normal operation',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: "svet o'chmadi",
+            telegramMessageId: '9910',
+            originalTimestamp: '2026-09-07T12:45:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(false);
+          expect(result.data.exclusion_reason).toBe('GENERAL_CHATTER');
         });
       });
     });

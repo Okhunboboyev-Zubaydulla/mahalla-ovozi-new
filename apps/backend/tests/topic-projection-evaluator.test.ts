@@ -1107,10 +1107,56 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
       expect(result.anchorEvidenceId).toBe('evi_water_dialect_1');
     });
 
+    it('projects canonical water outage summary and selects "suv kemadiku" as authoritative anchor quote', async () => {
+      const snapshot: MahallaDailySnapshot = {
+        districtId: 'dist_sharof_rashidov',
+        mahallaName: 'Gulbodom',
+        calendarDay: '2026-09-07',
+        contextRevision: 1,
+        snapshotFingerprint: 'sha256_water_kemadiku_proj',
+        evidence: [
+          {
+            id: 'evi_water_kemadiku_1',
+            topicId: 'top_water_kemadiku_1',
+            telegramMessageId: '9930',
+            originalTimestamp: '2026-09-07T08:00:00.000Z',
+            verbatimText: 'suv kemadiku',
+            lane: 'WATER',
+          },
+        ],
+      };
+
+      const mockGateway = createMockAiGateway({
+        summary: 'Сув таъминотида узилиш ёки босим пастлиги хабар қилинмоқда.',
+        lanes: ['WATER'],
+        anchor_evidence_id: 'evi_water_kemadiku_1',
+        anchor_quote: 'suv kemadiku',
+        latest_meaningful_activity_timestamp: '2026-09-07T08:00:00.000Z',
+        attribution: 'Маҳалла фуқароси',
+        is_hokim_related: false,
+      });
+
+      const evaluator = new TopicProjectionEvaluator(mockGateway);
+      const result = await evaluator.evaluateTopicProjection({
+        topicId: 'top_water_kemadiku_1',
+        primaryLane: 'WATER',
+        generation: 1,
+        snapshot,
+        profileId: 'prof_proj_2026_08_v1',
+      });
+
+      expect(result.summary).toBe('Сув таъминотида узилиш ёки босим пастлиги хабар қилинмоқда.');
+      expect(result.lanes).toEqual(['WATER']);
+      expect(result.anchorEvidenceId).toBe('evi_water_kemadiku_1');
+      expect(result.anchorQuote).toBe('suv kemadiku');
+      expect(isUzbekCyrillic(result.summary)).toBe(true);
+    });
+
     it('verifies TOPIC_PROJECTION_SYSTEM_PROMPT contains two-tier architecture (Core Invariants and Empirical Learnings)', () => {
       expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('PART I: CORE PROJECTION PRINCIPLES & GUARDRAILS');
       expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('PART II: EMPIRICAL TELEGRAM FIELD LEARNINGS & DIALECT TRANSLATION KEYS');
       expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('UZBEK DIALECT HOMONYM & TARIFF/INTERMITTENCY DISAMBIGUATION');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('suv kemadiku');
       expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('qurimoq');
       expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('уй қурилиши');
     });

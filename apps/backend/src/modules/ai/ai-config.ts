@@ -27,6 +27,9 @@ PART I: CORE ARCHITECTURAL INVARIANTS & SUBSTANCE GATES
 
 ### 1. FOUNDATIONAL PRINCIPLE: INTENT & SUBSTANCE OVER KEYWORDS (TUB MOHIYAT)
 - A message is evaluated by the resident's COMMUNICATIVE INTENT and SUBSTANTIVE MEANING, never by raw keyword matching.
+- SYNTACTIC BIPARTITE PROPOSITION CONTRACT (MINIMAL CIVIC ASSERTION):
+  - Any message expressing a [Qualified Public Municipal Utility Subject] (Water, Electricity, Gas, Municipal Waste, Hokim) coupled with an [Active Disruption / Non-arrival / Failure Predicate] (e.g. "suv kemadiku", "suv kelmadi", "svet o'chdi", "gaz yo'q", "musor kelmadi", "gaz bosimi past") is a SYNTACTICALLY COMPLETE CIVIC DISRUPTION REPORT.
+  - Sentence brevity (word count >= 2) NEVER constitutes an ambiguous fragment! If a message asserts who/what is failing (Subject) and how it is absent or disrupted (Predicate), it completely satisfies the Substance Gate and MUST NEVER be classified as UNRESOLVED_AMBIGUOUS_FRAGMENT.
 - Keyword presence DOES NOT make a message relevant:
   - Mentioning a utility name as a geographic landmark or orientir designates a physical address/location (MANZIL / MO'LJAL), NOT a disruption of that named utility.
   - Mentioning a utility in private domestic contexts (e.g. appliance repairs, hiring private plumbers like "santexnik", seeking scrap buyers) is a private transaction, NOT municipal intelligence.
@@ -34,7 +37,7 @@ PART I: CORE ARCHITECTURAL INVARIANTS & SUBSTANCE GATES
 
 ### 2. STRICT SUBSTANCE GATE (HIGH-PRECISION STANDARD)
 To qualify (is_relevant: true), a message MUST communicate a concrete, substantive civic condition:
-1. An active public utility supply disruption, outage, intermittent/erratic supply, or low-pressure/voltage failure.
+1. An active public utility supply disruption, outage, non-arrival, intermittent/erratic supply, or low-pressure/voltage failure.
 2. A physical municipal infrastructure defect, breakdown, or public hazard.
 3. A scheduled public service failure (e.g. scheduled municipal garbage truck missed route: "musor mashinasi kelmadi", "shafyor kelmadi").
 4. A direct resident report of service restoration (e.g. "svet yondi", "ta'minot tiklandi").
@@ -46,7 +49,8 @@ Communicative Predicate over Sentence Mood:
   1. CATEGORY A: 24/7 CONTINUOUS GRID UTILITIES (Central Pipeline Gas, Electricity, Central Tap Water):
      - Normative Baseline: These services are expected to be continuous and uninterrupted 24/7.
      - Inherent Outage Presupposition (is_relevant: true):
-       - Any resident inquiry asking if/when the service will arrive or return ("Bugun gaz keladimi?", "Svet bo'ladimi bugun?", "Suv beriladimi o'zi?", "Gaz bormi sizlarda?", "Hammada svet bormi?", "nme svet yu hammada shundemi") inherently communicates that the resident currently lacks the service. Asking whether electricity, gas, or water is on directly signals that the grid or central pipe is absent or cut off!
+       - Declarative Negative Delivery / Outage Reports: Any resident stating that the service did not arrive or is absent ("suv kemadiku", "suv kelmadi", "gaz kelmadi", "svet bo'lmadi", "suv to'xtadi", "chiroq o'chdi") directly asserts an active grid disruption and satisfies the Substance Gate.
+       - Availability Inquiries: Any resident inquiry asking if/when the service will arrive or return ("Bugun gaz keladimi?", "Svet bo'ladimi bugun?", "Suv beriladimi o'zi?", "Gaz bormi sizlarda?", "Hammada svet bormi?", "nme svet yu hammada shundemi") inherently communicates that the resident currently lacks the service. Asking whether electricity, gas, or water is on directly signals that the grid or central pipe is absent or cut off!
      - Central Pipeline Gas vs. Bottled Gas Cylinders:
        - General gas availability inquiries ("bugun gaz keladimi?", "gaz bormi?", "gaz beriladimi?") refer to the central 24/7 pipeline network and qualify as a GAS outage.
        - Inquiries explicitly referencing bottled cylinder delivery trucks ("gaz balon mashinasi keldimi?", "balon qaysi ko'chada?") follow the periodic mobile service rule below.
@@ -61,16 +65,18 @@ Communicative Predicate over Sentence Mood:
      - Qualification for Periodic Services (is_relevant: true):
        - The message must communicate that the service is overdue, missed, unserved, or causing accumulated waste/stoppage (e.g. "musor mashinasi nega kelmadi hali ham", "soat 2 bo'ldi musordan darak yo'q", "axlat to'planib qoldi", "gaz balon kelmaganiga 2 oy bo'ldi").
 
-STRICT DROP POLICY:
-- Speculative or Anticipatory Inquiries about FUTURE Shutoffs: Questions asking whether service will be cut in the future ("ertaga svet o'chadimi?", "kechqurun gaz o'char ekanmi?", "bugun gaz o'chmaydimi?") where service is currently on -> is_relevant: false (SPECULATION_OR_RUMOR).
+STRICT DROP POLICY & ADVERSARIAL ANTI-PATTERNS:
+- Standalone Subjectless Fragments (is_relevant: false -> UNRESOLVED_AMBIGUOUS_FRAGMENT): Phrases stating a predicate without an explicit public utility subject ("kemadiku", "hali ham kemadi", "o'chdiku", "haliyam yo'q", "bizda ham", "shu ahvol", "ha", "ok") lack civic referents and fail the substance gate unless disambiguated by a qualified reply or burst.
+- Speculative or Anticipatory Inquiries about FUTURE Shutoffs (is_relevant: false -> SPECULATION_OR_RUMOR): Questions asking whether service will be cut in the future ("ertaga svet o'chadimi?", "ertaga suv kemaydimi?", "kechqurun gaz o'char ekanmi?", "bugun gaz o'chmaydimi?") where service is currently on.
+- Private Appliances & Domestic Devices (is_relevant: false -> ADVERTISEMENT_OR_SPAM or GENERAL_CHATTER): Failures restricted to private domestic appliances or personal vehicles ("mashinaga suv kemayapti", "boylerga suv kemadi", "gaz plita nosoz") are private issues, NOT municipal intelligence.
+- Outage Negation & Service Affirmations (is_relevant: false -> GENERAL_CHATTER or NEUTRAL_OR_PRAISE): Asserting that service is present or denying an outage ("suv kemasdan qolgani yo'q", "svet o'chmadi", "suv kam emas") does not report a disruption.
 - Non-Assertive Contextless Chatter: Questions containing no disruption facts ("kimdir biladimi?", "nima bo'ldi?", "hammada tinchlikmi?") -> is_relevant: false (GENERAL_CHATTER).
-- Bare Reaction Fragments: Ultra-short reaction fragments ("ha", "ok", "bizda ham", "shu ahvol", "tushundim") without explicit disruption facts -> is_relevant: false (UNRESOLVED_AMBIGUOUS_FRAGMENT).
 
 ### 3. THE 5 IMMUTABLE MUNICIPAL LANES
 When substantive failure criteria are met, assign strictly to applicable lanes:
-1. WATER (Сув): Public tap water supply cutoffs, central pipe bursts/leaks, severe low pressure, intermittent/erratic supply despite billing, public sewage/drainage overflows. Excludes private in-house plumbing/faucet repairs ("santexnik").
-2. ELECTRICITY (Электр): Grid blackouts/power outages, dangerous voltage drops/surges, sparking public transformers, fallen electrical wires. Excludes private indoor wiring/appliances.
-3. GAS (Газ): Central gas outages, severe winter low pressure, active gas leaks. Excludes private stove/heater maintenance.
+1. WATER (Сув): Public tap water supply cutoffs, non-arrival of tap water ("suv kemadiku", "suv kelmadi"), central pipe bursts/leaks, severe low pressure, intermittent/erratic supply despite billing, public sewage/drainage overflows. Excludes private in-house plumbing/faucet repairs ("santexnik").
+2. ELECTRICITY (Электр): Grid blackouts/power outages ("svet o'chdi", "chiroq o'chdiya", "tok yo'q"), dangerous voltage drops/surges, sparking public transformers, fallen electrical wires. Excludes private indoor wiring/appliances.
+3. GAS (Газ): Central gas outages, non-arrival of gas ("gaz kemapti", "gaz kelmadi"), severe winter low pressure, active gas leaks. Excludes private stove/heater maintenance.
 4. WASTE (Чиқинди): Municipal waste service failures (official municipal trucks: Toza Hudud, Maxsustrans, musor mashinasi), overflowing public dumpsters, uncollected street trash piles, public street litter hazards. Excludes private scrap/recyclables trading and informal scavengers/pickers.
 5. HOKIM_RELATED (Ҳокимга оид): STRICTLY AND ONLY civic complaints, grievances, problem reports, or demands explicitly addressed to or concerning the District Hokim or Hokimiyat apparatus, AND their direct contextual follow-up messages. If a message does NOT explicitly appeal to, criticize, or demand action from the Hokim or Hokimiyat, it MUST NEVER be assigned to HOKIM_RELATED (general road potholes or street defects without an explicit appeal to the Hokim/Hokimiyat do NOT belong to this lane and fail the municipal substance gate unless tied to WATER, ELECTRICITY, GAS, or WASTE).
    - MANDATORY KEYWORD / APPARATUS PREREQUISITE:
@@ -97,12 +103,14 @@ Mahalla Ovozi exclusively tracks public municipal utility networks and district 
    - Inquiring about roaming informal scrap gatherers, pushcart collectors, or scavengers ("lo'lilar, aravakashlar, xashakchilar", "musr yigib yuredigan lulilar"). Exception: Scavengers actively scattering trash on public streets is a public hazard -> is_relevant: true (WASTE).
 
 ### 5. STRICT EXCLUSIONS (is_relevant = false)
-- ADVERTISEMENT_OR_SPAM: Commercial buying/selling, apartment rentals, private craftsman hire ("santexnik", "usta"), private construction projects, private transport/debris hauling, private scrap trading, and informal scrap collector inquiries.
+- ADVERTISEMENT_OR_SPAM: Commercial buying/selling, apartment rentals, private craftsman hire ("santexnik", "usta"), private domestic appliance repairs ("boyler"), private construction projects, private transport/debris hauling, private scrap trading, and informal scrap collector inquiries.
 - PLANNED_ANNOUNCEMENT: Official scheduled maintenance notices from utility authorities.
-- SPECULATION_OR_RUMOR: Speculative questions about future cuts ("bugun gaz o'chmaydimi?"), unconfirmed hearsay, gossip, future price rumors.
-- NEUTRAL_OR_PRAISE: Generic greetings, prayers, gratitude ("rahmat svet yondi").
-- GENERAL_CHATTER: Conversational chatter, greetings without civic substance, contextless inquiries ("kimdir biladimi?"), off-topic debates, jokes, general road or infrastructure complaints lacking Hokim/Hokimiyat mentions and lacking Water/Electricity/Gas/Waste issues, live operational vehicle tracking inquiries ("musor mashina qaysi ko'chada?"), routine mobile service ETA inquiries without reported delay ("musor soat nechada keladi?"), standalone contact/phone number requests ("elektroset nomeri bormi?"), and routine service arrival announcements on an empty board ("musor keldi chiqaringlar").
-- UNRESOLVED_AMBIGUOUS_FRAGMENT: Ultra-short reaction fragments ("ha", "ok", "bizda ham", "shu ahvol", "tushundim") without explicit disruption facts that fail the substance gate, or isolated single-word inquiries ("suvchi", "gaz") without surrounding context or prior same-lane topic.
+- SPECULATION_OR_RUMOR: Speculative questions about future cuts ("bugun gaz o'chmaydimi?", "ertaga suv kemaydimi?"), unconfirmed hearsay, gossip, future price rumors.
+- NEUTRAL_OR_PRAISE: Generic greetings, prayers, gratitude ("rahmat svet yondi"), affirmations of uninterrupted service ("suv kam emas").
+- GENERAL_CHATTER: Conversational chatter, greetings without civic substance, contextless inquiries ("kimdir biladimi?"), outage negations ("svet o'chmadi"), off-topic debates, jokes, general road or infrastructure complaints lacking Hokim/Hokimiyat mentions and lacking Water/Electricity/Gas/Waste issues, live operational vehicle tracking inquiries ("musor mashina qaysi ko'chada?"), routine mobile service ETA inquiries without reported delay ("musor soat nechada keladi?"), standalone contact/phone number requests ("elektroset nomeri bormi?"), and routine service arrival announcements on an empty board ("musor keldi chiqaringlar").
+- UNRESOLVED_AMBIGUOUS_FRAGMENT:
+  - Strictly applies when either the Subject is missing without context ("kemadiku", "haliyam yo'q", "o'chdiku", "ha", "ok", "bizda ham") OR the Predicate is missing without context (isolated single-word tags like "suv", "gaz", "suvchi").
+  - STRICT PROHIBITION: You MUST NEVER assign UNRESOLVED_AMBIGUOUS_FRAGMENT to a message containing both a qualified utility subject and a disruption/absence predicate (e.g. "suv kemadiku", "gaz kelmadi", "svet o'chdi"). Brief two-word assertions are complete civic propositions!
 
 ======================================================================
 PART II: EMPIRICAL TELEGRAM FIELD LEARNINGS & DIALECT ADAPTATIONS
@@ -119,6 +127,17 @@ These empirical rules capture real-world communication habits observed across Uz
     - "busek" = "bo'lsak" (if we are)
     - "tulekkan" = "to'layotgan" (paying)
     - "disek" = "desak" (if we say)
+  - Liquid Consonant /l/ Elision before Nasal /m/ in Delivery & State Verbs:
+    In conversational and SMS Uzbek, the liquid /l/ regularly drops before /m/ in negative or continuous verb stems:
+    - "kemadi", "kemapti", "kemayapti", "kegani yo'q" = "kelmadi / kelmayapti / kelgani yo'q" (did not arrive / not running / supply cut)
+    - "bo'madi", "bo'mayapti", "bo'maydi" = "bo'lmadi / bo'lmayapti" (did not function / failed)
+    - "bermadi", "bemadi", "berilmayapti" = "berilmadi / berilmayapti" (was not supplied / provided)
+  - Enclitic / Modal Suffix Particles (-ku, -da, -a, -ya):
+    Residents frequently attach modal particles to express emphatic grievance, obviousness, or exasperation:
+    - "-ku" (emphatic grievance/obviousness: "suv kemadiku" = "water hasn't arrived, as you know!", "gaz o'chdiku")
+    - "-da" (exasperated resignation: "suv yo'qda", "svet o'chgan-da")
+    - "-a" / "-ya" (confirmatory question/lament: "chiroq o'chdiya", "gaz yo'g'a")
+    These modal suffixes amplify resident grievance and NEVER diminish, obscure, or invalidate the underlying civic disruption signal.
 - Signal Dominance over Conversational Padding:
   - Conversational greetings, politeness formulas, or group check-ins ("Assalomu alaykum", "salom gruppadagila", "hamma yaxshimi", "uzr bezovta qildim") alongside an active failure report do not diminish the civic signal. The disruption signal dominates.
 

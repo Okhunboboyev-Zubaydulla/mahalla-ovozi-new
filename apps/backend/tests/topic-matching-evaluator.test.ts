@@ -1269,10 +1269,88 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
         expect(result.data.primary_lane).toBe('WATER');
       });
 
+      it('seeds NEW_TOPIC under WATER for minimal bipartite disruption report "suv kemadiku" when no active topic exists', async () => {
+        const emptySnapshot: MahallaDailySnapshot = {
+          districtId: 'dist_sharof_rashidov',
+          mahallaName: 'Gulbodom',
+          calendarDay: '2026-09-07',
+          contextRevision: 0,
+          snapshotFingerprint: 'sha256_empty_v1',
+          evidence: [],
+        };
+
+        mockAdapter.setNextResponse({
+          decision: 'NEW_TOPIC',
+          matched_topic_id: null,
+          primary_lane: 'WATER',
+          reasoning: 'Minimal bipartite proposition reporting water non-arrival seeds new communal water topic',
+        });
+
+        const result = await evaluator.evaluateTopicAssignment({
+          candidateText: 'suv kemadiku',
+          telegramMessageId: '9920',
+          originalTimestamp: '2026-09-07T08:00:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          relevantLanes: ['WATER'],
+          snapshot: emptySnapshot,
+          profileId: 'prof_match_2026_08_v1',
+        });
+
+        expect(result.data.decision).toBe('NEW_TOPIC');
+        expect(result.data.matched_topic_id).toBeNull();
+        expect(result.data.primary_lane).toBe('WATER');
+      });
+
+      it('merges "suv kemadiku" into active communal water topic (MATCH_EXISTING_TOPIC, never UNASSIGNABLE_VAGUE)', async () => {
+        const activeWaterSnapshot: MahallaDailySnapshot = {
+          districtId: 'dist_sharof_rashidov',
+          mahallaName: 'Gulbodom',
+          calendarDay: '2026-09-07',
+          contextRevision: 1,
+          snapshotFingerprint: 'sha256_water_active_1',
+          evidence: [
+            {
+              id: 'evi_water_1',
+              topicId: 'top_water_communal_1',
+              telegramMessageId: '9919',
+              originalTimestamp: '2026-09-07T07:30:00.000Z',
+              verbatimText: "Ertalabdan beri suv yo'q",
+              lane: 'WATER',
+              topicSummary: 'Сув таъминотида узилиш ёки босим пастлиги хабар қилинмоқда.',
+            },
+          ],
+        };
+
+        mockAdapter.setNextResponse({
+          decision: 'MATCH_EXISTING_TOPIC',
+          matched_topic_id: 'top_water_communal_1',
+          primary_lane: null,
+          reasoning: 'Minimal bipartite failure report joins the active communal water outage topic',
+        });
+
+        const result = await evaluator.evaluateTopicAssignment({
+          candidateText: 'suv kemadiku',
+          telegramMessageId: '9921',
+          originalTimestamp: '2026-09-07T08:15:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          relevantLanes: ['WATER'],
+          snapshot: activeWaterSnapshot,
+          profileId: 'prof_match_2026_08_v1',
+        });
+
+        expect(result.data.decision).toBe('MATCH_EXISTING_TOPIC');
+        expect(result.data.matched_topic_id).toBe('top_water_communal_1');
+        expect(result.data.primary_lane).toBeNull();
+      });
+
       it('verifies TOPIC_MATCHING_SYSTEM_PROMPT contains two-tier architecture (Core Invariants and Empirical Learnings)', () => {
         expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('PART I: CORE CLUSTERING & DOMAIN INVARIANTS');
         expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('PART II: EMPIRICAL TELEGRAM FIELD LEARNINGS & DISAMBIGUATION KEYS');
         expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('CRITICAL DISTINCTION (MUNICIPAL PERSONNEL & TARIFF GRIEVANCES VS. PRIVATE HANDYMEN)');
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('MINIMAL BIPARTITE DISRUPTION REPORTS MUST NEVER BE UNASSIGNABLE_VAGUE');
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('suv kemadiku');
         expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('suvchi');
       });
     });
