@@ -139,10 +139,11 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 8,
+          flexWrap: 'wrap',
+          gap: '6px 8px',
         }}
       >
-        <Space size={6} style={{ minWidth: 0, flex: 1 }}>
+        <Space size={6} style={{ minWidth: 120, flex: '1 1 auto', overflow: 'hidden' }}>
           <EnvironmentOutlined style={{ color: '#0284C7', fontSize: 13 }} />
           <Text
             strong
@@ -158,7 +159,7 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
           </Text>
         </Space>
 
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0, alignItems: 'center', marginLeft: 'auto' }}>
           {/* Match Badges (AC 2) */}
           {topic.searchMatchBadge === 'evidence' && (
             <Tag
@@ -203,7 +204,7 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
                 borderRadius: 4,
               }}
             >
-              Янги
+              Янги мавзу
             </Tag>
           )}
           {!topic.isNew && topic.isUpdated && (
@@ -219,7 +220,7 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
                 borderRadius: 4,
               }}
             >
-              Янгиланди
+              Янги хабар
             </Tag>
           )}
         </div>

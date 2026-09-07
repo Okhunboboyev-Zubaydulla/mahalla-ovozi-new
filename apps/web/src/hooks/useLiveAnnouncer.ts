@@ -18,13 +18,13 @@ export function useLiveAnnouncer(): LiveAnnouncerContextValue {
 
 export function formatTopicUpdateAnnouncement(newCount: number, updatedCount: number): string | null {
   if (newCount > 0 && updatedCount > 0) {
-    return `${newCount} та янги мавзу қўшилди, ${updatedCount} таси янгиланди.`;
+    return `${newCount} та янги мавзу қўшилди, ${updatedCount} та мавзуга янги хабар қўшилди.`;
   }
   if (newCount > 0) {
     return `${newCount} та янги мавзу қўшилди.`;
   }
   if (updatedCount > 0) {
-    return `${updatedCount} та мавзу янгиланди.`;
+    return `${updatedCount} та мавзуга янги хабар қўшилди.`;
   }
   return null;
 }

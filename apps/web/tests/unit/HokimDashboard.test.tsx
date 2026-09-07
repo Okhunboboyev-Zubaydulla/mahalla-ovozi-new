@@ -179,7 +179,7 @@ describe('Hokim Dashboard Component & Integration Tests (Story 3.1)', () => {
       expect(screen.getByText('Боғсарой маҳалласи')).toBeTruthy();
       expect(screen.getByText('Сув босими пасайиши кузатилмоқда.')).toBeTruthy();
       expect(screen.getByText('4')).toBeTruthy();
-      expect(screen.getByText('Янги')).toBeTruthy();
+      expect(screen.getByText('Янги мавзу')).toBeTruthy();
       expect(screen.getByText('Ҳокимга оид')).toBeTruthy();
     });
 
@@ -196,8 +196,8 @@ describe('Hokim Dashboard Component & Integration Tests (Story 3.1)', () => {
         </ConfigProvider>,
       );
 
-      expect(screen.getByText('Янгиланди')).toBeTruthy();
-      expect(screen.queryByText('Янги')).toBeNull();
+      expect(screen.getByText('Янги хабар')).toBeTruthy();
+      expect(screen.queryByText('Янги мавзу')).toBeNull();
     });
   });
 

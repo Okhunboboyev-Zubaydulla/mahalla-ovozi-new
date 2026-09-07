@@ -16,9 +16,9 @@ describe('Story 3.3: LiveRegionAnnouncer & Formatting Tests', () => {
   });
 
   it('Test 1: formatTopicUpdateAnnouncement formats atomic Uzbek Cyrillic messages correctly', () => {
-    expect(formatTopicUpdateAnnouncement(2, 1)).toBe('2 та янги мавзу қўшилди, 1 таси янгиланди.');
+    expect(formatTopicUpdateAnnouncement(2, 1)).toBe('2 та янги мавзу қўшилди, 1 та мавзуга янги хабар қўшилди.');
     expect(formatTopicUpdateAnnouncement(3, 0)).toBe('3 та янги мавзу қўшилди.');
-    expect(formatTopicUpdateAnnouncement(0, 4)).toBe('4 та мавзу янгиланди.');
+    expect(formatTopicUpdateAnnouncement(0, 4)).toBe('4 та мавзуга янги хабар қўшилди.');
     expect(formatTopicUpdateAnnouncement(0, 0)).toBeNull();
   });
 
@@ -74,6 +74,6 @@ describe('Story 3.3: LiveRegionAnnouncer & Formatting Tests', () => {
     act(() => {
       vi.advanceTimersByTime(200);
     });
-    expect(liveRegion.textContent).toBe('2 та янги мавзу қўшилди, 1 таси янгиланди.');
+    expect(liveRegion.textContent).toBe('2 та янги мавзу қўшилди, 1 та мавзуга янги хабар қўшилди.');
   });
 });
