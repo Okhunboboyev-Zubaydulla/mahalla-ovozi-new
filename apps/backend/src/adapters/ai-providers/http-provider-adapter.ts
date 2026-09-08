@@ -92,10 +92,20 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
           });
         }
         headers['x-goog-api-key'] = apiKey;
-        const thinkingBudget =
-          process.env.GEMINI_THINKING_BUDGET !== undefined
-            ? Number(process.env.GEMINI_THINKING_BUDGET)
-            : 0;
+        const thinkingBudgetEnv = process.env.GEMINI_THINKING_BUDGET;
+        const thinkingLevelEnv = process.env.GEMINI_THINKING_LEVEL;
+
+        let thinkingConfig: Record<string, any> | undefined;
+        if (thinkingBudgetEnv !== undefined) {
+          const budget = Number(thinkingBudgetEnv);
+          if (budget >= 0) thinkingConfig = { thinkingBudget: budget };
+        } else {
+          const level = thinkingLevelEnv || 'MINIMAL';
+          if (level !== 'NONE') {
+            thinkingConfig = { thinkingLevel: level };
+          }
+        }
+
         body = {
           contents: [
             {
@@ -109,7 +119,7 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
           generationConfig: {
             temperature: payload.temperature,
             maxOutputTokens: Math.max(payload.maxOutputTokens || 0, 2048),
-            ...(thinkingBudget >= 0 ? { thinkingConfig: { thinkingBudget } } : {}),
+            ...(thinkingConfig ? { thinkingConfig } : {}),
             ...payload.compiledSchema,
           },
         };
