@@ -10,6 +10,7 @@ import {
   formatEvidenceItemLine,
 } from '../ai/context-snapshot.js';
 import { AiGatewayError, type AiGatewayResult } from '../ai/types.js';
+import { computeLevenshteinDistance } from './topic-matching-resolver.js';
 
 export const QualifyingLaneEnum = QualifyingLaneSchema;
 export { type QualifyingLane };
@@ -50,6 +51,25 @@ export const TopicProjectionResultSchema = z
         .describe(
           'The evidence ID of the latest self-contained meaningful report belonging strictly to the target Topic',
         ),
+      anchor_evidence_index: z
+        .preprocess(
+          (val) =>
+            val === null ||
+            val === undefined ||
+            val === 0 ||
+            val === '0' ||
+            val === '' ||
+            val === 'null' ||
+            val === 'none' ||
+            val === 'n/a'
+              ? null
+              : typeof val === 'string'
+                ? parseInt(val, 10)
+                : val,
+          z.number().int().positive().nullable(),
+        )
+        .optional()
+        .describe('1-based index of the anchor evidence item (e.g. 1 for Evidence #1)'),
       anchor_quote: z
         .string()
         .min(1)
@@ -371,7 +391,41 @@ ${otherSections.join('\n\n')}`);
 
     // Guardrail 1: anchor_evidence_id must belong strictly to target Topic evidence
     const validEvidenceIds = new Set(targetEvidence.map((e) => e.id));
-    if (!validEvidenceIds.has(data.anchor_evidence_id)) {
+
+    let resolvedAnchorEvidence: AcceptedEvidenceItem | undefined = undefined;
+
+    // 1a. Surrogate 1-based index resolution
+    if (
+      typeof data.anchor_evidence_index === 'number' &&
+      data.anchor_evidence_index >= 1 &&
+      data.anchor_evidence_index <= targetEvidence.length
+    ) {
+      resolvedAnchorEvidence = targetEvidence[data.anchor_evidence_index - 1];
+    }
+
+    // 1b. Exact DB evidence ID match
+    if (!resolvedAnchorEvidence && data.anchor_evidence_id && validEvidenceIds.has(data.anchor_evidence_id)) {
+      resolvedAnchorEvidence = targetEvidence.find((e) => e.id === data.anchor_evidence_id);
+    }
+
+    // 1c. Defensive typo recovery (Levenshtein distance <= 4 on candidate evidence IDs)
+    if (!resolvedAnchorEvidence && data.anchor_evidence_id) {
+      let bestMatch: AcceptedEvidenceItem | null = null;
+      let minDistance = Infinity;
+      for (const item of targetEvidence) {
+        const dist = computeLevenshteinDistance(item.id, data.anchor_evidence_id);
+        if (dist < minDistance) {
+          minDistance = dist;
+          bestMatch = item;
+        }
+      }
+
+      if (bestMatch && minDistance <= 4) {
+        resolvedAnchorEvidence = bestMatch;
+      }
+    }
+
+    if (!resolvedAnchorEvidence) {
       throw new AiGatewayError(
         'INVALID_OUTPUT_SEMANTICS',
         `anchor_evidence_id "${data.anchor_evidence_id}" does not belong to target topic ${input.topicId}`,
@@ -392,7 +446,16 @@ ${otherSections.join('\n\n')}`);
         `latest_meaningful_activity_timestamp "${data.latest_meaningful_activity_timestamp}" is not a valid ISO-8601 date string`,
       );
     }
-    const resultTimestampIso = parsedDate.toISOString();
+    let resultTimestampIso = parsedDate.toISOString();
+
+    if (!validTimestamps.has(resultTimestampIso)) {
+      if (resolvedAnchorEvidence && targetEvidence.length === 1) {
+        const fallbackDate = new Date(resolvedAnchorEvidence.originalTimestamp);
+        if (!isNaN(fallbackDate.getTime())) {
+          resultTimestampIso = fallbackDate.toISOString();
+        }
+      }
+    }
 
     if (!validTimestamps.has(resultTimestampIso)) {
       throw new AiGatewayError(
@@ -444,7 +507,7 @@ ${otherSections.join('\n\n')}`);
       summary: data.summary,
       lanes: data.lanes,
       primaryLane: input.primaryLane,
-      anchorEvidenceId: data.anchor_evidence_id,
+      anchorEvidenceId: resolvedAnchorEvidence.id,
       anchorQuote: data.anchor_quote,
       latestMeaningfulActivityTimestamp: resultTimestampIso,
       attribution: data.attribution,

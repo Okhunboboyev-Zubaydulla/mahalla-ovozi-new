@@ -32,6 +32,37 @@ export const TopicMatchingResultSchema = z.preprocess(
     if (typeof copy.reasoning === 'string' && copy.reasoning.length > 300) {
       copy.reasoning = copy.reasoning.slice(0, 300);
     }
+
+    // Coerce 0, "0", null, negative numbers or non-positive indices to null
+    if (
+      copy.matched_topic_index === 0 ||
+      copy.matched_topic_index === '0' ||
+      copy.matched_topic_index === null ||
+      copy.matched_topic_index === undefined
+    ) {
+      copy.matched_topic_index = null;
+    } else if (typeof copy.matched_topic_index === 'string' && /^-?\d+$/.test(copy.matched_topic_index)) {
+      const parsed = parseInt(copy.matched_topic_index, 10);
+      copy.matched_topic_index = parsed > 0 ? parsed : null;
+    } else if (typeof copy.matched_topic_index === 'number') {
+      if (copy.matched_topic_index <= 0) {
+        copy.matched_topic_index = null;
+      }
+    }
+
+    // Coerce empty strings, "null", "none", "n/a" for matched_topic_id to null
+    if (typeof copy.matched_topic_id === 'string') {
+      const trimmed = copy.matched_topic_id.trim();
+      if (
+        trimmed === '' ||
+        trimmed.toLowerCase() === 'null' ||
+        trimmed.toLowerCase() === 'none' ||
+        trimmed.toLowerCase() === 'n/a'
+      ) {
+        copy.matched_topic_id = null;
+      }
+    }
+
     return copy;
   },
   z
@@ -42,8 +73,18 @@ export const TopicMatchingResultSchema = z.preprocess(
       matched_topic_id: z
         .string()
         .nullable()
+        .optional()
         .describe(
           'Canonical topic ID (e.g. top_...) if decision is MATCH_EXISTING_TOPIC, otherwise null',
+        ),
+      matched_topic_index: z
+        .number()
+        .int()
+        .positive()
+        .nullable()
+        .optional()
+        .describe(
+          '1-based index of matched topic from the prompt list (e.g. 1, 2) if decision is MATCH_EXISTING_TOPIC, otherwise null',
         ),
       primary_lane: QualifyingLaneEnum.nullable().describe(
         'Primary municipal service or leadership lane (WATER, ELECTRICITY, GAS, WASTE, HOKIM_RELATED) if decision is NEW_TOPIC, otherwise null',
@@ -56,23 +97,25 @@ export const TopicMatchingResultSchema = z.preprocess(
     .refine(
       (data) => {
         if (data.decision === 'MATCH_EXISTING_TOPIC') {
-          return (
-            data.matched_topic_id !== null &&
-            data.matched_topic_id.length > 0 &&
-            data.primary_lane === null
-          );
+          const hasId = typeof data.matched_topic_id === 'string' && data.matched_topic_id.trim().length > 0;
+          const hasIndex = typeof data.matched_topic_index === 'number' && data.matched_topic_index > 0;
+          return (hasId || hasIndex) && data.primary_lane === null;
         }
         if (data.decision === 'NEW_TOPIC') {
-          return data.matched_topic_id === null && data.primary_lane !== null;
+          const noId = data.matched_topic_id === null || data.matched_topic_id === undefined;
+          const noIndex = data.matched_topic_index === null || data.matched_topic_index === undefined;
+          return noId && noIndex && data.primary_lane !== null;
         }
         if (data.decision === 'UNASSIGNABLE_VAGUE') {
-          return data.matched_topic_id === null && data.primary_lane === null;
+          const noId = data.matched_topic_id === null || data.matched_topic_id === undefined;
+          const noIndex = data.matched_topic_index === null || data.matched_topic_index === undefined;
+          return noId && noIndex && data.primary_lane === null;
         }
         return false;
       },
       {
         message:
-          'Inconsistent topic matching output: MATCH_EXISTING_TOPIC requires matched_topic_id and null primary_lane; NEW_TOPIC requires null matched_topic_id and non-null primary_lane; UNASSIGNABLE_VAGUE requires null for both',
+          'Inconsistent topic matching output: MATCH_EXISTING_TOPIC requires matched_topic_id or matched_topic_index and null primary_lane; NEW_TOPIC requires null matched_topic_id/index and non-null primary_lane; UNASSIGNABLE_VAGUE requires null for both',
       },
     ),
 );
@@ -143,7 +186,7 @@ PART I: CORE CLUSTERING & DOMAIN INVARIANTS
 ### 2. DECISION TAXONOMY & STRICT CONTRACTS
 1. MATCH_EXISTING_TOPIC:
    - The candidate reports service loss, outages, pressure/voltage fluctuations, updates, inquiries, restoration reports, recurrences, or confirmations concerning the active communal outage or existing incident in this Mahalla in the same service lane.
-   - Format: "decision": "MATCH_EXISTING_TOPIC", "matched_topic_id": "<existing_topic_id>", "primary_lane": null.
+   - Format: "decision": "MATCH_EXISTING_TOPIC", "matched_topic_index": <1-based index e.g. 1>, "matched_topic_id": "<existing_topic_id>", "primary_lane": null.
 2. NEW_TOPIC:
    - The candidate seeds the first topic for this service lane in the Mahalla today; OR
    - The candidate reports an acute, distinct physical infrastructure hazard with an incompatible failure predicate (e.g. an active pipe rupture flooding a street vs dry tap water shutoff; a sparking/exploding transformer or fallen wire vs quiet grid blackout).
@@ -241,6 +284,7 @@ ${input.relevanceReasoning ? `- Relevance Reasoning: "${input.relevanceReasoning
       const topicMap = groupSnapshotByTopic(input.snapshot);
 
       const topicSections: string[] = [];
+      let topicIndex = 1;
       for (const [topicId, group] of topicMap.entries()) {
         const itemsText = group.items
           .map((it, idx) =>
@@ -258,9 +302,10 @@ ${input.relevanceReasoning ? `- Relevance Reasoning: "${input.relevanceReasoning
         const summaryDisplay = cleanSummary ? `"${cleanSummary}"` : initialExcerpt;
         const summaryLine = summaryDisplay ? `\n  Current Topic Summary: ${summaryDisplay}` : '';
 
-        topicSections.push(`- Topic ID: ${topicId} (Primary Lane: ${group.lane})${summaryLine}
+        topicSections.push(`- [Topic #${topicIndex}] ID: ${topicId} (Primary Lane: ${group.lane})${summaryLine}
   Accepted Evidence:
 ${itemsText}`);
+        topicIndex++;
       }
 
       // Identify nearest earlier message
@@ -289,7 +334,7 @@ ${topicSections.join('\n\n')}`);
     }
 
     sections.push(
-      `Evaluate the candidate message above and return the topic matching decision conforming to the schema.`,
+      `Evaluate the candidate message above and return the topic matching decision conforming to the schema. When matching an existing topic, provide its matched_topic_index (e.g. 1) or matched_topic_id.`,
     );
 
     return sections.join('\n\n');

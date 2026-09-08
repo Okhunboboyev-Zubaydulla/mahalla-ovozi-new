@@ -25,11 +25,13 @@ import {
 } from '../topic-matching-evaluator.js';
 import {
   getMahallaDailySnapshot,
+  groupSnapshotByTopic,
   verifySnapshotIntegrity,
   assertSnapshotRevision,
   StaleSnapshotRevisionError,
   type AcceptedEvidenceItem,
 } from '../../ai/context-snapshot.js';
+import { resolveTargetTopic } from '../topic-matching-resolver.js';
 import { calculateRetentionDeadline } from '../../retention/index.js';
 import { clearPendingRetryFlag } from '../../issues/retry-service.js';
 
@@ -158,10 +160,12 @@ export async function processTopicAssignmentJobs(
             let initialRevision = 0;
             let initialFingerprint = 'sha256_empty_v1';
             let matchingAiResult: any = null;
+            let orderedSnapshotTopicIds: string[] = [];
 
             if (directReplyTopicId) {
               // Direct Telegram reply takes absolute priority with zero AI calls (AC 2)
               isDirectReply = true;
+              orderedSnapshotTopicIds = [directReplyTopicId];
               matchingDecision = {
                 decision: 'MATCH_EXISTING_TOPIC',
                 matched_topic_id: directReplyTopicId,
@@ -188,6 +192,7 @@ export async function processTopicAssignmentJobs(
               );
               initialRevision = snapshot.contextRevision;
               initialFingerprint = snapshot.snapshotFingerprint;
+              orderedSnapshotTopicIds = Array.from(groupSnapshotByTopic(snapshot).keys());
 
               // Execute AI Gateway outside DB transaction (AD-5, AD-8 / AC 14)
               matchingAiResult = await topicMatchingEvaluator.evaluateTopicAssignment({
@@ -369,31 +374,90 @@ export async function processTopicAssignmentJobs(
                 candidateDate,
               );
 
+              let targetTopicId: string | null = null;
+              let targetTopicRecord: {
+                id: string;
+                latestRelevantEvidenceTimestamp: Date;
+                requiredDerivedGeneration: number;
+              } | null = null;
+
               if (matchingDecision.decision === 'MATCH_EXISTING_TOPIC') {
-                const targetTopicId = matchingDecision.matched_topic_id!;
-
-                // Fetch existing topic
-                const [existingTopic] = await tx
-                  .select()
+                const candidateTopics = await tx
+                  .select({
+                    id: topics.id,
+                    primaryLane: topics.primaryLane,
+                    status: topics.status,
+                    latestRelevantEvidenceTimestamp: topics.latestRelevantEvidenceTimestamp,
+                    requiredDerivedGeneration: topics.requiredDerivedGeneration,
+                  })
                   .from(topics)
-                  .where(eq(topics.id, targetTopicId))
-                  .limit(1);
+                  .where(
+                    and(
+                      eq(topics.districtId, districtId),
+                      eq(topics.mahallaName, mahallaName),
+                      eq(topics.calendarDay, calendarDay),
+                      eq(topics.status, 'ACTIVE'),
+                    ),
+                  );
 
-                if (!existingTopic) {
-                  throw new Error(
-                    `Topic ${targetTopicId} not found in database for MATCH_EXISTING_TOPIC`,
+                const fallbackLane =
+                  relevantLanes && relevantLanes.length > 0 && relevantLanes[0]
+                    ? relevantLanes[0]
+                    : 'HOKIM_RELATED';
+
+                const resolution = resolveTargetTopic({
+                  matchedTopicId: matchingDecision.matched_topic_id,
+                  matchedTopicIndex: matchingDecision.matched_topic_index,
+                  orderedSnapshotTopicIds,
+                  candidateTopics,
+                  effectivePrimaryLane: fallbackLane,
+                });
+
+                if (resolution.status === 'MATCHED') {
+                  targetTopicId = resolution.matchedTopic.id;
+                  targetTopicRecord = resolution.matchedTopic;
+
+                  if (resolution.method !== 'EXACT') {
+                    console.warn(
+                      JSON.stringify({
+                        event: 'TELEGRAM_TOPIC_ASSIGNMENT_MATCH_RECOVERED',
+                        recoveryMethod: resolution.method,
+                        districtId,
+                        mahallaName,
+                        calendarDay,
+                        telegramMessageId,
+                        aiReturnedTopicId: matchingDecision.matched_topic_id,
+                        aiReturnedTopicIndex: matchingDecision.matched_topic_index,
+                        recoveredTopicId: targetTopicId,
+                      }),
+                    );
+                  }
+                } else {
+                  console.warn(
+                    JSON.stringify({
+                      event: 'TELEGRAM_TOPIC_ASSIGNMENT_UNRESOLVED_FALLBACK_NEW_TOPIC',
+                      districtId,
+                      mahallaName,
+                      calendarDay,
+                      telegramMessageId,
+                      aiReturnedTopicId: matchingDecision.matched_topic_id,
+                      aiReturnedTopicIndex: matchingDecision.matched_topic_index,
+                      fallbackLane: resolution.fallbackLane,
+                    }),
                   );
                 }
+              }
 
+              if (targetTopicId && targetTopicRecord) {
                 // Arithmetic for retention & generation using latestCandidateTimestamp
                 const latestEvidenceTime = new Date(
                   Math.max(
-                    existingTopic.latestRelevantEvidenceTimestamp.getTime(),
+                    targetTopicRecord.latestRelevantEvidenceTimestamp.getTime(),
                     latestCandidateTimestamp.getTime(),
                   ),
                 );
                 const retentionExpiresAt = calculateRetentionDeadline(latestEvidenceTime);
-                const nextGeneration = existingTopic.requiredDerivedGeneration + 1;
+                const nextGeneration = targetTopicRecord.requiredDerivedGeneration + 1;
 
                 // Update Topic
                 await tx
@@ -443,8 +507,11 @@ export async function processTopicAssignmentJobs(
                   retryDelay: 5,
                   retryBackoff: true,
                 });
-              } else if (matchingDecision.decision === 'NEW_TOPIC') {
-                let effectivePrimaryLane = matchingDecision.primary_lane!;
+              } else if (matchingDecision.decision === 'NEW_TOPIC' || matchingDecision.decision === 'MATCH_EXISTING_TOPIC') {
+                let effectivePrimaryLane =
+                  matchingDecision.decision === 'NEW_TOPIC' && matchingDecision.primary_lane
+                    ? matchingDecision.primary_lane
+                    : (relevantLanes && relevantLanes.length > 0 && relevantLanes[0] ? relevantLanes[0] : 'HOKIM_RELATED');
 
                 // Programmatic Defense-in-Depth: primaryLane must align with upstream relevantLanes
                 if (
