@@ -1,0 +1,36 @@
+(mahalla_app) {
+    # 1. Mutually exclusive API reverse proxy
+    handle /api/* {
+        reverse_proxy backend:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # 2. Mutually exclusive SPA file server
+    handle {
+        root * /srv/web
+        try_files {path} /index.html
+        file_server
+    }
+
+    encode gzip zstd
+}
+
+# Domain HTTPS with automatic Let's Encrypt / ZeroSSL TLS
+mahalla-ovozi.uz, www.mahalla-ovozi.uz {
+    import mahalla_app
+}
+
+# Plain HTTP for direct VPS IP access (works immediately prior to DNS propagation)
+http://95.182.118.3 {
+    import mahalla_app
+}
+
+# Self-signed HTTPS for direct IP access (allows testing secure cookies directly on IP)
+https://95.182.118.3 {
+    tls internal
+    import mahalla_app
+}

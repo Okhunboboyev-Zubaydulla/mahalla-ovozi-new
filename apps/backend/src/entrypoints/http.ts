@@ -118,11 +118,12 @@ export async function buildHttpServer(options?: {
 
   // B11: Restrict CORS to explicitly configured APP_ORIGIN, not all origins.
   // Allowing all origins with credentials: true leaks session info to any site.
-  const allowedOrigin = process.env.APP_ORIGIN || 'http://localhost:5173';
+  const rawAllowedOrigin = process.env.APP_ORIGIN || 'http://localhost:5173';
+  const allowedOrigins = rawAllowedOrigin.split(',').map((o) => o.trim()).filter(Boolean);
   await server.register(fastifyCors, {
     origin: (origin, cb) => {
-      // Allow same-origin requests (no Origin header) and the configured origin
-      if (!origin || origin === allowedOrigin) {
+      // Allow same-origin requests (no Origin header) and configured origin(s)
+      if (!origin || allowedOrigins.includes(origin)) {
         cb(null, true);
       } else {
         // Use a typed HTTP error so the error handler returns 403, not 500
@@ -145,6 +146,7 @@ export async function buildHttpServer(options?: {
       },
       'Unhandled request error',
     );
+    console.error('[http] Unhandled request error:', error);
 
     // Zod validation error handling
     if (

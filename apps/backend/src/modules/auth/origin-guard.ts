@@ -11,8 +11,13 @@ export function isOriginAllowed(requestOrigin: string | undefined, hostHeader: s
     const originUrl = new URL(requestOrigin);
 
     if (allowedOriginEnv) {
-      const allowedUrl = new URL(allowedOriginEnv);
-      if (originUrl.host === allowedUrl.host) return true;
+      const allowedOrigins = allowedOriginEnv.split(',').map((o) => o.trim()).filter(Boolean);
+      for (const ao of allowedOrigins) {
+        try {
+          const allowedUrl = new URL(ao);
+          if (originUrl.host === allowedUrl.host) return true;
+        } catch {}
+      }
     }
 
     if (hostHeader) {

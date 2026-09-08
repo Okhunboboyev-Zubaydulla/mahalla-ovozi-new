@@ -39,11 +39,11 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
         userAgent: req.headers['user-agent'],
       });
 
-      // B4: __Host- prefixed cookies require Secure=true per RFC 6265bis §4.1.3.
+      // B4: __Host- prefixed cookies require Secure=true per RFC 6265bis §4.1.3 when on HTTPS.
       reply.setCookie(COOKIE_NAME, result.sessionToken, {
         path: '/',
         httpOnly: true,
-        secure: true,
+        secure: req.protocol === 'https',
         sameSite: 'strict',
         expires: result.expiresAt,
       });
@@ -76,7 +76,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
       await revokeSessionByToken(db, rawToken);
     }
 
-    reply.clearCookie(COOKIE_NAME, { path: '/', httpOnly: true, sameSite: 'strict', secure: true });
+    reply.clearCookie(COOKIE_NAME, { path: '/', httpOnly: true, sameSite: 'strict', secure: req.protocol === 'https' });
     return reply.status(200).send({ success: true });
   });
 
@@ -89,7 +89,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
 
     const validation = await validateAndTouchSession(db, rawToken);
     if (!validation.isValid || !validation.account || !validation.session) {
-      reply.clearCookie(COOKIE_NAME, { path: '/', httpOnly: true, sameSite: 'strict', secure: true });
+      reply.clearCookie(COOKIE_NAME, { path: '/', httpOnly: true, sameSite: 'strict', secure: req.protocol === 'https' });
       return reply.status(401).send({ error: { code: 'UNAUTHENTICATED', message: 'Сессия топилмади ёки муддати тугаган.' } });
     }
 
@@ -116,7 +116,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
 
     const validation = await validateAndTouchSession(db, rawToken);
     if (!validation.isValid || !validation.account || !validation.session) {
-      reply.clearCookie(COOKIE_NAME, { path: '/', httpOnly: true, sameSite: 'strict', secure: true });
+      reply.clearCookie(COOKIE_NAME, { path: '/', httpOnly: true, sameSite: 'strict', secure: req.protocol === 'https' });
       return reply.status(401).send({ error: { code: 'UNAUTHENTICATED', message: 'Сессия топилмади ёки муддати тугаган.' } });
     }
 
