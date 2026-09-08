@@ -1,6 +1,6 @@
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import type { DbClient } from '../../../adapters/db/client.js';
 import {
   districts,
@@ -271,34 +271,50 @@ export async function processSemanticRelevanceJobs(
               if (excludedBurstItems.length > 0) {
                 const excludedIntakeIds = excludedBurstItems.map((m) => m.intakeId);
                 const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+                const exclusionMeta = JSON.stringify({
+                  status: 'EXCLUDED',
+                  exclusionReason: 'GENERAL_CHATTER',
+                  reasoning:
+                    'Кетма-кет ёзилган хабарлардан ушбу қисмда соҳага оид муаммо ёки манзил аниқланмади',
+                  expiresAt,
+                  purgedAt: null,
+                });
                 await tx
                   .update(telegramIntakeRecords)
                   .set({
-                    rawPayload: {
-                      status: 'EXCLUDED',
-                      exclusionReason: 'GENERAL_CHATTER',
-                      reasoning:
-                        'Кетма-кет ёзилган хабарлардан ушбу қисмда соҳага оид муаммо ёки манзил аниқланмади',
-                      expiresAt,
-                      purgedAt: null,
-                    },
+                    rawPayload: sql`COALESCE(${telegramIntakeRecords.rawPayload}, '{}'::jsonb) || ${exclusionMeta}::jsonb`,
                     updatedAt: new Date(),
                   })
                   .where(inArray(telegramIntakeRecords.id, excludedIntakeIds));
               }
 
+              const primaryAcceptedItem =
+                filteredBurstMessages && filteredBurstMessages.length > 0
+                  ? filteredBurstMessages[0]!
+                  : null;
+
+              const effectiveIntakeId = primaryAcceptedItem ? primaryAcceptedItem.intakeId : intakeId;
+              const effectiveMessageId = primaryAcceptedItem
+                ? primaryAcceptedItem.telegramMessageId
+                : telegramMessageId;
+              const effectiveUserMetadata =
+                primaryAcceptedItem?.userMetadata ?? job.data.userMetadata ?? null;
+
               const topicJobData: TelegramTopicAssignmentJobData = {
-                intakeId,
+                intakeId: effectiveIntakeId,
                 districtId,
                 mahallaName,
                 calendarDay,
                 telegramChatId,
-                telegramMessageId,
+                telegramMessageId: effectiveMessageId,
                 telegramUserId,
-                originalTimestamp,
-                contentType,
+                originalTimestamp: primaryAcceptedItem
+                  ? primaryAcceptedItem.originalTimestamp
+                  : originalTimestamp,
+                contentType: primaryAcceptedItem ? primaryAcceptedItem.contentType : contentType,
                 verbatimText,
                 replyMetadata,
+                userMetadata: effectiveUserMetadata,
                 aiOperationId,
                 relevantLanes: aiResult.data.relevant_lanes,
                 reasoning: aiResult.data.reasoning,
@@ -308,7 +324,11 @@ export async function processSemanticRelevanceJobs(
                     : undefined,
               };
 
-              const singletonKey = JobSingletonKeys.forTopicAssignment(districtId, telegramChatId, telegramMessageId);
+              const singletonKey = JobSingletonKeys.forTopicAssignment(
+                districtId,
+                telegramChatId,
+                effectiveMessageId,
+              );
               await enqueueJob(TELEGRAM_TOPIC_ASSIGNMENT_QUEUE, topicJobData, {
                 singletonKey,
                 retryLimit: 3,
@@ -323,18 +343,19 @@ export async function processSemanticRelevanceJobs(
                   : [intakeId];
 
               const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+              const exclusionMeta = JSON.stringify({
+                status: 'EXCLUDED',
+                exclusionReason: aiResult.data.exclusion_reason,
+                verbatimText,
+                reasoning: aiResult.data.reasoning,
+                expiresAt,
+                purgedAt: null,
+              });
 
               await tx
                 .update(telegramIntakeRecords)
                 .set({
-                  rawPayload: {
-                    status: 'EXCLUDED',
-                    exclusionReason: aiResult.data.exclusion_reason,
-                    verbatimText,
-                    reasoning: aiResult.data.reasoning,
-                    expiresAt,
-                    purgedAt: null,
-                  },
+                  rawPayload: sql`COALESCE(${telegramIntakeRecords.rawPayload}, '{}'::jsonb) || ${exclusionMeta}::jsonb`,
                   updatedAt: new Date(),
                 })
                 .where(inArray(telegramIntakeRecords.id, allIntakeIds));

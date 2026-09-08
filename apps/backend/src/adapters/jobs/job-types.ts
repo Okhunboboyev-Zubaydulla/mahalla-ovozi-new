@@ -34,6 +34,58 @@ export const DISTRICT_BACKUP_EXPIRY_CRON_QUEUE = 'district-backup-expiry-cron';
 // ---------------------------------------------------------------------------
 
 /** A single message item inside a burst batch — used by debounce and relevance jobs. */
+export interface SenderProfileMetadata {
+  telegramUserId?: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+/**
+ * Safely extracts user identity attributes from various Telegram update wire shapes.
+ * Privacy-safe: strictly extracts id, username, first_name, last_name only.
+ */
+export function extractTelegramUserMetadata(
+  rawPayload: unknown,
+  fallbackUserId?: string | null,
+): SenderProfileMetadata | null {
+  if (!rawPayload || typeof rawPayload !== 'object') {
+    return fallbackUserId ? { telegramUserId: fallbackUserId } : null;
+  }
+  const payload = rawPayload as Record<string, any>;
+  const rawMsg =
+    payload.message ??
+    payload.edited_message ??
+    payload.channel_post ??
+    payload.edited_channel_post ??
+    payload.business_message ??
+    payload.edited_business_message ??
+    payload;
+
+  const fromUser = rawMsg?.from ?? payload.from;
+
+  if (fromUser && typeof fromUser === 'object') {
+    return {
+      telegramUserId: fromUser.id != null ? String(fromUser.id) : (fallbackUserId || undefined),
+      username:
+        typeof fromUser.username === 'string' && fromUser.username.trim().length > 0
+          ? fromUser.username.trim()
+          : undefined,
+      firstName:
+        typeof fromUser.first_name === 'string' && fromUser.first_name.trim().length > 0
+          ? fromUser.first_name.trim()
+          : undefined,
+      lastName:
+        typeof fromUser.last_name === 'string' && fromUser.last_name.trim().length > 0
+          ? fromUser.last_name.trim()
+          : undefined,
+    };
+  }
+
+  return fallbackUserId ? { telegramUserId: fallbackUserId } : null;
+}
+
+/** A single message item inside a burst batch — used by debounce and relevance jobs. */
 export interface BurstMessageItem {
   intakeId: string;
   telegramMessageId: string;
@@ -41,6 +93,7 @@ export interface BurstMessageItem {
   verbatimText: string;
   contentType: 'TEXT' | 'MEDIA_CAPTION';
   replyMetadata?: TelegramReplyMetadata | null;
+  userMetadata?: SenderProfileMetadata | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -84,6 +137,7 @@ export interface TelegramSemanticRelevanceJobData {
   contentType: 'TEXT' | 'MEDIA_CAPTION';
   verbatimText: string;
   replyMetadata: TelegramReplyMetadata | null;
+  userMetadata?: SenderProfileMetadata | null;
   burstMessages?: BurstMessageItem[];
   issueId?: string;
 }
@@ -101,6 +155,7 @@ export interface TelegramTopicAssignmentJobData {
   contentType: 'TEXT' | 'MEDIA_CAPTION';
   verbatimText: string;
   replyMetadata: TelegramReplyMetadata | null;
+  userMetadata?: SenderProfileMetadata | null;
   aiOperationId: string;
   relevantLanes: QualifyingLane[];
   reasoning: string;

@@ -11,6 +11,7 @@ import {
   TELEGRAM_SEMANTIC_RELEVANCE_QUEUE,
   JobSingletonKeys,
   sendQueueJob,
+  extractTelegramUserMetadata,
   type TelegramBurstDebounceJobData,
   type TelegramSemanticRelevanceJobData,
   type BurstMessageItem,
@@ -230,6 +231,7 @@ export async function processBurstDebounceJobs(
             verbatimText: qual.candidate.verbatimText,
             contentType: qual.candidate.contentType,
             replyMetadata: qual.candidate.replyMetadata,
+            userMetadata: extractTelegramUserMetadata(rec.rawPayload, rec.telegramUserId),
           });
           if (qual.candidate.replyMetadata) {
             latestReplyMetadata = qual.candidate.replyMetadata;
@@ -289,6 +291,7 @@ export async function processBurstDebounceJobs(
         contentType: primaryItem.contentType,
         verbatimText: mergedText,
         replyMetadata: latestReplyMetadata,
+        userMetadata: primaryItem.userMetadata,
         burstMessages: supportedItems.length > 1 ? supportedItems : undefined,
       };
 

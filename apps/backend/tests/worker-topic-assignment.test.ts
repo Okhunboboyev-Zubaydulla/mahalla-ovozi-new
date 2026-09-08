@@ -1877,4 +1877,103 @@ describe('Story 2.4: Worker Topic Assignment 28-Row Verification Matrix Integrat
     expect(data.anchor_evidence_id).toBeUndefined();
     expect(data.lane_distribution).toBeUndefined();
   });
+
+  it('preserves userMetadata on burst messages when message 1 is excluded chatter and subsequent messages are accepted', async () => {
+    const intakeId1 = `intk_burst_chatter_${crypto.randomUUID()}`;
+    const intakeId2 = `intk_burst_signal_${crypto.randomUUID()}`;
+    const now = new Date('2026-08-22T10:00:00Z');
+
+    // Message 1 (chatter): raw payload has exclusion metadata merged (non-destructively)
+    await db.insert(telegramIntakeRecords).values({
+      id: intakeId1,
+      districtId: testDistrictId,
+      mahallaName: 'Guliston',
+      telegramBotId: 'bot_test_1',
+      telegramChatId: testChatId,
+      telegramMessageId: '2901',
+      originalTimestamp: now,
+      calendarDay: '2026-08-22',
+      rawPayload: {
+        text: 'salom',
+        from: { id: 7512582881, username: 'ZubaydullaOkhunboboyev', first_name: 'Zubaydulla', last_name: 'Okhunboboyev' },
+        status: 'EXCLUDED',
+        exclusionReason: 'GENERAL_CHATTER',
+      },
+    });
+
+    // Message 2 (signal): intact payload
+    await seedIntakeRecord({
+      intakeId: intakeId2,
+      messageId: '2902',
+      timestamp: new Date(now.getTime() + 5000),
+      text: 'Gazdan xabar bormi',
+      from: { id: 7512582881, username: 'ZubaydullaOkhunboboyev', first_name: 'Zubaydulla', last_name: 'Okhunboboyev' },
+    });
+
+    aiController.mockAdapter.setNextResponse({
+      decision: 'NEW_TOPIC',
+      matched_topic_id: null,
+      primary_lane: 'GAS',
+      reasoning: 'Gas supply query',
+    });
+
+    // Send topic assignment job as emitted by semantic-relevance (re-anchored to intakeId2 with userMetadata)
+    await sendAndProcessJob({
+      intakeId: intakeId2,
+      districtId: testDistrictId,
+      mahallaName: 'Guliston',
+      calendarDay: '2026-08-22',
+      telegramChatId: testChatId,
+      telegramMessageId: '2902',
+      originalTimestamp: new Date(now.getTime() + 5000).toISOString(),
+      contentType: 'TEXT',
+      verbatimText: 'Gazdan xabar bormi',
+      replyMetadata: null,
+      userMetadata: {
+        telegramUserId: '7512582881',
+        username: 'ZubaydullaOkhunboboyev',
+        firstName: 'Zubaydulla',
+        lastName: 'Okhunboboyev',
+      },
+      aiOperationId: `aiop_${crypto.randomUUID()}`,
+      relevantLanes: ['GAS'],
+      reasoning: 'Gas supply report',
+      burstMessages: [
+        {
+          intakeId: intakeId2,
+          telegramMessageId: '2902',
+          originalTimestamp: new Date(now.getTime() + 5000).toISOString(),
+          contentType: 'TEXT',
+          verbatimText: 'Gazdan xabar bormi',
+          replyMetadata: null,
+          userMetadata: {
+            telegramUserId: '7512582881',
+            username: 'ZubaydullaOkhunboboyev',
+            firstName: 'Zubaydulla',
+            lastName: 'Okhunboboyev',
+          },
+        },
+      ],
+    });
+
+    // Verify accepted_evidence record contains complete user_metadata
+    const evidence = await db
+      .select()
+      .from(acceptedEvidence)
+      .where(
+        and(
+          eq(acceptedEvidence.districtId, testDistrictId),
+          eq(acceptedEvidence.telegramMessageId, '2902'),
+        ),
+      )
+      .limit(1);
+
+    expect(evidence.length).toBe(1);
+    expect(evidence[0]!.userMetadata).toEqual({
+      telegramUserId: '7512582881',
+      username: 'ZubaydullaOkhunboboyev',
+      firstName: 'Zubaydulla',
+      lastName: 'Okhunboboyev',
+    });
+  });
 });

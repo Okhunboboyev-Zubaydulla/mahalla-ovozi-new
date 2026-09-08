@@ -14,6 +14,7 @@ import {
   TELEGRAM_TOPIC_PROJECTION_QUEUE,
   withTransactionalIntake,
   JobSingletonKeys,
+  extractTelegramUserMetadata,
   type TelegramTopicAssignmentJobData,
   type TelegramTopicProjectionJobData,
 } from '../../../adapters/jobs/boss-client.js';
@@ -293,18 +294,11 @@ export async function processTopicAssignmentJobs(
               .where(eq(telegramIntakeRecords.id, intakeId))
               .limit(1);
 
-            const raw = intakeRec?.rawPayload as Record<string, any> | undefined;
-            const fromUser = raw?.from || raw?.message?.from;
-            const userMetadata = fromUser
-              ? {
-                  telegramUserId: fromUser.id ? String(fromUser.id) : telegramUserId,
-                  username: fromUser.username,
-                  firstName: fromUser.first_name,
-                  lastName: fromUser.last_name,
-                }
-              : telegramUserId
-                ? { telegramUserId }
-                : null;
+            const fallbackUserMetadata = extractTelegramUserMetadata(
+              intakeRec?.rawPayload,
+              telegramUserId,
+            );
+            const defaultUserMetadata = job.data.userMetadata || fallbackUserMetadata;
 
             const candidateDate = new Date(originalTimestamp);
             const topicMatchingOpId = isDirectReply ? null : `aiop_${crypto.randomUUID()}`;
@@ -354,6 +348,7 @@ export async function processTopicAssignmentJobs(
                       verbatimText: m.verbatimText,
                       contentType: m.contentType,
                       replyMetadata: m.replyMetadata || null,
+                      userMetadata: m.userMetadata || defaultUserMetadata,
                     }))
                   : [
                       {
@@ -363,6 +358,7 @@ export async function processTopicAssignmentJobs(
                         verbatimText,
                         contentType,
                         replyMetadata,
+                        userMetadata: defaultUserMetadata,
                       },
                     ];
 
@@ -486,7 +482,7 @@ export async function processTopicAssignmentJobs(
                     originalTimestamp: item.originalTimestamp,
                     verbatimText: item.verbatimText,
                     contentType: item.contentType,
-                    userMetadata,
+                    userMetadata: item.userMetadata,
                     replyMetadata: item.replyMetadata,
                     aiOperationId: linkedAiOpId,
                   });
@@ -567,7 +563,7 @@ export async function processTopicAssignmentJobs(
                     originalTimestamp: item.originalTimestamp,
                     verbatimText: item.verbatimText,
                     contentType: item.contentType,
-                    userMetadata,
+                    userMetadata: item.userMetadata,
                     replyMetadata: item.replyMetadata,
                     aiOperationId: linkedAiOpId,
                   });
