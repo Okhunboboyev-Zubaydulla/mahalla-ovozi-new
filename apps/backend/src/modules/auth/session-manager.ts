@@ -7,6 +7,43 @@ export const IDLE_TIMEOUT_MS = 12 * 60 * 60 * 1000;    // 12 hours sliding
 export const ABSOLUTE_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours absolute ceiling
 export const COOKIE_NAME = process.env.SESSION_COOKIE_NAME || '__Host-session';
 
+export interface SessionCookieOptions {
+  path: string;
+  httpOnly: boolean;
+  sameSite: 'strict';
+  secure: boolean;
+  expires?: Date;
+}
+
+/**
+ * Returns RFC 6265bis §4.1.3 compliant cookie options for setting the session cookie.
+ * When COOKIE_NAME starts with '__Host-', browsers reject the cookie if secure is not true.
+ * Modern browsers treat http://localhost as a Secure Context, so secure: true is valid in local dev.
+ */
+export function getSessionCookieOptions(expiresAt: Date): SessionCookieOptions {
+  const isHostPrefix = COOKIE_NAME.startsWith('__Host-');
+  return {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: isHostPrefix ? true : process.env.NODE_ENV === 'production',
+    expires: expiresAt,
+  };
+}
+
+/**
+ * Returns identical cookie attributes for reliable cookie clearing across browsers.
+ */
+export function getClearCookieOptions(): SessionCookieOptions {
+  const isHostPrefix = COOKIE_NAME.startsWith('__Host-');
+  return {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: isHostPrefix ? true : process.env.NODE_ENV === 'production',
+  };
+}
+
 export function generateSessionToken(): string {
   // 256 bits of cryptographic entropy
   return crypto.randomBytes(32).toString('base64url');

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { DbClient } from '../../adapters/db/client.js';
-import { COOKIE_NAME, validateAndTouchSession } from './session-manager.js';
+import { COOKIE_NAME, validateAndTouchSession, getClearCookieOptions } from './session-manager.js';
 import { districts } from '../../adapters/db/schema/index.js';
 
 export interface RequireAuthOptions {
@@ -35,12 +35,7 @@ export function createRequireAuth(db: DbClient, options: RequireAuthOptions = {}
 
     const validation = await validateAndTouchSession(db, rawToken);
     if (!validation.isValid || !validation.account || !validation.session) {
-      reply.clearCookie(COOKIE_NAME, {
-        path: '/',
-        httpOnly: true,
-        sameSite: 'strict',
-        secure: true,
-      });
+      reply.clearCookie(COOKIE_NAME, getClearCookieOptions());
       reply.status(401).send({
         error: {
           code: 'UNAUTHENTICATED',

@@ -60,9 +60,12 @@ describe('Auth Module, Session Engine & Threat Defenses Integration Tests', () =
       // Check Set-Cookie header
       const setCookie = response.headers['set-cookie'];
       expect(setCookie).toBeDefined();
-      expect(typeof setCookie === 'string' ? setCookie : setCookie?.[0]).toContain(COOKIE_NAME);
-      expect(typeof setCookie === 'string' ? setCookie : setCookie?.[0]).toContain('HttpOnly');
-      expect(typeof setCookie === 'string' ? setCookie : setCookie?.[0]).toContain('SameSite=Strict');
+      const cookieStr = typeof setCookie === 'string' ? setCookie : setCookie?.[0] || '';
+      expect(cookieStr).toContain(COOKIE_NAME);
+      expect(cookieStr).toContain('HttpOnly');
+      expect(cookieStr).toContain('SameSite=Strict');
+      // B4 & RFC 6265bis §4.1.3: __Host- prefixed cookies must unconditionally enforce Secure=true
+      expect(cookieStr.toLowerCase()).toContain('secure');
 
       // Verify audit event
       const [audit] = await db

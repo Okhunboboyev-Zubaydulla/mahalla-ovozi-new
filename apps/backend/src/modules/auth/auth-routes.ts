@@ -4,7 +4,13 @@ import {
   FirstSignInPasswordChangeRequestSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
-import { validateAndTouchSession, revokeSessionByToken, COOKIE_NAME } from './session-manager.js';
+import {
+  validateAndTouchSession,
+  revokeSessionByToken,
+  COOKIE_NAME,
+  getSessionCookieOptions,
+  getClearCookieOptions,
+} from './session-manager.js';
 import { verifyStateChangingOrigin } from './origin-guard.js';
 import {
   signIn,
@@ -39,14 +45,8 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
         userAgent: req.headers['user-agent'],
       });
 
-      // B4: __Host- prefixed cookies require Secure=true per RFC 6265bis §4.1.3 when on HTTPS.
-      reply.setCookie(COOKIE_NAME, result.sessionToken, {
-        path: '/',
-        httpOnly: true,
-        secure: req.protocol === 'https',
-        sameSite: 'strict',
-        expires: result.expiresAt,
-      });
+      // B4: Enforce RFC 6265bis §4.1.3 compliant cookie options via centralized policy
+      reply.setCookie(COOKIE_NAME, result.sessionToken, getSessionCookieOptions(result.expiresAt));
 
       return reply.status(200).send({
         actor: result.actor,
@@ -76,7 +76,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
       await revokeSessionByToken(db, rawToken);
     }
 
-    reply.clearCookie(COOKIE_NAME, { path: '/', httpOnly: true, sameSite: 'strict', secure: req.protocol === 'https' });
+    reply.clearCookie(COOKIE_NAME, getClearCookieOptions());
     return reply.status(200).send({ success: true });
   });
 
@@ -89,7 +89,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
 
     const validation = await validateAndTouchSession(db, rawToken);
     if (!validation.isValid || !validation.account || !validation.session) {
-      reply.clearCookie(COOKIE_NAME, { path: '/', httpOnly: true, sameSite: 'strict', secure: req.protocol === 'https' });
+      reply.clearCookie(COOKIE_NAME, getClearCookieOptions());
       return reply.status(401).send({ error: { code: 'UNAUTHENTICATED', message: 'Сессия топилмади ёки муддати тугаган.' } });
     }
 
@@ -116,7 +116,7 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
 
     const validation = await validateAndTouchSession(db, rawToken);
     if (!validation.isValid || !validation.account || !validation.session) {
-      reply.clearCookie(COOKIE_NAME, { path: '/', httpOnly: true, sameSite: 'strict', secure: req.protocol === 'https' });
+      reply.clearCookie(COOKIE_NAME, getClearCookieOptions());
       return reply.status(401).send({ error: { code: 'UNAUTHENTICATED', message: 'Сессия топилмади ёки муддати тугаган.' } });
     }
 
