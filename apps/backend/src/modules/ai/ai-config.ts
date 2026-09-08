@@ -15,7 +15,7 @@ export const activeAiConfig: AiDevelopmentConfig = {
   modelProvider: 'OLLAMA',
   modelId: 'gemma4:12b',
   temperature: 0.0,
-  maxOutputTokens: 500,
+  maxOutputTokens: 2048,
 };
 
 export const SEMANTIC_RELEVANCE_SYSTEM_PROMPT = `You are the High-Precision Civic Intelligence Classifier for Mahalla Ovozi, monitoring neighborhood Telegram groups across Uzbekistan for the District Hokim.

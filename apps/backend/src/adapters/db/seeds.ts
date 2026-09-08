@@ -57,7 +57,7 @@ export const defaultTopicMatchingProfile: NewAiProfile = {
   promptVersion: 'prom_match_v1',
   schemaVersion: 'sch_match_v1',
   temperature: 0.0,
-  maxOutputTokens: 500,
+  maxOutputTokens: 2048,
   timeoutMs: defaultTimeoutMs,
   retryPolicy: {
     maxAttempts: 3,
@@ -80,7 +80,7 @@ export const defaultTopicProjectionProfile: NewAiProfile = {
   promptVersion: 'prom_proj_v1',
   schemaVersion: 'sch_proj_v1',
   temperature: 0.0,
-  maxOutputTokens: 600,
+  maxOutputTokens: 2048,
   timeoutMs: defaultTimeoutMs,
   retryPolicy: {
     maxAttempts: 3,

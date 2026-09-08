@@ -92,6 +92,10 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
           });
         }
         headers['x-goog-api-key'] = apiKey;
+        const thinkingBudget =
+          process.env.GEMINI_THINKING_BUDGET !== undefined
+            ? Number(process.env.GEMINI_THINKING_BUDGET)
+            : 0;
         body = {
           contents: [
             {
@@ -104,7 +108,8 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
           },
           generationConfig: {
             temperature: payload.temperature,
-            maxOutputTokens: payload.maxOutputTokens,
+            maxOutputTokens: Math.max(payload.maxOutputTokens || 0, 2048),
+            ...(thinkingBudget >= 0 ? { thinkingConfig: { thinkingBudget } } : {}),
             ...payload.compiledSchema,
           },
         };
