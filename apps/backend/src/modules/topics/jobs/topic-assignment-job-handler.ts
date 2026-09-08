@@ -671,7 +671,7 @@ export async function registerTopicAssignmentJobHandler(
 ): Promise<void> {
   await boss.work<TelegramTopicAssignmentJobData>(
     TELEGRAM_TOPIC_ASSIGNMENT_QUEUE,
-    { newJobCheckInterval: 50 } as any,
+    { newJobCheckInterval: 50, batchSize: 1 } as any,
     (jobs) => processTopicAssignmentJobs(jobs, deps),
   );
 }

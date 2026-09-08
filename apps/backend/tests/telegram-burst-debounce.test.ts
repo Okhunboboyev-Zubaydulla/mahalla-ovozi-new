@@ -145,9 +145,9 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
       },
     };
 
-    // Mock Date.now to simulate execution 30s after the second message
+    // Mock Date.now to simulate execution 55s after the second message
     const realDateNow = Date.now;
-    Date.now = () => baseTime.getTime() + 45000;
+    Date.now = () => baseTime.getTime() + 65000;
 
     let enqueuedSemanticJobData: any = null;
     const sendSpy = vi.spyOn(boss, 'send').mockImplementation(async (queue: any, data: any) => {
@@ -277,7 +277,7 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
     }
   });
 
-  it('Test 2 (Sliding Window Reset): Extends debounce timer when user continues typing within 25 seconds', async () => {
+  it('Test 2 (Sliding Window Reset): Extends debounce timer when user continues typing within 50 seconds', async () => {
     const userId = '888456';
     const baseTime = new Date('2026-08-21T14:00:00Z');
 
@@ -374,9 +374,9 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
     });
     expect(res2.status).toBe('ACCEPTED');
 
-    // Trigger debounce worker 30s later
+    // Trigger debounce worker 55s later
     const realDateNow = Date.now;
-    Date.now = () => baseTime.getTime() + 40000;
+    Date.now = () => baseTime.getTime() + 60000;
 
     let enqueuedSemanticJobData: any = null;
     const sendSpy = vi.spyOn(boss, 'send').mockImplementation(async (queue: any, data: any) => {
@@ -456,9 +456,9 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
     const payload = record!.rawPayload as any;
     expect(payload.edited_message?.text).toBe("Bog'zor ko'chasida quvur yorilgan, suv toshmoqda");
 
-    // 3. Flush burst worker 35 seconds later
+    // 3. Flush burst worker 55 seconds after edit
     const realDateNow = Date.now;
-    Date.now = () => baseTime.getTime() + 35000;
+    Date.now = () => baseTime.getTime() + 65000;
 
     let enqueuedSemanticJobData: any = null;
     const sendSpy = vi.spyOn(boss, 'send').mockImplementation(async (queue: any, data: any) => {
@@ -492,7 +492,7 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
     }
   });
 
-  it('Test 5 (Edit Resets Debounce Timer): Reschedules job if edit occurred within 25 seconds of check', async () => {
+  it('Test 5 (Edit Resets Debounce Timer): Reschedules job if edit occurred within 50 seconds of check', async () => {
     const userId = '999501';
     const msgId = `501_${Date.now()}`;
     const baseTime = new Date('2026-08-21T21:10:00Z');
@@ -551,9 +551,9 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
 
       await processBurstDebounceJobs([debounceJob], { db, boss });
 
-      // Verifies timer was extended: remainingDelay is ceil(25 - 6) = 19 seconds
+      // Verifies timer was extended: remainingDelay is ceil(50 - 6) = 44 seconds
       expect(rescheduledJob).toBeDefined();
-      expect(rescheduledJob.options.startAfter).toBe(19);
+      expect(rescheduledJob.options.startAfter).toBe(44);
     } finally {
       Date.now = realDateNow;
       sendSpy.mockRestore();
@@ -593,9 +593,9 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
     });
     expect(resEdit.status).toBe('UPDATED');
 
-    // 3. Flush worker at t=30s
+    // 3. Flush worker at t=60s
     const realDateNow = Date.now;
-    Date.now = () => baseTime.getTime() + 30000;
+    Date.now = () => baseTime.getTime() + 60000;
 
     let enqueuedSemanticJob = false;
     const sendSpy = vi.spyOn(boss, 'send').mockImplementation(async (queue: any) => {
@@ -721,7 +721,7 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
     expect(record!.telegramMessageId).toBe(String(untrackedMsgId));
   });
 
-  it('Test 9 (Delta-Time Gating & Backlog Partitioning): Partitions backlog messages with originalTimestamp gap > 25s into separate burst jobs', async () => {
+  it('Test 9 (Delta-Time Gating & Backlog Partitioning): Partitions backlog messages with originalTimestamp gap > 50s into separate burst jobs', async () => {
     const userId = '999901';
     const msgId1 = `901_${crypto.randomUUID().slice(0, 4)}`;
     const msgId2 = `902_${crypto.randomUUID().slice(0, 4)}`;
@@ -729,8 +729,8 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
     const baseTime = new Date('2026-08-21T21:00:00Z');
 
     // Simulate 3 messages from same user during offline backlog
-    // Msg 1 and 2 have a 10s gap (<= 25s)
-    // Msg 3 arrives 45s after Msg 2 (> 25s gap)
+    // Msg 1 and 2 have a 10s gap (<= 50s)
+    // Msg 3 arrives 60s after Msg 2 (> 50s gap)
     await processTelegramWebhookUpdate(pool, boss, activeBotId, {
       update_id: 9001,
       message: {
@@ -757,7 +757,7 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
       update_id: 9003,
       message: {
         message_id: Number(msgId3.split('_')[0]),
-        date: Math.floor((baseTime.getTime() + 55000) / 1000),
+        date: Math.floor((baseTime.getTime() + 70000) / 1000),
         chat: { id: validChatId, title: 'Navbahor' },
         from: { id: Number(userId), first_name: 'Resident 9' },
         text: 'Katyol bor',
@@ -797,7 +797,7 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
       // Run first burst debounce pass
       await processBurstDebounceJobs([initialJob], { db, boss });
 
-      // First burst should have processed only msg 1 and msg 2 (gap 10s <= 25s)
+      // First burst should have processed only msg 1 and msg 2 (gap 10s <= 50s)
       expect(enqueuedSemanticJobs.length).toBe(1);
       const burst1 = enqueuedSemanticJobs[0];
       expect(burst1.burstMessages).toBeDefined();

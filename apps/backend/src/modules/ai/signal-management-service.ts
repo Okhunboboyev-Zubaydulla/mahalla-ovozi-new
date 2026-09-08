@@ -275,6 +275,10 @@ export class SignalManagementService {
       ) {
         status = 'REJECTED';
         isRelevant = false;
+      } else if (row.aiOpFinalStatus === 'FAILED' || row.aiOpFinalStatus === 'STALE') {
+        status = 'REJECTED';
+        isRelevant = false;
+        exclusionReason = 'AI_PROCESSING_ERROR';
       } else {
         const qual = qualifyTelegramContent({
           id: row.intakeId,
@@ -312,7 +316,11 @@ export class SignalManagementService {
       const reasoning =
         (aiResult.reasoning as string) ||
         (rawPayload.reasoning as string) ||
-        null;
+        (row.aiOpFinalStatus === 'STALE'
+          ? 'Эскирганлиги сабабли бекор қилинди'
+          : exclusionReason === 'AI_PROCESSING_ERROR'
+            ? 'АИ қайта ишлашда хатолик юз берди'
+            : null);
 
       return {
         id: row.evidenceId || row.intakeId,
@@ -446,6 +454,10 @@ export class SignalManagementService {
     ) {
       status = 'REJECTED';
       isRelevant = false;
+    } else if (row.aiOpFinalStatus === 'FAILED' || row.aiOpFinalStatus === 'STALE') {
+      status = 'REJECTED';
+      isRelevant = false;
+      exclusionReason = 'AI_PROCESSING_ERROR';
     } else {
       const qual = qualifyTelegramContent({
         id: row.intakeId,
@@ -483,7 +495,11 @@ export class SignalManagementService {
     const reasoning =
       (aiResult.reasoning as string) ||
       (rawPayload.reasoning as string) ||
-      null;
+      (row.aiOpFinalStatus === 'STALE'
+        ? 'Эскирганлиги сабабли бекор қилинди'
+        : exclusionReason === 'AI_PROCESSING_ERROR'
+          ? 'АИ қайта ишлашда хатолик юз берди'
+          : null);
 
     let durationMs: number | null = null;
     let inputTokens: number | null = null;

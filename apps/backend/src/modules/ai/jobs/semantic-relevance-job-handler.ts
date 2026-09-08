@@ -230,20 +230,32 @@ export async function processSemanticRelevanceJobs(
 
           // Atomic PostgreSQL commit + downstream enqueue via withTransactionalIntake
           await withTransactionalIntake(pool, boss, async ({ tx, enqueueJob }) => {
-            // 1. Insert ai_operations record
-            await tx.insert(aiOperations).values({
-              id: aiOperationId,
-              districtId,
-              mahallaName,
-              calendarDay,
-              operationType: 'SEMANTIC_RELEVANCE',
-              targetId: intakeId,
-              pinnedProfileId: aiResult.profileId,
-              contextRevision: initialRevision,
-              snapshotFingerprint: initialFingerprint,
-              finalStatus,
-              resultPayload: aiResult.data,
-            });
+            // 1. Insert ai_operations record for all messages in the burst
+            const allBurstIntakes =
+              burstMessages && burstMessages.length > 0
+                ? burstMessages
+                : [{ intakeId }];
+
+            for (const item of allBurstIntakes) {
+              const opId =
+                item.intakeId === intakeId ? aiOperationId : `aiop_${crypto.randomUUID()}`;
+              await tx
+                .insert(aiOperations)
+                .values({
+                  id: opId,
+                  districtId,
+                  mahallaName,
+                  calendarDay,
+                  operationType: 'SEMANTIC_RELEVANCE',
+                  targetId: item.intakeId,
+                  pinnedProfileId: aiResult.profileId,
+                  contextRevision: initialRevision,
+                  snapshotFingerprint: initialFingerprint,
+                  finalStatus,
+                  resultPayload: aiResult.data,
+                })
+                .onConflictDoNothing();
+            }
 
             // 2. Insert ai_provider_attempts records (persisting all attempts & retry lineage)
             // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tx from withTransactionalIntake is structurally DbOrTx; module-identity mismatch in TS
@@ -427,7 +439,7 @@ export async function registerSemanticRelevanceJobHandler(
 ): Promise<void> {
   await boss.work<TelegramSemanticRelevanceJobData>(
     TELEGRAM_SEMANTIC_RELEVANCE_QUEUE,
-    { newJobCheckInterval: 50 } as any,
+    { newJobCheckInterval: 50, batchSize: 1 } as any,
     (jobs) => processSemanticRelevanceJobs(jobs, deps),
   );
 }

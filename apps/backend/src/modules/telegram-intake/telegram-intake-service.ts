@@ -18,6 +18,7 @@ import {
   JobSingletonKeys,
 } from '../../adapters/jobs/boss-client.js';
 import { qualifyTelegramContent } from './telegram-content-qualification.js';
+import { SLIDING_DEBOUNCE_WINDOW_SECONDS } from './jobs/burst-debounce-job-handler.js';
 import { getTashkentCalendarDay } from './timezone-util.js';
 
 import type { TelegramUpdate, TelegramMessage } from '../../adapters/telegram/telegram-types.js';
@@ -264,7 +265,7 @@ export async function processTelegramWebhookUpdate(
           },
           {
             singletonKey,
-            startAfter: 25,
+            startAfter: SLIDING_DEBOUNCE_WINDOW_SECONDS,
             retryLimit: 3,
             retryDelay: 5,
             retryBackoff: true,
@@ -369,7 +370,7 @@ export async function processTelegramWebhookUpdate(
         },
         {
           singletonKey,
-          startAfter: 25,
+          startAfter: SLIDING_DEBOUNCE_WINDOW_SECONDS,
           retryLimit: 3,
           retryDelay: 5,
           retryBackoff: true,

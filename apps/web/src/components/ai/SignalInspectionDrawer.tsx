@@ -61,6 +61,7 @@ const EXCLUSION_LABELS: Record<string, string> = {
   NEUTRAL_OR_PRAISE: 'Миннатдорчилик / Салом-алик',
   GENERAL_CHATTER: 'Умумий суҳбат',
   UNRESOLVED_AMBIGUOUS_FRAGMENT: 'Ноаниқ қисқа матн',
+  AI_PROCESSING_ERROR: 'АИ таҳлил хатолиги',
 };
 
 export const SignalInspectionDrawer: React.FC<SignalInspectionDrawerProps> = ({

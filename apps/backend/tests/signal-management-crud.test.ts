@@ -42,6 +42,7 @@ describe('Signal & Evidence Management Console & CRUD Verification', () => {
   let excludedIntakeId: string;
   let evidenceId: string;
   let topicId: string;
+  let profileId: string;
 
   beforeAll(async () => {
     pool = createDbPool();
@@ -84,7 +85,7 @@ describe('Signal & Evidence Management Console & CRUD Verification', () => {
     });
 
     // 2.1 Seed Test AI Profile
-    const profileId = `prof_test_${crypto.randomUUID().slice(0, 8)}`;
+    profileId = `prof_test_${crypto.randomUUID().slice(0, 8)}`;
     await db.insert(aiProfiles).values({
       id: profileId,
       version: 1,
@@ -740,6 +741,105 @@ describe('Signal & Evidence Management Console & CRUD Verification', () => {
     expect(serviceSignal.status).toBe('REJECTED');
     expect(serviceSignal.exclusionReason).toBe('SERVICE_MESSAGE');
     expect(serviceSignal.verbatimText).toContain('тарк этди');
+  });
+
+  it('14. GET /api/v1/admin/signals correctly classifies FAILED and STALE AI operations as REJECTED with AI_PROCESSING_ERROR', async () => {
+    const failedIntakeId = `intake_failed_${crypto.randomUUID()}`;
+    const staleIntakeId = `intake_stale_${crypto.randomUUID()}`;
+
+    await db.insert(telegramIntakeRecords).values([
+      {
+        id: failedIntakeId,
+        districtId: testDistrictId,
+        mahallaName,
+        telegramBotId: 'bot_test',
+        telegramChatId: '-10099887766',
+        telegramMessageId: '5503',
+        originalTimestamp: new Date('2026-09-02T12:02:00.000Z'),
+        calendarDay: '2026-09-02',
+        rawPayload: {
+          update_id: 112235,
+          message: {
+            message_id: 5503,
+            date: 1788350520,
+            chat: { id: -10099887766, type: 'supergroup', title: 'Test Group' },
+            from: { id: 12345, is_bot: false, first_name: 'TestUser' },
+            text: 'Gaz bosimi tushib ketdi',
+          },
+        },
+      },
+      {
+        id: staleIntakeId,
+        districtId: testDistrictId,
+        mahallaName,
+        telegramBotId: 'bot_test',
+        telegramChatId: '-10099887766',
+        telegramMessageId: '5504',
+        originalTimestamp: new Date('2026-09-02T12:03:00.000Z'),
+        calendarDay: '2026-09-02',
+        rawPayload: {
+          update_id: 112236,
+          message: {
+            message_id: 5504,
+            date: 1788350580,
+            chat: { id: -10099887766, type: 'supergroup', title: 'Test Group' },
+            from: { id: 12345, is_bot: false, first_name: 'TestUser' },
+            text: 'Svet o`chdi',
+          },
+        },
+      },
+    ]);
+
+    await db.insert(aiOperations).values([
+      {
+        id: `aiop_${crypto.randomUUID()}`,
+        districtId: testDistrictId,
+        mahallaName,
+        calendarDay: '2026-09-02',
+        operationType: 'SEMANTIC_RELEVANCE',
+        targetId: failedIntakeId,
+        pinnedProfileId: profileId,
+        snapshotFingerprint: 'fp_test',
+        finalStatus: 'FAILED',
+        resultPayload: { error: 'Groq rate limit exceeded: 429' },
+      },
+      {
+        id: `aiop_${crypto.randomUUID()}`,
+        districtId: testDistrictId,
+        mahallaName,
+        calendarDay: '2026-09-02',
+        operationType: 'SEMANTIC_RELEVANCE',
+        targetId: staleIntakeId,
+        pinnedProfileId: profileId,
+        snapshotFingerprint: 'fp_test',
+        finalStatus: 'STALE',
+        resultPayload: null,
+      },
+    ]);
+
+    const res = await server.inject({
+      method: 'GET',
+      url: `/api/v1/admin/signals?districtId=${testDistrictId}`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.payload);
+
+    const failedSignal = body.items.find((item: any) => item.intakeId === failedIntakeId);
+    expect(failedSignal).toBeDefined();
+    expect(failedSignal.status).toBe('REJECTED');
+    expect(failedSignal.exclusionReason).toBe('AI_PROCESSING_ERROR');
+    expect(failedSignal.reasoning).toContain('АИ қайта ишлашда хатолик юз берди');
+
+    const staleSignal = body.items.find((item: any) => item.intakeId === staleIntakeId);
+    expect(staleSignal).toBeDefined();
+    expect(staleSignal.status).toBe('REJECTED');
+    expect(staleSignal.exclusionReason).toBe('AI_PROCESSING_ERROR');
+    expect(staleSignal.reasoning).toContain('Эскирганлиги сабабли бекор қилинди');
   });
 
   afterAll(async () => {

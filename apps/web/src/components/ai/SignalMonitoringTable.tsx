@@ -57,6 +57,7 @@ const EXCLUSION_LABELS: Record<string, string> = {
   NEUTRAL_OR_PRAISE: 'Миннатдорчилик',
   GENERAL_CHATTER: 'Умумий суҳбат',
   UNRESOLVED_AMBIGUOUS_FRAGMENT: 'Ноаниқ қисқа матн',
+  AI_PROCESSING_ERROR: 'АИ таҳлил хатолиги',
 };
 
 const SIGNAL_DATE_PRESETS: { label: string; value: () => [dayjs.Dayjs, dayjs.Dayjs] }[] = [
