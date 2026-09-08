@@ -11,11 +11,13 @@ import {
 } from '../../../adapters/db/schema/index.js';
 import {
   TELEGRAM_TOPIC_PROJECTION_QUEUE,
+  TELEGRAM_TOPIC_RECONCILIATION_CRON_QUEUE,
   withTransactionalIntake,
   type TelegramTopicProjectionJobData,
 } from '../../../adapters/jobs/boss-client.js';
 import type { QualifyingLane } from '@mahalla-ovozi/api-contracts';
 import { TopicProjectionEvaluator } from '../topic-projection-evaluator.js';
+import { reconcileUnprojectedTopics } from '../topic-reconciliation-service.js';
 import { insertAiProviderAttempts } from '../../ai/ai-operation-repository.js';
 import {
   getMahallaDailySnapshot,
@@ -401,9 +403,25 @@ export async function registerTopicProjectionJobHandler(
   boss: PgBoss,
   deps: TopicProjectionJobDeps,
 ): Promise<void> {
+  // 1. Process projection recalculation jobs
   await boss.work<TelegramTopicProjectionJobData>(
     TELEGRAM_TOPIC_PROJECTION_QUEUE,
     { newJobCheckInterval: 50 } as any,
     (jobs) => processTopicProjectionJobs(jobs, deps),
+  );
+
+  // 2. Periodic recurring self-healing sweep every 2 minutes for orphaned/lagged topics
+  await boss.schedule(
+    TELEGRAM_TOPIC_RECONCILIATION_CRON_QUEUE,
+    '*/2 * * * *',
+    {},
+    { tz: 'UTC' },
+  );
+
+  await boss.work(
+    TELEGRAM_TOPIC_RECONCILIATION_CRON_QUEUE,
+    async () => {
+      await reconcileUnprojectedTopics(deps.db, boss, 30);
+    },
   );
 }

@@ -21,6 +21,7 @@ export const TELEGRAM_CONTENT_QUALIFICATION_QUEUE = 'telegram-content-qualificat
 export const TELEGRAM_SEMANTIC_RELEVANCE_QUEUE = 'telegram-semantic-relevance';
 export const TELEGRAM_TOPIC_ASSIGNMENT_QUEUE = 'telegram-topic-assignment';
 export const TELEGRAM_TOPIC_PROJECTION_QUEUE = 'telegram-topic-projection';
+export const TELEGRAM_TOPIC_RECONCILIATION_CRON_QUEUE = 'telegram-topic-reconciliation-cron';
 export const TELEGRAM_TOPIC_RETENTION_QUEUE = 'telegram-topic-retention';
 export const DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE = 'district-subscription-expiry';
 export const DISTRICT_SUBSCRIPTION_EXPIRY_CRON_QUEUE = 'district-subscription-expiry-cron';
@@ -207,6 +208,7 @@ export interface BossQueueMap {
   [TELEGRAM_SEMANTIC_RELEVANCE_QUEUE]: TelegramSemanticRelevanceJobData;
   [TELEGRAM_TOPIC_ASSIGNMENT_QUEUE]: TelegramTopicAssignmentJobData;
   [TELEGRAM_TOPIC_PROJECTION_QUEUE]: TelegramTopicProjectionJobData;
+  [TELEGRAM_TOPIC_RECONCILIATION_CRON_QUEUE]: Record<string, never>;
   [TELEGRAM_TOPIC_RETENTION_QUEUE]: TelegramTopicRetentionJobData;
   [DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE]: DistrictSubscriptionExpiryJobData;
   [DISTRICT_LIVE_DELETION_QUEUE]: DistrictLiveDeletionJobData;

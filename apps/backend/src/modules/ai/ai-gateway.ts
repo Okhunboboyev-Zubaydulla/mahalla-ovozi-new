@@ -341,7 +341,8 @@ export class AiGateway implements AiGatewayPort {
             : true;
 
         if (attempt < maxAttempts && isRetryable) {
-          const delay = initialDelayMs * Math.pow(backoffFactor, attempt - 1);
+          const baseDelay = errorCode === 'RATE_LIMIT_EXCEEDED' ? Math.max(initialDelayMs, 2500) : initialDelayMs;
+          const delay = baseDelay * Math.pow(backoffFactor, attempt - 1);
           await new Promise((res) => setTimeout(res, delay));
           continue;
         }

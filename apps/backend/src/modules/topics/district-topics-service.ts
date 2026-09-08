@@ -4,6 +4,7 @@ import { districts } from '../../adapters/db/schema/index.js';
 import {
   QualifyingLane,
   TopicCardItem,
+  ProjectionStatus,
   DistrictTopicsSearchBodyOutput,
   DistrictTopicsPageResponse,
   TopicEvidenceResponse,
@@ -99,6 +100,7 @@ interface RawTopicRow extends Record<string, unknown> {
   latestMeaningfulActivityTimestamp: Date;
   evidenceCount: number;
   searchMatchBadge?: 'evidence' | 'author' | null;
+  projectionStatus: string;
 }
 
 export class DistrictTopicsService {
@@ -209,7 +211,22 @@ export class DistrictTopicsService {
         t.primary_lane AS "primaryLane", 
         t.created_at AS "createdAt", 
         t.updated_at AS "updatedAt",
-        COALESCE(tp.summary, 'Мавзу хулосаси тайёрланмоқда...') AS summary, 
+        COALESCE(
+          tp.summary,
+          (
+            SELECT ae_sub.verbatim_text 
+            FROM accepted_evidence ae_sub 
+            WHERE ae_sub.topic_id = t.id 
+            ORDER BY ae_sub.original_timestamp ASC, ae_sub.telegram_message_id ASC 
+            LIMIT 1
+          ),
+          'Мавзу хулосаси тайёрланмоқда...'
+        ) AS summary, 
+        CASE 
+          WHEN tp.summary IS NOT NULL THEN 'AI_SYNTHESIZED'
+          WHEN EXISTS (SELECT 1 FROM accepted_evidence ae_chk WHERE ae_chk.topic_id = t.id) THEN 'EXTRACTIVE_FALLBACK'
+          ELSE 'PENDING'
+        END AS "projectionStatus",
         COALESCE(tp.lanes, jsonb_build_array(t.primary_lane)) AS lanes, 
         COALESCE(tp.latest_meaningful_activity_timestamp, t.latest_relevant_evidence_timestamp, t.created_at) AS "latestMeaningfulActivityTimestamp",
         COUNT(ae.id)::int AS "evidenceCount",
@@ -283,6 +300,7 @@ export class DistrictTopicsService {
         isNew: false,
         isUpdated: false,
         searchMatchBadge,
+        projectionStatus: (row.projectionStatus as ProjectionStatus) || 'AI_SYNTHESIZED',
         createdAt: new Date(row.createdAt).toISOString(),
         updatedAt: new Date(row.updatedAt).toISOString(),
       };

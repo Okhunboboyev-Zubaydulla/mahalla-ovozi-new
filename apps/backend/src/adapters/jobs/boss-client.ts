@@ -20,31 +20,36 @@ export const DEFAULT_QUEUE_CONFIGS: Record<string, Omit<PgBoss.SendOptions, 'db'
     retentionDays: 1,
   },
   'telegram-content-qualification': {
-    retryLimit: 3,
-    retryDelay: 5,
+    retryLimit: 5,
+    retryDelay: 15,
     retryBackoff: true,
     expireInMinutes: 10,
     retentionDays: 1,
   },
   'telegram-semantic-relevance': {
-    retryLimit: 3,
-    retryDelay: 5,
+    retryLimit: 5,
+    retryDelay: 15,
     retryBackoff: true,
     expireInMinutes: 10,
     retentionDays: 1,
   },
   'telegram-topic-assignment': {
-    retryLimit: 3,
-    retryDelay: 5,
+    retryLimit: 5,
+    retryDelay: 15,
     retryBackoff: true,
     expireInMinutes: 10,
     retentionDays: 1,
   },
   'telegram-topic-projection': {
-    retryLimit: 3,
-    retryDelay: 5,
+    retryLimit: 5,
+    retryDelay: 15,
     retryBackoff: true,
     expireInMinutes: 10,
+    retentionDays: 1,
+  },
+  'telegram-topic-reconciliation-cron': {
+    retryLimit: 1,
+    expireInMinutes: 5,
     retentionDays: 1,
   },
   'telegram-topic-retention': {
@@ -101,6 +106,7 @@ export async function initBossQueues(boss: PgBoss): Promise<void> {
   await boss.createQueue('telegram-semantic-relevance');
   await boss.createQueue('telegram-topic-assignment');
   await boss.createQueue('telegram-topic-projection');
+  await boss.createQueue('telegram-topic-reconciliation-cron');
   await boss.createQueue('telegram-topic-retention');
   await boss.createQueue('district-subscription-expiry');
   await boss.createQueue('district-subscription-expiry-cron');

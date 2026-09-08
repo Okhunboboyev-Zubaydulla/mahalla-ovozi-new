@@ -8,6 +8,7 @@ import {
 import {
   QualifyingLane,
   TopicCardItem,
+  ProjectionStatus,
   TopicEvidenceItem,
   TopicEvidenceResponse,
   TopicEvidenceQueryOutput,
@@ -224,13 +225,20 @@ export class TopicEvidenceService {
 
     const totalCount = countResult[0]?.count ?? 0;
 
+    const rows = (rawEvidenceRows.rows || rawEvidenceRows) as unknown as RawEvidenceRow[];
+    const firstEvidenceText = rows[0]?.verbatimText;
+    const summary = projectionRow?.summary ?? (firstEvidenceText || 'Мавзу хулосаси тайёрланмоқда...');
+    const projectionStatus: ProjectionStatus = projectionRow?.summary
+      ? 'AI_SYNTHESIZED'
+      : (totalCount > 0 || rows.length > 0 ? 'EXTRACTIVE_FALLBACK' : 'PENDING');
+
     // 4. Build TopicCardItem
     const topicCard: TopicCardItem = {
       id: topicRow.id,
       districtId: topicRow.districtId,
       mahallaName: topicRow.mahallaName,
       calendarDay: topicRow.calendarDay,
-      summary: projectionRow?.summary ?? 'Мавзу хулосаси тайёрланмоқда...',
+      summary,
       primaryLane: (topicRow.primaryLane as QualifyingLane) || 'HOKIM_RELATED',
       lanes: (projectionRow?.lanes as QualifyingLane[]) || [
         topicRow.primaryLane as QualifyingLane,
@@ -244,11 +252,10 @@ export class TopicEvidenceService {
         topicRow.latestRelevantEvidenceTimestamp.toISOString(),
       isNew: false,
       isUpdated: false,
+      projectionStatus,
       createdAt: topicRow.createdAt.toISOString(),
       updatedAt: topicRow.updatedAt.toISOString(),
     };
-
-    const rows = (rawEvidenceRows.rows || rawEvidenceRows) as unknown as RawEvidenceRow[];
 
     const hasNextPage = rows.length > limit;
     const pageRows = hasNextPage ? rows.slice(0, limit) : rows;

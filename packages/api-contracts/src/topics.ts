@@ -24,6 +24,13 @@ export type TelegramReplyMetadata = z.infer<typeof TelegramReplyMetadataSchema>;
 export const SearchMatchBadgeSchema = z.enum(['evidence', 'author']);
 export type SearchMatchBadge = z.infer<typeof SearchMatchBadgeSchema>;
 
+export const ProjectionStatusSchema = z.enum([
+  'AI_SYNTHESIZED',
+  'EXTRACTIVE_FALLBACK',
+  'PENDING',
+]);
+export type ProjectionStatus = z.infer<typeof ProjectionStatusSchema>;
+
 export const TopicCardItemSchema = z.object({
   id: z.string(),
   districtId: DistrictIdSchema,
@@ -38,6 +45,7 @@ export const TopicCardItemSchema = z.object({
   isNew: z.boolean(),
   isUpdated: z.boolean(),
   searchMatchBadge: SearchMatchBadgeSchema.nullable().optional(),
+  projectionStatus: ProjectionStatusSchema.optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

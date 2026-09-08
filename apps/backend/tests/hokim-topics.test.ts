@@ -563,10 +563,73 @@ describe('Story 3.1: Hokim Topic Board & Keyset Pagination Integration Tests', (
       const data = JSON.parse(res.body);
       const waterTopics = data.lanes.WATER.topics;
       const found = waterTopics.find((t: { id: string }) => t.id === unprojectedTopicId);
-      expect(found).toBeDefined();
       expect(found.summary).toBe('Мавзу хулосаси тайёрланмоқда...');
+      expect(found.projectionStatus).toBe('PENDING');
       expect(found.primaryLane).toBe('WATER');
       expect(found.lanes).toEqual(['WATER']);
+    });
+
+    it('displays unprojected topic with accepted evidence using dynamic extractive verbatim summary and projectionStatus EXTRACTIVE_FALLBACK', async () => {
+      const topicId = `top_extractive_${crypto.randomUUID().slice(0, 8)}`;
+      const evidenceId = `evi_extractive_${crypto.randomUUID().slice(0, 8)}`;
+      const intakeId = `int_extractive_${crypto.randomUUID().slice(0, 8)}`;
+      const now = new Date();
+
+      await db.insert(telegramIntakeRecords).values({
+        id: intakeId,
+        districtId: districtAId,
+        mahallaName: 'Гулистон',
+        telegramBotId: 'bot_test',
+        telegramChatId: '-10099999',
+        telegramMessageId: '12345',
+        originalTimestamp: now,
+        calendarDay: testCalendarDay,
+        rawPayload: {},
+        createdAt: now,
+      });
+
+      await db.insert(topics).values({
+        id: topicId,
+        districtId: districtAId,
+        mahallaName: 'Гулистон',
+        calendarDay: testCalendarDay,
+        primaryLane: 'GAS',
+        status: 'ACTIVE',
+        latestRelevantEvidenceTimestamp: now,
+        retentionExpiresAt: new Date(now.getTime() + 86400000),
+        requiredDerivedGeneration: 1,
+        appliedDerivedGeneration: 0,
+      });
+
+      await db.insert(acceptedEvidence).values({
+        id: evidenceId,
+        topicId,
+        districtId: districtAId,
+        mahallaName: 'Гулистон',
+        calendarDay: testCalendarDay,
+        intakeRecordId: intakeId,
+        telegramChatId: '-10099999',
+        telegramMessageId: '12345',
+        originalTimestamp: now,
+        verbatimText: 'Газ босими кескин тушиб кетди, овқат қилолмаяпмиз.',
+        contentType: 'TEXT',
+      });
+
+      const res = await server.inject({
+        method: 'GET',
+        url: `/api/v1/hokim/topics/board?calendarDay=${testCalendarDay}`,
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: hokimACookie,
+        },
+      });
+      expect(res.statusCode).toBe(200);
+      const data = JSON.parse(res.body);
+      const gasTopics = data.lanes.GAS.topics;
+      const found = gasTopics.find((t: { id: string }) => t.id === topicId);
+      expect(found).toBeDefined();
+      expect(found.summary).toBe('Газ босими кескин тушиб кетди, овқат қилолмаяпмиз.');
+      expect(found.projectionStatus).toBe('EXTRACTIVE_FALLBACK');
     });
 
     it('rejects invalid calendarDay format on GET /board with 400 VALIDATION_ERROR', async () => {

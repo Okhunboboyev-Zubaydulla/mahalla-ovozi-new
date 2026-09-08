@@ -48,15 +48,15 @@ describe('JobSingletonKeys and Queue Architecture (AD-3)', () => {
   it('defines resilient retry and backoff defaults for all queues', async () => {
     const { DEFAULT_QUEUE_CONFIGS } = await import('../src/adapters/jobs/boss-client.js');
     expect(DEFAULT_QUEUE_CONFIGS[TELEGRAM_CONTENT_QUALIFICATION_QUEUE]).toEqual({
-      retryLimit: 3,
-      retryDelay: 5,
+      retryLimit: 5,
+      retryDelay: 15,
       retryBackoff: true,
       expireInMinutes: 10,
       retentionDays: 1,
     });
     expect(DEFAULT_QUEUE_CONFIGS[TELEGRAM_SEMANTIC_RELEVANCE_QUEUE]).toEqual({
-      retryLimit: 3,
-      retryDelay: 5,
+      retryLimit: 5,
+      retryDelay: 15,
       retryBackoff: true,
       expireInMinutes: 10,
       retentionDays: 1,
@@ -87,15 +87,15 @@ describe('JobSingletonKeys and Queue Architecture (AD-3)', () => {
 
     const jobId = await sendQueueJob(mockBoss, TELEGRAM_CONTENT_QUALIFICATION_QUEUE, { test: 1 }, {
       singletonKey: 'msg:1',
-      retryLimit: 5, // custom override
+      retryLimit: 8, // custom override
     });
 
     expect(jobId).toBe('job_123');
     expect(capturedQueue).toBe(TELEGRAM_CONTENT_QUALIFICATION_QUEUE);
     expect(capturedData).toEqual({ test: 1 });
     expect(capturedOptions).toEqual({
-      retryLimit: 5,
-      retryDelay: 5,
+      retryLimit: 8,
+      retryDelay: 15,
       retryBackoff: true,
       expireInMinutes: 10,
       retentionDays: 1,

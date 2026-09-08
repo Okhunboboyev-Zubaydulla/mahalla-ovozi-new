@@ -204,6 +204,36 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
               Фойдаланувчида топилди
             </Tag>
           )}
+          {topic.projectionStatus === 'EXTRACTIVE_FALLBACK' && (
+            <Tag
+              style={{
+                backgroundColor: '#EFF6FF',
+                color: '#1D4ED8',
+                borderColor: '#BFDBFE',
+                fontSize: 11,
+                fontWeight: 500,
+                margin: 0,
+                borderRadius: 4,
+              }}
+            >
+              Дастлабки матн
+            </Tag>
+          )}
+          {topic.projectionStatus === 'PENDING' && (
+            <Tag
+              style={{
+                backgroundColor: '#F8FAFC',
+                color: '#64748B',
+                borderColor: '#E2E8F0',
+                fontSize: 11,
+                fontWeight: 500,
+                margin: 0,
+                borderRadius: 4,
+              }}
+            >
+              Кутилмоқда
+            </Tag>
+          )}
           {effectiveShowNewBadge && (
             <Tag
               color="#DC2626"
