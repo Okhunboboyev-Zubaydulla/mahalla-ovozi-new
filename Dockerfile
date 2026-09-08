@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 FROM node:24-bookworm-slim AS base
 RUN corepack enable && corepack prepare pnpm@10.34.1 --activate
 ENV PNPM_HOME="/pnpm"
