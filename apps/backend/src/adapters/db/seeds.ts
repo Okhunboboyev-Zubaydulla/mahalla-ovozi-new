@@ -19,7 +19,7 @@ const defaultModelId: string =
   (defaultProvider === 'GROQ'
     ? 'llama-3.3-70b-versatile'
     : defaultProvider === 'GEMINI'
-      ? 'gemini-2.0-flash'
+      ? 'gemini-3.5-flash'
       : defaultProvider === 'OPENAI'
         ? 'gpt-4o-mini'
         : 'gemma4:12b');
