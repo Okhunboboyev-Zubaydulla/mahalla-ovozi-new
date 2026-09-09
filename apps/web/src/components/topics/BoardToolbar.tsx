@@ -303,14 +303,14 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
 
             <div style={{ width: 1, height: 18, backgroundColor: '#E2E8F0', flexShrink: 0 }} />
 
-            {/* Topic & Evidence Search (Responsive elastic width) */}
+            {/* Topic & Evidence Search (Responsive elastic width, fits full 33-char placeholder) */}
             <DashboardSearchInput
               value={searchQuery}
               onChange={(val) => onSearchChange?.(val)}
               style={{
-                width: '100%',
-                maxWidth: 300,
-                minWidth: 180,
+                width: 360,
+                maxWidth: 380,
+                minWidth: 200,
                 flexShrink: 1,
                 height: 32,
                 fontSize: 14,
