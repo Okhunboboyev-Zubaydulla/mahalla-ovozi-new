@@ -34,6 +34,9 @@ services:
       PORT: 3000
       HOST: 0.0.0.0
       DATABASE_URL: postgresql://${POSTGRES_USER:-mahalla_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mahalla_ovozi}
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks:
       - mahalla-net
     healthcheck:
@@ -61,6 +64,9 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-mahalla_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mahalla_ovozi}
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks:
       - mahalla-net
 

@@ -21,6 +21,7 @@ export const TELEGRAM_CONTENT_QUALIFICATION_QUEUE = 'telegram-content-qualificat
 export const TELEGRAM_SEMANTIC_RELEVANCE_QUEUE = 'telegram-semantic-relevance';
 export const TELEGRAM_TOPIC_ASSIGNMENT_QUEUE = 'telegram-topic-assignment';
 export const TELEGRAM_TOPIC_PROJECTION_QUEUE = 'telegram-topic-projection';
+export const TELEGRAM_TOPIC_PROJECTION_RECONCILE_CRON_QUEUE = 'telegram-topic-projection-reconcile-cron';
 export const TELEGRAM_TOPIC_RETENTION_QUEUE = 'telegram-topic-retention';
 export const DISTRICT_SUBSCRIPTION_EXPIRY_QUEUE = 'district-subscription-expiry';
 export const DISTRICT_SUBSCRIPTION_EXPIRY_CRON_QUEUE = 'district-subscription-expiry-cron';

@@ -172,7 +172,9 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
           },
         );
       }
-      throw new AiGatewayError('NETWORK_ERROR', `Network error during AI request: ${err?.message}`, {
+      const causeMsg = err?.cause instanceof Error ? err.cause.message : (err?.cause?.code ? String(err.cause.code) : '');
+      const detail = causeMsg ? `${err?.message} (${causeMsg})` : `${err?.message}`;
+      throw new AiGatewayError('NETWORK_ERROR', `Network error during AI request: ${detail}`, {
         status: 503,
         retryable: true,
         provider: this.providerName,

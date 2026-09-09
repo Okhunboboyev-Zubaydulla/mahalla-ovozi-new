@@ -1,16 +1,18 @@
 import crypto from 'node:crypto';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import type { DbClient } from '../../../adapters/db/client.js';
 import {
   districts,
   topics,
   topicProjections,
   aiOperations,
+  operationalIssues,
 } from '../../../adapters/db/schema/index.js';
 import {
   TELEGRAM_TOPIC_PROJECTION_QUEUE,
+  TELEGRAM_TOPIC_PROJECTION_RECONCILE_CRON_QUEUE,
   withTransactionalIntake,
   type TelegramTopicProjectionJobData,
 } from '../../../adapters/jobs/boss-client.js';
@@ -22,6 +24,7 @@ import {
   type AcceptedEvidenceItem,
 } from '../../ai/context-snapshot.js';
 import { clearPendingRetryFlag } from '../../issues/retry-service.js';
+import { reconcileUnprojectedTopics } from '../topic-reconciliation-service.js';
 
 export interface TopicProjectionJobDeps {
   db: DbClient;
@@ -320,6 +323,28 @@ export async function processTopicProjectionJobs(
             if (projectionCommitted) {
               const durationMs = Math.round(performance.now() - startTime);
 
+              // Auto-resolve any active operational delay issue for this topic
+              try {
+                await db
+                  .update(operationalIssues)
+                  .set({
+                    status: 'RESOLVED',
+                    resolvedAt: new Date(),
+                    updatedAt: new Date(),
+                  })
+                  .where(
+                    and(
+                      eq(
+                        operationalIssues.logicalKey,
+                        `DISTRICT:${districtId}:topic_projection:TOPIC_PROCESSING_DELAY:${topicId}`,
+                      ),
+                      eq(operationalIssues.status, 'ACTIVE'),
+                    ),
+                  );
+              } catch (resErr) {
+                console.warn('Failed to resolve topic delay issue on projection commit:', resErr);
+              }
+
               // 8. Privacy-safe structured telemetry (AC 18 / AD-11)
               console.log(
                 JSON.stringify({
@@ -401,9 +426,25 @@ export async function registerTopicProjectionJobHandler(
   boss: PgBoss,
   deps: TopicProjectionJobDeps,
 ): Promise<void> {
+  // 1. Process individual topic projection recalculation jobs
   await boss.work<TelegramTopicProjectionJobData>(
     TELEGRAM_TOPIC_PROJECTION_QUEUE,
     { newJobCheckInterval: 50 } as any,
     (jobs) => processTopicProjectionJobs(jobs, deps),
+  );
+
+  // 2. Periodic recurring cron sweep every 2 minutes for unprojected or stale topics
+  await boss.schedule(
+    TELEGRAM_TOPIC_PROJECTION_RECONCILE_CRON_QUEUE,
+    '*/2 * * * *',
+    {},
+    { tz: 'UTC' },
+  );
+
+  await boss.work(
+    TELEGRAM_TOPIC_PROJECTION_RECONCILE_CRON_QUEUE,
+    async () => {
+      await reconcileUnprojectedTopics(deps.db, deps.boss);
+    },
   );
 }

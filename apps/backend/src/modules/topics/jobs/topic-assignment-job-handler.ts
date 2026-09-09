@@ -499,8 +499,8 @@ export async function processTopicAssignmentJobs(
                 const singletonKey = JobSingletonKeys.forTopicProjection(targetTopicId, nextGeneration);
                 await enqueueJob(TELEGRAM_TOPIC_PROJECTION_QUEUE, projectionJobData, {
                   singletonKey,
-                  retryLimit: 3,
-                  retryDelay: 5,
+                  retryLimit: 5,
+                  retryDelay: 15,
                   retryBackoff: true,
                 });
               } else if (matchingDecision.decision === 'NEW_TOPIC' || matchingDecision.decision === 'MATCH_EXISTING_TOPIC') {
@@ -580,8 +580,8 @@ export async function processTopicAssignmentJobs(
                 const singletonKey = JobSingletonKeys.forTopicProjection(newTopicId, 1);
                 await enqueueJob(TELEGRAM_TOPIC_PROJECTION_QUEUE, projectionJobData, {
                   singletonKey,
-                  retryLimit: 3,
-                  retryDelay: 5,
+                  retryLimit: 5,
+                  retryDelay: 15,
                   retryBackoff: true,
                 });
               } else if (matchingDecision.decision === 'UNASSIGNABLE_VAGUE') {
