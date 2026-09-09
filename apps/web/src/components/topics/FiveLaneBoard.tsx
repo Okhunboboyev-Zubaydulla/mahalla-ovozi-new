@@ -37,7 +37,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
   searchQuery,
   onLoadMore,
   onSelectTopic,
-  onRevealNewTopics,
+  onRevealNewTopics: _onRevealNewTopics,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -51,10 +51,6 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
 
   const totalVisibleCount = lanesToRender.reduce(
     (sum, laneKey) => sum + (lanes[laneKey]?.topics?.length || 0),
-    0,
-  );
-  const totalBufferedCount = lanesToRender.reduce(
-    (sum, laneKey) => sum + (lanes[laneKey]?.bufferedNewTopics?.length || 0),
     0,
   );
 
@@ -90,7 +86,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
     });
   };
 
-  const isBoardEmpty = totalVisibleCount === 0 && totalBufferedCount === 0;
+  const isBoardEmpty = totalVisibleCount === 0;
 
   return (
     <main
@@ -178,23 +174,21 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
         />
       </div>
 
-      {/* Horizontal Scroll Region */}
+      {/* 5 Distinct Kanban Lane Columns */}
       <div
         ref={scrollContainerRef}
-        role="region"
-        aria-label="Йўналишлар тахтаси"
         tabIndex={0}
+        aria-label="Йўналишлар панели"
         style={{
-          flex: 1,
-          minHeight: 0,
           display: 'flex',
           gap: 16,
+          flex: 1,
+          minHeight: 0,
           overflowX: 'auto',
           overflowY: 'hidden',
           paddingBottom: 4,
-          scrollbarWidth: 'thin',
-          outline: 'none',
-          alignItems: 'stretch',
+          scrollSnapType: 'x mandatory',
+          WebkitOverflowScrolling: 'touch',
         }}
         onFocus={(e) => {
           if (e.target === e.currentTarget) {
@@ -209,8 +203,6 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
           const laneData = lanes[laneKey] || {
             lane: laneKey,
             topics: [],
-            bufferedNewTopics: [],
-            newItemsCount: 0,
             totalCount: 0,
             nextCursor: null,
             hasNextPage: false,
@@ -224,7 +216,6 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
               lane={laneKey}
               topics={laneData.topics}
               totalCount={laneData.totalCount}
-              newItemsCount={laneData.newItemsCount || 0}
               hasNextPage={laneData.hasNextPage}
               isLoadingMore={laneData.isLoadingMore}
               loadMoreError={laneData.loadMoreError}
@@ -232,7 +223,6 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
               searchQuery={searchQuery}
               onLoadMore={onLoadMore}
               onSelectTopic={onSelectTopic}
-              onRevealNewItems={onRevealNewTopics}
               style={lanesToRender.length < 5 ? { maxWidth: 380 } : undefined}
             />
           );

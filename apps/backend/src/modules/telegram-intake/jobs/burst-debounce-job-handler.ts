@@ -29,8 +29,8 @@ export interface BurstDebounceJobDeps {
   burstBufferRepo?: BurstBufferRepository;
 }
 
-export const SLIDING_DEBOUNCE_WINDOW_SECONDS = 50;
-export const MAX_DEBOUNCE_BURST_CEILING_SECONDS = 90;
+export const SLIDING_DEBOUNCE_WINDOW_SECONDS = 20;
+export const MAX_DEBOUNCE_BURST_CEILING_SECONDS = 45;
 
 export async function processBurstDebounceJobs(
   jobs: PgBoss.Job<TelegramBurstDebounceJobData>[],

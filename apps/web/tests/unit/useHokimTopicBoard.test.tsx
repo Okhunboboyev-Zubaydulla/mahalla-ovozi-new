@@ -127,7 +127,7 @@ describe('Story 3.3: useHokimTopicBoard In-Session Reconciliation & Buffer Tests
     );
   };
 
-  it('Test 1: Initial cold load populates 5 lanes directly with 0 buffered items', async () => {
+  it('Test 1: Initial cold load populates 5 lanes directly', async () => {
     vi.spyOn(hokimTopicsClient, 'getTodayBoard').mockResolvedValue(initialBoardResponse);
 
     const { result } = renderHook(() => useHokimTopicBoard(), {
@@ -138,9 +138,6 @@ describe('Story 3.3: useHokimTopicBoard In-Session Reconciliation & Buffer Tests
 
     expect(result.current.lanes.WATER.topics.length).toBe(1);
     expect(result.current.lanes.WATER.topics[0]?.id).toBe('top_w1');
-    expect(result.current.lanes.WATER.bufferedNewTopics.length).toBe(0);
-    expect(result.current.lanes.WATER.newItemsCount).toBe(0);
-    expect(result.current.newTopicsPerLane.WATER).toBe(0);
     expect(result.current.lastRefreshedAt).toBe('2026-08-24T08:30:00.000Z');
   });
 
@@ -188,12 +185,11 @@ describe('Story 3.3: useHokimTopicBoard In-Session Reconciliation & Buffer Tests
       expect(result.current.lanes.WATER.topics[0]?.isUpdated).toBe(true);
     });
 
-    // In-place update: array length unchanged and buffered items is 0
+    // In-place update: array length unchanged
     expect(result.current.lanes.WATER.topics.length).toBe(1);
-    expect(result.current.lanes.WATER.bufferedNewTopics.length).toBe(0);
   });
 
-  it('Test 3: Newly arriving topics are staged in bufferedNewTopics and revealed via revealNewTopics', async () => {
+  it('Test 3: Newly arriving topics are directly prepended to lane at index 0 with isNew: true', async () => {
     let currentBoardResponse = initialBoardResponse;
     vi.spyOn(hokimTopicsClient, 'getTodayBoard').mockImplementation(async () => currentBoardResponse);
 
@@ -238,28 +234,14 @@ describe('Story 3.3: useHokimTopicBoard In-Session Reconciliation & Buffer Tests
       await result.current.manualRefresh();
     });
 
-    // Visible topics array MUST remain 1 item (no layout shift), new item buffered
+    // Directly prepended at index 0 without needing manual reveal
     await waitFor(() => {
-      expect(result.current.lanes.WATER.newItemsCount).toBe(1);
-      expect(result.current.newTopicsPerLane.WATER).toBe(1);
+      expect(result.current.lanes.WATER.topics.length).toBe(2);
+      expect(result.current.lanes.WATER.topics[0]?.id).toBe('top_w2_brand_new');
+      expect(result.current.lanes.WATER.topics[0]?.isNew).toBe(true);
+      expect(result.current.lanes.WATER.topics[1]?.id).toBe('top_w1');
+      expect(result.current.lanes.WATER.totalCount).toBe(2);
     });
-
-    expect(result.current.lanes.WATER.topics.length).toBe(1);
-    expect(result.current.lanes.WATER.topics[0]?.id).toBe('top_w1');
-    expect(result.current.lanes.WATER.bufferedNewTopics.length).toBe(1);
-    expect(result.current.lanes.WATER.bufferedNewTopics[0]?.id).toBe('top_w2_brand_new');
-
-    // Reveal buffered topics
-    act(() => {
-      result.current.revealNewTopics('WATER');
-    });
-
-    // Now prepended to topics and buffer cleared
-    expect(result.current.lanes.WATER.topics.length).toBe(2);
-    expect(result.current.lanes.WATER.topics[0]?.id).toBe('top_w2_brand_new');
-    expect(result.current.lanes.WATER.topics[1]?.id).toBe('top_w1');
-    expect(result.current.lanes.WATER.bufferedNewTopics.length).toBe(0);
-    expect(result.current.lanes.WATER.newItemsCount).toBe(0);
   });
 
   it('Test 4: Multi-lane topic updates deduplicate canonical count in live announcement (AC 4)', async () => {
@@ -313,10 +295,10 @@ describe('Story 3.3: useHokimTopicBoard In-Session Reconciliation & Buffer Tests
     });
 
     await waitFor(() => {
-      expect(result.current.lanes.WATER.newItemsCount).toBe(1);
-      expect(result.current.lanes.HOKIM_RELATED.newItemsCount).toBe(1);
-      expect(result.current.lanes.WATER.bufferedNewTopics.length).toBe(1);
-      expect(result.current.lanes.HOKIM_RELATED.bufferedNewTopics.length).toBe(1);
+      expect(result.current.lanes.WATER.topics.length).toBe(2);
+      expect(result.current.lanes.HOKIM_RELATED.topics.length).toBe(2);
+      expect(result.current.lanes.WATER.topics[0]?.id).toBe('top_multi_new');
+      expect(result.current.lanes.HOKIM_RELATED.topics[0]?.id).toBe('top_multi_new');
     });
   });
 

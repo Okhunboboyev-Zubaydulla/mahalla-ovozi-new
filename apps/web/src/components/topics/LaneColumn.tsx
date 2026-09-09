@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useContext, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useContext, useState, useCallback } from 'react';
 import { Button, Typography, Empty, Alert } from 'antd';
 import { ReloadOutlined, DownOutlined } from '@ant-design/icons';
 import { QualifyingLane, TopicCardItem } from '@mahalla-ovozi/api-contracts';
@@ -29,7 +29,7 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
   lane,
   topics,
   totalCount,
-  newItemsCount = 0,
+  newItemsCount: _newItemsCount,
   hasNextPage,
   isLoadingMore,
   loadMoreError,
@@ -37,7 +37,7 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
   searchQuery,
   onLoadMore,
   onSelectTopic,
-  onRevealNewItems,
+  onRevealNewItems: _onRevealNewItems,
   style,
 }) => {
   const laneLabel = LANE_LABELS[lane];
@@ -46,6 +46,8 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
   const liveAnnouncer = useContext(LiveAnnouncerContext);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const prevTopicsLengthRef = useRef(topics.length);
+  const prevScrollHeightRef = useRef<number>(0);
+  const prevFirstTopicIdRef = useRef<string | undefined>(topics[0]?.id);
   const isKeyboardTriggerRef = useRef(false);
 
   const [canScrollTop, setCanScrollTop] = useState(false);
@@ -76,6 +78,32 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
     };
   }, [topics, isLoadingMore, updateScrollEdges]);
 
+  useLayoutEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const prevLength = prevTopicsLengthRef.current;
+    const prevFirstId = prevFirstTopicIdRef.current;
+    const currentFirstId = topics[0]?.id;
+
+    // Detect if newly incoming topic(s) were prepended at index 0 (not a loadMore append)
+    const isPrepended =
+      topics.length > prevLength && prevFirstId !== undefined && currentFirstId !== prevFirstId;
+
+    if (isPrepended && el.scrollTop > 20) {
+      const prevScrollHeight = prevScrollHeightRef.current;
+      const newScrollHeight = el.scrollHeight;
+      const heightDelta = newScrollHeight - prevScrollHeight;
+      if (heightDelta > 0) {
+        // Anchor scroll position so existing cards remain stationary
+        el.scrollTop += heightDelta;
+      }
+    }
+
+    prevScrollHeightRef.current = el.scrollHeight;
+    prevFirstTopicIdRef.current = currentFirstId;
+  }, [topics]);
+
   useEffect(() => {
     const prevLength = prevTopicsLengthRef.current;
     if (topics.length > prevLength) {
@@ -100,21 +128,6 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
     isKeyboardTriggerRef.current = false;
     prevTopicsLengthRef.current = topics.length;
   }, [topics, laneLabel, liveAnnouncer]);
-
-  const handleReveal = () => {
-    onRevealNewItems?.(lane);
-    if (scrollContainerRef.current) {
-      if (typeof scrollContainerRef.current.scrollTo === 'function') {
-        scrollContainerRef.current.scrollTo({
-          top: 0,
-          behavior: prefersReducedMotion ? 'auto' : 'smooth',
-        });
-      } else {
-        scrollContainerRef.current.scrollTop = 0;
-      }
-      requestAnimationFrame(updateScrollEdges);
-    }
-  };
 
   return (
     <section
@@ -179,37 +192,6 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
           >
             {laneLabel}
           </Text>
-
-          {/* Discoverability Badge for Buffered Items (AC 3, AC 9) */}
-          {newItemsCount > 0 && (
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label={`${newItemsCount} та янги мавзуни кўрсатиш`}
-              onClick={handleReveal}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleReveal();
-                }
-              }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                backgroundColor: '#FEF3C7',
-                color: '#D97706',
-                border: '1px solid #FDE68A',
-                borderRadius: 12,
-                padding: '2px 8px',
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: 'pointer',
-                userSelect: 'none',
-              }}
-            >
-              +{newItemsCount} янги
-            </span>
-          )}
         </div>
 
         <span

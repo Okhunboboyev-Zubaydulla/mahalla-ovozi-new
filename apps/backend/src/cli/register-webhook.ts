@@ -1,9 +1,13 @@
+import dns from 'node:dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import { createDbPool } from '../adapters/db/client.js';
 import { decryptToken } from '../adapters/crypto/token-cipher.js';
 import { deriveWebhookSecret } from '../modules/telegram-intake/webhook-security.js';
 
 export async function run() {
   const ngrokUrl = process.argv[2] || 'https://mulled-revivable-satirical.ngrok-free.dev';
+  const dropPending = process.argv.includes('--drop-pending');
   const pool = createDbPool();
 
   try {
@@ -26,16 +30,26 @@ export async function run() {
     const webhookUrl = `${ngrokUrl}/api/v1/webhooks/telegram/${row.bot_id}`;
     const secretToken = deriveWebhookSecret(row.bot_id);
 
+    const isProduction = webhookUrl.includes('mahalla-ovozi.uz');
+    const webhookPayload: Record<string, unknown> = {
+      url: webhookUrl,
+      secret_token: secretToken,
+      allowed_updates: ['message', 'edited_message'],
+      max_connections: 100,
+      drop_pending_updates: dropPending,
+    };
+
+    if (isProduction || process.env.TELEGRAM_WEBHOOK_IP) {
+      webhookPayload.ip_address = process.env.TELEGRAM_WEBHOOK_IP || '95.182.118.3';
+    }
+
     console.log(`Setting Telegram webhook -> ${webhookUrl}`);
+    console.log('Payload configuration:', JSON.stringify(webhookPayload, null, 2));
 
     const tgRes = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url: webhookUrl,
-        secret_token: secretToken,
-        allowed_updates: ['message', 'edited_message'],
-      }),
+      body: JSON.stringify(webhookPayload),
     });
 
     const tgData = await tgRes.json();

@@ -92,7 +92,7 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
   const [searchText, setSearchText] = useState<string>('');
   const [debouncedSearchText, setDebouncedSearchText] = useState<string>('');
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
-  const [autoRefreshSec, setAutoRefreshSec] = useState<number | false>(15_000);
+  const [autoRefreshSec, setAutoRefreshSec] = useState<number | false>(3_000);
   const [pageSize, setPageSize] = useState<number>(20);
 
   // Pagination Cursor State & History Stack
@@ -457,10 +457,10 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
                 onChange={(val) => setAutoRefreshSec(val)}
                 style={{ width: 140 }}
                 options={[
+                  { label: 'Авто-янгилаш: 3с', value: 3_000 },
+                  { label: 'Авто-янгилаш: 5с', value: 5_000 },
                   { label: 'Авто-янгилаш: 10с', value: 10_000 },
-                  { label: 'Авто-янгилаш: 15с', value: 15_000 },
                   { label: 'Авто-янгилаш: 30с', value: 30_000 },
-                  { label: 'Авто-янгилаш: 60с', value: 60_000 },
                   { label: 'Ўчирилган', value: false },
                 ]}
               />

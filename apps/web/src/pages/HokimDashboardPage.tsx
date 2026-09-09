@@ -59,7 +59,6 @@ export const HokimDashboardPage: React.FC = () => {
     lanes,
     activeLanes,
     loadMore,
-    revealNewTopics,
     manualRefresh,
     refetch,
     retryFilter,
@@ -401,7 +400,6 @@ export const HokimDashboardPage: React.FC = () => {
         searchQuery={searchQuery}
         onLoadMore={loadMore}
         onSelectTopic={handleSelectTopic}
-        onRevealNewTopics={revealNewTopics}
       />
 
       <TopicEvidenceDrawer

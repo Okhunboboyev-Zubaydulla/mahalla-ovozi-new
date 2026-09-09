@@ -13,8 +13,6 @@ import { DashboardFilterState } from '../hooks/useDashboardFilterParams.js';
 import { ApiError } from '../lib/api-client.js';
 
 export interface LaneLocalState extends HokimLaneBoardData {
-  bufferedNewTopics: TopicCardItem[];
-  newItemsCount: number;
   isLoadingMore: boolean;
   loadMoreError: string | null;
 }
@@ -36,8 +34,6 @@ function buildInitialLanesState(
     result[k] = {
       lane: k,
       topics: laneData?.topics || [],
-      bufferedNewTopics: [],
-      newItemsCount: 0,
       totalCount: laneData?.totalCount || 0,
       nextCursor: laneData?.nextCursor ?? null,
       hasNextPage: Boolean(laneData?.hasNextPage),
@@ -240,8 +236,6 @@ export function useHokimTopicBoard(
         newLanes[k] = {
           lane: k,
           topics,
-          bufferedNewTopics: [],
-          newItemsCount: 0,
           totalCount: laneData?.totalCount || 0,
           nextCursor: laneData?.nextCursor ?? null,
           hasNextPage: Boolean(laneData?.hasNextPage),
@@ -255,7 +249,7 @@ export function useHokimTopicBoard(
       lanesStateRef.current = newLanes;
       setLanesState(newLanes);
     } else {
-      // 2. In-Session Reconciliation: Preserve existing card positions & pagination batches, buffer new cards
+      // 2. In-Session Reconciliation: Preserve existing card positions, directly prepend new topics at index 0
       const newCanonicalTopicIds = new Set<string>();
       const updatedCanonicalTopicIds = new Set<string>();
       const currentKnownIds = previousKnownTopicIdsRef.current;
@@ -294,34 +288,25 @@ export function useHokimTopicBoard(
           return existingItem;
         });
 
-        // Identify newly incoming topics for this lane
-        const existingBufferedIds = new Set(prevLane.bufferedNewTopics.map((b) => b.id));
-        const newBufferedItems: TopicCardItem[] = [...prevLane.bufferedNewTopics];
+        // Identify newly incoming topics for this lane to prepend directly to the lane
+        const itemsToPrepend: TopicCardItem[] = [];
 
         for (const item of incomingLane.topics) {
           if (!existingVisibleIds.has(item.id)) {
-            // Not visible on screen
+            // Not visible on screen yet -> new arrival
             if (!currentKnownIds.has(item.id)) {
               newCanonicalTopicIds.add(item.id);
             }
-            if (!existingBufferedIds.has(item.id)) {
-              newBufferedItems.push(item);
-              existingBufferedIds.add(item.id);
-            } else {
-              // Update in buffer in-place
-              const idx = newBufferedItems.findIndex((b) => b.id === item.id);
-              if (idx !== -1) {
-                newBufferedItems[idx] = { ...newBufferedItems[idx], ...item };
-              }
-            }
+            itemsToPrepend.push(item);
+            existingVisibleIds.add(item.id);
           }
         }
 
+        const mergedTopics = [...itemsToPrepend, ...reconciledTopics];
+
         updatedLanes[k] = {
           ...prevLane,
-          topics: reconciledTopics,
-          bufferedNewTopics: newBufferedItems,
-          newItemsCount: newBufferedItems.length,
+          topics: mergedTopics,
           totalCount: incomingLane.totalCount,
           // Keep existing nextCursor/hasNextPage unless not paginated yet
           nextCursor: prevLane.nextCursor ?? incomingLane.nextCursor,
@@ -358,61 +343,6 @@ export function useHokimTopicBoard(
       }
     }
   }, [boardQuery.data, boardQuery.isPlaceholderData]);
-
-  // Reveal buffered new topics for a specific lane (AC 3)
-  const revealNewTopics = useCallback(
-    (lane: QualifyingLane) => {
-      setLanesState((prev) => {
-        const targetLane = prev[lane];
-        if (!targetLane || targetLane.bufferedNewTopics.length === 0) {
-          return prev;
-        }
-
-        const existingIds = new Set(targetLane.topics.map((t) => t.id));
-        const itemsToPrepend: TopicCardItem[] = [];
-
-        for (const item of targetLane.bufferedNewTopics) {
-          if (!existingIds.has(item.id)) {
-            itemsToPrepend.push(item);
-            existingIds.add(item.id);
-          }
-        }
-
-        const updatedTopics = [...itemsToPrepend, ...targetLane.topics];
-
-        const nextState = {
-          ...prev,
-          [lane]: {
-            ...targetLane,
-            topics: updatedTopics,
-            bufferedNewTopics: [],
-            newItemsCount: 0,
-          },
-        };
-        lanesStateRef.current = nextState;
-
-        // Synchronize with TanStack Query cache so revealed topics remain in cache across unmounts
-        queryClient.setQueryData<HokimTopicBoardResponse>(queryKey, (oldBoard) => {
-          if (!oldBoard?.lanes) return oldBoard;
-          const oldLane = oldBoard.lanes[lane];
-          if (!oldLane) return oldBoard;
-          return {
-            ...oldBoard,
-            lanes: {
-              ...oldBoard.lanes,
-              [lane]: {
-                ...oldLane,
-                topics: updatedTopics,
-              },
-            },
-          };
-        });
-
-        return nextState;
-      });
-    },
-    [queryClient, queryKey],
-  );
 
   const loadMore = useCallback(
     async (lane: QualifyingLane) => {
@@ -598,14 +528,6 @@ export function useHokimTopicBoard(
     return boardQuery.refetch();
   }, [boardQuery.refetch]);
 
-  const newTopicsPerLane: Record<QualifyingLane, number> = {
-    HOKIM_RELATED: lanesState.HOKIM_RELATED.newItemsCount,
-    WATER: lanesState.WATER.newItemsCount,
-    ELECTRICITY: lanesState.ELECTRICITY.newItemsCount,
-    GAS: lanesState.GAS.newItemsCount,
-    WASTE: lanesState.WASTE.newItemsCount,
-  };
-
   const isRefreshing = boardQuery.isFetching && !boardQuery.isLoading;
   const isFilterTransitioning = Boolean(boardQuery.isFetching && boardQuery.isPlaceholderData);
   const isBackgroundRefreshing = Boolean(
@@ -625,11 +547,9 @@ export function useHokimTopicBoard(
     isStale: boardQuery.isStale,
     lastRefreshedAt: boardQuery.data?.serverEvaluatedAt ?? null,
     hasProcessingDelay: Boolean(boardQuery.data?.hasProcessingDelay),
-    newTopicsPerLane,
     lanes: lanesState,
     activeLanes: filterState.lanes,
     loadMore,
-    revealNewTopics,
     manualRefresh,
     refetch: boardQuery.refetch,
     retryFilter: boardQuery.refetch,

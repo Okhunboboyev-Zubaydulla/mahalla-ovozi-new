@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tag, Typography, Space } from 'antd';
 import {
   ClockCircleOutlined,
@@ -90,6 +90,24 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
       ? Math.max(0, topic.evidenceCount - effectiveUnreadDelta)
       : topic.evidenceCount;
 
+  const [isPulseActive, setIsPulseActive] = useState(
+    () => effectiveShowNewBadge && !prefersReducedMotion,
+  );
+
+  useEffect(() => {
+    if (effectiveShowNewBadge && !prefersReducedMotion) {
+      setIsPulseActive(true);
+      const timer = setTimeout(() => {
+        setIsPulseActive(false);
+      }, 2500);
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+    setIsPulseActive(false);
+    return undefined;
+  }, [effectiveShowNewBadge, prefersReducedMotion]);
+
   const formattedMahallaName = topic.mahallaName.toLowerCase().includes('маҳалла')
     ? topic.mahallaName
     : `${topic.mahallaName} маҳалласи`;
@@ -125,9 +143,15 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
         setIsFocused(false);
       }}
       style={{
-        backgroundColor: '#FFFFFF',
+        backgroundColor: isPulseActive ? '#FFFBFB' : '#FFFFFF',
         border: `1px solid ${
-          isSelected || isFocused ? '#0284C7' : isElevated ? '#CBD5E1' : '#E2E8F0'
+          isSelected || isFocused
+            ? '#0284C7'
+            : isPulseActive
+              ? '#FECACA'
+              : isElevated
+                ? '#CBD5E1'
+                : '#E2E8F0'
         }`,
         borderRadius: 8,
         padding: '16px',
@@ -136,12 +160,16 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
         flexDirection: 'column',
         gap: '10px',
         cursor: isInteractive ? 'pointer' : 'default',
-        boxShadow: isElevated ? themeColors.shadowCardHover : themeColors.shadowCard,
+        boxShadow: isElevated
+          ? themeColors.shadowCardHover
+          : isPulseActive
+            ? '0 0 0 2px #FECACA, 0 4px 6px -1px rgba(220, 38, 38, 0.08)'
+            : themeColors.shadowCard,
         outline: isSelected || isFocused ? '2px solid #0284C7' : 'none',
         outlineOffset: isSelected || isFocused ? '2px' : undefined,
         transition: prefersReducedMotion
           ? 'none'
-          : 'border-color 0.15s ease, box-shadow 0.15s ease',
+          : 'border-color 0.3s ease, box-shadow 0.6s ease, background-color 0.6s ease',
       }}
       aria-current={isSelected ? 'true' : undefined}
       aria-label={`Мавзу: ${formattedMahallaName}, ${topic.summary}`}

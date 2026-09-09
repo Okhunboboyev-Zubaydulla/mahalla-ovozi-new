@@ -220,11 +220,11 @@ describe('Hokim Dashboard Component & Integration Tests (Story 3.1)', () => {
         <ConfigProvider theme={mahallaTheme}>
           <FiveLaneBoard
             lanes={{
-              HOKIM_RELATED: { lane: 'HOKIM_RELATED', topics: [mockTopic], bufferedNewTopics: [], newItemsCount: 0, totalCount: 1, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              WATER: { lane: 'WATER', topics: [mockTopic], bufferedNewTopics: [], newItemsCount: 0, totalCount: 1, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              ELECTRICITY: { lane: 'ELECTRICITY', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              GAS: { lane: 'GAS', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              WASTE: { lane: 'WASTE', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              HOKIM_RELATED: { lane: 'HOKIM_RELATED', topics: [mockTopic], totalCount: 1, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              WATER: { lane: 'WATER', topics: [mockTopic], totalCount: 1, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              ELECTRICITY: { lane: 'ELECTRICITY', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              GAS: { lane: 'GAS', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              WASTE: { lane: 'WASTE', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
             }}
             onLoadMore={vi.fn()}
           />
@@ -243,11 +243,11 @@ describe('Hokim Dashboard Component & Integration Tests (Story 3.1)', () => {
         <ConfigProvider theme={mahallaTheme}>
           <FiveLaneBoard
             lanes={{
-              HOKIM_RELATED: { lane: 'HOKIM_RELATED', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              WATER: { lane: 'WATER', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              ELECTRICITY: { lane: 'ELECTRICITY', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              GAS: { lane: 'GAS', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
-              WASTE: { lane: 'WASTE', topics: [], bufferedNewTopics: [], newItemsCount: 0, totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              HOKIM_RELATED: { lane: 'HOKIM_RELATED', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              WATER: { lane: 'WATER', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              ELECTRICITY: { lane: 'ELECTRICITY', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              GAS: { lane: 'GAS', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              WASTE: { lane: 'WASTE', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
             }}
             onLoadMore={vi.fn()}
           />

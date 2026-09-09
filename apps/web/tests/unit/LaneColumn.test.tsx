@@ -23,14 +23,13 @@ const mockTopic: TopicCardItem = {
 };
 
 describe('Story 3.3: LaneColumn Component Tests', () => {
-  it('Test 1: Does not render discoverability badge when newItemsCount is 0', () => {
+  it('Test 1: Renders lane header with title and total count without discoverability badge', () => {
     render(
       <ConfigProvider theme={mahallaTheme}>
         <LaneColumn
           lane="WATER"
           topics={[mockTopic]}
           totalCount={1}
-          newItemsCount={0}
           hasNextPage={false}
           isLoadingMore={false}
           loadMoreError={null}
@@ -39,62 +38,45 @@ describe('Story 3.3: LaneColumn Component Tests', () => {
       </ConfigProvider>,
     );
 
+    expect(screen.getByText('Сув')).toBeTruthy();
+    expect(screen.getByText('1')).toBeTruthy();
     expect(screen.queryByText(/\+.*янги/)).toBeNull();
   });
 
-  it('Test 2: Renders discoverability badge when newItemsCount > 0 and handles click (AC 3)', () => {
-    const handleReveal = vi.fn();
+  it('Test 2: Does not render discoverability reveal button in header even when topics increase', () => {
     render(
       <ConfigProvider theme={mahallaTheme}>
         <LaneColumn
           lane="WATER"
           topics={[mockTopic]}
           totalCount={2}
-          newItemsCount={1}
           hasNextPage={false}
           isLoadingMore={false}
           loadMoreError={null}
           onLoadMore={vi.fn()}
-          onRevealNewItems={handleReveal}
         />
       </ConfigProvider>,
     );
 
-    const badge = screen.getByRole('button', { name: '1 та янги мавзуни кўрсатиш' });
-    expect(badge).toBeTruthy();
-    expect(badge.textContent).toBe('+1 янги');
-
-    fireEvent.click(badge);
-    expect(handleReveal).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: /янги мавзуни кўрсатиш/ })).toBeNull();
   });
 
-  it('Test 3: Handles keyboard Enter and Space activation on discoverability badge (AC 3, 9)', () => {
-    const handleReveal = vi.fn();
+  it('Test 3: Renders topic cards directly in the lane', () => {
     render(
       <ConfigProvider theme={mahallaTheme}>
         <LaneColumn
           lane="WATER"
           topics={[mockTopic]}
-          totalCount={3}
-          newItemsCount={2}
+          totalCount={1}
           hasNextPage={false}
           isLoadingMore={false}
           loadMoreError={null}
           onLoadMore={vi.fn()}
-          onRevealNewItems={handleReveal}
         />
       </ConfigProvider>,
     );
 
-    const badge = screen.getByRole('button', { name: '2 та янги мавзуни кўрсатиш' });
-    
-    // Enter key
-    fireEvent.keyDown(badge, { key: 'Enter', code: 'Enter' });
-    expect(handleReveal).toHaveBeenCalledTimes(1);
-
-    // Space key
-    fireEvent.keyDown(badge, { key: ' ', code: 'Space' });
-    expect(handleReveal).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('Сув таъминоти муаммоси.')).toBeTruthy();
   });
 
   describe('Story 3.8: Accessibility, Focus Management & Retry Banner Tests', () => {

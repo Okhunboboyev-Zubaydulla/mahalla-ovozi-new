@@ -277,7 +277,7 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
     }
   });
 
-  it('Test 2 (Sliding Window Reset): Extends debounce timer when user continues typing within 50 seconds', async () => {
+  it('Test 2 (Sliding Window Reset): Extends debounce timer when user continues typing within 20 seconds', async () => {
     const userId = '888456';
     const baseTime = new Date('2026-08-21T14:00:00Z');
 
@@ -293,21 +293,21 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
       },
     });
 
-    // Message 2 at T=15s
+    // Message 2 at T=5s
     await processTelegramWebhookUpdate(pool, boss, activeBotId, {
       update_id: 2002,
       message: {
         message_id: 202,
-        date: Math.floor((baseTime.getTime() + 15000) / 1000),
+        date: Math.floor((baseTime.getTime() + 5000) / 1000),
         chat: { id: validChatId, title: 'Navbahor' },
         from: { id: Number(userId), first_name: 'Resident 2' },
         text: 'Kutamiz',
       },
     });
 
-    // When worker fires at T=20s (5s after Msg 2, so within 25s window):
+    // When worker fires at T=8s (3s after Msg 2, so within 12s window):
     const realDateNow = Date.now;
-    Date.now = () => baseTime.getTime() + 20000;
+    Date.now = () => baseTime.getTime() + 8000;
 
     let rescheduledJobData: any = null;
     let rescheduledOptions: any = null;
@@ -492,7 +492,7 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
     }
   });
 
-  it('Test 5 (Edit Resets Debounce Timer): Reschedules job if edit occurred within 50 seconds of check', async () => {
+  it('Test 5 (Edit Resets Debounce Timer): Reschedules job if edit occurred within 20 seconds of check', async () => {
     const userId = '999501';
     const msgId = `501_${Date.now()}`;
     const baseTime = new Date('2026-08-21T21:10:00Z');
@@ -551,9 +551,9 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
 
       await processBurstDebounceJobs([debounceJob], { db, boss });
 
-      // Verifies timer was extended: remainingDelay is ceil(50 - 6) = 44 seconds
+      // Verifies timer was extended: remainingDelay is ceil(20 - 6) = 14 seconds
       expect(rescheduledJob).toBeDefined();
-      expect(rescheduledJob.options.startAfter).toBe(44);
+      expect(rescheduledJob.options.startAfter).toBe(14);
     } finally {
       Date.now = realDateNow;
       sendSpy.mockRestore();
@@ -797,7 +797,7 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
       // Run first burst debounce pass
       await processBurstDebounceJobs([initialJob], { db, boss });
 
-      // First burst should have processed only msg 1 and msg 2 (gap 10s <= 50s)
+      // First burst should have processed only msg 1 and msg 2 (gap 10s <= 12s)
       expect(enqueuedSemanticJobs.length).toBe(1);
       const burst1 = enqueuedSemanticJobs[0];
       expect(burst1.burstMessages).toBeDefined();
