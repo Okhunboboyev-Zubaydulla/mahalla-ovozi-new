@@ -50,7 +50,7 @@ Prefer smoke, integration, e2e over narrow unit/regression. Do not test static t
 Prefer red-green-refactor when possible.
 No fake/mock tests by default. Use real integrations when practical, even if slightly costly.
 UI tests/automations: stable IDs / test IDs / accessibility IDs, not visible text. Fail fast, no fallback clicks.
-UI/Frontend boundary: Do not manipulate the browser for visual/manual UI verification by default. Run non-interactive checks, then ask the user to manually verify the UI with concise steps, unless browser automation is explicitly approved.
+UI/Frontend boundary: Do not manipulate the browser for visual/manual UI verification by default (exception is that you are allowed to manipulate browser only for debugging process). Run non-interactive checks, then ask the user to manually verify the UI with concise steps, unless browser automation is explicitly approved.
 For substantial behavior changes, bug fixes, or business-critical flows, prefer test-first development when an established test setup exists. Use a code → test → diagnose → fix loop. When checks fail, diagnose whether the cause is implementation, expectation, environment, dependency, or pre-existing state. Fix errors caused by the approved change; report unrelated pre-existing failures separately.
 Do not remove, skip, or weaken verification just to pass checks.
 ## MODULE: DEBUGGING
