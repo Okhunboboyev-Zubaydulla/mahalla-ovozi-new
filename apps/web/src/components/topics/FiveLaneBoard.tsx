@@ -189,6 +189,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
           paddingBottom: 4,
           scrollSnapType: 'x mandatory',
           WebkitOverflowScrolling: 'touch',
+          justifyContent: lanesToRender.length <= 3 ? 'safe center' : 'flex-start',
         }}
         onFocus={(e) => {
           if (e.target === e.currentTarget) {
