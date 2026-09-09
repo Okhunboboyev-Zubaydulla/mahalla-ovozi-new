@@ -167,7 +167,7 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
   const aiProviderAdapters = new Map<string, AiProviderAdapterPort>([
     ['OPENAI', new HttpProviderAdapter('OPENAI')],
     ['GEMINI', new HttpProviderAdapter('GEMINI')],
-    ['GROQ', new HttpProviderAdapter('GROQ')],
+    ['DEEPINFRA', new HttpProviderAdapter('DEEPINFRA')],
     ['OLLAMA', new HttpProviderAdapter('OLLAMA')],
   ]);
   const aiGateway: AiGatewayPort = options?.aiGateway || new AiGateway({ db, customAdapters: aiProviderAdapters });

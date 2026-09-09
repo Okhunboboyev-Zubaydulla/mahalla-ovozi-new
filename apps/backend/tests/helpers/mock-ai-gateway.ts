@@ -19,7 +19,7 @@ export function createMockAiGateway(defaultResponse?: Record<string, unknown>): 
   customAdapters.set('OPENAI', mockAdapter);
   customAdapters.set('MOCK', mockAdapter);
   customAdapters.set('GEMINI', mockAdapter);
-  customAdapters.set('GROQ', mockAdapter);
+  customAdapters.set('DEEPINFRA', mockAdapter);
   customAdapters.set('OLLAMA', mockAdapter);
 
   const defaultProfiles = new Map<string, AiProfile>();

@@ -814,6 +814,13 @@ export class SignalManagementService {
         if (remaining.length === 0) {
           await tx.delete(topicProjections).where(eq(topicProjections.topicId, oldTopicId));
           await tx.delete(topics).where(eq(topics.id, oldTopicId));
+
+          // Atomically eliminate any pending or retrying projection jobs for the deleted topic
+          await tx.execute(sql`
+            DELETE FROM pgboss.job
+            WHERE name = 'telegram-topic-projection'
+              AND data->>'topicId' = ${oldTopicId}
+          `);
         } else {
           const [oldTopic] = await tx
             .select({ requiredDerivedGeneration: topics.requiredDerivedGeneration })
@@ -826,6 +833,14 @@ export class SignalManagementService {
             .update(topics)
             .set({ requiredDerivedGeneration: oldNextGen })
             .where(eq(topics.id, oldTopicId));
+
+          // Purge superseded older generation projection jobs for oldTopicId
+          await tx.execute(sql`
+            DELETE FROM pgboss.job
+            WHERE name = 'telegram-topic-projection'
+              AND data->>'topicId' = ${oldTopicId}
+              AND (data->>'generation')::int < ${oldNextGen}
+          `);
 
           await enqueueJob(
             TELEGRAM_TOPIC_PROJECTION_QUEUE,
@@ -992,6 +1007,13 @@ export class SignalManagementService {
         await tx
           .delete(telegramIntakeRecords)
           .where(eq(telegramIntakeRecords.id, evidence.intakeRecordId));
+
+        // Purge any pending/retry/active background jobs for this intake record
+        await tx.execute(sql`
+          DELETE FROM pgboss.job
+          WHERE data->>'intakeId' = ${evidence.intakeRecordId}
+             OR data::text LIKE ${'%' + evidence.intakeRecordId + '%'}
+        `);
       }
       await tx
         .delete(aiOperations)
@@ -1002,6 +1024,12 @@ export class SignalManagementService {
           ),
         );
 
+      // Purge any background jobs referencing this evidence ID
+      await tx.execute(sql`
+        DELETE FROM pgboss.job
+        WHERE data->>'intakeId' = ${evidence.id}
+      `);
+
       const remaining = await tx
         .select({ id: acceptedEvidence.id })
         .from(acceptedEvidence)
@@ -1011,6 +1039,13 @@ export class SignalManagementService {
         await tx.delete(topicProjections).where(eq(topicProjections.topicId, topicId));
         await tx.delete(topics).where(eq(topics.id, topicId));
         topicDeleted = true;
+
+        // Atomically purge all background jobs for this deleted topic
+        await tx.execute(sql`
+          DELETE FROM pgboss.job
+          WHERE name = 'telegram-topic-projection'
+            AND data->>'topicId' = ${topicId}
+        `);
       } else {
         const [targetTopic] = await tx
           .select({ requiredDerivedGeneration: topics.requiredDerivedGeneration })
@@ -1023,6 +1058,14 @@ export class SignalManagementService {
           .update(topics)
           .set({ requiredDerivedGeneration: nextGen })
           .where(eq(topics.id, topicId));
+
+        // Purge superseded older generation projection jobs for this topic
+        await tx.execute(sql`
+          DELETE FROM pgboss.job
+          WHERE name = 'telegram-topic-projection'
+            AND data->>'topicId' = ${topicId}
+            AND (data->>'generation')::int < ${nextGen}
+        `);
 
         await enqueueJob(
           TELEGRAM_TOPIC_PROJECTION_QUEUE,
@@ -1249,6 +1292,18 @@ export class SignalManagementService {
             await tx
               .delete(telegramIntakeRecords)
               .where(eq(telegramIntakeRecords.id, intake.id));
+
+            // Atomically purge all background jobs referencing this intake record
+            await tx.execute(sql`
+              DELETE FROM pgboss.job
+              WHERE data->>'intakeId' = ${intake.id}
+                 OR data::text LIKE ${'%' + intake.id + '%'}
+                 OR singleton_key IN (
+                   ${JobSingletonKeys.forContentQualification(intake.districtId, intake.telegramChatId, intake.telegramMessageId)},
+                   ${JobSingletonKeys.forSemanticRelevance(intake.districtId, intake.telegramChatId, intake.telegramMessageId)},
+                   ${JobSingletonKeys.forTopicAssignment(intake.districtId, intake.telegramChatId, intake.telegramMessageId)}
+                 )
+            `);
 
             await recordAuditEvent(tx as any, {
               districtId: intake.districtId,

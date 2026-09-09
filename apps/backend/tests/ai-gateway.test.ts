@@ -57,7 +57,7 @@ describe('AI Gateway & Portable Schema Compiler Unit Tests', () => {
       expect(compiled.properties?.notes.nullable).toBe(true);
     });
 
-    it('compiles for OpenAI and Groq with strict json_schema wrapper and anyOf nullables', () => {
+    it('compiles for OpenAI and DeepInfra with strict json_schema wrapper and anyOf nullables', () => {
       const openAiFormat: any = compileProviderSchema('OPENAI', TestSchema, 'test_payload');
       expect(openAiFormat.type).toBe('json_schema');
       expect(openAiFormat.json_schema.name).toBe('test_payload');
@@ -70,9 +70,9 @@ describe('AI Gateway & Portable Schema Compiler Unit Tests', () => {
       ]);
       expect(openAiFormat.json_schema.schema.properties.notes.nullable).toBeUndefined();
 
-      const groqFormat: any = compileProviderSchema('GROQ', TestSchema, 'test_payload');
-      expect(groqFormat.type).toBe('json_schema');
-      expect(groqFormat.json_schema.name).toBe('test_payload');
+      const deepInfraFormat: any = compileProviderSchema('DEEPINFRA', TestSchema, 'test_payload');
+      expect(deepInfraFormat.type).toBe('json_schema');
+      expect(deepInfraFormat.json_schema.name).toBe('test_payload');
     });
 
     it('compiles z.literal and z.nativeEnum correctly', () => {

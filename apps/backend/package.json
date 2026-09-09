@@ -17,7 +17,7 @@
     "cli:purge-messages": "node --import tsx/esm src/cli/purge-messages.ts",
     "purge-messages": "node --import tsx/esm src/cli/purge-messages.ts",
     "cli:view-evidence": "node --import tsx/esm src/cli/view-evidence.ts",
-    "cli:verify-groq": "node --import tsx/esm src/cli/verify-groq.ts",
+    "cli:verify-deepinfra": "node --import tsx/esm src/cli/verify-deepinfra.ts",
     "cli:reconcile-retention": "node --import tsx/esm src/cli/reconcile-retention.ts",
     "reconcile-restore": "node --import tsx/esm src/entrypoints/reconcile-restore.ts"
   },

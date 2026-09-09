@@ -4,7 +4,7 @@ import { DistrictIdSchema } from './common.js';
 export const AiModelProviderEnumSchema = z.enum([
   'OPENAI',
   'GEMINI',
-  'GROQ',
+  'DEEPINFRA',
   'OLLAMA',
 ]);
 export type AiModelProvider = z.infer<typeof AiModelProviderEnumSchema>;

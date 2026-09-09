@@ -6,9 +6,9 @@ import {
 } from '../../modules/ai/types.js';
 
 export class HttpProviderAdapter implements AiProviderAdapterPort {
-  public readonly providerName: 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA';
+  public readonly providerName: 'OPENAI' | 'GEMINI' | 'DEEPINFRA' | 'OLLAMA';
 
-  constructor(providerName: 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA') {
+  constructor(providerName: 'OPENAI' | 'GEMINI' | 'DEEPINFRA' | 'OLLAMA') {
     this.providerName = providerName;
   }
 
@@ -49,28 +49,28 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
         break;
       }
 
-      case 'GROQ': {
-        const baseUrl = payload.baseUrl || process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1';
+      case 'DEEPINFRA': {
+        const baseUrl = payload.baseUrl || process.env.DEEPINFRA_BASE_URL || 'https://api.deepinfra.com/v1/openai';
         url = `${baseUrl}/chat/completions`;
-        const apiKey = payload.apiKey || process.env.GROQ_API_KEY || '';
+        const apiKey = payload.apiKey || process.env.DEEPINFRA_API_KEY || '';
         if (!apiKey) {
-          throw new AiGatewayError('AUTHENTICATION_ERROR', 'Groq API key is missing', {
+          throw new AiGatewayError('AUTHENTICATION_ERROR', 'DeepInfra API key is missing', {
             status: 401,
             retryable: false,
-            provider: 'GROQ',
+            provider: 'DEEPINFRA',
             modelId: payload.modelId,
           });
         }
         headers['Authorization'] = `Bearer ${apiKey}`;
-        const groqSystemPrompt = `${payload.systemPrompt}\n\nCRITICAL JSON INSTRUCTION: You are a JSON-only engine. Output ONLY a valid, parseable JSON object adhering strictly to the provided schema. Start immediately with '{'. Do not include markdown fences, preambles, or conversational commentary.`;
+        const deepinfraSystemPrompt = `${payload.systemPrompt}\n\nCRITICAL JSON INSTRUCTION: Output ONLY a valid, parseable JSON object adhering strictly to the provided schema. Start immediately with '{'. Do not include markdown fences, preambles, or conversational commentary.`;
         body = {
           model: payload.modelId,
           messages: [
-            { role: 'system', content: groqSystemPrompt },
+            { role: 'system', content: deepinfraSystemPrompt },
             { role: 'user', content: payload.userPrompt },
           ],
           temperature: payload.temperature,
-          max_tokens: payload.maxOutputTokens,
+          max_tokens: Math.max(payload.maxOutputTokens || 0, 2048),
           response_format: payload.compiledSchema,
         };
         break;
@@ -210,11 +210,20 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
       }
 
       if (response.status === 429) {
+        let retryAfterMs = 0;
+        const retryAfterHeader = response.headers.get('retry-after');
+        if (retryAfterHeader) {
+          const parsedSeconds = parseFloat(retryAfterHeader);
+          if (!isNaN(parsedSeconds) && parsedSeconds > 0) {
+            retryAfterMs = Math.max(retryAfterMs, Math.ceil(parsedSeconds * 1000));
+          }
+        }
         throw new AiGatewayError('RATE_LIMIT_EXCEEDED', `AI Provider rate limit exceeded: ${errorBody}`, {
           status: 429,
           retryable: true,
           provider: this.providerName,
           modelId: payload.modelId,
+          retryAfterMs: retryAfterMs > 0 ? retryAfterMs : undefined,
         });
       }
 
@@ -280,7 +289,7 @@ export class HttpProviderAdapter implements AiProviderAdapterPort {
   private parseResponse(data: any, durationMs: number, modelId?: string): RawProviderResponse {
     switch (this.providerName) {
       case 'OPENAI':
-      case 'GROQ': {
+      case 'DEEPINFRA': {
         const choice = data.choices?.[0];
         if (choice?.message?.refusal) {
           throw new AiGatewayError('PROVIDER_REFUSAL', `Model refused request: ${choice.message.refusal}`, {

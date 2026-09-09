@@ -11,9 +11,11 @@ export interface AiDevelopmentConfig {
   maxOutputTokens: number;
 }
 
+// [ACTIVE AI CONFIGURATION]
+// Configured for DeepInfra (deepseek-ai/DeepSeek-V4-Flash-0731) with full 23 KB civic prompt preserved.
 export const activeAiConfig: AiDevelopmentConfig = {
-  modelProvider: 'OLLAMA',
-  modelId: 'gemma4:12b',
+  modelProvider: 'DEEPINFRA',
+  modelId: 'deepseek-ai/DeepSeek-V4-Flash-0731',
   temperature: 0.0,
   maxOutputTokens: 2048,
 };

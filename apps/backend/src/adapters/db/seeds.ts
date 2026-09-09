@@ -9,21 +9,21 @@ import { DEFAULT_HOKIM_RECOGNITION_TERMS } from '@mahalla-ovozi/api-contracts';
 import type { DbOrTx } from './client.js';
 import { activeAiConfig } from '../../modules/ai/ai-config.js';
 
-const defaultProvider: 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA' =
-  (process.env.AI_PROVIDER as 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA') ||
+const defaultProvider: 'OPENAI' | 'GEMINI' | 'DEEPINFRA' | 'OLLAMA' =
+  (process.env.AI_PROVIDER as 'OPENAI' | 'GEMINI' | 'DEEPINFRA' | 'OLLAMA') ||
   activeAiConfig.modelProvider ||
   'OLLAMA';
 const defaultModelId: string =
   process.env.AI_MODEL_ID ||
   (activeAiConfig.modelProvider === defaultProvider ? activeAiConfig.modelId : '') ||
-  (defaultProvider === 'GROQ'
-    ? 'llama-3.3-70b-versatile'
+  (defaultProvider === 'DEEPINFRA'
+    ? 'deepseek-ai/DeepSeek-V4-Flash-0731'
     : defaultProvider === 'GEMINI'
       ? 'gemini-3.6-flash'
       : defaultProvider === 'OPENAI'
         ? 'gpt-4o-mini'
         : 'gemma4:12b');
-const defaultTimeoutMs = defaultProvider === 'GROQ' ? 15000 : 30000;
+const defaultTimeoutMs = 30000;
 
 export const defaultSemanticRelevanceProfile: NewAiProfile = {
   id: 'prof_rel_2026_08_v1',
@@ -118,6 +118,7 @@ export async function ensureDefaultAiProfiles(db: DbOrTx): Promise<void> {
         temperature: defaultSemanticRelevanceProfile.temperature,
         maxOutputTokens: defaultSemanticRelevanceProfile.maxOutputTokens,
         timeoutMs: defaultSemanticRelevanceProfile.timeoutMs,
+        retryPolicy: defaultSemanticRelevanceProfile.retryPolicy,
         isActive: true,
       },
     });
@@ -130,6 +131,7 @@ export async function ensureDefaultAiProfiles(db: DbOrTx): Promise<void> {
         provider: defaultTopicMatchingProfile.provider,
         modelId: defaultTopicMatchingProfile.modelId,
         timeoutMs: defaultTopicMatchingProfile.timeoutMs,
+        retryPolicy: defaultTopicMatchingProfile.retryPolicy,
         isActive: true,
       },
     });
@@ -142,6 +144,7 @@ export async function ensureDefaultAiProfiles(db: DbOrTx): Promise<void> {
         provider: defaultTopicProjectionProfile.provider,
         modelId: defaultTopicProjectionProfile.modelId,
         timeoutMs: defaultTopicProjectionProfile.timeoutMs,
+        retryPolicy: defaultTopicProjectionProfile.retryPolicy,
         isActive: true,
       },
     });

@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import type { DbClient } from '../../../adapters/db/client.js';
 import {
   districts,
@@ -102,6 +102,16 @@ export async function processTopicProjectionJobs(
                   durationMs,
                 }),
               );
+              // Defensive cleanup: purge any remaining ghost jobs for this deleted topic
+              try {
+                await db.execute(sql`
+                  DELETE FROM pgboss.job
+                  WHERE name = 'telegram-topic-projection'
+                    AND data->>'topicId' = ${topicId}
+                `);
+              } catch (delErr) {
+                console.warn('Failed to purge ghost jobs for deleted topic:', delErr);
+              }
               continue;
             }
 
@@ -222,7 +232,7 @@ export async function processTopicProjectionJobs(
               }
 
               // 7a. Record ai_operations with targetId = `${topicId}:${generation}` (AC 10)
-              await tx
+              const [recordedOp] = await tx
                 .insert(aiOperations)
                 .values({
                   id: projectionOpId,
@@ -257,11 +267,14 @@ export async function processTopicProjectionJobs(
                     },
                     updatedAt: new Date(),
                   },
-                });
+                })
+                .returning({ id: aiOperations.id });
+
+              const effectiveOpId = recordedOp?.id ?? projectionOpId;
 
               // 7b. Record ai_provider_attempts
               // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tx from withTransactionalIntake is structurally DbOrTx; module-identity mismatch in TS
-              await insertAiProviderAttempts(tx as any, projectionOpId, evaluation.aiResult);
+              await insertAiProviderAttempts(tx as any, effectiveOpId, evaluation.aiResult);
 
               // 7c. Upsert into topic_projections table (1:1 with topics)
               const projectionRecordId = `prj_${crypto.randomUUID()}`;
@@ -285,7 +298,7 @@ export async function processTopicProjectionJobs(
                   isHokimRelated: evaluation.isHokimRelated,
                   generation: targetGeneration,
                   aiProfileId: evaluation.aiResult.profileId,
-                  aiOperationId: projectionOpId,
+                  aiOperationId: effectiveOpId,
                   createdAt: new Date(),
                   updatedAt: new Date(),
                 })
@@ -303,7 +316,7 @@ export async function processTopicProjectionJobs(
                     isHokimRelated: evaluation.isHokimRelated,
                     generation: targetGeneration,
                     aiProfileId: evaluation.aiResult.profileId,
-                    aiOperationId: projectionOpId,
+                    aiOperationId: effectiveOpId,
                     updatedAt: new Date(),
                   },
                 });

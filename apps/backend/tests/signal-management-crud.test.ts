@@ -801,7 +801,7 @@ describe('Signal & Evidence Management Console & CRUD Verification', () => {
         pinnedProfileId: profileId,
         snapshotFingerprint: 'fp_test',
         finalStatus: 'FAILED',
-        resultPayload: { error: 'Groq rate limit exceeded: 429' },
+        resultPayload: { error: 'DeepInfra rate limit exceeded: 429' },
       },
       {
         id: `aiop_${crypto.randomUUID()}`,
@@ -840,6 +840,152 @@ describe('Signal & Evidence Management Console & CRUD Verification', () => {
     expect(staleSignal.status).toBe('REJECTED');
     expect(staleSignal.exclusionReason).toBe('AI_PROCESSING_ERROR');
     expect(staleSignal.reasoning).toContain('Эскирганлиги сабабли бекор қилинди');
+  });
+
+  it('15. Atomically purges pgboss.job background queue jobs when deleting evidence or batch deleting signals', async () => {
+    // A. Single evidence deletion: creates topic, evidence, and queued projection job
+    const ghostTestTopicId = `top_ghost_${crypto.randomUUID()}`;
+    const ghostIntakeId = `intake_ghost_${crypto.randomUUID()}`;
+    const ghostEvidenceId = `evd_ghost_${crypto.randomUUID()}`;
+
+    await db.insert(topics).values({
+      id: ghostTestTopicId,
+      districtId: testDistrictId,
+      mahallaName,
+      calendarDay,
+      primaryLane: 'GAS',
+      status: 'ACTIVE',
+      latestRelevantEvidenceTimestamp: new Date(),
+      retentionExpiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+    });
+
+    await db.insert(telegramIntakeRecords).values({
+      id: ghostIntakeId,
+      districtId: testDistrictId,
+      mahallaName,
+      telegramBotId: 'bot_test',
+      telegramChatId: '-100555444',
+      telegramMessageId: '7701',
+      originalTimestamp: new Date(),
+      calendarDay,
+      rawPayload: { text: 'Gaz o`chdi' },
+    });
+
+    await db.insert(acceptedEvidence).values({
+      id: ghostEvidenceId,
+      districtId: testDistrictId,
+      mahallaName,
+      calendarDay,
+      topicId: ghostTestTopicId,
+      intakeRecordId: ghostIntakeId,
+      telegramChatId: '-100555444',
+      telegramMessageId: '7701',
+      contentType: 'TEXT',
+      verbatimText: 'Gaz o`chdi',
+      originalTimestamp: new Date(),
+    });
+
+    // Enqueue a projection job for this topic into pgboss
+    await boss.send(
+      'telegram-topic-projection',
+      {
+        topicId: ghostTestTopicId,
+        districtId: testDistrictId,
+        mahallaName,
+        calendarDay,
+        generation: 1,
+      },
+      {
+        singletonKey: `proj:${ghostTestTopicId}:1`,
+      },
+    );
+
+    // Also insert a qualification job referencing ghostIntakeId
+    await boss.send('telegram-content-qualification', {
+      intakeId: ghostIntakeId,
+      districtId: testDistrictId,
+      mahallaName,
+      calendarDay,
+      telegramChatId: '-100555444',
+      telegramMessageId: '7701',
+      originalTimestamp: new Date().toISOString(),
+    });
+
+    // Verify jobs exist in pgboss.job
+    const preCheckJobs = await db.execute(sql`
+      SELECT id, name, data FROM pgboss.job 
+      WHERE (data->>'topicId' = ${ghostTestTopicId}) OR (data->>'intakeId' = ${ghostIntakeId})
+    `);
+    expect(preCheckJobs.rows.length).toBeGreaterThanOrEqual(2);
+
+    // Call DELETE /api/v1/admin/signals/:id/evidence
+    const delRes = await server.inject({
+      method: 'DELETE',
+      url: `/api/v1/admin/signals/${ghostEvidenceId}/evidence`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+      payload: {
+        changeReason: 'Cleanup with zero queue trace verification',
+      },
+    });
+    expect(delRes.statusCode).toBe(200);
+
+    // Verify that ALL pgboss.job rows for ghostTestTopicId and ghostIntakeId are deleted
+    const postCheckJobs = await db.execute(sql`
+      SELECT id FROM pgboss.job 
+      WHERE (data->>'topicId' = ${ghostTestTopicId}) OR (data->>'intakeId' = ${ghostIntakeId})
+    `);
+    expect(postCheckJobs.rows.length).toBe(0);
+
+    // B. Batch deletion of unassigned intake: verify queue purge
+    const unassignedIntakeId = `intake_unassigned_${crypto.randomUUID()}`;
+    await db.insert(telegramIntakeRecords).values({
+      id: unassignedIntakeId,
+      districtId: testDistrictId,
+      mahallaName,
+      telegramBotId: 'bot_test',
+      telegramChatId: '-100555444',
+      telegramMessageId: '7702',
+      originalTimestamp: new Date(),
+      calendarDay,
+      rawPayload: { text: 'Spam reklama' },
+    });
+
+    await boss.send('telegram-content-qualification', {
+      intakeId: unassignedIntakeId,
+      districtId: testDistrictId,
+      mahallaName,
+      calendarDay,
+      telegramChatId: '-100555444',
+      telegramMessageId: '7702',
+      originalTimestamp: new Date().toISOString(),
+    });
+
+    const preBatchJobs = await db.execute(sql`
+      SELECT id FROM pgboss.job WHERE data->>'intakeId' = ${unassignedIntakeId}
+    `);
+    expect(preBatchJobs.rows.length).toBeGreaterThanOrEqual(1);
+
+    const batchDelRes = await server.inject({
+      method: 'POST',
+      url: '/api/v1/admin/signals/batch-delete',
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+      payload: {
+        ids: [unassignedIntakeId],
+        changeReason: 'Batch delete with zero queue trace verification',
+      },
+    });
+    expect(batchDelRes.statusCode).toBe(200);
+
+    const postBatchJobs = await db.execute(sql`
+      SELECT id FROM pgboss.job WHERE data->>'intakeId' = ${unassignedIntakeId}
+    `);
+    expect(postBatchJobs.rows.length).toBe(0);
   });
 
   afterAll(async () => {

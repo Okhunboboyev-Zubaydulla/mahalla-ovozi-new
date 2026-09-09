@@ -20,7 +20,7 @@ export const aiProfiles = pgTable('ai_profiles', {
   id: text('id').primaryKey(), // e.g. "prof_rel_2026_08_v1"
   version: integer('version').notNull(),
   operationType: text('operation_type').notNull(), // 'SEMANTIC_RELEVANCE' | 'TOPIC_MATCHING' | 'TOPIC_DERIVED_PROJECTION'
-  provider: text('provider').notNull(), // 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA'
+  provider: text('provider').notNull(), // 'OPENAI' | 'GEMINI' | 'DEEPINFRA' | 'OLLAMA'
   modelId: text('model_id').notNull(), // e.g. "gpt-4o-mini-2024-07-18", "gemini-2.0-flash-001"
   promptVersion: text('prompt_version').notNull(),
   schemaVersion: text('schema_version').notNull(),

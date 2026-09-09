@@ -253,5 +253,17 @@ export async function reconcileUnprojectedTopics(
     }
   }
 
+  // Periodic cleanup: purge any orphan ghost projection jobs whose topics have been deleted
+  try {
+    await db.execute(sql`
+      DELETE FROM pgboss.job j
+      WHERE j.name = 'telegram-topic-projection'
+        AND j.state IN ('retry', 'created')
+        AND NOT EXISTS (SELECT 1 FROM topics t WHERE t.id = (j.data->>'topicId'))
+    `);
+  } catch (cleanErr) {
+    console.warn('Periodic ghost topic projection purge failed:', cleanErr);
+  }
+
   return summary;
 }

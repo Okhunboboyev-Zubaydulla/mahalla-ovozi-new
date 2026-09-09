@@ -303,6 +303,9 @@ export async function processBurstDebounceJobs(
 
       await sendQueueJob(boss, TELEGRAM_SEMANTIC_RELEVANCE_QUEUE, candidateData, {
         singletonKey,
+        retryLimit: 3,
+        retryDelay: 5,
+        retryBackoff: true,
       });
 
       const durationMs = Math.round(performance.now() - startTime);

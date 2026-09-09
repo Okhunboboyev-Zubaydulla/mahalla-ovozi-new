@@ -20,6 +20,7 @@ export class AiGatewayError extends Error {
   public readonly retryable: boolean;
   public readonly provider?: string;
   public readonly modelId?: string;
+  public readonly retryAfterMs?: number;
 
   constructor(
     code: AiGatewayErrorCode,
@@ -30,6 +31,7 @@ export class AiGatewayError extends Error {
       provider?: string;
       modelId?: string;
       cause?: unknown;
+      retryAfterMs?: number;
     },
   ) {
     super(message);
@@ -39,6 +41,7 @@ export class AiGatewayError extends Error {
     this.retryable = options?.retryable ?? false;
     this.provider = options?.provider;
     this.modelId = options?.modelId;
+    this.retryAfterMs = options?.retryAfterMs;
     if (options?.cause) {
       this.cause = options?.cause;
     }
@@ -112,6 +115,6 @@ export interface RawProviderResponse {
 }
 
 export interface AiProviderAdapterPort {
-  providerName: 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA' | 'MOCK';
+  providerName: 'OPENAI' | 'GEMINI' | 'DEEPINFRA' | 'OLLAMA' | 'MOCK';
   executeRequest(payload: RawProviderPayload): Promise<RawProviderResponse>;
 }

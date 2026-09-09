@@ -166,13 +166,13 @@ export function compilePortableJsonSchema(schema: ZodType<any>): PortableJsonSch
 
 /**
  * Transforms a portable JSON schema into provider-specific payload structures:
- * - OPENAI / GROQ: response_format with { type: 'json_schema', json_schema: { name, strict: true, schema } }
+ * - OPENAI / DEEPINFRA: response_format with { type: 'json_schema', json_schema: { name, strict: true, schema } }
  *   (Strict mode: converts nullable fields to anyOf: [schema, { type: 'null' }] and removes nullable: true)
  * - GEMINI: generationConfig with responseSchema (OpenAPI type uppercase format, native nullable: true)
  * - OLLAMA: raw JSON Schema format object
  */
 export function compileProviderSchema(
-  provider: 'OPENAI' | 'GEMINI' | 'GROQ' | 'OLLAMA' | 'MOCK',
+  provider: 'OPENAI' | 'GEMINI' | 'DEEPINFRA' | 'OLLAMA' | 'MOCK',
   schema: ZodType<any>,
   schemaName: string,
 ): Record<string, unknown> {
@@ -180,8 +180,8 @@ export function compileProviderSchema(
 
   switch (provider) {
     case 'OPENAI':
-    case 'GROQ': {
-      // Adapt schema for OpenAI / Groq strict structured outputs (JSON Schema Draft 7)
+    case 'DEEPINFRA': {
+      // Adapt schema for OpenAI / DeepInfra strict structured outputs (JSON Schema Draft 7)
       const adaptForOpenAiStrict = (node: any): any => {
         if (!node || typeof node !== 'object') return node;
 
