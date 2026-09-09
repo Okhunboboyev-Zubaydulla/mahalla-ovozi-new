@@ -1,6 +1,14 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+
+export const devFaviconPlugin = (): Plugin => ({
+  name: 'dev-favicon-transform',
+  apply: 'serve',
+  transformIndexHtml(html) {
+    return html.replace('/favicon.svg', '/favicon-dev.svg');
+  },
+});
 
 const apiProxyConfig = {
   '/api': {
@@ -13,7 +21,7 @@ const apiProxyConfig = {
 };
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), devFaviconPlugin()],
   server: {
     port: 5173,
     allowedHosts: ['.trycloudflare.com'],
@@ -46,6 +54,7 @@ export default defineConfig({
               return 'vendor-react';
             }
           }
+          return undefined;
         },
       },
     },
