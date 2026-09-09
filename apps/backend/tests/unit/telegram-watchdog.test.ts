@@ -35,7 +35,7 @@ describe('telegram-watchdog unit tests', () => {
       expect(result.reason).toContain('URL mismatch');
     });
 
-    it('returns shouldHeal=true if raw ip_address is set', () => {
+    it('returns shouldHeal=false when getWebhookInfo reports resolved ip_address', () => {
       const ipInfo: WebhookInfoResult = {
         url: expectedUrl,
         has_custom_certificate: false,
@@ -44,8 +44,8 @@ describe('telegram-watchdog unit tests', () => {
       };
 
       const result = evaluateWebhookHealth(expectedUrl, ipInfo);
-      expect(result.shouldHeal).toBe(true);
-      expect(result.reason).toContain('Deprecated IP address override detected: 95.182.118.3');
+      expect(result.shouldHeal).toBe(false);
+      expect(result.reason).toBeNull();
     });
 
     it('returns shouldHeal=true if updates are pending with last_error_date (stalled retry backoff)', () => {

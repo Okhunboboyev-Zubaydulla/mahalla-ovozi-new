@@ -33,13 +33,6 @@ export function evaluateWebhookHealth(
     };
   }
 
-  // Raw IP override bypasses DNS and triggers Caddy internal TLS errors
-  if (info.ip_address && info.ip_address.trim().length > 0) {
-    return {
-      shouldHeal: true,
-      reason: `Deprecated IP address override detected: ${info.ip_address}`,
-    };
-  }
 
   // Pending updates trapped behind a Telegram retry backoff
   if (info.pending_update_count > 0 && info.last_error_date && info.last_error_date > 0) {
