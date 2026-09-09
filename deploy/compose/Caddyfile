@@ -24,13 +24,7 @@ mahalla-ovozi.uz, www.mahalla-ovozi.uz {
     import mahalla_app
 }
 
-# Plain HTTP for direct VPS IP access (works immediately prior to DNS propagation)
+# Plain HTTP for direct VPS IP access redirects to canonical domain
 http://95.182.118.3 {
-    import mahalla_app
-}
-
-# Self-signed HTTPS for direct IP access (allows testing secure cookies directly on IP)
-https://95.182.118.3 {
-    tls internal
-    import mahalla_app
+    redir https://mahalla-ovozi.uz{uri} permanent
 }

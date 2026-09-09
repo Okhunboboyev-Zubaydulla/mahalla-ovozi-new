@@ -39,9 +39,11 @@ import { registerTopicProjectionJobHandler } from '../modules/topics/jobs/topic-
 import { registerRetentionJobHandler } from '../modules/retention/jobs/retention-job-handler.js';
 import { registerSubscriptionExpiryJobHandler } from '../modules/subscriptions/jobs/subscription-expiry-job-handler.js';
 import { registerDistrictDeletionJobHandler } from '../modules/subscriptions/jobs/district-deletion-job-handler.js';
+import { checkAndHealTelegramWebhooks } from '../modules/telegram-intake/telegram-watchdog.js';
 
 let activeBossInstance: PgBoss | null = null;
 let internalPool: pg.Pool | null = null;
+let activeWatchdogTimer: NodeJS.Timeout | null = null;
 
 export interface StartWorkerOptions {
   boss?: PgBoss;
@@ -194,11 +196,35 @@ export async function startWorker(options?: StartWorkerOptions): Promise<PgBoss>
 
   await registerWorkerPipelines(boss, context, options?.queues);
 
+  // Periodic self-healing Telegram webhook watchdog (runs every 60s)
+  const watchdogPool = pool;
+  const runWatchdog = async () => {
+    try {
+      await checkAndHealTelegramWebhooks(watchdogPool, {});
+    } catch (err: unknown) {
+      console.error('[worker:watchdog] Failed to execute telegram webhook watchdog', err);
+    }
+  };
+
+  const initialTimeout = setTimeout(() => {
+    runWatchdog().catch(() => {});
+    activeWatchdogTimer = setInterval(() => {
+      runWatchdog().catch(() => {});
+    }, 60000);
+    activeWatchdogTimer.unref();
+  }, 5000);
+  initialTimeout.unref();
+
   console.log('[worker] Mahalla Ovozi worker process started successfully');
   return boss;
 }
 
 export async function stopWorker(bossInstance?: PgBoss): Promise<void> {
+  if (activeWatchdogTimer) {
+    clearInterval(activeWatchdogTimer);
+    activeWatchdogTimer = null;
+  }
+
   const boss = bossInstance || activeBossInstance;
   if (boss) {
     console.log('[worker] Stopping pg-boss worker gracefully...');

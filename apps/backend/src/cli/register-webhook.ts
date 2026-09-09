@@ -30,7 +30,6 @@ export async function run() {
     const webhookUrl = `${ngrokUrl}/api/v1/webhooks/telegram/${row.bot_id}`;
     const secretToken = deriveWebhookSecret(row.bot_id);
 
-    const isProduction = webhookUrl.includes('mahalla-ovozi.uz');
     const webhookPayload: Record<string, unknown> = {
       url: webhookUrl,
       secret_token: secretToken,
@@ -38,10 +37,6 @@ export async function run() {
       max_connections: 100,
       drop_pending_updates: dropPending,
     };
-
-    if (isProduction || process.env.TELEGRAM_WEBHOOK_IP) {
-      webhookPayload.ip_address = process.env.TELEGRAM_WEBHOOK_IP || '95.182.118.3';
-    }
 
     console.log(`Setting Telegram webhook -> ${webhookUrl}`);
     console.log('Payload configuration:', JSON.stringify(webhookPayload, null, 2));
