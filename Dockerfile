@@ -28,14 +28,15 @@ RUN pnpm --filter @mahalla-ovozi/api-contracts build && \
 FROM base AS runner
 WORKDIR /app
 
-# Install curl for container healthchecks
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# Install curl and ca-certificates for secure HTTPS and healthchecks
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOST=0.0.0.0
+ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 
 CMD ["pnpm", "--filter", "@mahalla-ovozi/backend", "exec", "node", "--import", "tsx/esm", "src/entrypoints/http.ts"]
 
