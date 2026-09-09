@@ -32,6 +32,52 @@ export function formatTashkentTime(isoString: string | null | undefined): string
   }
 }
 
+export interface TashkentLiveDateTime {
+  display: string;
+  compact: string;
+  full: string;
+}
+
+export function formatTashkentLiveDateTime(input?: string | Date | null): TashkentLiveDateTime {
+  if (!input) {
+    return { display: '', compact: '', full: '' };
+  }
+  try {
+    const date = typeof input === 'string' ? new Date(input) : input;
+    if (Number.isNaN(date.getTime())) {
+      return { display: '', compact: '', full: '' };
+    }
+
+    const parts = new Intl.DateTimeFormat('uz-UZ', {
+      timeZone: 'Asia/Tashkent',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(date);
+
+    const day = parts.find((p) => p.type === 'day')?.value ?? '00';
+    const month = parts.find((p) => p.type === 'month')?.value ?? '00';
+    const year = parts.find((p) => p.type === 'year')?.value ?? '0000';
+    const hour = parts.find((p) => p.type === 'hour')?.value ?? '00';
+    const minute = parts.find((p) => p.type === 'minute')?.value ?? '00';
+
+    const dateStr = `${day}.${month}.${year}`;
+    const compactDateStr = `${day}.${month}`;
+    const timeStr = `${hour}:${minute}`;
+
+    return {
+      display: `${dateStr} · ${timeStr}`,
+      compact: `${compactDateStr} · ${timeStr}`,
+      full: `${dateStr}, ${timeStr} (Тошкент вақти)`,
+    };
+  } catch {
+    return { display: '', compact: '', full: '' };
+  }
+}
+
 export function formatTashkentActivityTime(isoString: string, currentCalendarDay?: string): string {
   try {
     const date = new Date(isoString);

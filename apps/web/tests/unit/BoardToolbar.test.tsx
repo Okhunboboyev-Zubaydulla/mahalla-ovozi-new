@@ -7,6 +7,7 @@ import { BoardToolbar } from '../../src/components/topics/BoardToolbar.js';
 import { AuthProvider } from '../../src/auth/auth-context.js';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { authClient } from '../../src/auth/auth-client.js';
+import { formatTashkentLiveDateTime } from '../../src/lib/formatters.js';
 
 describe('Story 3.3 & 3.6: BoardToolbar Component Tests', () => {
   let queryClient: QueryClient;
@@ -29,6 +30,16 @@ describe('Story 3.3 & 3.6: BoardToolbar Component Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
     queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -343,5 +354,101 @@ describe('Story 3.3 & 3.6: BoardToolbar Component Tests', () => {
       expect(signOutSpy).toHaveBeenCalledTimes(1);
       expect(screen.queryByText('Ҳоким профили')).toBeNull();
     });
+  });
+
+  it('Test 13: LiveClock renders 32px status chip with date and time in Asia/Tashkent and timer role', () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes('min-width: 992px') || query.includes('min-width: 1200px'),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    renderWithProviders(
+      <BoardToolbar
+        districtName="Яккасарой тумани"
+        calendarDay="2026-08-24"
+      />,
+    );
+
+    const timer = screen.getByRole('timer');
+    expect(timer).toBeTruthy();
+    expect(timer.getAttribute('aria-label')).toMatch(/Ҳозирги вақт: \d{2}\.\d{2}/);
+    expect(timer.textContent).toMatch(/\d{2}\.\d{2}(\.\d{4})? · \d{2}:\d{2}/);
+  });
+
+  it('Test 14: Desktop layout renders filter navigation clustered to the left and utilities anchored right', () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes('min-width: 992px') || query.includes('min-width: 1200px'),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    const handleFilterChange = vi.fn();
+    const handleReset = vi.fn();
+
+    renderWithProviders(
+      <BoardToolbar
+        districtName="Яккасарой тумани"
+        calendarDay="2026-08-24"
+        filters={{
+          dateScope: 'today',
+          mahallaName: undefined,
+          lanes: ['WATER', 'ELECTRICITY'],
+        }}
+        onFilterChange={handleFilterChange}
+        onResetFilters={handleReset}
+        isDefaultFilters={false}
+      />,
+    );
+
+    const filterNav = screen.getByRole('navigation', { name: 'Фильтрлар панели' });
+    expect(filterNav).toBeTruthy();
+
+    const timer = screen.getByRole('timer');
+    expect(timer).toBeTruthy();
+
+    // Check right section parent has marginLeft: auto
+    const rightSection = timer.closest('div[style*="margin-left: auto"]');
+    expect(rightSection).toBeTruthy();
+  });
+});
+
+describe('formatTashkentLiveDateTime Unit Tests', () => {
+  it('formats Date object in Asia/Tashkent timezone with display, compact, and full strings', () => {
+    // 2026-09-09T15:05:00.000Z is 20:05 in Tashkent (UTC+5)
+    const testDate = new Date('2026-09-09T15:05:00.000Z');
+    const result = formatTashkentLiveDateTime(testDate);
+
+    expect(result.display).toBe('09.09.2026 · 20:05');
+    expect(result.compact).toBe('09.09 · 20:05');
+    expect(result.full).toBe('09.09.2026, 20:05 (Тошкент вақти)');
+  });
+
+  it('formats ISO string correctly in Asia/Tashkent timezone', () => {
+    const iso = '2026-01-05T04:30:00.000Z'; // 09:30 in Tashkent
+    const result = formatTashkentLiveDateTime(iso);
+
+    expect(result.display).toBe('05.01.2026 · 09:30');
+    expect(result.compact).toBe('05.01 · 09:30');
+    expect(result.full).toBe('05.01.2026, 09:30 (Тошкент вақти)');
+  });
+
+  it('handles null, undefined, or empty values safely', () => {
+    expect(formatTashkentLiveDateTime(null)).toEqual({ display: '', compact: '', full: '' });
+    expect(formatTashkentLiveDateTime(undefined)).toEqual({ display: '', compact: '', full: '' });
+  });
+
+  it('handles invalid date strings without throwing errors', () => {
+    expect(formatTashkentLiveDateTime('not-a-valid-date')).toEqual({ display: '', compact: '', full: '' });
   });
 });

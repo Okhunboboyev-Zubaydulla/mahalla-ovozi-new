@@ -14,7 +14,7 @@ import {
   CloseOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../auth/auth-context.js';
-import { formatTashkentTime } from '../../lib/formatters.js';
+import { formatTashkentTime, formatTashkentLiveDateTime, TashkentLiveDateTime } from '../../lib/formatters.js';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 import { DateScopeSelect } from './DateScopeSelect.js';
 import { MahallaSelect } from './MahallaSelect.js';
@@ -26,34 +26,54 @@ const { Text, Title } = Typography;
 const { useBreakpoint } = Grid;
 
 const LiveClock: React.FC = () => {
-  const [time, setTime] = useState<string>(() => formatTashkentTime(new Date().toISOString()));
+  const screens = useBreakpoint();
+  const isWide = screens.xl ?? true;
+  const [formatted, setFormatted] = useState<TashkentLiveDateTime>(() =>
+    formatTashkentLiveDateTime(new Date()),
+  );
 
   React.useEffect(() => {
     const updateTime = () => {
-      setTime(formatTashkentTime(new Date().toISOString()));
+      setFormatted(formatTashkentLiveDateTime(new Date()));
     };
     const timer = setInterval(updateTime, 10000);
     return () => clearInterval(timer);
   }, []);
 
+  const displayText = isWide ? formatted.display : formatted.compact;
+
   return (
-    <Text
-      type="secondary"
-      style={{
-        fontSize: 13,
-        color: '#64748B',
-        fontWeight: 500,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 5,
-        userSelect: 'none',
-        whiteSpace: 'nowrap',
-      }}
-      aria-label={`Ҳозирги вақт: ${time}`}
-    >
-      <ClockCircleOutlined style={{ color: '#94A3B8', fontSize: 13 }} />
-      {time}
-    </Text>
+    <Tooltip title={`Ҳозирги вақт: ${formatted.full}`} placement="bottom">
+      <div
+        role="timer"
+        aria-label={`Ҳозирги вақт: ${displayText}`}
+        style={{
+          height: 32,
+          padding: '0 10px',
+          backgroundColor: '#F8FAFC',
+          border: '1px solid #E2E8F0',
+          borderRadius: 6,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          userSelect: 'none',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+        }}
+      >
+        <ClockCircleOutlined style={{ color: '#0284C7', fontSize: 13 }} />
+        <Text
+          style={{
+            fontSize: 13,
+            color: '#334155',
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {displayText}
+        </Text>
+      </div>
+    </Tooltip>
   );
 };
 
@@ -159,14 +179,14 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
           padding: isPhone ? '8px 12px' : '8px 20px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: 'flex-start',
           gap: isPhone ? 8 : 12,
           minHeight: 50,
           maxHeight: 52,
         }}
       >
         {/* Left Section: Logo & District */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: isPhone ? 6 : 10, minWidth: 0, flexShrink: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isPhone ? 6 : 10, minWidth: 0, flexShrink: 0 }}>
           <MahallaOvoziLogo />
           <Title
             level={4}
@@ -226,7 +246,21 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
           </Tooltip>
         </div>
 
-        {/* Center Section: Desktop Filters */}
+        {/* Subtle Vertical Divider between District and Filters */}
+        {!isMobile && filters && onFilterChange && (
+          <div
+            aria-hidden="true"
+            style={{
+              width: 1,
+              height: 18,
+              backgroundColor: '#E2E8F0',
+              flexShrink: 0,
+              margin: '0 4px',
+            }}
+          />
+        )}
+
+        {/* Center Section: Desktop Filters (Clustered to the left) */}
         {!isMobile && filters && onFilterChange && (
           <nav
             aria-label="Фильтрлар панели"
@@ -236,6 +270,7 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
               gap: 8,
               flexWrap: 'nowrap',
               overflow: 'visible',
+              flexShrink: 1,
             }}
           >
             {/* Date Scope */}
@@ -268,11 +303,19 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
 
             <div style={{ width: 1, height: 18, backgroundColor: '#E2E8F0', flexShrink: 0 }} />
 
-            {/* Topic & Evidence Search (Moved to far right of filters) */}
+            {/* Topic & Evidence Search (Responsive elastic width) */}
             <DashboardSearchInput
               value={searchQuery}
               onChange={(val) => onSearchChange?.(val)}
-              style={{ width: 300, height: 32, fontSize: 14, fontWeight: 400 }}
+              style={{
+                width: '100%',
+                maxWidth: 300,
+                minWidth: 180,
+                flexShrink: 1,
+                height: 32,
+                fontSize: 14,
+                fontWeight: 400,
+              }}
             />
 
             {/* Fixed-Width Feedback & Clear Action Slot (Zero Cumulative Layout Shift) */}
@@ -344,7 +387,15 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
         )}
 
         {/* Right Section: Live Clock, Smart Refresh, Help, Profile Popover */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: isPhone ? 6 : 8, flexShrink: 0 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: isPhone ? 6 : 8,
+            flexShrink: 0,
+            marginLeft: 'auto',
+          }}
+        >
           {!isMobile && (
             <>
               <LiveClock />
