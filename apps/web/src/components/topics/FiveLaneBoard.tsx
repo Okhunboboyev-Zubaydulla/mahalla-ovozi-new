@@ -223,7 +223,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
               searchQuery={searchQuery}
               onLoadMore={onLoadMore}
               onSelectTopic={onSelectTopic}
-              style={lanesToRender.length < 5 ? { maxWidth: 380 } : undefined}
+              style={lanesToRender.length < 5 ? { maxWidth: 480 } : undefined}
             />
           );
         })}

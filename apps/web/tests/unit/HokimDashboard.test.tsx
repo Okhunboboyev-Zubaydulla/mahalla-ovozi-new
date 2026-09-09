@@ -257,6 +257,28 @@ describe('Hokim Dashboard Component & Integration Tests (Story 3.1)', () => {
       expect(screen.getByText('Бугун ҳозирча мавзулар йўқ')).toBeTruthy();
     });
 
+    it('applies ergonomic maxWidth of 480px to lane columns when fewer than 5 lanes are active', () => {
+      const { container } = render(
+        <ConfigProvider theme={mahallaTheme}>
+          <FiveLaneBoard
+            lanes={{
+              HOKIM_RELATED: { lane: 'HOKIM_RELATED', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              WATER: { lane: 'WATER', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              ELECTRICITY: { lane: 'ELECTRICITY', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              GAS: { lane: 'GAS', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+              WASTE: { lane: 'WASTE', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false, isLoadingMore: false, loadMoreError: null },
+            }}
+            activeLanes={['WATER', 'ELECTRICITY', 'GAS', 'WASTE']}
+            onLoadMore={vi.fn()}
+          />
+        </ConfigProvider>,
+      );
+
+      const waterSection = container.querySelector<HTMLElement>('section[aria-labelledby="lane-header-WATER"]');
+      expect(waterSection).toBeTruthy();
+      expect(waterSection?.style.maxWidth).toBe('480px');
+    });
+
     it('shows load more button and handles click', () => {
       const handleLoadMore = vi.fn();
       render(
