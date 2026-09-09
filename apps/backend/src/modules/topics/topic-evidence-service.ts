@@ -75,7 +75,10 @@ export function formatTashkentDateTime(date: Date): string {
 /**
  * Resolves Telegram deep link using a 3-tier algorithm (AC 6):
  * 1. If public group username exists: https://t.me/${username}/${messageId}
- * 2. Else if private supergroup starts with -100: https://t.me/c/${chatIdWithoutPrefix}/${messageId}
+ * 2. Else if private group or supergroup:
+ *    - Supergroups with -100 prefix: https://t.me/c/${cleanChatId}/${messageId}
+ *    - Basic groups with - prefix: https://t.me/c/${cleanChatId}/${messageId}
+ *    - Plain numeric IDs: https://t.me/c/${cleanChatId}/${messageId}
  * 3. Otherwise: null (omit link gracefully)
  */
 export function resolveTelegramDeepLink(
@@ -89,10 +92,26 @@ export function resolveTelegramDeepLink(
       return `https://t.me/${cleanUsername}/${messageId}`;
     }
   }
-  if (chatId && chatId.startsWith('-100') && chatId.length > 4) {
-    const cleanChatId = chatId.slice(4);
-    return `https://t.me/c/${cleanChatId}/${messageId}`;
+
+  if (chatId && typeof chatId === 'string' && messageId && typeof messageId === 'string' && messageId.trim().length > 0) {
+    const trimmedChatId = chatId.trim();
+    let cleanChatId: string | null = null;
+
+    if (trimmedChatId.startsWith('-100')) {
+      if (trimmedChatId.length > 4) {
+        cleanChatId = trimmedChatId.slice(4);
+      }
+    } else if (trimmedChatId.startsWith('-') && trimmedChatId.length > 1) {
+      cleanChatId = trimmedChatId.slice(1);
+    } else if (/^\d+$/.test(trimmedChatId)) {
+      cleanChatId = trimmedChatId;
+    }
+
+    if (cleanChatId && /^\d+$/.test(cleanChatId)) {
+      return `https://t.me/c/${cleanChatId}/${messageId.trim()}`;
+    }
   }
+
   return null;
 }
 

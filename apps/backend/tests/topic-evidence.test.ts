@@ -536,11 +536,11 @@ describe('Story 3.2: Inspect Complete Topic Evidence Integration Tests', () => {
     // Tier 1: Public group with username -> https://t.me/${username}/${msgId}
     expect(body.evidence[0]!.telegramDeepLink).toBe('https://t.me/bobur_mahalla_public/101');
 
-    // Tier 2: Private supergroup with -100 prefix -> https://t.me/c/${chatIdWithoutPrefix}/${msgId}
+    // Tier 2a: Private supergroup with -100 prefix -> https://t.me/c/${chatIdWithoutPrefix}/${msgId}
     expect(body.evidence[1]!.telegramDeepLink).toBe(`https://t.me/c/${privateChatId.slice(4)}/102`);
 
-    // Tier 3: Unsupported chat format -> null
-    expect(body.evidence[2]!.telegramDeepLink).toBeNull();
+    // Tier 2b: Private basic group with - prefix (Gulbodom production case) -> https://t.me/c/${chatIdWithoutPrefix}/${msgId}
+    expect(body.evidence[2]!.telegramDeepLink).toBe(`https://t.me/c/${legacyChatId.slice(1)}/103`);
   });
 
   it('rejects invalid or malformed pagination cursor with HTTP 400', async () => {
