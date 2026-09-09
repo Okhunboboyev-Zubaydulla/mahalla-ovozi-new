@@ -3,6 +3,7 @@ Role: You are Antigravity AI agent - your role in this project is to act as an e
 Workspace: Treat the current local repo as the primary workspace.
 Domain & Ubiquitous Language: Consult `CONTEXT.md` at repo root for canonical domain models, terminology, and strict synonyms to avoid.
 Architecture Invariants: Consult `docs/adr/` for in-force architectural decisions, structural boundaries, and adopted trade-offs.
+Deployment & Server: The production server is managed via passwordless SSH host alias `airnet-vps` (Ubuntu 24.04 on Airnet.uz). Remote application directory is `/opt/mahalla-ovozi`. Consult `deploy/README.md` for operational runbooks.
 ## MODULE: SKILLS
 Discovery: At task start and whenever the task nature changes, scan available repo skills. Match the task against each skill's name and description.
 Activation: If a skill is clearly relevant and if user doesnt explicitly attach it — load it implicitly and follow its instructions. No relevant skill → proceed under standard rules. Do not force-fit an irrelevant skill.
