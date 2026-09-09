@@ -101,7 +101,13 @@ describe('telegram-watchdog unit tests', () => {
             },
           }),
         })
-        // 2. setWebhook call returns ok
+        // 2. deleteWebhook call returns ok
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true }),
+        })
+        // 3. setWebhook call returns ok
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
@@ -115,10 +121,15 @@ describe('telegram-watchdog unit tests', () => {
 
       expect(outcome.checkedCount).toBe(1);
       expect(outcome.healedCount).toBe(1);
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+
+      // Verify deleteWebhook call
+      const delCall = mockFetch.mock.calls[1];
+      expect(delCall).toBeDefined();
+      expect(String(delCall?.[0])).toContain('deleteWebhook?drop_pending_updates=false');
 
       // Verify setWebhook payload does NOT have ip_address and drop_pending_updates is false
-      const setCall = mockFetch.mock.calls[1];
+      const setCall = mockFetch.mock.calls[2];
       expect(setCall).toBeDefined();
       const setCallBody = JSON.parse(String((setCall?.[1] as { body?: unknown })?.body ?? '{}'));
       expect(setCallBody.url).toBe(expectedUrl);

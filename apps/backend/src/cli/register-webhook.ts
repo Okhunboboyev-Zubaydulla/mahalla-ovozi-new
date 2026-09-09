@@ -41,6 +41,9 @@ export async function run() {
     console.log(`Setting Telegram webhook -> ${webhookUrl}`);
     console.log('Payload configuration:', JSON.stringify(webhookPayload, null, 2));
 
+    // Clear any previous IP override or backoff state without dropping citizen updates
+    await fetch(`https://api.telegram.org/bot${token}/deleteWebhook?drop_pending_updates=false`);
+
     const tgRes = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

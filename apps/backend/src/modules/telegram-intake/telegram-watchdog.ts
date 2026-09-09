@@ -129,6 +129,11 @@ export async function checkAndHealTelegramWebhooks(
         reason: evalResult.reason,
       });
 
+      // Clear any previous IP override or retry backoff state without dropping citizen updates
+      await fetchFn(`https://api.telegram.org/bot${token}/deleteWebhook?drop_pending_updates=false`, {
+        signal: AbortSignal.timeout(10000),
+      });
+
       const secretToken = deriveWebhookSecret(botId);
       const setRes = await fetchFn(`https://api.telegram.org/bot${token}/setWebhook`, {
         method: 'POST',
