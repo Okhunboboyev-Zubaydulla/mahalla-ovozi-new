@@ -807,4 +807,67 @@ describe('Story 2.3: Worker Semantic Relevance 25-Row Verification Matrix Integr
     // Only 1 AI request made
     expect(aiController.mockAdapter.getCalls()).toHaveLength(1);
   });
+
+  it('Matrix #26: Mixed burst stamps COMPLETED_RELEVANT on accepted messages and COMPLETED_IRRELEVANT on excluded messages', async () => {
+    aiController.mockAdapter.setNextResponse({
+      is_relevant: true,
+      relevant_lanes: ['WATER'],
+      exclusion_reason: null,
+      accepted_message_ids: ['165'],
+      reasoning: 'Water outage accepted; message 168 is hypothetical electricity sarcasm and excluded',
+    });
+
+    const intake1 = await createTestIntake('suvam quridi', '165');
+    const intake2 = await createTestIntake('svettiyam ucirishsa endi', '168');
+
+    const jobData: TelegramSemanticRelevanceJobData = {
+      intakeId: intake1,
+      districtId: testDistrictId,
+      mahallaName: 'Guliston',
+      calendarDay: '2026-08-22',
+      telegramChatId: testChatId,
+      telegramMessageId: '165',
+      originalTimestamp: '2026-08-22T09:00:00.000Z',
+      contentType: 'TEXT',
+      verbatimText: 'suvam quridi',
+      replyMetadata: null,
+      burstMessages: [
+        {
+          intakeId: intake1,
+          telegramMessageId: '165',
+          verbatimText: 'suvam quridi',
+          originalTimestamp: '2026-08-22T09:00:00.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+        },
+        {
+          intakeId: intake2,
+          telegramMessageId: '168',
+          verbatimText: 'svettiyam ucirishsa endi',
+          originalTimestamp: '2026-08-22T09:00:10.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+        },
+      ],
+    };
+
+    await boss.send(TELEGRAM_SEMANTIC_RELEVANCE_QUEUE, jobData);
+
+    const op1 = await waitForOperation(intake1);
+    expect(op1).toBeDefined();
+    expect(op1.finalStatus).toBe('COMPLETED_RELEVANT');
+
+    const op2 = await waitForOperation(intake2);
+    expect(op2).toBeDefined();
+    expect(op2.finalStatus).toBe('COMPLETED_IRRELEVANT');
+
+    // Verify intake2 rawPayload has status EXCLUDED
+    const [rec2] = await db
+      .select()
+      .from(telegramIntakeRecords)
+      .where(eq(telegramIntakeRecords.id, intake2));
+    expect(rec2).toBeDefined();
+    expect((rec2!.rawPayload as any).status).toBe('EXCLUDED');
+    expect((rec2!.rawPayload as any).exclusionReason).toBe('GENERAL_CHATTER');
+  });
 });

@@ -988,6 +988,77 @@ describe('Signal & Evidence Management Console & CRUD Verification', () => {
     expect(postBatchJobs.rows.length).toBe(0);
   });
 
+  it('correctly resolves burst intake with rawPayload.status = EXCLUDED to REJECTED even if aiOp was COMPLETED_RELEVANT', async () => {
+    const burstExcludedIntakeId = `intake_burst_ex_${crypto.randomUUID()}`;
+    await db.insert(telegramIntakeRecords).values({
+      id: burstExcludedIntakeId,
+      districtId: testDistrictId,
+      mahallaName,
+      telegramBotId: 'bot_test',
+      telegramChatId: '-100999888',
+      telegramMessageId: '8801',
+      originalTimestamp: new Date(),
+      calendarDay,
+      rawPayload: {
+        message: { text: 'svettiyam ucirishsa endi' },
+        status: 'EXCLUDED',
+        exclusionReason: 'GENERAL_CHATTER',
+        reasoning: 'Cynical hypothetical remark excluded from burst',
+      },
+    });
+
+    // Seed ai_operations with legacy burst COMPLETED_RELEVANT
+    await db.insert(aiOperations).values({
+      id: `aiop_${crypto.randomUUID()}`,
+      districtId: testDistrictId,
+      mahallaName,
+      calendarDay,
+      operationType: 'SEMANTIC_RELEVANCE',
+      targetId: burstExcludedIntakeId,
+      pinnedProfileId: profileId,
+      contextRevision: 1,
+      snapshotFingerprint: 'dummy_fp',
+      finalStatus: 'COMPLETED_RELEVANT',
+      resultPayload: {
+        is_relevant: true,
+        relevant_lanes: ['WATER'],
+        accepted_message_ids: ['8800'],
+        reasoning: 'Parent burst accepted water outage, excluded electricity sarcasm',
+      },
+    });
+
+    // Verify detail endpoint resolves to REJECTED
+    const detailRes = await server.inject({
+      method: 'GET',
+      url: `/api/v1/admin/signals/${burstExcludedIntakeId}`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+    });
+    expect(detailRes.statusCode).toBe(200);
+    const detailBody = JSON.parse(detailRes.body);
+    expect(detailBody.signal.status).toBe('REJECTED');
+    expect(detailBody.signal.isRelevant).toBe(false);
+    expect(detailBody.signal.exclusionReason).toBe('GENERAL_CHATTER');
+
+    // Verify list endpoint filtering (isRelevant=false) includes this excluded intake
+    const listRes = await server.inject({
+      method: 'GET',
+      url: `/api/v1/admin/signals?districtId=${testDistrictId}&isRelevant=false`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+    });
+    expect(listRes.statusCode).toBe(200);
+    const listBody = JSON.parse(listRes.body);
+    const foundItem = listBody.items.find((i: any) => i.intakeId === burstExcludedIntakeId);
+    expect(foundItem).toBeDefined();
+    expect(foundItem.status).toBe('REJECTED');
+    expect(foundItem.isRelevant).toBe(false);
+  });
+
   afterAll(async () => {
     if (server) await server.close();
     if (boss) await boss.stop();

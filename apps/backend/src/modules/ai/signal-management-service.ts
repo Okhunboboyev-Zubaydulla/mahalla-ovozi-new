@@ -198,9 +198,13 @@ export class SignalManagementService {
     }
 
     if (query.isRelevant === true) {
-      conditions.push(sql`(${acceptedEvidence.id} IS NOT NULL OR ${aiOperations.finalStatus} = 'COMPLETED_RELEVANT')`);
+      conditions.push(
+        sql`(${acceptedEvidence.id} IS NOT NULL OR (${aiOperations.finalStatus} = 'COMPLETED_RELEVANT' AND (${telegramIntakeRecords.rawPayload}->>'status' IS NULL OR ${telegramIntakeRecords.rawPayload}->>'status' != 'EXCLUDED')))`,
+      );
     } else if (query.isRelevant === false) {
-      conditions.push(sql`(${acceptedEvidence.id} IS NULL AND (${aiOperations.finalStatus} = 'COMPLETED_IRRELEVANT' OR ${telegramIntakeRecords.rawPayload}->>'status' = 'EXCLUDED'))`);
+      conditions.push(
+        sql`(${acceptedEvidence.id} IS NULL AND (${aiOperations.finalStatus} = 'COMPLETED_IRRELEVANT' OR ${telegramIntakeRecords.rawPayload}->>'status' = 'EXCLUDED' OR ${telegramIntakeRecords.rawPayload}->>'status' = 'PURGED'))`,
+      );
     }
 
     if (query.lane) {
@@ -265,16 +269,19 @@ export class SignalManagementService {
         (rawPayload.exclusionReason as string) ||
         null;
 
-      if (row.evidenceId || row.aiOpFinalStatus === 'COMPLETED_RELEVANT') {
+      if (row.evidenceId) {
         status = 'ACCEPTED';
         isRelevant = true;
       } else if (
-        row.aiOpFinalStatus === 'COMPLETED_IRRELEVANT' ||
         rawPayload.status === 'EXCLUDED' ||
-        rawPayload.status === 'PURGED'
+        rawPayload.status === 'PURGED' ||
+        row.aiOpFinalStatus === 'COMPLETED_IRRELEVANT'
       ) {
         status = 'REJECTED';
         isRelevant = false;
+      } else if (row.aiOpFinalStatus === 'COMPLETED_RELEVANT') {
+        status = 'ACCEPTED';
+        isRelevant = true;
       } else if (row.aiOpFinalStatus === 'FAILED' || row.aiOpFinalStatus === 'STALE') {
         status = 'REJECTED';
         isRelevant = false;
@@ -444,16 +451,19 @@ export class SignalManagementService {
       (rawPayload.exclusionReason as string) ||
       null;
 
-    if (row.evidenceId || row.aiOpFinalStatus === 'COMPLETED_RELEVANT') {
+    if (row.evidenceId) {
       status = 'ACCEPTED';
       isRelevant = true;
     } else if (
-      row.aiOpFinalStatus === 'COMPLETED_IRRELEVANT' ||
       rawPayload.status === 'EXCLUDED' ||
-      rawPayload.status === 'PURGED'
+      rawPayload.status === 'PURGED' ||
+      row.aiOpFinalStatus === 'COMPLETED_IRRELEVANT'
     ) {
       status = 'REJECTED';
       isRelevant = false;
+    } else if (row.aiOpFinalStatus === 'COMPLETED_RELEVANT') {
+      status = 'ACCEPTED';
+      isRelevant = true;
     } else if (row.aiOpFinalStatus === 'FAILED' || row.aiOpFinalStatus === 'STALE') {
       status = 'REJECTED';
       isRelevant = false;

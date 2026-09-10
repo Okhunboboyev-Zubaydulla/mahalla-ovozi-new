@@ -228,17 +228,31 @@ export async function processSemanticRelevanceJobs(
           const isRelevant = aiResult.data.is_relevant;
           const finalStatus = isRelevant ? 'COMPLETED_RELEVANT' : 'COMPLETED_IRRELEVANT';
 
+          const acceptedIds = new Set(
+            Array.isArray(aiResult.data.accepted_message_ids) &&
+            aiResult.data.accepted_message_ids.length > 0
+              ? aiResult.data.accepted_message_ids
+              : burstMessages && burstMessages.length > 0
+                ? burstMessages.map((m) => m.telegramMessageId)
+                : [telegramMessageId],
+          );
+
           // Atomic PostgreSQL commit + downstream enqueue via withTransactionalIntake
           await withTransactionalIntake(pool, boss, async ({ tx, enqueueJob }) => {
             // 1. Insert ai_operations record for all messages in the burst
             const allBurstIntakes =
               burstMessages && burstMessages.length > 0
                 ? burstMessages
-                : [{ intakeId }];
+                : [{ intakeId, telegramMessageId }];
 
             for (const item of allBurstIntakes) {
               const opId =
                 item.intakeId === intakeId ? aiOperationId : `aiop_${crypto.randomUUID()}`;
+              const isItemAccepted =
+                isRelevant &&
+                (item.telegramMessageId ? acceptedIds.has(item.telegramMessageId) : true);
+              const itemFinalStatus = isItemAccepted ? 'COMPLETED_RELEVANT' : 'COMPLETED_IRRELEVANT';
+
               await tx
                 .insert(aiOperations)
                 .values({
@@ -251,7 +265,7 @@ export async function processSemanticRelevanceJobs(
                   pinnedProfileId: aiResult.profileId,
                   contextRevision: initialRevision,
                   snapshotFingerprint: initialFingerprint,
-                  finalStatus,
+                  finalStatus: itemFinalStatus,
                   resultPayload: aiResult.data,
                 })
                 .onConflictDoNothing();
@@ -263,15 +277,6 @@ export async function processSemanticRelevanceJobs(
 
             if (isRelevant) {
               // 3. Enqueue Story 2.4 Topic Assignment job (AC 3, 9)
-              const acceptedIds = new Set(
-                Array.isArray(aiResult.data.accepted_message_ids) &&
-                aiResult.data.accepted_message_ids.length > 0
-                  ? aiResult.data.accepted_message_ids
-                  : burstMessages && burstMessages.length > 0
-                    ? burstMessages.map((m) => m.telegramMessageId)
-                    : [telegramMessageId],
-              );
-
               const filteredBurstMessages = burstMessages
                 ? burstMessages.filter((m) => acceptedIds.has(m.telegramMessageId))
                 : undefined;

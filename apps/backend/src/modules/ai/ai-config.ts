@@ -32,6 +32,9 @@ PART I: CORE ARCHITECTURAL INVARIANTS & SUBSTANCE GATES
 - SYNTACTIC BIPARTITE PROPOSITION CONTRACT (MINIMAL CIVIC ASSERTION):
   - Any message expressing a [Qualified Public Municipal Utility Subject] (Water, Electricity, Gas, Municipal Waste, Hokim) coupled with an [Active Disruption / Non-arrival / Failure Predicate] (e.g. "suv kemadiku", "suv kelmadi", "svet o'chdi", "gaz yo'q", "musor kelmadi", "gaz bosimi past") is a SYNTACTICALLY COMPLETE CIVIC DISRUPTION REPORT.
   - Sentence brevity (word count >= 2) NEVER constitutes an ambiguous fragment! If a message asserts who/what is failing (Subject) and how it is absent or disrupted (Predicate), it completely satisfies the Substance Gate and MUST NEVER be classified as UNRESOLVED_AMBIGUOUS_FRAGMENT.
+  - FACTUAL ASSERTION VS. HYPOTHETICAL TRANSITION (STATE-TRANSITION PRESUPPOSITION PRINCIPLE):
+    - The failure predicate MUST assert a factual, current, ongoing, or past occurrence ("o'chdi", "kelmadi", "to'xtadi", "yo'q", "past").
+    - Predicates using conditional or hypothetical morphology ("-sa", "-salar", "agar ...", "endi ... -sa") that describe an imagined or hypothetical transition into a shutoff ("o'chirishsa", "kesishsa", "to'xtatishsa", "uzib qo'yishsa") inherently presuppose that the service is currently functional, and represent speculative fears or cynical jokes. They DO NOT satisfy the Substance Gate and must NEVER be classified as active disruptions!
 - Keyword presence DOES NOT make a message relevant:
   - Mentioning a utility name as a geographic landmark or orientir designates a physical address/location (MANZIL / MO'LJAL), NOT a disruption of that named utility.
   - Mentioning a utility in private domestic contexts (e.g. appliance repairs, hiring private plumbers like "santexnik", seeking scrap buyers) is a private transaction, NOT municipal intelligence.
@@ -69,7 +72,10 @@ Communicative Predicate over Sentence Mood:
 
 STRICT DROP POLICY & ADVERSARIAL ANTI-PATTERNS:
 - Standalone Subjectless Fragments (is_relevant: false -> UNRESOLVED_AMBIGUOUS_FRAGMENT): Phrases stating a predicate without an explicit public utility subject ("kemadiku", "hali ham kemadi", "o'chdiku", "haliyam yo'q", "bizda ham", "shu ahvol", "ha", "ok") lack civic referents and fail the substance gate unless disambiguated by a qualified reply or burst.
-- Speculative or Anticipatory Inquiries about FUTURE Shutoffs (is_relevant: false -> SPECULATION_OR_RUMOR): Questions asking whether service will be cut in the future ("ertaga svet o'chadimi?", "ertaga suv kemaydimi?", "kechqurun gaz o'char ekanmi?", "bugun gaz o'chmaydimi?") where service is currently on.
+- Speculative Inquiries & Hypothetical Conditionals about FUTURE / UNVERIFIED Shutoffs (is_relevant: false -> SPECULATION_OR_RUMOR or GENERAL_CHATTER):
+  - Inquiries asking whether service will be cut in the future ("ertaga svet o'chadimi?", "ertaga suv kemaydimi?", "kechqurun gaz o'char ekanmi?", "bugun gaz o'chmaydimi?") where service is currently on -> SPECULATION_OR_RUMOR.
+  - Hypothetical conditional statements imagining a transition into an outage ("agar svet o'chsa", "ertaga suvniyam uzishsa endi", "gazniyam o'chirishsa nima qilamiz?") -> SPECULATION_OR_RUMOR.
+  - Cynical conditional irony or fatalistic jokes about unoccurred disruptions ("svettiyam ucirishsa endi balans buladi, kolxoz buladi") -> GENERAL_CHATTER.
 - Private Appliances & Domestic Devices (is_relevant: false -> ADVERTISEMENT_OR_SPAM or GENERAL_CHATTER): Failures restricted to private domestic appliances or personal vehicles ("mashinaga suv kemayapti", "boylerga suv kemadi", "gaz plita nosoz") are private issues, NOT municipal intelligence.
 - Outage Negation & Service Affirmations (is_relevant: false -> GENERAL_CHATTER or NEUTRAL_OR_PRAISE): Asserting that service is present or denying an outage ("suv kemasdan qolgani yo'q", "svet o'chmadi", "suv kam emas") does not report a disruption.
 - Non-Assertive Contextless Chatter: Questions containing no disruption facts ("kimdir biladimi?", "nima bo'ldi?", "hammada tinchlikmi?") -> is_relevant: false (GENERAL_CHATTER).
@@ -107,9 +113,9 @@ Mahalla Ovozi exclusively tracks public municipal utility networks and district 
 ### 5. STRICT EXCLUSIONS (is_relevant = false)
 - ADVERTISEMENT_OR_SPAM: Commercial buying/selling, apartment rentals, private craftsman hire ("santexnik", "usta"), private domestic appliance repairs ("boyler"), private construction projects, private transport/debris hauling, private scrap trading, and informal scrap collector inquiries.
 - PLANNED_ANNOUNCEMENT: Official scheduled maintenance notices from utility authorities.
-- SPECULATION_OR_RUMOR: Speculative questions about future cuts ("bugun gaz o'chmaydimi?", "ertaga suv kemaydimi?"), unconfirmed hearsay, gossip, future price rumors.
+- SPECULATION_OR_RUMOR: Speculative questions or hypothetical conditionals imagining future cuts ("bugun gaz o'chmaydimi?", "ertaga suv kemaydimi?", "agar svet o'chsa nima bo'ladi?", "suvniyam uzishsa endi"), unconfirmed hearsay, gossip, future price rumors.
 - NEUTRAL_OR_PRAISE: Generic greetings, prayers, gratitude ("rahmat svet yondi"), affirmations of uninterrupted service ("suv kam emas").
-- GENERAL_CHATTER: Conversational chatter, greetings without civic substance, contextless inquiries ("kimdir biladimi?"), outage negations ("svet o'chmadi"), off-topic debates, jokes, general road or infrastructure complaints lacking Hokim/Hokimiyat mentions and lacking Water/Electricity/Gas/Waste issues, live operational vehicle tracking inquiries ("musor mashina qaysi ko'chada?"), routine mobile service ETA inquiries without reported delay ("musor soat nechada keladi?"), standalone contact/phone number requests ("elektroset nomeri bormi?"), and routine service arrival announcements on an empty board ("musor keldi chiqaringlar").
+- GENERAL_CHATTER: Conversational chatter, greetings without civic substance, cynical conditional irony or fatalistic jokes about unoccurred disruptions ("svettiyam ucirishsa endi balans buladi, kolxoz buladi", "endi gazniyam uzishsa to'y bo'lardi"), contextless inquiries ("kimdir biladimi?"), outage negations ("svet o'chmadi"), off-topic debates, jokes, general road or infrastructure complaints lacking Hokim/Hokimiyat mentions and lacking Water/Electricity/Gas/Waste issues, live operational vehicle tracking inquiries ("musor mashina qaysi ko'chada?"), routine mobile service ETA inquiries without reported delay ("musor soat nechada keladi?"), standalone contact/phone number requests ("elektroset nomeri bormi?"), and routine service arrival announcements on an empty board ("musor keldi chiqaringlar").
 - UNRESOLVED_AMBIGUOUS_FRAGMENT:
   - Strictly applies when either the Subject is missing without context ("kemadiku", "haliyam yo'q", "o'chdiku", "ha", "ok", "bizda ham") OR the Predicate is missing without context (isolated single-word tags like "suv", "gaz", "suvchi").
   - STRICT PROHIBITION: You MUST NEVER assign UNRESOLVED_AMBIGUOUS_FRAGMENT to a message containing both a qualified utility subject and a disruption/absence predicate (e.g. "suv kemadiku", "gaz kelmadi", "svet o'chdi"). Brief two-word assertions are complete civic propositions!
@@ -151,7 +157,11 @@ These empirical rules capture real-world communication habits observed across Uz
     - When the messages collectively communicate a qualified civic disruption, ALL constituent clauses that belong to that unified thought (including opening vocatives/topic tags like "suvchi", dialectal frustration like "uyam qurib yotadimi", conditions, and tariff/intermittency statements) ARE DIRECT EVIDENCE AND MUST BE INCLUDED in "accepted_message_ids".
   - Scrutinize each message within the sequence contextually to distinguish between:
     1. Core Civic Problem & Valid Thought Clauses: Messages forming the civic grievance, follow-up conditions, street addresses, or outage confirmations (include in "accepted_message_ids").
-    2. Truly Unrelated Side Chatter / Independent Private Remarks: Messages sent in the same sequence that pivot to completely unrelated topics, private jokes, stickers, or commercial trades (e.g. "Katyol bor", "Gaz girpi bor", laughing emojis) -> MUST be excluded from "accepted_message_ids".
+    2. Truly Unrelated Side Chatter / Independent Private Remarks / Sarcastic Hypotheticals: Messages sent in the same sequence that pivot to completely unrelated topics, private jokes, stickers, commercial trades (e.g. "Katyol bor", "Gaz girpi bor", laughing emojis), OR cynical hypothetical remarks imagining other unoccurred outages (e.g. "svettiyam ucirishsa endi", "balans buladi", "kolxoz buladi") -> MUST be excluded from "accepted_message_ids".
+  - MIXED BURST LANE ISOLATION & HYPOTHETICAL FILTERING:
+    - If a burst contains both an active disruption report (e.g. tap water outage: "suvam quridi", "bir soat buldi") and subsequent cynical hypothetical comments about another utility (e.g. "svettiyam ucirishsa endi", "balans buladi"):
+      - Set "relevant_lanes" strictly to the active disruption lanes (e.g. ["WATER"]). You MUST NEVER add secondary lanes for hypothetical shutoffs (e.g. NEVER add "ELECTRICITY" for "svettiyam ucirishsa endi")!
+      - In "accepted_message_ids", return ONLY the message IDs asserting the active disruption. Exclude the hypothetical/cynical commentary messages.
   - In "accepted_message_ids", return all message IDs from the burst that form part of the qualified civic issue.
   - If evaluating a single candidate message (not a burst):
     - Set "accepted_message_ids" to [candidateMessageId] when is_relevant is true, or empty array [] when false.
@@ -168,16 +178,30 @@ These empirical rules capture real-world communication habits observed across Uz
 - Private craftsmen/tradesmen are strictly designated by distinct terms: "santexnik", "elektrik", "usta", "remontchi".
 
 ### 10. CULTURAL IRONY, SARCASM & RHETORICAL EXASPERATION
-- In Uzbek neighborhood Telegram chats, residents frequently express acute frustration through irony, sarcasm, rhetorical questions, or hyperbole:
-  - Sarcastic delivery projections: "Gazni bayramga berishadimi endi?", "Svetni yangi yilda ko'ramiz shekilli", "Suv kelishini kutib qarib ketamiz shekilli".
-  - Rhetorical distress: "Muzlab o'lishimizni kutishyaptimi raygazdagilar?", "Sham yoqib o'tirish zamoni keldi yana", "Gaz kelishi orzu bo'lib qoldi-ku".
-  - Governance/administrative dormancy: "Hokimiyatdagilar qachon uyg'onadi o'zi?", "Prezidentga yozishimiz shartmi bitta transformator uchun?".
-- These are NOT literal administrative inquiries or meaningless jokes; they are authentic cultural expressions of an active supply cutoff or municipal neglect. They SATISFY the Substance Gate and qualify under the corresponding lane (GAS, ELECTRICITY, WATER, HOKIM_RELATED).
+- In Uzbek neighborhood Telegram chats, residents frequently express acute frustration through irony, sarcasm, rhetorical questions, or hyperbole.
+- YOU MUST STRICTLY DISTINGUISH BETWEEN TWO OPPOSITE FORMS OF SARCASM:
+  1. Authentic Grievance Sarcasm regarding an EXISTING Ongoing Outage (is_relevant: true):
+     - The service is ALREADY absent/cut off, and the resident uses sarcasm, rhetorical questions, or hyperbole to lament the delay or demand service:
+       - Sarcastic delivery projections: "Gazni bayramga berishadimi endi?", "Svetni yangi yilda ko'ramiz shekilli", "Suv kelishini kutib qarib ketamiz shekilli".
+       - Rhetorical distress: "Muzlab o'lishimizni kutishyaptimi raygazdagilar?", "Sham yoqib o'tirish zamoni keldi yana", "Gaz kelishi orzu bo'lib qoldi-ku".
+       - Governance/administrative dormancy: "Hokimiyatdagilar qachon uyg'onadi o'zi?", "Prezidentga yozishimiz shartmi bitta transformator uchun?".
+     - These are authentic cultural expressions of an ACTIVE supply cutoff or municipal neglect. They SATISFY the Substance Gate and qualify under the corresponding lane (GAS, ELECTRICITY, WATER, HOKIM_RELATED).
+  2. Hypothetical / Counterfactual Sarcasm Imagining an UNOCCURRED Outage (is_relevant: false -> GENERAL_CHATTER or SPECULATION_OR_RUMOR):
+     - The resident uses sarcasm with conditional morphology ("-sa", "endi ... -sa", "agar ... bo'lsa") to cynically imagine an additional, worse catastrophe that has NOT occurred:
+       - "suv yo'q edi, endi svettiyam ucirishsa/o'chirishsa balans buladi, kolxoz buladi" (Water is absent, but electricity is NOT shut off; the resident is sarcastically proposing an imaginary subsequent cut).
+       - "Gazniyam uzishsa to'y bo'lardi", "Ertaga havoniyam sotishsa ajablanmayman".
+     - These are counterfactual hypothetical ironies. They DO NOT report an active outage of that named service, MUST NEVER trigger that lane, and MUST NEVER qualify as an active disruption report!
 
 ### 11. PREDICATE DOMINANCE & TARIFF/INTERMITTENCY DISSATISFACTION
 - When a resident communicates dissatisfaction with utility delivery, intermittent/arbitrary supply, or paying utility bills without receiving reliable service (e.g. "pulini to'layapmiz, xohlagan payti bor xohlasa yo'q", "pulini tulekkan busek", "pul tulamasogam mayli tekin disek", "tekin emas bu", "har oy to'laymiz lekin suv/svet yo'q"):
   - THIS CIVIC DISSATISFACTION PREDICATE STRICTLY DOMINATES AND QUALIFIES AS AN ACTIVE CIVIC DISRUPTION!
   - It strictly invalidates any craftsman or private-transaction exclusion, even if terms like "suvchi", "motor", "nasos", or "quvur" appear. Residents paying for communal services and suffering intermittent supply represent primary municipal intelligence.
+- PRESERVATION OF VALID RECURRING & TARIFF CONDITIONALS (ANTI-OVERCORRECTION RULE):
+  - Do NOT confuse hypothetical shutoffs with REAL recurring or intermittency complaints that contain conditional morphology ("-sa"):
+    - Chronic / Scheduled Daily Outages: "har kuni soat 6 bo'lsa svet o'chadi", "kech bo'lsa gaz tushib ketadi" -> is_relevant: true (asserts a recurring disruption pattern!).
+    - Conditional Consequence of Active Outage: "bosim tushib ketsa gaz yonmayapti", "svet o'chib qolsa nasos ishlamayapti" -> is_relevant: true.
+    - Tariff vs Delivery Contrasts: "pulini to'layotgan bo'lsak / pulini tulekkan busek, xohlagan payti bor xohlasa yo'q" -> is_relevant: true.
+    - Restoration Requests: "svetni yoqib berishsa bo'lardi", "suvni ochishsa edi" -> is_relevant: true (presupposes active outage and requests restoration).
 
 ### 12. SPATIAL ORIENTIRS & LANDMARK DISAMBIGUATION (MO'LJAL VS. CIVIC DISRUPTION)
 - Utility enterprise names combined with spatial/locational postpositions ('orqasi', 'orqa tarafi', 'yoni', 'ro'parasi', 'oldi', 'ko'chasi', 'garaj tarafi', 'tarafideyi kucagayam') designate a PHYSICAL LANDMARK / ADDRESS (MANZIL / MO'LJAL). IT REPRESENTS A PHYSICAL LANDMARK / ADDRESS, NOT A DISRUPTION OF THAT NAMED UTILITY!

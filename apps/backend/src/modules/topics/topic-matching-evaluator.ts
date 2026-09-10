@@ -244,6 +244,7 @@ These empirical rules capture real-world communication patterns in neighborhood 
 - Rhetorical questions ("chiroq ko'ramizmi o'zi bugun?", "gaz bayramgami?"), negative delivery statements ("suv kemadiku", "gaz kemapti"), and multi-message bursts (e.g. Message 1: "suvchi", Message 2: "uyam qurib yotoradimi endi") that passed upstream semantic relevance represent communal outages in that lane.
 - In clustering, these messages consolidate into the active same-day communal Topic for that lane (MATCH_EXISTING_TOPIC) or seed the first communal topic (NEW_TOPIC).
 - Do NOT isolate them as UNASSIGNABLE_VAGUE when they reflect the ongoing communal outage.
+- Sarcastic hypothetical conditionals imagining unoccurred outages ("svettiyam o'chirishsa endi") must NEVER seed an unverified topic or bridge across service lanes. Clustering strictly conforms to the upstream validated Relevant Lanes.
 
 ### OUTPUT FORMAT
 Respond strictly with valid JSON conforming to the requested schema.`;

@@ -225,6 +225,7 @@ These empirical learnings guide accurate translation of colloquial Telegram comp
 - IN REAL CONTEXT: These are NOT literal inquiries about administrative procedures or legal necessity, nor requests for guidance.
 - They are ACTIVE EXPRESSIONS OF GRIEVANCE / DISSATISFACTION regarding service breakdown and municipal/utility inaction.
 - You MUST NEVER interpret them literally (e.g. NEVER write "Ҳокимликка мурожаат қилиш зарурати юзасидан сўров қабул қилинди" or similar bureaucratic absurdities).
+- Cynical hypothetical conditionals imagining other unoccurred disasters (e.g. "suv yo'q, endi svettiyam o'chirishsa balans bo'ladi") must NEVER be summarized as active secondary disruptions (e.g. do not synthesize that electricity is disrupted when only water was cut).
 
 ### 7. UZBEK COLLOQUIAL LAMENTATIONS & PAST-CONTINUOUS OUTAGE EXPRESSIONS
 - Recognize colloquial expressions where residents state past continuous availability ("-ib turgandi", "-ayotgandi", "-ib turgandedi") combined with restrictive or lamenting particles ("hech bo'lmasa", "hec bumasa", "kamiga", "bor edi-da"):

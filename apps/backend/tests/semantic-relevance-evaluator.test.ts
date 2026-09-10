@@ -2087,6 +2087,227 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
           expect(result.data.exclusion_reason).toBe('GENERAL_CHATTER');
         });
       });
+
+      describe('Hypothetical Conditionals, Sarcasm Boundary & Mixed Burst Lane Isolation', () => {
+        it('verifies SEMANTIC_RELEVANCE_SYSTEM_PROMPT codifies State-Transition Presupposition Principle', () => {
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain(
+            'STATE-TRANSITION PRESUPPOSITION PRINCIPLE',
+          );
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain(
+            'MIXED BURST LANE ISOLATION & HYPOTHETICAL FILTERING',
+          );
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain(
+            'Authentic Grievance Sarcasm regarding an EXISTING Ongoing Outage',
+          );
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain(
+            'Hypothetical / Counterfactual Sarcasm Imagining an UNOCCURRED Outage',
+          );
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain(
+            'PRESERVATION OF VALID RECURRING & TARIFF CONDITIONALS',
+          );
+        });
+
+        it('excludes standalone hypothetical conditional "svettiyam ucirishsa endi" as GENERAL_CHATTER', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'GENERAL_CHATTER',
+            accepted_message_ids: [],
+            reasoning:
+              'Hypothetical conditional imagining an unoccurred electricity shutoff represents cynical chatter, not an active disruption report',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'svettiyam ucirishsa endi',
+            telegramMessageId: '9920',
+            originalTimestamp: '2026-09-10T15:25:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(false);
+          expect(result.data.exclusion_reason).toBe('GENERAL_CHATTER');
+          expect(result.data.accepted_message_ids).toHaveLength(0);
+        });
+
+        it('excludes speculative future shutoff conditional "agar gaz o\'chsa nima qilamiz?" as SPECULATION_OR_RUMOR', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'SPECULATION_OR_RUMOR',
+            accepted_message_ids: [],
+            reasoning:
+              'Speculative anticipatory question about a potential future cut without an active disruption',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: "agar gaz o'chsa nima qilamiz?",
+            telegramMessageId: '9921',
+            originalTimestamp: '2026-09-10T15:25:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(false);
+          expect(result.data.exclusion_reason).toBe('SPECULATION_OR_RUMOR');
+        });
+
+        it('strictly isolates lanes and excludes cynical hypotheticals in mixed bursts', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['WATER'],
+            exclusion_reason: null,
+            accepted_message_ids: ['165', '166', '167'],
+            reasoning:
+              'Candidate reports an active tap water outage. Messages 168-170 are cynical hypothetical remarks about an unoccurred electricity outage and are excluded.',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'suvam quridi',
+            telegramMessageId: '165',
+            originalTimestamp: '2026-09-10T15:25:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            burstMessages: [
+              {
+                intakeId: 'intake_165',
+                telegramMessageId: '165',
+                verbatimText: 'suvam quridi',
+                originalTimestamp: '2026-09-10T15:25:00.000Z',
+                contentType: 'TEXT',
+                replyMetadata: null,
+              },
+              {
+                intakeId: 'intake_166',
+                telegramMessageId: '166',
+                verbatimText: 'bir soat buldi',
+                originalTimestamp: '2026-09-10T15:25:10.000Z',
+                contentType: 'TEXT',
+                replyMetadata: null,
+              },
+              {
+                intakeId: 'intake_167',
+                telegramMessageId: '167',
+                verbatimText: 'nma bulepti',
+                originalTimestamp: '2026-09-10T15:25:20.000Z',
+                contentType: 'TEXT',
+                replyMetadata: null,
+              },
+              {
+                intakeId: 'intake_168',
+                telegramMessageId: '168',
+                verbatimText: 'svettiyam ucirishsa endi',
+                originalTimestamp: '2026-09-10T15:25:30.000Z',
+                contentType: 'TEXT',
+                replyMetadata: null,
+              },
+              {
+                intakeId: 'intake_169',
+                telegramMessageId: '169',
+                verbatimText: 'balans buladi',
+                originalTimestamp: '2026-09-10T15:26:00.000Z',
+                contentType: 'TEXT',
+                replyMetadata: null,
+              },
+              {
+                intakeId: 'intake_170',
+                telegramMessageId: '170',
+                verbatimText: 'kolxoz buladi',
+                originalTimestamp: '2026-09-10T15:26:10.000Z',
+                contentType: 'TEXT',
+                replyMetadata: null,
+              },
+            ],
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['WATER']);
+          expect(result.data.relevant_lanes).not.toContain('ELECTRICITY');
+          expect(result.data.accepted_message_ids).toEqual(['165', '166', '167']);
+          expect(result.data.accepted_message_ids).not.toContain('168');
+          expect(result.data.accepted_message_ids).not.toContain('169');
+          expect(result.data.accepted_message_ids).not.toContain('170');
+        });
+
+        it('preserves valid recurring daily outages with conditional -sa as ELECTRICITY', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['ELECTRICITY'],
+            exclusion_reason: null,
+            accepted_message_ids: ['9930'],
+            reasoning: 'Reports an active recurring scheduled daily power blackout pattern',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: "har kuni soat 6 bo'lsa svet o'chadi",
+            telegramMessageId: '9930',
+            originalTimestamp: '2026-09-10T18:00:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['ELECTRICITY']);
+          expect(result.data.exclusion_reason).toBeNull();
+        });
+
+        it('preserves valid restoration pleas "svetni yoqib berishsa bo\'lardi" as ELECTRICITY', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['ELECTRICITY'],
+            exclusion_reason: null,
+            accepted_message_ids: ['9931'],
+            reasoning: 'Presupposes current power outage and requests municipal service restoration',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: "svetni yoqib berishsa bo'lardi",
+            telegramMessageId: '9931',
+            originalTimestamp: '2026-09-10T18:00:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['ELECTRICITY']);
+          expect(result.data.exclusion_reason).toBeNull();
+        });
+
+        it('preserves sarcasm regarding an ALREADY EXISTING outage "Gazni bayramga berishadimi endi?" as GAS', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['GAS'],
+            exclusion_reason: null,
+            accepted_message_ids: ['9932'],
+            reasoning:
+              'Authentic cultural grievance sarcasm lamenting an active ongoing gas outage',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'Gazni bayramga berishadimi endi?',
+            telegramMessageId: '9932',
+            originalTimestamp: '2026-09-10T18:00:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['GAS']);
+          expect(result.data.exclusion_reason).toBeNull();
+        });
+      });
     });
   });
 });
