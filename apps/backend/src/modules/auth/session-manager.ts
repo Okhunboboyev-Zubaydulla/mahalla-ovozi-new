@@ -106,28 +106,40 @@ export async function validateAndTouchSession(
     return { isValid: false, reason: 'CREDENTIAL_VERSION_MISMATCH' };
   }
 
-  // 3. Check 24h absolute ceiling
-  const sessionAgeMs = now.getTime() - session.createdAt.getTime();
-  if (sessionAgeMs >= ABSOLUTE_TIMEOUT_MS) {
-    await db.update(sessions).set({ revokedAt: now }).where(eq(sessions.id, session.id));
-    return { isValid: false, reason: 'ABSOLUTE_EXPIRY' };
-  }
-
-  // 4. Check 12h sliding idle timeout
+  // 3. Check 12h sliding idle timeout
   const idleAgeMs = now.getTime() - session.lastActiveAt.getTime();
   if (idleAgeMs >= IDLE_TIMEOUT_MS) {
     await db.update(sessions).set({ revokedAt: now }).where(eq(sessions.id, session.id));
     return { isValid: false, reason: 'IDLE_EXPIRY' };
   }
 
+  // 4. Check 24h absolute ceiling (enforced strictly for PRODUCT_OWNER console; active DISTRICT_HOKIM kiosk slides)
+  const sessionAgeMs = now.getTime() - session.createdAt.getTime();
+  const isHokimRole = account.role === 'DISTRICT_HOKIM';
+  let effectiveCreatedAt = session.createdAt;
+
+  if (sessionAgeMs >= ABSOLUTE_TIMEOUT_MS) {
+    if (isHokimRole) {
+      // Active Hokim wall display / kiosk: renew baseline window to allow continuous sliding
+      effectiveCreatedAt = now;
+    } else {
+      // Strict administrative boundary for PRODUCT_OWNER
+      await db.update(sessions).set({ revokedAt: now }).where(eq(sessions.id, session.id));
+      return { isValid: false, reason: 'ABSOLUTE_EXPIRY' };
+    }
+  }
+
   // 5. Valid session: calculate updated sliding expiry
-  const maxPossibleExpiry = session.createdAt.getTime() + ABSOLUTE_TIMEOUT_MS;
+  const maxPossibleExpiry = isHokimRole
+    ? now.getTime() + IDLE_TIMEOUT_MS
+    : effectiveCreatedAt.getTime() + ABSOLUTE_TIMEOUT_MS;
   const slidingExpiry = now.getTime() + IDLE_TIMEOUT_MS;
   const newExpiresAt = new Date(Math.min(slidingExpiry, maxPossibleExpiry));
 
   await db
     .update(sessions)
     .set({
+      createdAt: effectiveCreatedAt,
       lastActiveAt: now,
       expiresAt: newExpiresAt,
     })
@@ -138,6 +150,7 @@ export async function validateAndTouchSession(
     account,
     session: {
       ...session,
+      createdAt: effectiveCreatedAt,
       lastActiveAt: now,
       expiresAt: newExpiresAt,
     },

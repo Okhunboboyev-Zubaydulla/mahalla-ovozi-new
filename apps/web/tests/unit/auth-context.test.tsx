@@ -166,4 +166,62 @@ describe('AuthContext & Session Hydration on Refresh', () => {
       expect(screen.getByText('Sign In Screen')).toBeTruthy();
     });
   });
+
+  it('configures periodic session refetch and advances expiresAt dynamically', async () => {
+    const initialExpiresAt = new Date(Date.now() + 10000).toISOString();
+    const fetchSessionSpy = vi.spyOn(authClient, 'fetchSession').mockResolvedValue({
+      actor: {
+        id: 'acc_hokim_123',
+        role: 'DISTRICT_HOKIM',
+        username: 'hokim_user',
+        districtId: 'dis_123',
+        mustChangePassword: false,
+      },
+      session: {
+        expiresAt: initialExpiresAt,
+      },
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ConsumerComponent />
+        </AuthProvider>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-status').textContent).toBe('AUTHENTICATED');
+    });
+
+    // Verify query options in queryClient
+    const query = queryClient.getQueryCache().find({ queryKey: ['auth', 'session'] });
+    expect(query).toBeDefined();
+    const queryOptions = query?.options as Record<string, unknown> | undefined;
+    expect(queryOptions?.refetchInterval).toBe(15 * 60 * 1000);
+    expect(queryOptions?.refetchIntervalInBackground).toBe(true);
+
+    // Simulate background refetch extending expiresAt by 12 hours
+    const extendedExpiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+    fetchSessionSpy.mockResolvedValueOnce({
+      actor: {
+        id: 'acc_hokim_123',
+        role: 'DISTRICT_HOKIM',
+        username: 'hokim_user',
+        districtId: 'dis_123',
+        mustChangePassword: false,
+      },
+      session: {
+        expiresAt: extendedExpiresAt,
+      },
+    });
+
+    await queryClient.refetchQueries({ queryKey: ['auth', 'session'] });
+    const currentData = queryClient.getQueryData<{ session: { expiresAt: string } }>(['auth', 'session']);
+    expect(currentData?.session.expiresAt).toBe(extendedExpiresAt);
+  });
 });

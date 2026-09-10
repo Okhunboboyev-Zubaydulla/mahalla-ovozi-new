@@ -40,6 +40,8 @@ export function useTopicEvidence(
   const queryClient = useQueryClient();
 
   const queryKey = ['topic-evidence', districtId, topicId || ''];
+  const configuredRetry = queryClient.getDefaultOptions().queries?.retry;
+  const effectiveRetry = configuredRetry !== undefined ? configuredRetry : 2;
 
   const {
     data,
@@ -58,7 +60,7 @@ export function useTopicEvidence(
     string[],
     string | undefined
   >({
-    queryKey,
+    queryKey: ['topic-evidence', districtId, topicId || ''],
     queryFn: async ({ pageParam, signal }) => {
       if (!topicId) {
         throw new Error('Мавзу идентификатори талаб қилинади.');
@@ -79,8 +81,9 @@ export function useTopicEvidence(
     staleTime: 2_000,
     refetchInterval: 4_000,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
     networkMode: 'online',
-    retry: false,
+    retry: effectiveRetry,
     placeholderData: undefined, // Strictly omit keepPreviousData to prevent ghost evidence cache during topic switching (AC 7)
   });
 

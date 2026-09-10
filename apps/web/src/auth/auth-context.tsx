@@ -34,6 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: () => authClient.fetchSession(),
     retry: false,
     staleTime: 5 * 60 * 1000,
+    refetchInterval: 15 * 60 * 1000,
+    refetchIntervalInBackground: true,
   });
 
   // Active offline session expiration checker (AC 8)

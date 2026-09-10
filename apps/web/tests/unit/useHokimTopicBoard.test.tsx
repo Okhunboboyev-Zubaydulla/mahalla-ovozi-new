@@ -540,5 +540,51 @@ describe('Story 3.3: useHokimTopicBoard In-Session Reconciliation & Buffer Tests
       expect(result.current.lanes.WATER.isLoadingMore).toBe(false);
       expect(result.current.lanes.WATER.loadMoreError).toBe('Юклаб бўлмади. Қайта уриниш.');
     });
+
+    it('Test 10: Midnight calendar rollover cleanly flushes yesterday cards, resets baseline, and invalidates statistics', async () => {
+      let currentResponse = initialBoardResponse;
+      vi.spyOn(hokimTopicsClient, 'getTodayBoard').mockImplementation(async () => currentResponse);
+
+      const { result } = renderHook(() => useHokimTopicBoard(), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => expect(result.current.board).toBeDefined());
+      expect(result.current.lanes.WATER.topics.length).toBe(1);
+      expect(result.current.lanes.WATER.topics[0]?.id).toBe('top_w1');
+      expect(result.current.board?.calendarDay).toBe('2026-08-24');
+
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+      // Midnight strikes: server returns next calendar day (2026-08-25) with empty lanes
+      currentResponse = {
+        ...initialBoardResponse,
+        calendarDay: '2026-08-25',
+        evaluationId: '22222222-3333-4444-5555-666666666666',
+        currentVisitTimestamp: '2026-08-25T00:00:04.000Z',
+        serverEvaluatedAt: '2026-08-25T00:00:04.000Z',
+        lanes: {
+          HOKIM_RELATED: { lane: 'HOKIM_RELATED', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false },
+          WATER: { lane: 'WATER', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false },
+          ELECTRICITY: { lane: 'ELECTRICITY', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false },
+          GAS: { lane: 'GAS', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false },
+          WASTE: { lane: 'WASTE', topics: [], totalCount: 0, nextCursor: null, hasNextPage: false },
+        },
+      };
+
+      await act(async () => {
+        await result.current.manualRefresh();
+      });
+
+      await waitFor(() => {
+        expect(result.current.board?.calendarDay).toBe('2026-08-25');
+        expect(result.current.lanes.WATER.topics.length).toBe(0);
+        expect(result.current.lanes.WATER.totalCount).toBe(0);
+        expect(result.current.lanes.WATER.nextCursor).toBeNull();
+      });
+
+      // Statistics must have been invalidated in lockstep
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['hokim-statistics'] });
+    });
   });
 });

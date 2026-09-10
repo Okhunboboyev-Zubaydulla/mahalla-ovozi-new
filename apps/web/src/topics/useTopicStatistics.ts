@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   QualifyingLane,
   HokimTopicStatisticsResponse,
@@ -63,6 +63,10 @@ export function useTopicStatistics(
     trimmedSearch || null,
   ];
 
+  const queryClient = useQueryClient();
+  const configuredRetry = queryClient.getDefaultOptions().queries?.retry;
+  const effectiveRetry = configuredRetry !== undefined ? configuredRetry : 2;
+
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey,
     queryFn: ({ signal }) => {
@@ -102,8 +106,9 @@ export function useTopicStatistics(
     staleTime: 5_000,
     refetchInterval: 10_000,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
     networkMode: 'online',
-    retry: false,
+    retry: effectiveRetry,
   });
 
   return {

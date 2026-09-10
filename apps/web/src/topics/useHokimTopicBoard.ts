@@ -126,6 +126,7 @@ export function useHokimTopicBoard(
   const baselineTimestampRef = useRef<string | null>(
     cachedBoard?.currentVisitTimestamp ?? null,
   );
+  const activeCalendarDayRef = useRef<string | null>(cachedBoard?.calendarDay ?? null);
   const isInitialLoadRef = useRef<boolean>(!cachedBoard?.lanes);
   const previousKnownTopicIdsRef = useRef<Set<string>>(extractTopicIds(cachedBoard?.lanes));
   const previousTopicTimestampsRef = useRef<Map<string, string>>(extractTopicTimestamps(cachedBoard?.lanes));
@@ -138,6 +139,7 @@ export function useHokimTopicBoard(
     if (scopedCachedData?.lanes) {
       isInitialLoadRef.current = false;
       baselineTimestampRef.current = scopedCachedData.currentVisitTimestamp;
+      activeCalendarDayRef.current = scopedCachedData.calendarDay ?? null;
       previousKnownTopicIdsRef.current = extractTopicIds(scopedCachedData.lanes);
       previousTopicTimestampsRef.current = extractTopicTimestamps(scopedCachedData.lanes);
       const cachedLanes = buildInitialLanesState(scopedCachedData.lanes);
@@ -146,6 +148,7 @@ export function useHokimTopicBoard(
     } else {
       isInitialLoadRef.current = true;
       baselineTimestampRef.current = null;
+      activeCalendarDayRef.current = null;
       previousKnownTopicIdsRef.current.clear();
       previousTopicTimestampsRef.current.clear();
       // Keep existing displayed lanes via placeholderData while the new filter scope loads
@@ -162,6 +165,9 @@ export function useHokimTopicBoard(
       laneAbortControllersRef.current.clear();
     };
   }, []);
+
+  const configuredRetry = queryClient.getDefaultOptions().queries?.retry;
+  const effectiveRetry = configuredRetry !== undefined ? configuredRetry : 2;
 
   const boardQuery = useQuery({
     queryKey,
@@ -204,8 +210,9 @@ export function useHokimTopicBoard(
     staleTime: 2_000,
     refetchInterval: 4_000,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
     networkMode: 'online',
-    retry: false,
+    retry: effectiveRetry,
   });
 
   // Reconcile board data on initial load and subsequent background/manual refreshes (AC 1, 2, 3, 4)
@@ -215,10 +222,17 @@ export function useHokimTopicBoard(
     }
 
     const incomingLanes = boardQuery.data.lanes;
+    const incomingCalendarDay = boardQuery.data.calendarDay;
+    const isDayRollover = Boolean(
+      activeCalendarDayRef.current &&
+      incomingCalendarDay &&
+      activeCalendarDayRef.current !== incomingCalendarDay,
+    );
 
-    if (isInitialLoadRef.current) {
-      // 1. Initial Cold Load: Establish baseline and populate lanes directly
+    if (isInitialLoadRef.current || isDayRollover) {
+      // 1. Initial Cold Load or Midnight Day Rollover: Establish baseline and populate lanes directly
       isInitialLoadRef.current = false;
+      activeCalendarDayRef.current = incomingCalendarDay ?? null;
       baselineTimestampRef.current = boardQuery.data.currentVisitTimestamp;
 
       const newLanes: Record<QualifyingLane, LaneLocalState> = {} as Record<QualifyingLane, LaneLocalState>;
@@ -248,7 +262,16 @@ export function useHokimTopicBoard(
       previousTopicTimestampsRef.current = initialTimestamps;
       lanesStateRef.current = newLanes;
       setLanesState(newLanes);
+
+      if (isDayRollover) {
+        // Cancel in-flight lane pagination from yesterday
+        laneAbortControllersRef.current.forEach((ctrl) => ctrl.abort());
+        laneAbortControllersRef.current.clear();
+        // Invalidate statistics query immediately in lockstep with day rollover
+        void queryClient.invalidateQueries({ queryKey: ['hokim-statistics'] });
+      }
     } else {
+      activeCalendarDayRef.current = incomingCalendarDay ?? null;
       // 2. In-Session Reconciliation: Preserve existing card positions, directly prepend new topics at index 0
       const newCanonicalTopicIds = new Set<string>();
       const updatedCanonicalTopicIds = new Set<string>();

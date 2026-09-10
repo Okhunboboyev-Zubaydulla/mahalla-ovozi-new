@@ -3,8 +3,8 @@ import { FastifyInstance } from 'fastify';
 import { buildHttpServer } from '../src/entrypoints/http.js';
 import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/client.js';
 import { createOrResetProductOwner } from '../src/modules/auth/account-service.js';
-import { sessions, auditEvents } from '../src/adapters/db/schema/index.js';
-import { COOKIE_NAME, hashSessionToken } from '../src/modules/auth/session-manager.js';
+import { sessions, auditEvents, accounts, districts } from '../src/adapters/db/schema/index.js';
+import { COOKIE_NAME, hashSessionToken, validateAndTouchSession, createSession } from '../src/modules/auth/session-manager.js';
 import { SessionResponseSchema } from '@mahalla-ovozi/api-contracts';
 import { eq } from 'drizzle-orm';
 import pg from 'pg';
@@ -328,6 +328,75 @@ describe('Auth Module, Session Engine & Threat Defenses Integration Tests', () =
         expect(metadataStr).not.toContain('$argon2id$');
         expect(metadataStr).not.toContain('__Host-session');
       }
+    });
+  });
+
+  describe('Active Session Sliding & Role-Aware Absolute Ceiling', () => {
+    it('enforces strict ABSOLUTE_EXPIRY on PRODUCT_OWNER sessions older than 24 hours', async () => {
+      // Find PO account
+      const [poAccount] = await db.select().from(accounts).where(eq(accounts.username, testUsername)).limit(1);
+      expect(poAccount).toBeDefined();
+
+      const { sessionToken, sessionId } = await createSession(db, {
+        accountId: poAccount!.id,
+        expectedCredentialVersion: poAccount!.credentialVersion,
+      });
+
+      // Manually backdate createdAt to 25 hours ago, but keep lastActiveAt fresh (5 min ago)
+      const twentyFiveHoursAgo = new Date(Date.now() - 25 * 60 * 60 * 1000);
+      const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+      await db
+        .update(sessions)
+        .set({ createdAt: twentyFiveHoursAgo, lastActiveAt: fiveMinsAgo })
+        .where(eq(sessions.id, sessionId));
+
+      const validation = await validateAndTouchSession(db, sessionToken);
+      expect(validation.isValid).toBe(false);
+      expect(validation.reason).toBe('ABSOLUTE_EXPIRY');
+    });
+
+    it('allows active DISTRICT_HOKIM sessions older than 24 hours to slide continuously', async () => {
+      // Provision test district and hokim account
+      const timestamp = Date.now();
+      const districtId = `dis_test_${timestamp}`;
+      await db.insert(districts).values({
+        id: districtId,
+        name: `Слайдинг Тумани ${timestamp}`,
+        status: 'ACTIVE',
+      });
+
+      const hokimAccountId = `acc_hokim_${Date.now()}`;
+      await db.insert(accounts).values({
+        id: hokimAccountId,
+        username: `hokim_${Date.now()}`,
+        role: 'DISTRICT_HOKIM',
+        districtId,
+        passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$dummyhash$dummyhash',
+        status: 'ACTIVE',
+        credentialVersion: 1,
+        mustChangePassword: false,
+      });
+
+      const { sessionToken, sessionId } = await createSession(db, {
+        accountId: hokimAccountId,
+        expectedCredentialVersion: 1,
+      });
+
+      // Manually backdate createdAt to 25 hours ago, but keep lastActiveAt fresh (1 min ago)
+      const twentyFiveHoursAgo = new Date(Date.now() - 25 * 60 * 60 * 1000);
+      const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+
+      await db
+        .update(sessions)
+        .set({ createdAt: twentyFiveHoursAgo, lastActiveAt: oneMinuteAgo })
+        .where(eq(sessions.id, sessionId));
+
+      const validation = await validateAndTouchSession(db, sessionToken);
+      expect(validation.isValid).toBe(true);
+      expect(validation.account?.role).toBe('DISTRICT_HOKIM');
+      // Verify sliding expiry was granted 12 hours from now
+      expect(validation.session?.expiresAt.getTime()).toBeGreaterThan(Date.now() + 11 * 60 * 60 * 1000);
     });
   });
 });
