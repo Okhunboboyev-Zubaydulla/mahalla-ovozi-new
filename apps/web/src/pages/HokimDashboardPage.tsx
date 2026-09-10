@@ -30,6 +30,7 @@ export const HokimDashboardPage: React.FC = () => {
   const liveAnnouncer = useContext(LiveAnnouncerContext);
   const { markTopicAsRead } = useTopicReadState();
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  const [focusHokimEvidence, setFocusHokimEvidence] = useState(false);
   const [originatingLane, setOriginatingLane] = useState<string | undefined>(undefined);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const mobileFilterButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -156,14 +157,22 @@ export const HokimDashboardPage: React.FC = () => {
   }, [returnFocus]);
 
   const handleSelectTopic = useCallback(
-    (topic: TopicCardItem) => {
+    (topic: TopicCardItem, options?: { focusHokim?: boolean }) => {
       markTopicAsRead(topic.id, topic.evidenceCount);
       setOriginatingLane(topic.primaryLane);
       setHelpDrawerOpen(false);
+      setFocusHokimEvidence(Boolean(options?.focusHokim));
       if (window.innerWidth < 1024) {
+        const searchParams = new URLSearchParams(location.search);
+        if (options?.focusHokim) {
+          searchParams.set('focusHokim', '1');
+        } else {
+          searchParams.delete('focusHokim');
+        }
+        const searchStr = searchParams.toString();
         navigate({
           pathname: `/topics/${topic.id}/evidence`,
-          search: location.search,
+          search: searchStr ? `?${searchStr}` : '',
         });
       } else {
         setSelectedTopicId(topic.id);
@@ -176,6 +185,7 @@ export const HokimDashboardPage: React.FC = () => {
     const prevTopicId = selectedTopicId;
     const prevLane = originatingLane;
     setSelectedTopicId(null);
+    setFocusHokimEvidence(false);
     setTimeout(() => {
       const card = prevTopicId ? document.getElementById(`topic-card-${prevTopicId}`) : null;
       if (card) {
@@ -404,6 +414,7 @@ export const HokimDashboardPage: React.FC = () => {
 
       <TopicEvidenceDrawer
         topicId={selectedTopicId}
+        focusHokim={focusHokimEvidence}
         onClose={handleCloseDrawer}
       />
 

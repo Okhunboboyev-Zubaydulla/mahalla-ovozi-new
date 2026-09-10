@@ -71,6 +71,7 @@ const mockEvidence1: TopicEvidenceItem = {
   authorName: 'Anvar Qodirov',
   authorUsername: '@anvar_uz',
   isAnchor: false,
+  isHokimRelated: false,
   telegramDeepLink: 'https://t.me/bobur_public/101',
 };
 
@@ -84,6 +85,7 @@ const mockEvidence2: TopicEvidenceItem = {
   authorName: 'Dilshod',
   authorUsername: null,
   isAnchor: true,
+  isHokimRelated: false,
   telegramDeepLink: 'https://t.me/c/123456789/102',
 };
 
@@ -208,6 +210,7 @@ describe('TopicEvidenceDrawer Component Tests', () => {
           authorName: 'Сардор',
           authorUsername: null,
           isAnchor: true,
+          isHokimRelated: false,
           telegramDeepLink: null,
         },
       ],
@@ -280,5 +283,62 @@ describe('TopicEvidenceDrawer Component Tests', () => {
         isNewDismissed: true,
       });
     });
+  });
+
+  it('renders Hokim appeal badge and multi-match navigator toolbar when multiple Hokim messages exist', async () => {
+    const mockHokimEvidenceResponse: TopicEvidenceResponse = {
+      topic: {
+        ...mockTopic1,
+        id: 'top_hokim_multi',
+        lanes: ['WATER', 'HOKIM_RELATED'],
+      },
+      anchorQuote: 'Ҳоким ёрдами керак!',
+      anchorEvidenceId: 'evi_h_1',
+      evidence: [
+        {
+          id: 'evi_h_1',
+          topicId: 'top_hokim_multi',
+          verbatimText: 'Ҳоким ёрдами керак! Сув қувури ёрилди.',
+          contentType: 'TEXT',
+          originalTimestamp: '2026-08-23T06:00:00.000Z',
+          formattedTime: '23.08.2026 11:00',
+          authorName: 'Фуқаро 1',
+          authorUsername: null,
+          isAnchor: true,
+          isHokimRelated: true,
+          telegramDeepLink: null,
+        },
+        {
+          id: 'evi_h_2',
+          topicId: 'top_hokim_multi',
+          verbatimText: 'Ҳокимиятга ҳам хабар бердик, тезроқ келишсин.',
+          contentType: 'TEXT',
+          originalTimestamp: '2026-08-23T07:00:00.000Z',
+          formattedTime: '23.08.2026 12:00',
+          authorName: 'Фуқаро 2',
+          authorUsername: null,
+          isAnchor: false,
+          isHokimRelated: true,
+          telegramDeepLink: null,
+        },
+      ],
+      totalCount: 2,
+      nextCursor: null,
+      hasNextPage: false,
+    };
+
+    vi.spyOn(hokimTopicsClient, 'getTopicEvidence').mockResolvedValueOnce(mockHokimEvidenceResponse);
+
+    renderWithProviders(
+      <TopicEvidenceDrawer topicId="top_hokim_multi" focusHokim={true} onClose={vi.fn()} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Ҳокимга мурожаат').length).toBeGreaterThanOrEqual(1);
+    });
+
+    expect(screen.getByText(/Ҳокимга оид 2 та хабар мавжуд/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Олдинги ҳоким мурожаати' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Кейинги ҳоким мурожаати' })).toBeTruthy();
   });
 });

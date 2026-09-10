@@ -22,6 +22,7 @@ export const TopicEvidencePage: React.FC = () => {
   const location = useLocation();
   const screens = Grid.useBreakpoint();
   const isMobile = Boolean(screens.xs);
+  const focusHokim = new URLSearchParams(location.search).get('focusHokim') === '1';
 
   const handleBack = () => {
     if (window.history.length > 1) {
@@ -404,6 +405,7 @@ export const TopicEvidencePage: React.FC = () => {
                 isFetchingNextPage={isFetchingNextPage}
                 isFetchNextPageError={isFetchNextPageError}
                 onFetchNextPage={fetchNextPage}
+                focusHokim={focusHokim}
               />
             </div>
           </>

@@ -74,6 +74,7 @@ describe('Story 3.3: useTopicEvidence Synchronization & Invalidation Tests', () 
       authorName: 'Алишер',
       authorUsername: 'alisher',
       isAnchor: true,
+      isHokimRelated: false,
       telegramDeepLink: null,
     };
 
@@ -87,6 +88,7 @@ describe('Story 3.3: useTopicEvidence Synchronization & Invalidation Tests', () 
       authorName: 'Бобур',
       authorUsername: 'bobur',
       isAnchor: false,
+      isHokimRelated: false,
       telegramDeepLink: null,
     };
 

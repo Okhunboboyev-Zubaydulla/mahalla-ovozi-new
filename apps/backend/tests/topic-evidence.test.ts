@@ -558,4 +558,106 @@ describe('Story 3.2: Inspect Complete Topic Evidence Integration Tests', () => {
     expect(body.error.code).toBe('VALIDATION_ERROR');
     expect(body.error.message).toContain('Курсор');
   });
+
+  it('accurately identifies and flags isHokimRelated for evidence items referencing Hokim terms', async () => {
+    const hokimTopicId = `top_hokim_${crypto.randomUUID().slice(0, 8)}`;
+    await db.insert(topics).values({
+      id: hokimTopicId,
+      districtId: districtAId,
+      mahallaName: 'Бобур',
+      calendarDay: testCalendarDay,
+      primaryLane: 'HOKIM_RELATED',
+      status: 'ACTIVE',
+      latestRelevantEvidenceTimestamp: new Date('2026-08-23T11:00:00Z'),
+      retentionExpiresAt: new Date(Date.now() + 30 * 86400000),
+    });
+
+    const intakeRecordId = `intake_h_${crypto.randomUUID().slice(0, 8)}`;
+    await db.insert(telegramIntakeRecords).values({
+      id: intakeRecordId,
+      districtId: districtAId,
+      mahallaName: 'Бобур',
+      telegramBotId: 'bot_test_123',
+      telegramChatId: publicChatId,
+      telegramMessageId: '2000',
+      originalTimestamp: new Date(),
+      calendarDay: testCalendarDay,
+      rawPayload: { text: 'test' },
+      createdAt: new Date(),
+    });
+
+    const eviHokimId = `evi_h_1_${crypto.randomUUID().slice(0, 8)}`;
+    const eviPlainId = `evi_p_1_${crypto.randomUUID().slice(0, 8)}`;
+
+    await db.insert(acceptedEvidence).values([
+      {
+        id: eviHokimId,
+        topicId: hokimTopicId,
+        districtId: districtAId,
+        mahallaName: 'Бобур',
+        calendarDay: testCalendarDay,
+        intakeRecordId,
+        telegramChatId: publicChatId,
+        telegramMessageId: '201',
+        originalTimestamp: new Date('2026-08-23T11:00:00Z'),
+        verbatimText: 'Ҳурматли Ҳокимга мурожаат: маҳалламизда йўл таъмирланмаган!',
+        contentType: 'TEXT',
+        userMetadata: { username: 'citizen_1' },
+      },
+      {
+        id: eviPlainId,
+        topicId: hokimTopicId,
+        districtId: districtAId,
+        mahallaName: 'Бобур',
+        calendarDay: testCalendarDay,
+        intakeRecordId,
+        telegramChatId: publicChatId,
+        telegramMessageId: '202',
+        originalTimestamp: new Date('2026-08-23T11:05:00Z'),
+        verbatimText: 'Ҳақиқатан ҳам шундай, чуқурлар кўп.',
+        contentType: 'TEXT',
+        userMetadata: { username: 'citizen_2' },
+      },
+    ]);
+
+    await db.insert(topicProjections).values({
+      id: `prj_h_${crypto.randomUUID().slice(0, 8)}`,
+      topicId: hokimTopicId,
+      districtId: districtAId,
+      mahallaName: 'Бобур',
+      calendarDay: testCalendarDay,
+      summary: 'Йўл таъмири бўйича ҳокимга мурожаат.',
+      lanes: ['HOKIM_RELATED'],
+      primaryLane: 'HOKIM_RELATED',
+      anchorEvidenceId: eviHokimId,
+      anchorQuote: 'Ҳурматли Ҳокимга мурожаат',
+      latestMeaningfulActivityTimestamp: new Date('2026-08-23T11:05:00Z'),
+      attribution: 'Бобур аҳолиси',
+      isHokimRelated: true,
+      generation: 1,
+      aiProfileId: defaultAiProfileId,
+    });
+
+    const res = await server.inject({
+      method: 'GET',
+      url: `/api/v1/hokim/topics/${hokimTopicId}/evidence`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: hokimACookie,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body: TopicEvidenceResponse = JSON.parse(res.body);
+    expect(body.evidence.length).toBe(2);
+
+    const hokimMsg = body.evidence.find((e) => e.id === eviHokimId);
+    const plainMsg = body.evidence.find((e) => e.id === eviPlainId);
+
+    expect(hokimMsg).toBeDefined();
+    expect(hokimMsg?.isHokimRelated).toBe(true);
+
+    expect(plainMsg).toBeDefined();
+    expect(plainMsg?.isHokimRelated).toBe(false);
+  });
 });

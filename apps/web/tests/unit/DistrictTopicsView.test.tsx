@@ -97,6 +97,7 @@ const mockEvidenceResponse: TopicEvidenceResponse = {
       authorName: 'Алишер Навоий',
       authorUsername: '@alisher_resident',
       isAnchor: true,
+      isHokimRelated: false,
       telegramDeepLink: 'https://t.me/bobur_mahalla/101',
     },
     {
@@ -109,6 +110,7 @@ const mockEvidenceResponse: TopicEvidenceResponse = {
       authorName: 'Нодир',
       authorUsername: '@nodir_77',
       isAnchor: false,
+      isHokimRelated: false,
       telegramDeepLink: null,
     },
   ],

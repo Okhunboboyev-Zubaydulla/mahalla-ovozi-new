@@ -1,6 +1,10 @@
-# Engineering Code Standards, Error Handling & Dependencies
+---
+trigger: always_on
+---
 
-This document details the engineering standards for authoring, refactoring, and maintaining application code in this repository.
+# Engineering Code Preferences, Error Handling & Dependencies
+
+This document details the engineering preferences for authoring, refactoring, and maintaining application code in this repository.
 
 ---
 

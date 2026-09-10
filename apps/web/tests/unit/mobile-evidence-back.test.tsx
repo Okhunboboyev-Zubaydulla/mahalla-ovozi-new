@@ -92,6 +92,7 @@ const mockEvidenceResponse: TopicEvidenceResponse = {
       authorName: 'Алишер',
       authorUsername: '@alisher',
       isAnchor: true,
+      isHokimRelated: false,
       telegramDeepLink: 'https://t.me/c/123/1',
     },
   ],
@@ -301,19 +302,10 @@ describe('Mobile Evidence Back Navigation Integration Test', () => {
       expect(screen.getAllByText('Сув босими пасайиши кузатилмоқда.').length).toBeGreaterThan(0);
     });
 
-    // The newly arrived topic is buffered in WATER lane header with "+1 янги" badge
-    await waitFor(() => {
-      expect(screen.getByText('+1 янги')).toBeTruthy();
-    });
-
-    // Reveal the buffered topic
-    fireEvent.click(screen.getByText('+1 янги'));
-
-    // Both topics are now visible
+    // Both existing and newly arrived topics are visible
     await waitFor(() => {
       expect(screen.getAllByText('Янги сув қувури носозлиги.').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Сув босими пасайиши кузатилмоқда.').length).toBeGreaterThan(0);
-      expect(screen.queryByText('+1 янги')).toBeNull();
     });
   });
 

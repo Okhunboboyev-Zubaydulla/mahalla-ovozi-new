@@ -281,6 +281,7 @@ export const TopicEvidenceItemSchema = z.object({
   authorName: z.string().nullable(),
   authorUsername: z.string().nullable(),
   isAnchor: z.boolean(),
+  isHokimRelated: z.boolean().default(false),
   telegramDeepLink: z.string().nullable(),
 });
 export type TopicEvidenceItem = z.infer<typeof TopicEvidenceItemSchema>;

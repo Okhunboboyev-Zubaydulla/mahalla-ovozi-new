@@ -197,5 +197,78 @@ describe('Story 3.3: LaneColumn Component Tests', () => {
       const newCard = document.getElementById('topic-card-top_newly_loaded_2');
       expect(newCard).toBeTruthy();
     });
+
+    it('renders Hokim appeal micro-chip and passes focusHokim: true on chip click', () => {
+      const onSelect = vi.fn();
+      const topicWithHokim: TopicCardItem = {
+        ...mockTopic,
+        additionalLanes: ['HOKIM_RELATED'],
+      };
+
+      render(
+        <ConfigProvider theme={mahallaTheme}>
+          <LaneColumn
+            lane="WATER"
+            topics={[topicWithHokim]}
+            totalCount={1}
+            hasNextPage={false}
+            isLoadingMore={false}
+            loadMoreError={null}
+            onLoadMore={vi.fn()}
+            onSelectTopic={onSelect}
+          />
+        </ConfigProvider>,
+      );
+
+      const chip = screen.getByText('Ҳокимга мурожаат бор');
+      expect(chip).toBeTruthy();
+
+      fireEvent.click(chip);
+      expect(onSelect).toHaveBeenCalledWith(topicWithHokim, { focusHokim: true });
+    });
+
+    it('passes focusHokim: true when clicking card in HOKIM_RELATED lane, and focusHokim: false in other lanes', () => {
+      const onSelect = vi.fn();
+
+      const { rerender } = render(
+        <ConfigProvider theme={mahallaTheme}>
+          <LaneColumn
+            lane="WATER"
+            topics={[mockTopic]}
+            totalCount={1}
+            hasNextPage={false}
+            isLoadingMore={false}
+            loadMoreError={null}
+            onLoadMore={vi.fn()}
+            onSelectTopic={onSelect}
+          />
+        </ConfigProvider>,
+      );
+
+      const card = screen.getByRole('button', { name: /Мавзу: Дўстлик/i });
+      fireEvent.click(card);
+      expect(onSelect).toHaveBeenCalledWith(mockTopic, { focusHokim: false });
+
+      onSelect.mockClear();
+
+      rerender(
+        <ConfigProvider theme={mahallaTheme}>
+          <LaneColumn
+            lane="HOKIM_RELATED"
+            topics={[mockTopic]}
+            totalCount={1}
+            hasNextPage={false}
+            isLoadingMore={false}
+            loadMoreError={null}
+            onLoadMore={vi.fn()}
+            onSelectTopic={onSelect}
+          />
+        </ConfigProvider>,
+      );
+
+      const hokimCard = screen.getByRole('button', { name: /Мавзу: Дўстлик/i });
+      fireEvent.click(hokimCard);
+      expect(onSelect).toHaveBeenCalledWith(mockTopic, { focusHokim: true });
+    });
   });
 });

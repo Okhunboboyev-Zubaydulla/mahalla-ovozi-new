@@ -25,7 +25,7 @@ export interface FiveLaneBoardProps {
   selectedTopicId?: string | null;
   searchQuery?: string;
   onLoadMore: (lane: QualifyingLane) => void;
-  onSelectTopic?: (topic: TopicCardItem) => void;
+  onSelectTopic?: (topic: TopicCardItem, options?: { focusHokim?: boolean }) => void;
   onRevealNewTopics?: (lane: QualifyingLane) => void;
 }
 

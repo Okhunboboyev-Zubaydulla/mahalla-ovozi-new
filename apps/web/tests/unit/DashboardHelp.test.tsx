@@ -83,6 +83,7 @@ const mockEvidenceResponse: TopicEvidenceResponse = {
       authorName: 'Фуқаро',
       authorUsername: null,
       isAnchor: true,
+      isHokimRelated: false,
       telegramDeepLink: null,
     },
   ],

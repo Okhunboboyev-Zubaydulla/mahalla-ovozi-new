@@ -78,6 +78,7 @@ const mockEvidence1: TopicEvidenceItem = {
   authorName: 'Anvar Qodirov',
   authorUsername: '@anvar_uz',
   isAnchor: false,
+  isHokimRelated: false,
   telegramDeepLink: 'https://t.me/bobur_public/101',
 };
 
@@ -91,6 +92,7 @@ const mockEvidence2: TopicEvidenceItem = {
   authorName: 'Dilshod',
   authorUsername: null,
   isAnchor: true,
+  isHokimRelated: false,
   telegramDeepLink: 'https://t.me/c/123456789/102',
 };
 

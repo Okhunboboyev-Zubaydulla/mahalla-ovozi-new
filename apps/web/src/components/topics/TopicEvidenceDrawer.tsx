@@ -17,11 +17,13 @@ const { Title, Text, Paragraph } = Typography;
 
 export interface TopicEvidenceDrawerProps {
   topicId: string | null;
+  focusHokim?: boolean;
   onClose: () => void;
 }
 
 export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
   topicId,
+  focusHokim = false,
   onClose,
 }) => {
   const headingRef = useRef<HTMLDivElement>(null);
@@ -389,6 +391,7 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
             onFetchNextPage={fetchNextPage}
+            focusHokim={focusHokim}
           />
         </div>
       )}

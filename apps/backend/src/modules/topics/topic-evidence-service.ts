@@ -14,7 +14,34 @@ import {
   encodeKeysetCursor,
   decodeKeysetCursor,
   KeysetCursorPayload,
+  DEFAULT_HOKIM_RECOGNITION_TERMS,
 } from '@mahalla-ovozi/api-contracts';
+import { districtAnalysisSettingsRepository } from '../ai/district-analysis-settings-repository.js';
+
+export function buildHokimTermsRegex(terms: readonly string[]): RegExp {
+  const normalizedTerms = new Set<string>();
+  for (const term of terms) {
+    const trimmed = term.trim();
+    if (trimmed.length > 0) {
+      normalizedTerms.add(trimmed);
+      if (/^[ҳҲ]/u.test(trimmed)) {
+        normalizedTerms.add('х' + trimmed.slice(1));
+        normalizedTerms.add('Х' + trimmed.slice(1));
+      } else if (/^[хХ]/u.test(trimmed)) {
+        normalizedTerms.add('ҳ' + trimmed.slice(1));
+        normalizedTerms.add('Ҳ' + trimmed.slice(1));
+      }
+    }
+  }
+
+  const termList = Array.from(normalizedTerms).sort((a, b) => b.length - a.length);
+  if (termList.length === 0) {
+    return /(?!)/;
+  }
+
+  const escaped = termList.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}_])(?:${escaped.join('|')})[\\p{L}]*(?:$|[^\\p{L}\\p{N}_])`, 'iu');
+}
 
 export interface EvidenceKeysetCursorPayload extends KeysetCursorPayload {
   t: string; // ISO datetime string of originalTimestamp
@@ -205,8 +232,8 @@ export class TopicEvidenceService {
 
     const limit = query.limit ?? 50;
 
-    // 3. Parallelize independent queries: projection, total count, and evidence rows (M-3)
-    const [projectionRow, countResult, rawEvidenceRows] = await Promise.all([
+    // 3. Parallelize independent queries: projection, total count, evidence rows, and district settings (M-3)
+    const [projectionRow, countResult, rawEvidenceRows, activeDistrictSettings] = await Promise.all([
       this.db.query.topicProjections.findFirst({
         where: eq(topicProjections.topicId, topicId),
       }),
@@ -239,9 +266,16 @@ export class TopicEvidenceService {
         ORDER BY ae.original_timestamp ASC, ae.telegram_message_id ASC, ae.id ASC
         LIMIT ${limit + 1};
       `),
+      districtAnalysisSettingsRepository.getActiveConfiguration(this.db, actorContext.districtId),
     ]);
 
     const totalCount = countResult[0]?.count ?? 0;
+
+    const recognitionTerms: readonly string[] =
+      activeDistrictSettings?.hokimRecognitionTerms && activeDistrictSettings.hokimRecognitionTerms.length > 0
+        ? activeDistrictSettings.hokimRecognitionTerms
+        : DEFAULT_HOKIM_RECOGNITION_TERMS;
+    const hokimMatcher = buildHokimTermsRegex(recognitionTerms);
 
     // 4. Build TopicCardItem
     const topicCard: TopicCardItem = {
@@ -281,6 +315,7 @@ export class TopicEvidenceService {
       );
       const isAnchor = Boolean(projectionRow && row.id === projectionRow.anchorEvidenceId);
       const originalDate = new Date(row.originalTimestamp);
+      const isHokimRelated = hokimMatcher.test(row.verbatimText);
 
       return {
         id: row.id,
@@ -292,6 +327,7 @@ export class TopicEvidenceService {
         authorName,
         authorUsername,
         isAnchor,
+        isHokimRelated,
         telegramDeepLink: deepLink,
       };
     });

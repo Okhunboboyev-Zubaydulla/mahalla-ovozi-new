@@ -65,6 +65,7 @@ export interface TopicCardProps {
   isSelected?: boolean;
   searchQuery?: string;
   onClick?: () => void;
+  onSelectHokimChip?: (topic: TopicCardItem) => void;
   showNewBadge?: boolean;
   unreadDelta?: number | '+' | null;
 }
@@ -75,6 +76,7 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
   isSelected = false,
   searchQuery,
   onClick,
+  onSelectHokimChip,
   showNewBadge,
   unreadDelta,
 }) => {
@@ -266,32 +268,76 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
         <HighlightText text={topic.summary} searchQuery={searchQuery} />
       </Paragraph>
 
-      {/* Additional Lanes Textual Indication */}
-      {topic.additionalLanes && topic.additionalLanes.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
-          <Text style={{ fontSize: 12, color: '#64748B' }}>Қўшимча:</Text>
-          {topic.additionalLanes.map((lane) => {
-            const style = LANE_STYLES[lane] || LANE_STYLES.HOKIM_RELATED;
-            const label = LANE_LABELS[lane] || lane;
-            return (
+      {/* Hokim Appeal Micro-Chip & Additional Lanes */}
+      {(() => {
+        const hasHokimAdditional = topic.additionalLanes?.includes('HOKIM_RELATED');
+        const otherAdditionalLanes =
+          topic.additionalLanes?.filter((l) => l !== 'HOKIM_RELATED') || [];
+
+        if (!hasHokimAdditional && otherAdditionalLanes.length === 0) {
+          return null;
+        }
+
+        return (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+            {hasHokimAdditional && (
               <Tag
-                key={lane}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onSelectHokimChip) {
+                    onSelectHokimChip(topic);
+                  } else if (onClick) {
+                    onClick();
+                  }
+                }}
                 style={{
-                  backgroundColor: style.bg,
-                  color: style.text,
-                  borderColor: style.border,
-                  fontSize: 11,
-                  fontWeight: 500,
-                  margin: 0,
+                  backgroundColor: '#FEE2E2',
+                  color: '#DC2626',
+                  borderColor: '#FECACA',
+                  cursor: isInteractive ? 'pointer' : 'default',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
                   borderRadius: 4,
+                  fontWeight: 500,
+                  fontSize: 11,
+                  margin: 0,
+                  padding: '1px 7px',
                 }}
               >
-                {label}
+                <BankOutlined style={{ fontSize: 11 }} />
+                <span>Ҳокимга мурожаат бор</span>
               </Tag>
-            );
-          })}
-        </div>
-      )}
+            )}
+
+            {otherAdditionalLanes.length > 0 && (
+              <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                <Text style={{ fontSize: 12, color: '#64748B' }}>Қўшимча:</Text>
+                {otherAdditionalLanes.map((lane) => {
+                  const style = LANE_STYLES[lane] || LANE_STYLES.HOKIM_RELATED;
+                  const label = LANE_LABELS[lane] || lane;
+                  return (
+                    <Tag
+                      key={lane}
+                      style={{
+                        backgroundColor: style.bg,
+                        color: style.text,
+                        borderColor: style.border,
+                        fontSize: 11,
+                        fontWeight: 500,
+                        margin: 0,
+                        borderRadius: 4,
+                      }}
+                    >
+                      {label}
+                    </Tag>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Footer: Evidence Count & Latest Activity Timestamp */}
       <div
