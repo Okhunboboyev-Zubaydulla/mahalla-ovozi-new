@@ -39,7 +39,7 @@ export function createRequireAuth(db: DbClient, options: RequireAuthOptions = {}
         path: '/',
         httpOnly: true,
         sameSite: 'strict',
-        secure: true,
+        secure: req.protocol === 'https',
       });
       reply.status(401).send({
         error: {

@@ -5,7 +5,7 @@ import { sessions, accounts, Account, Session } from '../../adapters/db/schema/i
 
 export const IDLE_TIMEOUT_MS = 12 * 60 * 60 * 1000;    // 12 hours sliding
 export const ABSOLUTE_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours absolute ceiling
-export const COOKIE_NAME = process.env.SESSION_COOKIE_NAME || '__Host-session';
+export const COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'mahalla_session';
 
 export function generateSessionToken(): string {
   // 256 bits of cryptographic entropy
