@@ -177,11 +177,12 @@ PART I: CORE CLUSTERING & DOMAIN INVARIANTS
 - A Topic represents a single, continuous, real-world incident, supply outage, or civic situation in this Mahalla on this calendar day.
 - COMMUNAL UTILITY & SERVICE DISRUPTIONS ARE MAHALLA-WIDE (LOCATION-AGNOSTIC):
   - In a Mahalla, public utility networks and municipal services (Gas supply/pressure, Electricity grid/voltage, Tap water supply/pressure, Municipal garbage truck routes) are communal infrastructure.
-  - When an outage or disruption occurs, residents across different streets (e.g. Street A, Street B) or without any street name are reporting the SAME overarching communal disruption.
+  - When a GENERAL SUPPLY OUTAGE or disruption occurs, residents across different streets (e.g. Street A, Street B) or without any street name are reporting the SAME overarching communal disruption.
   - Street names, landmarks, or lack of address in supply outage reports are SPATIAL DETAILS / EVIDENCE, NOT indicators of separate incidents!
   - You MUST NOT create separate topics simply because residents name different streets when reporting the same general utility disruption.
-- Contextual intent (tub mohiyat) takes precedence over raw keyword matching.
-- All evidence and topics are strictly bounded to the same District, Mahalla, and calendar day (Asia/Tashkent).
+- BUT: ACUTE PHYSICAL ASSET HAZARDS ARE STRICTLY ISOLATED FROM GENERAL SUPPLY OUTAGES (CRITICAL INVARIANT):
+  - A physical infrastructure breach, rupture, leak, or fire hazard (e.g. a broken water pipe flooding a street, an overflowing sewage manhole, an exploding transformer or downed live wire, a leaking/ruptured gas line) is an acute localized point emergency.
+  - IT HAS AN INCOMPATIBLE FAILURE PREDICATE FROM QUIET HOUSEHOLD SUPPLY OUTAGES AND MUST NEVER BE MERGED INTO A GENERAL SUPPLY OUTAGE TOPIC!
 
 ### 2. DECISION TAXONOMY & STRICT CONTRACTS
 1. MATCH_EXISTING_TOPIC:
@@ -213,13 +214,22 @@ PART I: CORE CLUSTERING & DOMAIN INVARIANTS
 
 ### 4. CLUSTERING RULES & MULTI-INCIDENT DISAMBIGUATION
 1. Same-Day Community-Wide Outage Consolidation (Location-Agnostic):
-   - For public utilities (GAS, ELECTRICITY, WATER, WASTE), all reports of supply cuts, outages, pressure drops, voltage instability, or missed municipal collection in the same lane MUST merge into the active general lane topic (MATCH_EXISTING_TOPIC).
+   - For general public utility SUPPLY DEFICITS (GAS pressure/cut, ELECTRICITY blackout/voltage drop, TAP WATER shutoff/dry taps, WASTE missed collection), all reports of supply cuts, outages, pressure drops, voltage instability, or missed municipal collection in the same lane MUST merge into the active general lane topic (MATCH_EXISTING_TOPIC).
    - This applies REGARDLESS of whether different residents name Street A, Street B, or no address at all.
    - Same-day inquiries ("suv keldimi?", "bugun gaz keladimi?", "chiroq yondimi?", "svet bo'ladimi?"), negative delivery reports ("suv kemadiku", "suv kelmadi", "gaz kemapti"), sarcastic/rhetorical reports ("gazni bayramga berishadimi?"), recurrences ("yana o'chdi"), or restoration reports belong to this ongoing general topic, even after several hours of silence.
-2. Acute Physical Point Hazards vs. General Supply Outages:
-   - A distinct acute physical hazard (e.g. central pipe rupture flooding a street, overflowing sewage manhole, sparking/exploding transformer, downed power lines) represents an immediate emergency hazard with an incompatible failure predicate from general quiet supply outages.
-   - Such acute physical hazards seed a separate NEW_TOPIC if one does not already exist for that localized emergency.
-   - General outage inquiries continue to merge into the communal supply outage topic, while direct follow-ups about the acute hazard attach to the hazard topic.
+
+2. Acute Physical Point Hazards vs. General Supply Outages (STRICT MUTUALLY EXCLUSIVE PARTITION):
+   - Utility lanes contain two mutually exclusive failure predicate classes:
+     * CLASS A (Supply Deficit / Outage): "suv yo'q", "suvam quridi", "suv kemadi", "svet o'chdi", "chiroq yo'q", "gaz o'chdi", "gaz past". Managed by network supply dispatchers.
+     * CLASS B (Physical Asset Breach / Point Hazard / Flooding / Fire): "suv oqib yotibdi / yotipti", "truba yorildi / teshildi", "ko'chani suv bosdi", "lyuk toshdi", "daryo bo'lib ketdi", "gaz sizib chiqishi / hidi", "transformator portladi / yondi", "sim uzilib tushdi". Managed by emergency field repair brigades (Avariya guruhi).
+   - STRICT ANTI-CAUSAL SPECULATION MANDATE:
+     * YOU ARE STRICTLY FORBIDDEN FROM SPECULATING A CAUSAL LINK BETWEEN CLASS A AND CLASS B!
+     * Never assume or reason that a street water pipe leak/burst is "the underlying cause of", "related to", or "part of" the household tap water outage in the neighborhood!
+     * Even if a street pipe leak and a household water shutoff occur in the same mahalla on the same day, they MUST REMAIN SEPARATE TOPICS!
+     * A report of an acute physical hazard (Class B) MUST ALWAYS seed a dedicated NEW_TOPIC (or merge into an existing dedicated acute hazard topic for that same physical incident). It MUST NEVER be merged into a Class A general supply outage topic!
+   - TEMPORAL & SPATIAL DISCONNECT:
+     * When a resident describes a localized street leak ("suv oqib yotipti 2 kundan beri tog kucada"), the multi-day duration and street location explicitly distinguish it from same-day household tap water shutoffs. Direct follow-ups concerning the leak ("daryo bub ketadiyov", "vodokanaldegilaga aytish kere") attach to the hazard topic, NEVER to the supply outage topic.
+
 3. Chat Silence & Multi-Incident Disambiguation for Localized Follow-ups:
    - Within 30 minutes of chat activity: Match to the topic of the immediate preceding recent message (N-1 in chat).
    - After >30 minutes of chat silence: When multiple localized physical incident topics exist in the same lane and a follow-up does not name a street or landmark, The AI MUST NOT guess between the two localized streets -> classify as UNASSIGNABLE_VAGUE.

@@ -1353,6 +1353,126 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
         expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('suv kemadiku');
         expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('suvchi');
       });
+
+      it('strictly assigns acute street water pipe leak "suv oqib yotipti 2 kundan beri tog kucada" to NEW_TOPIC when household outage topic exists', async () => {
+        const householdOutageSnapshot: MahallaDailySnapshot = {
+          districtId: 'dist_test_1',
+          mahallaName: 'Gulbodom',
+          calendarDay: '2026-09-10',
+          contextRevision: 1,
+          snapshotFingerprint: 'fp_water_outage_1',
+          evidence: [
+            {
+              id: 'ev_165',
+              topicId: 'top_water_outage_1',
+              telegramMessageId: '165',
+              originalTimestamp: '2026-09-10T10:25:29.000Z',
+              verbatimText: 'suvam quridi',
+              lane: 'WATER',
+              topicSummary: 'Сув таъминотида узилиш юз бергани хабар қилинмоқда.',
+            },
+            {
+              id: 'ev_166',
+              topicId: 'top_water_outage_1',
+              telegramMessageId: '166',
+              originalTimestamp: '2026-09-10T10:25:35.000Z',
+              verbatimText: 'bir soat buldi',
+              lane: 'WATER',
+              topicSummary: 'Сув таъминотида узилиш юз бергани хабар қилинмоқда.',
+            },
+          ],
+        };
+
+        mockAdapter.setNextResponse({
+          decision: 'NEW_TOPIC',
+          matched_topic_id: null,
+          primary_lane: 'WATER',
+          reasoning:
+            'Acute physical infrastructure breach (water pipe burst flooding Tog street) has an incompatible failure predicate with dry household tap water outage and must not be causally merged.',
+        });
+
+        const result = await evaluator.evaluateTopicAssignment({
+          candidateText: 'suv oqib yotipti 2 kundan beri tog kucada',
+          telegramMessageId: '181',
+          originalTimestamp: '2026-09-10T11:25:48.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          relevantLanes: ['WATER'],
+          relevanceReasoning:
+            'The candidate message reports an active water leak on the street (water pipe burst/leak) and qualifies under WATER.',
+          snapshot: householdOutageSnapshot,
+          profileId: 'prof_match_2026_08_v1',
+        });
+
+        expect(result.data.decision).toBe('NEW_TOPIC');
+        expect(result.data.primary_lane).toBe('WATER');
+        expect(result.data.matched_topic_id).toBeNull();
+      });
+
+      it('verifies follow-up messages on acute hazard match the acute hazard topic rather than household supply outage', async () => {
+        const dualWaterTopicSnapshot: MahallaDailySnapshot = {
+          districtId: 'dist_test_1',
+          mahallaName: 'Gulbodom',
+          calendarDay: '2026-09-10',
+          contextRevision: 2,
+          snapshotFingerprint: 'fp_water_dual_1',
+          evidence: [
+            {
+              id: 'ev_165',
+              topicId: 'top_water_outage_1',
+              telegramMessageId: '165',
+              originalTimestamp: '2026-09-10T10:25:29.000Z',
+              verbatimText: 'suvam quridi',
+              lane: 'WATER',
+              topicSummary: 'Сув таъминотида узилиш юз бергани хабар қилинмоқда.',
+            },
+            {
+              id: 'ev_181',
+              topicId: 'top_water_leak_tog_street',
+              telegramMessageId: '181',
+              originalTimestamp: '2026-09-10T11:25:48.000Z',
+              verbatimText: 'suv oqib yotipti 2 kundan beri tog kucada',
+              lane: 'WATER',
+              topicSummary: 'Тоғ кўчасида сув қувурининг сизиши ёки оқиб кетиши хабар қилинмоқда.',
+            },
+          ],
+        };
+
+        mockAdapter.setNextResponse({
+          decision: 'MATCH_EXISTING_TOPIC',
+          matched_topic_id: 'top_water_leak_tog_street',
+          primary_lane: null,
+          reasoning:
+            'Direct follow-up to the ongoing Tog street pipe flooding incident matches the acute hazard topic',
+        });
+
+        const result = await evaluator.evaluateTopicAssignment({
+          candidateText: 'daryo bub ketadiyov bu turushda',
+          telegramMessageId: '182',
+          originalTimestamp: '2026-09-10T11:28:33.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          relevantLanes: ['WATER'],
+          relevanceReasoning: 'Follow-up describing severity of ongoing water leak',
+          snapshot: dualWaterTopicSnapshot,
+          profileId: 'prof_match_2026_08_v1',
+        });
+
+        expect(result.data.decision).toBe('MATCH_EXISTING_TOPIC');
+        expect(result.data.matched_topic_id).toBe('top_water_leak_tog_street');
+        expect(result.data.primary_lane).toBeNull();
+      });
+
+      it('verifies TOPIC_MATCHING_SYSTEM_PROMPT contains strict failure predicate partitioning and anti-causal speculation ban', () => {
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain(
+          'Acute Physical Point Hazards vs. General Supply Outages (STRICT MUTUALLY EXCLUSIVE PARTITION)',
+        );
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('STRICT ANTI-CAUSAL SPECULATION MANDATE');
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain(
+          'YOU ARE STRICTLY FORBIDDEN FROM SPECULATING A CAUSAL LINK',
+        );
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('suv oqib yotibdi / yotipti');
+      });
     });
   });
 });
