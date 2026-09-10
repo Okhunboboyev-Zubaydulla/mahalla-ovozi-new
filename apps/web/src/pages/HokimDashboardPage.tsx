@@ -19,10 +19,12 @@ import { LiveAnnouncerContext, formatSearchAnnouncement } from '../hooks/useLive
 import { useTopicReadState } from '../hooks/useTopicReadState.js';
 import { FullPageLoader } from '../components/FullPageLoader.js';
 import { formatTashkentTime } from '../lib/formatters.js';
+import { useAuth } from '../auth/auth-context.js';
 
 const { Title, Paragraph } = Typography;
 
 export const HokimDashboardPage: React.FC = () => {
+  const { actor } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { returnFocus } = useFocusFallback();
@@ -410,6 +412,8 @@ export const HokimDashboardPage: React.FC = () => {
         searchQuery={searchQuery}
         onLoadMore={loadMore}
         onSelectTopic={handleSelectTopic}
+        districtId={(board?.districtId || actor?.districtId) ?? undefined}
+        userId={actor?.id}
       />
 
       <TopicEvidenceDrawer

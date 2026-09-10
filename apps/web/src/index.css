@@ -68,3 +68,10 @@ body {
   font-weight: 600 !important;
 }
 
+/* Hide lane drag handle on tablet and mobile viewports to preserve native swipe gestures */
+@media (max-width: 1023px) {
+  .lane-drag-handle {
+    display: none !important;
+  }
+}
+

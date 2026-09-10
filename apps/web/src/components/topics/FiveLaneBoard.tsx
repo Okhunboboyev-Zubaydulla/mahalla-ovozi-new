@@ -1,21 +1,35 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useContext } from 'react';
 import { Button, Typography } from 'antd';
-import { LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { LeftOutlined, RightOutlined, UndoOutlined } from '@ant-design/icons';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
 import { QualifyingLane, TopicCardItem } from '@mahalla-ovozi/api-contracts';
 import { LaneColumn } from './LaneColumn.js';
+import { LANE_LABELS } from './TopicCard.js';
 import { LaneLocalState } from '../../topics/useHokimTopicBoard.js';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
+import { LiveAnnouncerContext } from '../../hooks/useLiveAnnouncer.js';
+import {
+  useLaneOrderPreference,
+  CANONICAL_LANE_ORDER,
+} from '../../hooks/useLaneOrderPreference.js';
 import { themeColors } from '../../theme/antd-theme.js';
 
 const { Text } = Typography;
-
-const CANONICAL_LANE_ORDER: QualifyingLane[] = [
-  'HOKIM_RELATED',
-  'WATER',
-  'ELECTRICITY',
-  'GAS',
-  'WASTE',
-];
 
 export interface FiveLaneBoardProps {
   lanes: Record<QualifyingLane, LaneLocalState>;
@@ -27,6 +41,8 @@ export interface FiveLaneBoardProps {
   onLoadMore: (lane: QualifyingLane) => void;
   onSelectTopic?: (topic: TopicCardItem, options?: { focusHokim?: boolean }) => void;
   onRevealNewTopics?: (lane: QualifyingLane) => void;
+  districtId?: string;
+  userId?: string;
 }
 
 export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
@@ -38,16 +54,63 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
   onLoadMore,
   onSelectTopic,
   onRevealNewTopics: _onRevealNewTopics,
+  districtId,
+  userId,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [activeDragId, setActiveDragId] = useState<QualifyingLane | null>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
+  const liveAnnouncer = useContext(LiveAnnouncerContext);
+
+  const { laneOrder, setLaneOrder, resetLaneOrder, isCustomOrder } =
+    useLaneOrderPreference(districtId, userId);
+
+  const isFilterActive = Boolean(
+    activeLanes && activeLanes.length > 0 && activeLanes.length < CANONICAL_LANE_ORDER.length
+  );
 
   const lanesToRender =
     activeLanes && activeLanes.length > 0
-      ? CANONICAL_LANE_ORDER.filter((l) => activeLanes.includes(l))
-      : CANONICAL_LANE_ORDER;
+      ? laneOrder.filter((l) => activeLanes.includes(l))
+      : laneOrder;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(event.active.id as QualifyingLane);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveDragId(null);
+
+    if (over && active.id !== over.id) {
+      const oldIndex = laneOrder.indexOf(active.id as QualifyingLane);
+      const newIndex = laneOrder.indexOf(over.id as QualifyingLane);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(laneOrder, oldIndex, newIndex);
+        setLaneOrder(newOrder);
+
+        const activeLaneName = LANE_LABELS[active.id as QualifyingLane] || active.id;
+        if (liveAnnouncer) {
+          liveAnnouncer.announce(
+            `${activeLaneName} йўналиши ${newIndex + 1}-ўринга кўчирилди`
+          );
+        }
+      }
+    }
+  };
 
   const totalVisibleCount = lanesToRender.reduce(
     (sum, laneKey) => sum + (lanes[laneKey]?.topics?.length || 0),
@@ -133,102 +196,141 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
           </div>
         </div>
       )}
-      {/* Scroll Navigation Controls (Mobile / Narrow screens < 1200px) */}
+      {/* Action and Scroll Navigation Controls */}
       <div
         style={{
           position: 'absolute',
           top: 16,
           right: 28,
           zIndex: 10,
-          display: canScrollLeft || canScrollRight ? 'flex' : 'none',
+          display: isCustomOrder || canScrollLeft || canScrollRight ? 'flex' : 'none',
+          alignItems: 'center',
           gap: 8,
         }}
       >
-        <Button
-          shape="circle"
-          size="small"
-          icon={<LeftOutlined />}
-          disabled={!canScrollLeft}
-          onClick={() => scrollByLane('left')}
-          aria-label="Олдинги йўналиш"
-          className="focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-none"
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderColor: '#CBD5E1',
-            boxShadow: 'none',
-          }}
-        />
-        <Button
-          shape="circle"
-          size="small"
-          icon={<RightOutlined />}
-          disabled={!canScrollRight}
-          onClick={() => scrollByLane('right')}
-          aria-label="Кейинги йўналиш"
-          className="focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-none"
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderColor: '#CBD5E1',
-            boxShadow: 'none',
-          }}
-        />
+        {isCustomOrder && (
+          <Button
+            size="small"
+            icon={<UndoOutlined style={{ fontSize: 12 }} />}
+            onClick={resetLaneOrder}
+            aria-label="Йўналишлар тартибини тиклаш"
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderColor: '#CBD5E1',
+              color: '#334155',
+              fontSize: 12,
+              fontWeight: 500,
+              height: 28,
+              borderRadius: 6,
+              boxShadow: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            Тартибни тиклаш
+          </Button>
+        )}
+
+        {(canScrollLeft || canScrollRight) && (
+          <>
+            <Button
+              shape="circle"
+              size="small"
+              icon={<LeftOutlined />}
+              disabled={!canScrollLeft}
+              onClick={() => scrollByLane('left')}
+              aria-label="Олдинги йўналиш"
+              className="focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-none"
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderColor: '#CBD5E1',
+                boxShadow: 'none',
+              }}
+            />
+            <Button
+              shape="circle"
+              size="small"
+              icon={<RightOutlined />}
+              disabled={!canScrollRight}
+              onClick={() => scrollByLane('right')}
+              aria-label="Кейинги йўналиш"
+              className="focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-none"
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderColor: '#CBD5E1',
+                boxShadow: 'none',
+              }}
+            />
+          </>
+        )}
       </div>
 
       {/* 5 Distinct Kanban Lane Columns */}
-      <div
-        ref={scrollContainerRef}
-        tabIndex={0}
-        aria-label="Йўналишлар панели"
-        style={{
-          display: 'flex',
-          gap: 16,
-          flex: 1,
-          minHeight: 0,
-          overflowX: 'auto',
-          overflowY: 'hidden',
-          paddingBottom: 4,
-          scrollSnapType: 'x mandatory',
-          WebkitOverflowScrolling: 'touch',
-          justifyContent: lanesToRender.length <= 3 ? 'safe center' : 'flex-start',
-        }}
-        onFocus={(e) => {
-          if (e.target === e.currentTarget) {
-            e.currentTarget.style.outline = '2px solid #0284C7';
-          }
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.outline = 'none';
-        }}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
       >
-        {lanesToRender.map((laneKey) => {
-          const laneData = lanes[laneKey] || {
-            lane: laneKey,
-            topics: [],
-            totalCount: 0,
-            nextCursor: null,
-            hasNextPage: false,
-            isLoadingMore: false,
-            loadMoreError: null,
-          };
+        <SortableContext items={lanesToRender} strategy={horizontalListSortingStrategy}>
+          <div
+            ref={scrollContainerRef}
+            tabIndex={0}
+            aria-label="Йўналишлар панели"
+            style={{
+              display: 'flex',
+              gap: 16,
+              flex: 1,
+              minHeight: 0,
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              paddingBottom: 4,
+              scrollSnapType: activeDragId ? 'none' : 'x mandatory',
+              WebkitOverflowScrolling: 'touch',
+              justifyContent: lanesToRender.length <= 3 ? 'safe center' : 'flex-start',
+            }}
+            onFocus={(e) => {
+              if (e.target === e.currentTarget) {
+                e.currentTarget.style.outline = '2px solid #0284C7';
+              }
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.outline = 'none';
+            }}
+          >
+            {lanesToRender.map((laneKey) => {
+              const laneData = lanes[laneKey] || {
+                lane: laneKey,
+                topics: [],
+                totalCount: 0,
+                nextCursor: null,
+                hasNextPage: false,
+                isLoadingMore: false,
+                loadMoreError: null,
+              };
 
-          return (
-            <LaneColumn
-              key={laneKey}
-              lane={laneKey}
-              topics={laneData.topics}
-              totalCount={laneData.totalCount}
-              hasNextPage={laneData.hasNextPage}
-              isLoadingMore={laneData.isLoadingMore}
-              loadMoreError={laneData.loadMoreError}
-              selectedTopicId={selectedTopicId}
-              searchQuery={searchQuery}
-              onLoadMore={onLoadMore}
-              onSelectTopic={onSelectTopic}
-              style={lanesToRender.length < 5 ? { maxWidth: 480 } : undefined}
-            />
-          );
-        })}
-      </div>
+              return (
+                <LaneColumn
+                  key={laneKey}
+                  lane={laneKey}
+                  topics={laneData.topics}
+                  totalCount={laneData.totalCount}
+                  hasNextPage={laneData.hasNextPage}
+                  isLoadingMore={laneData.isLoadingMore}
+                  loadMoreError={laneData.loadMoreError}
+                  selectedTopicId={selectedTopicId}
+                  searchQuery={searchQuery}
+                  onLoadMore={onLoadMore}
+                  onSelectTopic={onSelectTopic}
+                  isDragDisabled={isFilterActive}
+                  style={lanesToRender.length < 5 ? { maxWidth: 480 } : undefined}
+                />
+              );
+            })}
+          </div>
+        </SortableContext>
+      </DndContext>
     </main>
   );
 };

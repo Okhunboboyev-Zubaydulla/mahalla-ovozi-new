@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useLayoutEffect, useContext, useState, useCallback } from 'react';
 import { Button, Typography, Empty, Alert } from 'antd';
-import { ReloadOutlined, DownOutlined } from '@ant-design/icons';
+import { ReloadOutlined, DownOutlined, HolderOutlined } from '@ant-design/icons';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { QualifyingLane, TopicCardItem } from '@mahalla-ovozi/api-contracts';
 import { TopicCard, LANE_LABELS, LANE_STYLES, LANE_ICONS } from './TopicCard.js';
 import { themeColors } from '../../theme/antd-theme.js';
@@ -23,6 +25,7 @@ export interface LaneColumnProps {
   onSelectTopic?: (topic: TopicCardItem, options?: { focusHokim?: boolean }) => void;
   onRevealNewItems?: (lane: QualifyingLane) => void;
   style?: React.CSSProperties;
+  isDragDisabled?: boolean;
 }
 
 const LaneColumnComponent: React.FC<LaneColumnProps> = ({
@@ -39,6 +42,7 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
   onSelectTopic,
   onRevealNewItems: _onRevealNewItems,
   style,
+  isDragDisabled = false,
 }) => {
   const laneLabel = LANE_LABELS[lane];
   const laneStyle = LANE_STYLES[lane];
@@ -49,6 +53,27 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
   const prevScrollHeightRef = useRef<number>(0);
   const prevFirstTopicIdRef = useRef<string | undefined>(topics[0]?.id);
   const isKeyboardTriggerRef = useRef(false);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: lane,
+    disabled: isDragDisabled,
+  });
+
+  const sortableStyle: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition: prefersReducedMotion ? undefined : transition,
+    opacity: isDragging ? 0.6 : undefined,
+    zIndex: isDragging ? 50 : undefined,
+    position: 'relative',
+  };
 
   const [canScrollTop, setCanScrollTop] = useState(false);
   const [canScrollBottom, setCanScrollBottom] = useState(false);
@@ -105,23 +130,14 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
   }, [topics]);
 
   useEffect(() => {
-    const prevLength = prevTopicsLengthRef.current;
-    if (topics.length > prevLength) {
-      const newTopicsCount = topics.length - prevLength;
-      liveAnnouncer?.announce(`${laneLabel} йўналиши: ${newTopicsCount} та янги мавзу қўшилди`);
-
+    if (prevTopicsLengthRef.current !== topics.length) {
       if (isKeyboardTriggerRef.current) {
-        const firstNewTopic = topics[prevLength];
-        if (firstNewTopic) {
-          requestAnimationFrame(() => {
-            const cardEl =
-              scrollContainerRef.current?.querySelector<HTMLElement>(`#topic-card-${firstNewTopic.id}`) ||
-              document.getElementById(`topic-card-${firstNewTopic.id}`);
-            if (cardEl) {
-              cardEl.setAttribute('tabindex', '0');
-              cardEl.focus();
-            }
-          });
+        // Find newly loaded cards and announce
+        const addedCount = topics.length - prevTopicsLengthRef.current;
+        if (addedCount > 0 && liveAnnouncer) {
+          liveAnnouncer.announce(
+            `${laneLabel} йўналишига яна ${addedCount} та янги мавзу юкланди`,
+          );
         }
       }
     }
@@ -131,19 +147,21 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
 
   return (
     <section
+      ref={setNodeRef}
       aria-labelledby={`lane-header-${lane}`}
       style={{
         flex: '1 1 0px',
         minWidth: 240,
         backgroundColor: themeColors.colorBgLaneTrack,
-        border: '1px solid #E2E8F0',
+        border: isDragging ? '1px dashed #0284C7' : '1px solid #E2E8F0',
         borderRadius: 10,
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
         minHeight: 0,
         overflow: 'hidden',
-        boxShadow: themeColors.shadowCard,
+        boxShadow: isDragging ? themeColors.shadowCardHover : themeColors.shadowCard,
+        ...sortableStyle,
         ...style,
       }}
     >
@@ -152,7 +170,7 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
         id={`lane-header-${lane}`}
         tabIndex={-1}
         style={{
-          padding: '12px 16px',
+          padding: '12px 14px',
           backgroundColor: '#FFFFFF',
           borderBottom: '1px solid #E2E8F0',
           display: 'flex',
@@ -162,7 +180,48 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
           flexShrink: 0,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* Drag Handle Icon (visible on desktop) */}
+          <Button
+            ref={setActivatorNodeRef}
+            type="text"
+            size="small"
+            disabled={isDragDisabled}
+            aria-label={
+              isDragDisabled
+                ? `${laneLabel} устуни (суриш фаол эмас)`
+                : `${laneLabel} устунини суриш`
+            }
+            title={
+              isDragDisabled
+                ? 'Барча йўналишлар кўрсатилганда тартибни ўзгартириш мумкин'
+                : 'Устунни суриш'
+            }
+            icon={
+              <HolderOutlined
+                style={{
+                  color: isDragDisabled ? '#CBD5E1' : '#94A3B8',
+                  fontSize: 14,
+                }}
+              />
+            }
+            {...attributes}
+            {...listeners}
+            className="lane-drag-handle"
+            style={{
+              cursor: isDragDisabled ? 'not-allowed' : isDragging ? 'grabbing' : 'grab',
+              padding: 0,
+              height: 24,
+              width: 18,
+              minWidth: 18,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: 'none',
+              boxShadow: 'none',
+            }}
+          />
+
           {/* Domain Icon Badge */}
           <span
             style={{
