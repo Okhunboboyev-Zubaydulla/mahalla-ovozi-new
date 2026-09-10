@@ -7,10 +7,12 @@ import {
   UserOutlined,
   DownOutlined,
   ClockCircleOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 import {
   TopicCardItem,
   QualifyingLane,
+  isTopicSummaryPending,
 } from '@mahalla-ovozi/api-contracts';
 import { formatTashkentActivityTime } from '../../../lib/formatters.js';
 import { LANE_LABELS, LANE_STYLES } from '../../topics/TopicCard.js';
@@ -52,14 +54,27 @@ export const DistrictTopicsTable: React.FC<DistrictTopicsTableProps> = ({
       title: 'Мавзу хулосаси',
       dataIndex: 'summary',
       key: 'summary',
-      render: (summary: string) => (
-        <Paragraph
-          ellipsis={{ rows: 2, tooltip: summary }}
-          style={{ marginBottom: 0, fontSize: 13, lineHeight: '1.4' }}
-        >
-          {summary}
-        </Paragraph>
-      ),
+      render: (summary: string) => {
+        if (isTopicSummaryPending(summary)) {
+          return (
+            <Tag
+              color="processing"
+              icon={<SyncOutlined spin />}
+              style={{ borderRadius: 4, margin: 0, fontSize: 12 }}
+            >
+              Тайёрланмоқда...
+            </Tag>
+          );
+        }
+        return (
+          <Paragraph
+            ellipsis={{ rows: 2, tooltip: summary }}
+            style={{ marginBottom: 0, fontSize: 13, lineHeight: '1.4' }}
+          >
+            {summary}
+          </Paragraph>
+        );
+      },
     },
     {
       title: 'Сана',
@@ -179,7 +194,11 @@ export const DistrictTopicsTable: React.FC<DistrictTopicsTableProps> = ({
             fontSize: 13,
             fontWeight: 500,
           }}
-          aria-label={`Далилларни кўриш: ${record.summary}`}
+          aria-label={
+            isTopicSummaryPending(record.summary)
+              ? 'Далилларни кўриш (хулоса тайёрланмоқда)'
+              : `Далилларни кўриш: ${record.summary}`
+          }
         >
           Далиллар
         </Button>

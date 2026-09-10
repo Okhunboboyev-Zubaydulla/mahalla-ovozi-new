@@ -12,8 +12,9 @@ import { useTopicReadState } from '../../hooks/useTopicReadState.js';
 import { LANE_LABELS, LANE_STYLES } from './TopicCard.js';
 import { EvidenceTimeline } from './EvidenceTimeline.js';
 import { formatTashkentActivityTime } from '../../lib/formatters.js';
+import { TopicSummaryBody } from './TopicSummaryBody.js';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 export interface TopicEvidenceDrawerProps {
   topicId: string | null;
@@ -265,19 +266,14 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
               </div>
             </div>
 
-            {/* Summary Text */}
-            <Paragraph
-              style={{
-                fontSize: 14,
-                lineHeight: '20px',
-                color: '#1E293B',
-                margin: 0,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-              }}
-            >
-              {topic.summary}
-            </Paragraph>
+            {/* Summary Text (Progressive Loading with Skeleton / Graceful Degradation) */}
+            <TopicSummaryBody
+              summary={topic.summary}
+              createdAt={topic.createdAt}
+              fontSize={14}
+              lineHeight="20px"
+              color="#1E293B"
+            />
 
             {/* Latest Activity Time + Total Evidence Count */}
             <div

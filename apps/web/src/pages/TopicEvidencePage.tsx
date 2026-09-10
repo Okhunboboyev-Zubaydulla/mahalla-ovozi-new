@@ -13,8 +13,9 @@ import { useTopicReadState } from '../hooks/useTopicReadState.js';
 import { LANE_LABELS, LANE_STYLES } from '../components/topics/TopicCard.js';
 import { EvidenceTimeline } from '../components/topics/EvidenceTimeline.js';
 import { formatTashkentActivityTime } from '../lib/formatters.js';
+import { TopicSummaryBody } from '../components/topics/TopicSummaryBody.js';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 export const TopicEvidencePage: React.FC = () => {
   const { topicId } = useParams<{ topicId: string }>();
@@ -295,19 +296,13 @@ export const TopicEvidencePage: React.FC = () => {
                 </div>
               </div>
 
-              <Paragraph
-                style={{
-                  fontSize: 14,
-                  lineHeight: '22px',
-                  color: '#1E293B',
-                  margin: 0,
-                  whiteSpace: 'pre-wrap',
-                  overflowWrap: 'anywhere',
-                  wordBreak: 'normal',
-                }}
-              >
-                {topic.summary}
-              </Paragraph>
+              <TopicSummaryBody
+                summary={topic.summary}
+                createdAt={topic.createdAt}
+                fontSize={14}
+                lineHeight="22px"
+                color="#1E293B"
+              />
 
               <div
                 style={{

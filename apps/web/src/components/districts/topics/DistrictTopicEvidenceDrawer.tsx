@@ -27,8 +27,9 @@ import { useDistrictTopicEvidence } from '../../../topics/index.js';
 import { formatTashkentActivityTime } from '../../../lib/formatters.js';
 import { LANE_LABELS, LANE_STYLES } from '../../topics/TopicCard.js';
 import { EvidenceTimeline } from '../../topics/EvidenceTimeline.js';
+import { TopicSummaryBody } from '../../topics/TopicSummaryBody.js';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 
 export interface DistrictTopicEvidenceDrawerProps {
   open: boolean;
@@ -122,9 +123,16 @@ export const DistrictTopicEvidenceDrawer: React.FC<DistrictTopicEvidenceDrawerPr
               border: `1px solid ${token.colorBorderSecondary}`,
             }}
           >
-            <Title level={4} style={{ marginTop: 0, marginBottom: 8, color: '#0F172A' }}>
-              {topic.summary}
-            </Title>
+            <div style={{ marginTop: 0, marginBottom: 8 }}>
+              <TopicSummaryBody
+                summary={topic.summary}
+                createdAt={topic.createdAt}
+                fontSize={16}
+                lineHeight="24px"
+                fontWeight={600}
+                color="#0F172A"
+              />
+            </div>
 
             <Space wrap size={[8, 8]} style={{ marginBottom: 12 }}>
               {/* Mahalla */}

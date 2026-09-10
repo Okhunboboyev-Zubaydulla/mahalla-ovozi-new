@@ -9,14 +9,18 @@ import {
   FireOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
-import { TopicCardItem, QualifyingLane } from '@mahalla-ovozi/api-contracts';
+import {
+  TopicCardItem,
+  QualifyingLane,
+  isTopicSummaryPending,
+} from '@mahalla-ovozi/api-contracts';
 import { formatTashkentCalendarDate, formatTashkentTime } from '../../lib/formatters.js';
-import { HighlightText } from './HighlightText.js';
+import { TopicSummaryBody } from './TopicSummaryBody.js';
 import { themeColors } from '../../theme/antd-theme.js';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 import { useTopicReadState } from '../../hooks/useTopicReadState.js';
 
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 
 export const WaterDropIcon: React.FC<{ style?: React.CSSProperties }> = ({ style }) => (
   <span role="img" aria-label="сув" className="anticon" style={style}>
@@ -174,7 +178,11 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
           : 'border-color 0.3s ease, box-shadow 0.6s ease, background-color 0.6s ease',
       }}
       aria-current={isSelected ? 'true' : undefined}
-      aria-label={`Мавзу: ${formattedMahallaName}, ${topic.summary}`}
+      aria-label={
+        isTopicSummaryPending(topic.summary)
+          ? `Мавзу: ${formattedMahallaName}, хулоса тайёрланмоқда`
+          : `Мавзу: ${formattedMahallaName}, ${topic.summary}`
+      }
     >
       {/* Header: Mahalla name + Badges (New / Updated / Search Match) */}
       <div
@@ -253,20 +261,16 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
         </div>
       </div>
 
-      {/* Summary Body (Complete Unclamped Text in Uzbek Cyrillic with Highlight) */}
-      <Paragraph
-        style={{
-          fontSize: 14,
-          lineHeight: '20px',
-          fontWeight: 500,
-          color: '#0F172A',
-          margin: 0,
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-        }}
-      >
-        <HighlightText text={topic.summary} searchQuery={searchQuery} />
-      </Paragraph>
+      {/* Summary Body (Progressive Loading with Skeleton / Graceful Degradation / Highlighted Text) */}
+      <TopicSummaryBody
+        summary={topic.summary}
+        createdAt={topic.createdAt}
+        searchQuery={searchQuery}
+        fontSize={14}
+        lineHeight="20px"
+        fontWeight={500}
+        color="#0F172A"
+      />
 
       {/* Hokim Appeal Micro-Chip & Additional Lanes */}
       {(() => {

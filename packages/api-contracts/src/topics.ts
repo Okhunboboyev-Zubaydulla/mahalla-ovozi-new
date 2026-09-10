@@ -24,6 +24,12 @@ export type TelegramReplyMetadata = z.infer<typeof TelegramReplyMetadataSchema>;
 export const SearchMatchBadgeSchema = z.enum(['evidence', 'author']);
 export type SearchMatchBadge = z.infer<typeof SearchMatchBadgeSchema>;
 
+export const PENDING_TOPIC_SUMMARY_TEXT = 'Мавзу хулосаси тайёрланмоқда...';
+
+export function isTopicSummaryPending(summary: string): boolean {
+  return summary === PENDING_TOPIC_SUMMARY_TEXT;
+}
+
 export const TopicCardItemSchema = z.object({
   id: z.string(),
   districtId: DistrictIdSchema,
