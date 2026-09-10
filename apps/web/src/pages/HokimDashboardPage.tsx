@@ -17,6 +17,7 @@ import { useFocusFallback } from '../hooks/useFocusFallback.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { LiveAnnouncerContext, formatSearchAnnouncement } from '../hooks/useLiveAnnouncer.js';
 import { useTopicReadState } from '../hooks/useTopicReadState.js';
+import { useLaneOrderPreference } from '../hooks/useLaneOrderPreference.js';
 import { FullPageLoader } from '../components/FullPageLoader.js';
 import { formatTashkentTime } from '../lib/formatters.js';
 import { useAuth } from '../auth/auth-context.js';
@@ -66,6 +67,15 @@ export const HokimDashboardPage: React.FC = () => {
     refetch,
     retryFilter,
   } = useHokimTopicBoard(filters, searchQuery);
+
+  const effectiveDistrictId = (board?.districtId || actor?.districtId) ?? undefined;
+  const effectiveUserId = actor?.id;
+  const {
+    laneOrder,
+    setLaneOrder,
+    resetLaneOrder,
+    isCustomOrder,
+  } = useLaneOrderPreference(effectiveDistrictId, effectiveUserId);
 
   const {
     statistics,
@@ -306,6 +316,8 @@ export const HokimDashboardPage: React.FC = () => {
         isFilterLoading={isFilterTransitioning}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        isCustomLaneOrder={isCustomOrder}
+        onResetLaneOrder={resetLaneOrder}
       />
 
       {/* Mobile Responsive Filter Modal Sheet */}
@@ -414,6 +426,8 @@ export const HokimDashboardPage: React.FC = () => {
         onSelectTopic={handleSelectTopic}
         districtId={(board?.districtId || actor?.districtId) ?? undefined}
         userId={actor?.id}
+        laneOrder={laneOrder}
+        onLaneOrderChange={setLaneOrder}
       />
 
       <TopicEvidenceDrawer

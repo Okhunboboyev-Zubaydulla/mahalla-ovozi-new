@@ -421,6 +421,41 @@ describe('Story 3.3 & 3.6: BoardToolbar Component Tests', () => {
     const rightSection = timer.closest('div[style*="margin-left: auto"]');
     expect(rightSection).toBeTruthy();
   });
+
+  it('renders "Тартибни тиклаш" button when isCustomLaneOrder is true and triggers onResetLaneOrder when clicked', () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes('min-width: 992px') || query.includes('min-width: 1200px'),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    const handleReset = vi.fn();
+    renderWithProviders(
+      <BoardToolbar
+        districtName="Шароф Рашидов тумани"
+        filters={{
+          dateScope: 'today',
+          mahallaName: undefined,
+          lanes: [],
+        }}
+        onFilterChange={vi.fn()}
+        isCustomLaneOrder={true}
+        onResetLaneOrder={handleReset}
+      />,
+    );
+
+    const resetButton = screen.getByRole('button', { name: 'Йўналишлар тартибини тиклаш' });
+    expect(resetButton).toBeTruthy();
+    expect(screen.getByText('Тартибни тиклаш')).toBeTruthy();
+
+    fireEvent.click(resetButton);
+    expect(handleReset).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('formatTashkentLiveDateTime Unit Tests', () => {

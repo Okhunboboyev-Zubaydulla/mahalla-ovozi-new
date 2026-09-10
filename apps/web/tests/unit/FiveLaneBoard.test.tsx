@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { ConfigProvider } from 'antd';
 import { mahallaTheme } from '../../src/theme/antd-theme.js';
 import { FiveLaneBoard } from '../../src/components/topics/FiveLaneBoard.js';
@@ -84,11 +84,11 @@ describe('FiveLaneBoard Drag-and-Drop & Preference Tests', () => {
     expect(screen.getByText('Газ')).toBeTruthy();
     expect(screen.getByText('Чиқинди')).toBeTruthy();
 
-    // Reset button should not be present when order is canonical
+    // No floating reset button should exist on the board
     expect(screen.queryByText('Тартибни тиклаш')).toBeNull();
   });
 
-  it('renders lanes in custom saved order from localStorage and shows reset button', () => {
+  it('renders lanes in custom saved order from localStorage without floating overlap button', () => {
     const customOrder: QualifyingLane[] = [
       'GAS',
       'ELECTRICITY',
@@ -109,20 +109,25 @@ describe('FiveLaneBoard Drag-and-Drop & Preference Tests', () => {
       </ConfigProvider>
     );
 
-    // Reset button should appear
-    const resetButton = screen.getByText('Тартибни тиклаш');
-    expect(resetButton).toBeTruthy();
+    // Verify all titles are present in custom state
+    expect(screen.getByText('Газ')).toBeTruthy();
+    expect(screen.getByText('Электр')).toBeTruthy();
+    expect(screen.getByText('Сув')).toBeTruthy();
+    expect(screen.getByText('Чиқинди')).toBeTruthy();
+    expect(screen.getByText('Ҳокимга оид')).toBeTruthy();
+
+    // The reset button is now cleanly in the header toolbar, not floating in FiveLaneBoard
+    expect(screen.queryByText('Тартибни тиклаш')).toBeNull();
   });
 
-  it('clicking reset button restores canonical order and hides reset button', () => {
-    const customOrder: QualifyingLane[] = [
-      'GAS',
-      'ELECTRICITY',
-      'WATER',
+  it('renders lanes using laneOrder prop when provided', () => {
+    const propOrder: QualifyingLane[] = [
       'WASTE',
+      'GAS',
+      'WATER',
+      'ELECTRICITY',
       'HOKIM_RELATED',
     ];
-    window.localStorage.setItem(storageKey, JSON.stringify(customOrder));
 
     render(
       <ConfigProvider theme={mahallaTheme}>
@@ -131,16 +136,14 @@ describe('FiveLaneBoard Drag-and-Drop & Preference Tests', () => {
           onLoadMore={vi.fn()}
           districtId={districtId}
           userId={userId}
+          laneOrder={propOrder}
         />
       </ConfigProvider>
     );
 
-    const resetButton = screen.getByText('Тартибни тиклаш');
-    fireEvent.click(resetButton);
-
-    // After reset, localStorage is cleared and reset button disappears
-    expect(window.localStorage.getItem(storageKey)).toBeNull();
-    expect(screen.queryByText('Тартибни тиклаш')).toBeNull();
+    expect(screen.getByText('Чиқинди')).toBeTruthy();
+    expect(screen.getByText('Газ')).toBeTruthy();
+    expect(screen.getByText('Сув')).toBeTruthy();
   });
 
   it('disables drag handles and keeps custom relative order when lane filtering is active', () => {
