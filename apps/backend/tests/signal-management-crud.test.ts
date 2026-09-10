@@ -19,7 +19,7 @@ import { createOrResetProductOwner } from '../src/modules/auth/account-service.j
 import { COOKIE_NAME } from '../src/modules/auth/session-manager.js';
 import { createBossClient, initBossQueues } from '../src/adapters/jobs/boss-client.js';
 import { purgeExpiredDebugIntakePayloads } from '../src/modules/retention/debug-payload-retention.js';
-import { extractSignalVerbatimText } from '../src/modules/ai/signal-management-service.js';
+import { extractSignalVerbatimText } from '../src/modules/topics/topic-evidence-management-service.js';
 import type PgBoss from 'pg-boss';
 
 const SAME_ORIGIN_HEADERS = {

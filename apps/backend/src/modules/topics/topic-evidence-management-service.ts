@@ -116,7 +116,7 @@ export class SignalAlreadyAcceptedError extends Error {
   }
 }
 
-export class SignalManagementService {
+export class TopicEvidenceManagementService {
   /**
    * List all signals (both accepted evidence and excluded candidate messages) with filtering and keyset pagination.
    */
@@ -1340,4 +1340,5 @@ export class SignalManagementService {
   }
 }
 
-export const signalManagementService = new SignalManagementService();
+export const topicEvidenceManagementService = new TopicEvidenceManagementService();
+export const signalManagementService = topicEvidenceManagementService;
