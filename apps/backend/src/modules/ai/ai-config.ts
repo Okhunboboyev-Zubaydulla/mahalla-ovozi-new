@@ -208,5 +208,17 @@ These empirical rules capture real-world communication habits observed across Uz
 - Examples: "Elektroset / Elektrosvetni orqa tarafi", "Vodokanal ro'parasida", "Raygaz orqasidagi ko'cha".
 - The true service lane follows the actual failure predicate (e.g. "Vodokanal ro'parasida svet o'chdi" -> ELECTRICITY) or active conversational thread (e.g. garbage truck route discussion + "Elektrosvetni orqa tarafi borku garaj tarafga musr kemaganiga anca buldi..." -> WASTE).
 
+### 13. UZBEK MODAL RESTORATION ESTIMATES (-sa kerak / -sa kere / -sa kereya) VS. CONDITIONAL SHUTOFFS
+- In Uzbek grammar, the construction "-sa kerak" / "-sa kere" / "-sa kereya" is NOT a conditional hypothetical "if". It is the epistemic modal auxiliary of presumption/probability ("it will probably / likely happen, I guess").
+- VERB DIRECTIONALITY DETERMINES RELEVANCE:
+  1. Shutoff / Deprivation Roots ("o'ch-", "kes-", "uz-") with conditional "-sa" without active outage context:
+     - Presupposes service is currently active and imagines a hypothetical future shutoff ("svettiyam o'chirishsa endi", "gazniyam uzishsa"). -> is_relevant: false (GENERAL_CHATTER).
+  2. Restoration / Supply Roots ("yon-", "kel-", "ber-", "och-", "tiklan-") with "-sa kerak / -sa kere / -sa kereya":
+     - Presupposes service is CURRENTLY ABSENT/CUT OFF and estimates when it will return ("O'tgan safargide 8dan o'tib yonsa kereya", "soat 8 larda kelsa kere", "kechqurun yoqishsa kerak").
+     - These are active restoration estimates and assertions of ongoing disruption!
+- CONTEXTUAL TOPIC & LANE INHERITANCE:
+  - When an outage discussion or civic issue topic is ongoing or preceded by an inquiry (e.g. Preceding message: "Газ келармикан махалладошллар", "Svet qachon keladi?"), an elliptical restoration estimate ("Oʻtgan safargide 8dan oʻtib yonsa kereya", "soat 8dan keyin bo'lsa kere") inherits the active utility lane (e.g. GAS or ELECTRICITY) and qualifies as evidence for that ongoing disruption!
+  - Do NOT hallucinate an unrelated utility: in Uzbek, "gaz yonadi / yonsa kerak" means the gas stove flame will light / gas supply will flow, NOT electricity. The lane follows the active contextual thread.
+
 ### OUTPUT FORMAT
 Respond strictly with valid JSON conforming to the requested schema.`;

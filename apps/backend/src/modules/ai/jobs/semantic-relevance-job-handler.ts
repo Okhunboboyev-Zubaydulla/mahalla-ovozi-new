@@ -1,6 +1,6 @@
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { eq, and, inArray, sql } from 'drizzle-orm';
+import { eq, and, inArray, sql, gt, lt, desc } from 'drizzle-orm';
 import type { DbClient } from '../../../adapters/db/client.js';
 import {
   districts,
@@ -20,7 +20,10 @@ import {
   getMahallaDailySnapshot,
   type AcceptedEvidenceItem,
 } from '../context-snapshot.js';
-import type { SemanticRelevanceEvaluator } from '../semantic-relevance-evaluator.js';
+import type {
+  SemanticRelevanceEvaluator,
+  PrecedingMessageContext,
+} from '../semantic-relevance-evaluator.js';
 import { clearPendingRetryFlag } from '../../issues/retry-service.js';
 
 export interface SemanticRelevanceJobDeps {
@@ -147,6 +150,68 @@ export async function processSemanticRelevanceJobs(
           const initialRevision = snapshot.contextRevision;
           const initialFingerprint = snapshot.snapshotFingerprint;
 
+          // Resolve Immediate Preceding Message (N-1) in this chat, bridging the queue race condition
+          let immediatePrecedingMessage: PrecedingMessageContext | null = null;
+          const candidateTimestamp = new Date(originalTimestamp);
+          const candidateTimeMs = candidateTimestamp.getTime();
+          const fifteenMinutesAgo = new Date(candidateTimeMs - 15 * 60 * 1000);
+
+          try {
+            const [recentRelevantOp] = await db
+              .select({
+                id: aiOperations.id,
+                resultPayload: aiOperations.resultPayload,
+                rawPayload: telegramIntakeRecords.rawPayload,
+                telegramMessageId: telegramIntakeRecords.telegramMessageId,
+                originalTimestamp: telegramIntakeRecords.originalTimestamp,
+              })
+              .from(aiOperations)
+              .innerJoin(telegramIntakeRecords, eq(aiOperations.targetId, telegramIntakeRecords.id))
+              .where(
+                and(
+                  eq(telegramIntakeRecords.districtId, districtId),
+                  eq(telegramIntakeRecords.telegramChatId, telegramChatId),
+                  eq(aiOperations.finalStatus, 'COMPLETED_RELEVANT'),
+                  gt(telegramIntakeRecords.originalTimestamp, fifteenMinutesAgo),
+                  lt(telegramIntakeRecords.originalTimestamp, candidateTimestamp),
+                ),
+              )
+              .orderBy(desc(telegramIntakeRecords.originalTimestamp))
+              .limit(1);
+
+            if (recentRelevantOp) {
+              const raw = recentRelevantOp.rawPayload as Record<string, unknown> | null;
+              const msg = raw?.message as Record<string, unknown> | undefined;
+              const prevText =
+                (typeof msg?.text === 'string'
+                  ? msg.text
+                  : typeof msg?.caption === 'string'
+                    ? msg.caption
+                    : '') || '';
+              const payload = recentRelevantOp.resultPayload as Record<string, unknown> | null;
+              const lanes = payload?.relevant_lanes as string[] | undefined;
+              const prevLane = lanes && lanes.length > 0 ? lanes[0] : null;
+
+              if (prevText) {
+                immediatePrecedingMessage = {
+                  telegramMessageId: recentRelevantOp.telegramMessageId,
+                  originalTimestamp: recentRelevantOp.originalTimestamp.toISOString(),
+                  verbatimText: prevText,
+                  lane: prevLane,
+                };
+              }
+            }
+          } catch (queryErr) {
+            console.warn(
+              JSON.stringify({
+                event: 'TELEGRAM_SEMANTIC_PRECEDING_MESSAGE_LOOKUP_FAILED',
+                districtId,
+                telegramChatId,
+                error: (queryErr as Error).message,
+              }),
+            );
+          }
+
           // Execute AI Gateway outside DB transaction (AD-5, AD-8 / AC 1, 9)
           const aiResult = await relevanceEvaluator.evaluateRelevance({
             candidateText: verbatimText,
@@ -156,6 +221,7 @@ export async function processSemanticRelevanceJobs(
             replyMetadata,
             snapshot,
             burstMessages,
+            immediatePrecedingMessage,
           });
 
           // Gate 2: Pre-Commit District Lifecycle Verification (AC 13 / Matrix #21)

@@ -54,6 +54,13 @@ export const SemanticRelevanceResultSchema = z
 
 export type SemanticRelevanceResult = z.infer<typeof SemanticRelevanceResultSchema>;
 
+export interface PrecedingMessageContext {
+  telegramMessageId: string;
+  originalTimestamp: string;
+  verbatimText: string;
+  lane?: string | null;
+}
+
 export interface EvaluateRelevanceInput {
   candidateText: string;
   telegramMessageId: string;
@@ -64,6 +71,7 @@ export interface EvaluateRelevanceInput {
   burstMessages?: BurstMessageItem[];
   vocabularyGuidance?: string[];
   profileId?: string;
+  immediatePrecedingMessage?: PrecedingMessageContext | null;
 }
 
 export { SEMANTIC_RELEVANCE_SYSTEM_PROMPT };
@@ -110,7 +118,9 @@ CRITICAL: Scrutinize each message individually. In "accepted_message_ids", list 
     }
 
     // Extract Immediate Preceding Message (N-1 in Chat)
-    if (input.snapshot.evidence.length > 0) {
+    let precedingMsg: PrecedingMessageContext | null = input.immediatePrecedingMessage ?? null;
+
+    if (!precedingMsg && input.snapshot.evidence.length > 0) {
       const candidateTime = new Date(input.originalTimestamp).getTime();
       const earlierItems = input.snapshot.evidence.filter(
         (e) => new Date(e.originalTimestamp).getTime() <= candidateTime,
@@ -118,18 +128,28 @@ CRITICAL: Scrutinize each message individually. In "accepted_message_ids", list 
       const nearestEarlier = earlierItems[earlierItems.length - 1];
 
       if (nearestEarlier) {
-        const prevTime = new Date(nearestEarlier.originalTimestamp).getTime();
-        const diffMinutes =
-          !Number.isNaN(prevTime) && !Number.isNaN(candidateTime)
-            ? Math.round((candidateTime - prevTime) / 60000)
-            : null;
-        const diffText = diffMinutes !== null ? ` (+${diffMinutes}m before candidate)` : '';
-        const laneText = nearestEarlier.lane ? ` (Lane: [${nearestEarlier.lane}])` : '';
-        sections.push(`### IMMEDIATE PRECEDING MESSAGE (N-1 IN CHAT)
-- Message ID: ${nearestEarlier.telegramMessageId}${diffText}${laneText}
-- Timestamp: ${nearestEarlier.originalTimestamp}
-- Text: "${nearestEarlier.verbatimText}"`);
+        precedingMsg = {
+          telegramMessageId: nearestEarlier.telegramMessageId,
+          originalTimestamp: nearestEarlier.originalTimestamp,
+          verbatimText: nearestEarlier.verbatimText,
+          lane: nearestEarlier.lane ?? null,
+        };
       }
+    }
+
+    if (precedingMsg) {
+      const candidateTime = new Date(input.originalTimestamp).getTime();
+      const prevTime = new Date(precedingMsg.originalTimestamp).getTime();
+      const diffMinutes =
+        !Number.isNaN(prevTime) && !Number.isNaN(candidateTime)
+          ? Math.round((candidateTime - prevTime) / 60000)
+          : null;
+      const diffText = diffMinutes !== null ? ` (+${diffMinutes}m before candidate)` : '';
+      const laneText = precedingMsg.lane ? ` (Lane: [${precedingMsg.lane}])` : '';
+      sections.push(`### IMMEDIATE PRECEDING MESSAGE (N-1 IN CHAT)
+- Message ID: ${precedingMsg.telegramMessageId}${diffText}${laneText}
+- Timestamp: ${precedingMsg.originalTimestamp}
+- Text: "${precedingMsg.verbatimText}"`);
     }
 
     sections.push(formatSnapshotForSemanticRelevance(input.snapshot));

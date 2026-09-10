@@ -2307,6 +2307,100 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
           expect(result.data.relevant_lanes).toEqual(['GAS']);
           expect(result.data.exclusion_reason).toBeNull();
         });
+
+        it('preserves Uzbek modal restoration estimates "-sa kerak / -sa kere / -sa kereya" inheriting active GAS lane from preceding chat message', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['GAS'],
+            exclusion_reason: null,
+            accepted_message_ids: ['382'],
+            reasoning:
+              'Modal restoration estimate ("yonsa kereya") presupposes service absence and estimates gas flow restoration following inquiry in message 381',
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: "O'tgan safargide 8dan o'tib yonsa kereya",
+            telegramMessageId: '382',
+            originalTimestamp: '2026-09-10T11:11:40.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            immediatePrecedingMessage: {
+              telegramMessageId: '381',
+              originalTimestamp: '2026-09-10T11:11:18.000Z',
+              verbatimText: 'Газ келармикан махалладошллар',
+              lane: 'GAS',
+            },
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['GAS']);
+          expect(result.data.exclusion_reason).toBeNull();
+          expect(result.data.accepted_message_ids).toEqual(['382']);
+
+          // Verify evaluator formatted the prompt with immediate preceding message and lane
+          const calls = mockAdapter.getCalls();
+          const lastCall = calls[calls.length - 1];
+          expect(lastCall).toBeDefined();
+          expect(lastCall!.userPrompt).toContain('### IMMEDIATE PRECEDING MESSAGE (N-1 IN CHAT)');
+          expect(lastCall!.userPrompt).toContain('- Message ID: 381 (+0m before candidate) (Lane: [GAS])');
+          expect(lastCall!.userPrompt).toContain('Газ келармикан махалладошллар');
+        });
+
+        it('strictly contrasts modal restoration "-sa kerak" (presupposes outage) vs hypothetical shutoff "-sa" (presupposes service operational)', async () => {
+          // 1. Hypothetical shutoff conditional -> REJECTED
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'GENERAL_CHATTER',
+            accepted_message_ids: [],
+            reasoning: 'Hypothetical conditional imagining shutoff',
+          });
+
+          const shutoffResult = await evaluator.evaluateRelevance({
+            candidateText: 'svettiyam ucirishsa endi',
+            telegramMessageId: '9940',
+            originalTimestamp: '2026-09-10T18:00:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(shutoffResult.data.is_relevant).toBe(false);
+          expect(shutoffResult.data.exclusion_reason).toBe('GENERAL_CHATTER');
+
+          // 2. Modal restoration estimate -> ACCEPTED
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['ELECTRICITY'],
+            exclusion_reason: null,
+            accepted_message_ids: ['9941'],
+            reasoning: 'Modal restoration estimate indicating active power outage',
+          });
+
+          const restorationResult = await evaluator.evaluateRelevance({
+            candidateText: 'soat 8 dan keyin yonsa kerak',
+            telegramMessageId: '9941',
+            originalTimestamp: '2026-09-10T18:00:10.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(restorationResult.data.is_relevant).toBe(true);
+          expect(restorationResult.data.relevant_lanes).toEqual(['ELECTRICITY']);
+          expect(restorationResult.data.exclusion_reason).toBeNull();
+        });
+
+        it('verifies Section 13 in SEMANTIC_RELEVANCE_SYSTEM_PROMPT governs modal restoration estimates', () => {
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('### 13. UZBEK MODAL RESTORATION ESTIMATES');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('-sa kerak / -sa kere / -sa kereya');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('VERB DIRECTIONALITY DETERMINES RELEVANCE');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('gaz yonadi / yonsa kerak');
+        });
       });
     });
   });

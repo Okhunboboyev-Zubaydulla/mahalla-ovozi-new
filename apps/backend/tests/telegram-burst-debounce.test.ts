@@ -551,9 +551,9 @@ describe('Burst Message Debouncing & Semantic Aggregation Integration Tests', ()
 
       await processBurstDebounceJobs([debounceJob], { db, boss });
 
-      // Verifies timer was extended: remainingDelay is ceil(20 - 6) = 14 seconds
+      // Verifies timer was extended: remainingDelay is ceil(30 - 6) = 24 seconds
       expect(rescheduledJob).toBeDefined();
-      expect(rescheduledJob.options.startAfter).toBe(14);
+      expect(rescheduledJob.options.startAfter).toBe(24);
     } finally {
       Date.now = realDateNow;
       sendSpy.mockRestore();
