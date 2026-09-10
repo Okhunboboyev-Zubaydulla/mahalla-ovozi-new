@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 export const devFaviconPlugin = (): Plugin => ({
   name: 'dev-favicon-transform',
@@ -20,8 +21,32 @@ const apiProxyConfig = {
   },
 };
 
-export default defineConfig({
-  plugins: [react(), devFaviconPlugin()],
+export default defineConfig(({ mode }) => {
+  const isAnalyze = mode === 'analyze' || process.env.ANALYZE === 'true';
+
+  return {
+    plugins: [
+      react(),
+      devFaviconPlugin(),
+      ...(isAnalyze
+        ? [
+            visualizer({
+              filename: 'dist/stats.html',
+              open: false,
+              gzipSize: true,
+              brotliSize: true,
+              template: 'treemap',
+            }),
+            visualizer({
+              filename: 'dist/stats.json',
+              template: 'raw-data',
+              open: false,
+              gzipSize: true,
+              brotliSize: true,
+            }),
+          ]
+        : []),
+    ],
   server: {
     port: 5173,
     allowedHosts: ['.trycloudflare.com'],
@@ -34,25 +59,27 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
-    chunkSizeWarningLimit: 1500,
+    chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('@tanstack/react-query')) {
-              return 'vendor-query';
-            }
-            if (id.includes('antd') || id.includes('@ant-design') || id.includes('rc-')) {
-              return 'vendor-antd';
-            }
-            if (
-              id.includes('/react/') ||
-              id.includes('\\react\\') ||
-              id.includes('react-dom') ||
-              id.includes('react-router')
-            ) {
-              return 'vendor-react';
-            }
+          if (!id.includes('node_modules')) return undefined;
+
+          const isPkg = (name: string) =>
+            id.includes(`/node_modules/${name}/`) || id.includes(`\\node_modules\\${name}\\`);
+
+          // Pure leaf foundation runtimes without cross-chunk cycles
+          if (isPkg('@tanstack/react-query') || isPkg('@tanstack/query-core')) {
+            return 'vendor-query';
+          }
+          if (
+            isPkg('react') ||
+            isPkg('react-dom') ||
+            isPkg('scheduler') ||
+            isPkg('react-router') ||
+            isPkg('react-router-dom')
+          ) {
+            return 'vendor-react';
           }
           return undefined;
         },
@@ -65,4 +92,5 @@ export default defineConfig({
     testTimeout: 15000,
     include: ['src/**/*.test.{ts,tsx}', 'tests/unit/**/*.test.{ts,tsx}'],
   },
+};
 });

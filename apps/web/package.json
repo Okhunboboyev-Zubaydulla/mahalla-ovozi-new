@@ -6,10 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:analyze": "tsc && vite build --mode analyze",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:perf": "playwright test tests/e2e/performance.spec.ts",
+    "check:budgets": "node scripts/check-bundle-budgets.js"
   },
   "dependencies": {
     "@ant-design/icons": "^5.6.1",
@@ -29,6 +32,7 @@
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
     "jsdom": "^26.0.0",
+    "rollup-plugin-visualizer": "^7.1.1",
     "typescript": "catalog:",
     "vite": "^6.2.0",
     "vitest": "catalog:"
