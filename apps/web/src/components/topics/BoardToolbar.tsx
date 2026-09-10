@@ -308,9 +308,9 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
               value={searchQuery}
               onChange={(val) => onSearchChange?.(val)}
               style={{
-                width: 360,
-                maxWidth: 380,
-                minWidth: 200,
+                width: 280,
+                maxWidth: 280,
+                minWidth: 180,
                 flexShrink: 1,
                 height: 32,
                 fontSize: 14,
