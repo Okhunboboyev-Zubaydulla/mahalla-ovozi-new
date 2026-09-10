@@ -2401,7 +2401,94 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
           expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('VERB DIRECTIONALITY DETERMINES RELEVANCE');
           expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('gaz yonadi / yonsa kerak');
         });
+
+        it('verifies Section 14 and Section 6 in SEMANTIC_RELEVANCE_SYSTEM_PROMPT govern negative verbal polarity & preservation idioms', () => {
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('### 14. NEGATIVE VERBAL POLARITY & SERVICE PRESERVATION ASSERTIONS');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain("o'chmagan");
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain("yonmagan");
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('bitta [X] qoldi [fe\'l-magan]');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('bitta svet qoldi ucmagan');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('uniyam ucirishsa begi kolxoz buladi');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain("Vowel, Cyrillic & Informal Letter Substitutions (o' -> u, sh -> w, ch -> c)");
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('uciriwsa');
+        });
+
+        it('rejects "bitta svet qoldi ucmagan" and cynical conditional burst as GENERAL_CHATTER', async () => {
+          const snapshot: MahallaDailySnapshot = {
+            districtId: 'dist_tashkent_01',
+            mahallaName: 'Navbahor',
+            calendarDay: '2026-09-10',
+            evidence: [],
+            contextRevision: 1,
+            snapshotFingerprint: 'fp_123',
+          };
+
+          // 1. Single candidate "bitta svet qoldi ucmagan"
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'GENERAL_CHATTER',
+            accepted_message_ids: [],
+            reasoning:
+              "The candidate 'bitta svet qoldi ucmagan' states that electricity has NOT shut off and remains operational. Per Section 14, this is service preservation rather than an outage report.",
+          });
+
+          const singleResult = await evaluator.evaluateRelevance({
+            candidateText: 'bitta svet qoldi ucmagan',
+            telegramMessageId: '9951',
+            originalTimestamp: '2026-09-10T15:02:54.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(singleResult.data.is_relevant).toBe(false);
+          expect(singleResult.data.exclusion_reason).toBe('GENERAL_CHATTER');
+          expect(singleResult.data.relevant_lanes).toEqual([]);
+
+          // 2. Burst candidate: "bitta svet qoldi ucmagan" + "uniyam ucirishsa begi kolxoz buladi"
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'GENERAL_CHATTER',
+            accepted_message_ids: [],
+            reasoning:
+              "Message 1 states electricity is still running ('bitta svet qoldi ucmagan'), and Message 2 is a cynical hypothetical conditional ('uniyam ucirishsa begi kolxoz buladi'). Per Section 14, both fail the Substance Gate.",
+          });
+
+          const burstResult = await evaluator.evaluateRelevance({
+            candidateText: 'bitta svet qoldi ucmagan\nuniyam ucirishsa begi kolxoz buladi',
+            telegramMessageId: '9951',
+            originalTimestamp: '2026-09-10T15:02:54.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            burstMessages: [
+              {
+                intakeId: 'int_1',
+                telegramMessageId: '9951',
+                verbatimText: 'bitta svet qoldi ucmagan',
+                originalTimestamp: '2026-09-10T15:02:54.000Z',
+                contentType: 'TEXT',
+              },
+              {
+                intakeId: 'int_2',
+                telegramMessageId: '9952',
+                verbatimText: 'uniyam ucirishsa begi kolxoz buladi',
+                originalTimestamp: '2026-09-10T15:03:04.000Z',
+                contentType: 'TEXT',
+              },
+            ],
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(burstResult.data.is_relevant).toBe(false);
+          expect(burstResult.data.exclusion_reason).toBe('GENERAL_CHATTER');
+          expect(burstResult.data.accepted_message_ids).toEqual([]);
+        });
       });
     });
   });
 });
+

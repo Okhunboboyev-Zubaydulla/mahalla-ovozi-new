@@ -135,6 +135,18 @@ These empirical rules capture real-world communication habits observed across Uz
     - "busek" = "bo'lsak" (if we are)
     - "tulekkan" = "to'layotgan" (paying)
     - "disek" = "desak" (if we say)
+  - Vowel, Cyrillic & Informal Letter Substitutions (o' -> u, sh -> w, ch -> c):
+    - In casual Uzbek SMS typing, residents routinely replace "o'" with "u" to avoid typing the apostrophe or switching keyboards:
+      - "ucdi", "uchdi" = "o'chdi" (shut off)
+      - "ucmagan", "uchmagan" = "o'chmagan" (has NOT shut off / still running)
+      - "ucirishsa", "uchirishsa", "uciriwsa" = "o'chirishsa" (if they shut off)
+      - "utgan" = "o'tgan" (past / previous)
+      - "kup" = "ko'p" (a lot / much)
+      - "kucada", "kuchada" = "ko'chada" (on the street)
+      - "buyogi", "begi" = "buyog'i" (after this / beyond this)
+    - In Cyrillic, "ў" is frequently typed as simple "у" ("учиришса" = "ўчиришса", "учмаган" = "ўчмаган", "учди" = "ўчди").
+    - Digraph "sh" is colloquially typed as "w" ("uciriwsa" = "o'chirishsa", "wunaqa" = "shunaqa", "wukur" = "shukur", "iw" = "ish").
+    - Digraph "ch" is colloquially typed as "c" ("ucdi" = "o'chdi", "ucmagan" = "o'chmagan", "kucada" = "ko'chada").
   - Liquid Consonant /l/ Elision before Nasal /m/ in Delivery & State Verbs:
     In conversational and SMS Uzbek, the liquid /l/ regularly drops before /m/ in negative or continuous verb stems:
     - "kemadi", "kemapti", "kemayapti", "kegani yo'q" = "kelmadi / kelmayapti / kelgani yo'q" (did not arrive / not running / supply cut)
@@ -219,6 +231,28 @@ These empirical rules capture real-world communication habits observed across Uz
 - CONTEXTUAL TOPIC & LANE INHERITANCE:
   - When an outage discussion or civic issue topic is ongoing or preceded by an inquiry (e.g. Preceding message: "Газ келармикан махалладошллар", "Svet qachon keladi?"), an elliptical restoration estimate ("Oʻtgan safargide 8dan oʻtib yonsa kereya", "soat 8dan keyin bo'lsa kere") inherits the active utility lane (e.g. GAS or ELECTRICITY) and qualifies as evidence for that ongoing disruption!
   - Do NOT hallucinate an unrelated utility: in Uzbek, "gaz yonadi / yonsa kerak" means the gas stove flame will light / gas supply will flow, NOT electricity. The lane follows the active contextual thread.
+
+### 14. NEGATIVE VERBAL POLARITY & SERVICE PRESERVATION ASSERTIONS
+- YOU MUST NEVER INVERT OR CONFUSE UZBEK NEGATIVE VERBAL ASPECT:
+  - In Uzbek, the root "o'ch-" (colloquial: "uch-", "uc-") means TO EXTINGUISH, TURN OFF, OR SHUT OFF.
+  - Suffixing negative "-ma-" creates "o'chmagan" / "ucmagan" / "uchmagan" / "o'chmadi" / "ucmadi", which strictly means:
+    HAS NOT SHUT OFF / HAS NOT GONE OUT = STILL LIT / STILL ON / STILL OPERATIONAL!
+  - Contrast with "yonmagan":
+    1. "yonmagan" / "yonmadi" (root "yon-" = to turn on/light up): "has not turned on / unlit" -> PRESUPPOSES CONTINUED OUTAGE (is_relevant: true).
+    2. "o'chmagan" / "ucmagan" / "uchmagan" (root "o'ch-" = to turn off/extinguish): "has NOT turned off / still burning / still on" -> PRESUPPOSES NORMAL SERVICE OPERATION (is_relevant: false -> GENERAL_CHATTER).
+  - You MUST NEVER hallucinate that "o'chmagan" or "ucmagan" means "unlit" or "not turned on"! It means the EXACT OPPOSITE: it has NOT shut off and is currently functional!
+- THE PRESERVATION IDIOM: "bitta [X] qoldi [fe'l-magan]":
+  - Colloquial Uzbek construction: "bitta [X] qoldi o'chmagan" / "bitta svet qoldi ucmagan" / "bitta gaz qoldi o'chmagan".
+  - Communicative meaning: Following other disruptions (e.g. earlier gas or water cuts), the resident observes that "only [X] is left that hasn't gone out / only [X] is still running".
+  - This is an explicit statement of SERVICE AVAILABILITY AND CONTINUITY, NOT a failure report!
+  - It satisfies neither the failure predicate nor the Substance Gate -> MUST be classified as is_relevant: false (GENERAL_CHATTER).
+- HYPOTHETICAL CONDITIONAL BANTER ON FUNCTIONING SERVICES:
+  - Phrases expressing cynical banter or dark humor about what would happen if a currently functioning service were also cut off:
+    - "bitta svet qoldi ucmagan, uniyam ucirishsa begi kolxoz buladi" ("only light is left un-cut, if they shut that off too, buyog'i kolxoz bo'ladi")
+    - "uniyam o'chirishsa / ucirishsa / uciriwsa..." ("if they turn that off too...")
+    - "endi svettiyam o'chirishsa balans bo'ladi"
+  - The verb root with conditional "-sa / -ishsa / -iwsa" imagines an unoccurred transition into an outage, inherently presupposing the service is STILL RUNNING.
+  - This is purely fatalistic chatter and hypothetical banter -> MUST be classified as is_relevant: false (GENERAL_CHATTER).
 
 ### OUTPUT FORMAT
 Respond strictly with valid JSON conforming to the requested schema.`;
