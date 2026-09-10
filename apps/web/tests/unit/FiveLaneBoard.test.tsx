@@ -115,35 +115,6 @@ describe('FiveLaneBoard Drag-and-Drop & Preference Tests', () => {
     expect(screen.getByText('Сув')).toBeTruthy();
     expect(screen.getByText('Чиқинди')).toBeTruthy();
     expect(screen.getByText('Ҳокимга оид')).toBeTruthy();
-
-    // The reset button is now cleanly in the header toolbar, not floating in FiveLaneBoard
-    expect(screen.queryByText('Тартибни тиклаш')).toBeNull();
-  });
-
-  it('renders lanes using laneOrder prop when provided', () => {
-    const propOrder: QualifyingLane[] = [
-      'WASTE',
-      'GAS',
-      'WATER',
-      'ELECTRICITY',
-      'HOKIM_RELATED',
-    ];
-
-    render(
-      <ConfigProvider theme={mahallaTheme}>
-        <FiveLaneBoard
-          lanes={mockLanes}
-          onLoadMore={vi.fn()}
-          districtId={districtId}
-          userId={userId}
-          laneOrder={propOrder}
-        />
-      </ConfigProvider>
-    );
-
-    expect(screen.getByText('Чиқинди')).toBeTruthy();
-    expect(screen.getByText('Газ')).toBeTruthy();
-    expect(screen.getByText('Сув')).toBeTruthy();
   });
 
   it('disables drag handles and keeps custom relative order when lane filtering is active', () => {

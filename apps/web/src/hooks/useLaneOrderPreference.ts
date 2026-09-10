@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { QualifyingLane, QualifyingLaneSchema } from '@mahalla-ovozi/api-contracts';
 
 export const CANONICAL_LANE_ORDER: readonly QualifyingLane[] = [
@@ -78,39 +78,9 @@ export function saveLaneOrderPreference(
   }
 }
 
-export function clearLaneOrderPreference(
-  districtId: string | undefined,
-  userId: string | undefined
-): void {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return;
-  }
-
-  try {
-    const storageKey = getLaneOrderStorageKey(districtId, userId);
-    window.localStorage.removeItem(storageKey);
-  } catch {
-    // Gracefully ignore storage exceptions
-  }
-}
-
-export function isOrderDifferentFromCanonical(order: readonly QualifyingLane[]): boolean {
-  if (order.length !== CANONICAL_LANE_ORDER.length) {
-    return true;
-  }
-  for (let i = 0; i < order.length; i += 1) {
-    if (order[i] !== CANONICAL_LANE_ORDER[i]) {
-      return true;
-    }
-  }
-  return false;
-}
-
 export interface UseLaneOrderPreferenceResult {
   laneOrder: QualifyingLane[];
   setLaneOrder: (newOrder: QualifyingLane[]) => void;
-  resetLaneOrder: () => void;
-  isCustomOrder: boolean;
 }
 
 export function useLaneOrderPreference(
@@ -134,20 +104,8 @@ export function useLaneOrderPreference(
     [districtId, userId]
   );
 
-  const resetLaneOrder = useCallback(() => {
-    setLaneOrderInternal([...CANONICAL_LANE_ORDER]);
-    clearLaneOrderPreference(districtId, userId);
-  }, [districtId, userId]);
-
-  const isCustomOrder = useMemo(
-    () => isOrderDifferentFromCanonical(laneOrder),
-    [laneOrder]
-  );
-
   return {
     laneOrder,
     setLaneOrder,
-    resetLaneOrder,
-    isCustomOrder,
   };
 }

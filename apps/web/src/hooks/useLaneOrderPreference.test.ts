@@ -47,7 +47,6 @@ describe('useLaneOrderPreference', () => {
   it('initializes with CANONICAL_LANE_ORDER when storage is empty', () => {
     const { result } = renderHook(() => useLaneOrderPreference(districtId, userId));
     expect(result.current.laneOrder).toEqual(CANONICAL_LANE_ORDER);
-    expect(result.current.isCustomOrder).toBe(false);
   });
 
   it('loads valid custom order from localStorage on mount', () => {
@@ -56,10 +55,9 @@ describe('useLaneOrderPreference', () => {
 
     const { result } = renderHook(() => useLaneOrderPreference(districtId, userId));
     expect(result.current.laneOrder).toEqual(customOrder);
-    expect(result.current.isCustomOrder).toBe(true);
   });
 
-  it('updates laneOrder, writes to localStorage, and sets isCustomOrder to true', () => {
+  it('updates laneOrder and writes to localStorage', () => {
     const { result } = renderHook(() => useLaneOrderPreference(districtId, userId));
 
     const newOrder: QualifyingLane[] = ['WATER', 'GAS', 'ELECTRICITY', 'WASTE', 'HOKIM_RELATED'];
@@ -68,23 +66,6 @@ describe('useLaneOrderPreference', () => {
     });
 
     expect(result.current.laneOrder).toEqual(newOrder);
-    expect(result.current.isCustomOrder).toBe(true);
     expect(JSON.parse(window.localStorage.getItem(storageKey)!)).toEqual(newOrder);
-  });
-
-  it('resets laneOrder to canonical order and removes item from localStorage', () => {
-    const customOrder: QualifyingLane[] = ['GAS', 'ELECTRICITY', 'WATER', 'WASTE', 'HOKIM_RELATED'];
-    window.localStorage.setItem(storageKey, JSON.stringify(customOrder));
-
-    const { result } = renderHook(() => useLaneOrderPreference(districtId, userId));
-    expect(result.current.isCustomOrder).toBe(true);
-
-    act(() => {
-      result.current.resetLaneOrder();
-    });
-
-    expect(result.current.laneOrder).toEqual(CANONICAL_LANE_ORDER);
-    expect(result.current.isCustomOrder).toBe(false);
-    expect(window.localStorage.getItem(storageKey)).toBeNull();
   });
 });

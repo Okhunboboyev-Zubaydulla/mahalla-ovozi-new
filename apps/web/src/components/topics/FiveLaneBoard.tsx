@@ -43,8 +43,6 @@ export interface FiveLaneBoardProps {
   onRevealNewTopics?: (lane: QualifyingLane) => void;
   districtId?: string;
   userId?: string;
-  laneOrder?: QualifyingLane[];
-  onLaneOrderChange?: (newOrder: QualifyingLane[]) => void;
 }
 
 export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
@@ -58,8 +56,6 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
   onRevealNewTopics: _onRevealNewTopics,
   districtId,
   userId,
-  laneOrder,
-  onLaneOrderChange,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -68,9 +64,7 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
   const prefersReducedMotion = usePrefersReducedMotion();
   const liveAnnouncer = useContext(LiveAnnouncerContext);
 
-  const fallbackPreference = useLaneOrderPreference(districtId, userId);
-  const effectiveLaneOrder = laneOrder ?? fallbackPreference.laneOrder;
-  const handleSetLaneOrder = onLaneOrderChange ?? fallbackPreference.setLaneOrder;
+  const { laneOrder, setLaneOrder } = useLaneOrderPreference(districtId, userId);
 
   const isFilterActive = Boolean(
     activeLanes && activeLanes.length > 0 && activeLanes.length < CANONICAL_LANE_ORDER.length
@@ -78,8 +72,8 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
 
   const lanesToRender =
     activeLanes && activeLanes.length > 0
-      ? effectiveLaneOrder.filter((l) => activeLanes.includes(l))
-      : effectiveLaneOrder;
+      ? laneOrder.filter((l) => activeLanes.includes(l))
+      : laneOrder;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -101,11 +95,11 @@ export const FiveLaneBoard: React.FC<FiveLaneBoardProps> = ({
     setActiveDragId(null);
 
     if (over && active.id !== over.id) {
-      const oldIndex = effectiveLaneOrder.indexOf(active.id as QualifyingLane);
-      const newIndex = effectiveLaneOrder.indexOf(over.id as QualifyingLane);
+      const oldIndex = laneOrder.indexOf(active.id as QualifyingLane);
+      const newIndex = laneOrder.indexOf(over.id as QualifyingLane);
       if (oldIndex !== -1 && newIndex !== -1) {
-        const newOrder = arrayMove(effectiveLaneOrder, oldIndex, newIndex);
-        handleSetLaneOrder(newOrder);
+        const newOrder = arrayMove(laneOrder, oldIndex, newIndex);
+        setLaneOrder(newOrder);
 
         const activeLaneName = LANE_LABELS[active.id as QualifyingLane] || active.id;
         if (liveAnnouncer) {

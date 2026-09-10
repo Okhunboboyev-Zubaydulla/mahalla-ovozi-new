@@ -12,7 +12,6 @@ import {
   LoadingOutlined,
   ClockCircleOutlined,
   CloseOutlined,
-  UndoOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../auth/auth-context.js';
 import { formatTashkentTime, formatTashkentLiveDateTime, TashkentLiveDateTime } from '../../lib/formatters.js';
@@ -119,8 +118,6 @@ export interface BoardToolbarProps {
   isFilterLoading?: boolean;
   searchQuery?: string;
   onSearchChange?: (val: string) => void;
-  isCustomLaneOrder?: boolean;
-  onResetLaneOrder?: () => void;
 }
 
 export const BoardToolbar: React.FC<BoardToolbarProps> = ({
@@ -143,8 +140,6 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
   isFilterLoading = false,
   searchQuery = '',
   onSearchChange,
-  isCustomLaneOrder = false,
-  onResetLaneOrder,
 }) => {
   const { actor, signOut, isSigningOut } = useAuth();
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -313,9 +308,9 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
               value={searchQuery}
               onChange={(val) => onSearchChange?.(val)}
               style={{
-                width: 270,
-                maxWidth: 300,
-                minWidth: 180,
+                width: 360,
+                maxWidth: 380,
+                minWidth: 200,
                 flexShrink: 1,
                 height: 32,
                 fontSize: 14,
@@ -388,33 +383,6 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
                 )}
               </div>
             </div>
-
-            {/* Reset Lane Order Action (Desktop View) */}
-            {isCustomLaneOrder && onResetLaneOrder && (
-              <Button
-                size="small"
-                icon={<UndoOutlined style={{ fontSize: 12 }} />}
-                onClick={onResetLaneOrder}
-                aria-label="Йўналишлар тартибини тиклаш"
-                style={{
-                  height: 32,
-                  borderRadius: 6,
-                  borderColor: '#CBD5E1',
-                  color: '#334155',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  backgroundColor: '#FFFFFF',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  flexShrink: 0,
-                  boxShadow: 'none',
-                  marginLeft: 4,
-                }}
-              >
-                Тартибни тиклаш
-              </Button>
-            )}
           </nav>
         )}
 
