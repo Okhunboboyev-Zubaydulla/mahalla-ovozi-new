@@ -284,6 +284,7 @@ export class TopicEvidenceService {
       mahallaName: topicRow.mahallaName,
       calendarDay: topicRow.calendarDay,
       summary: projectionRow?.summary ?? 'Мавзу хулосаси тайёрланмоқда...',
+      latestUpdate: projectionRow?.latestUpdate ?? null,
       primaryLane: (topicRow.primaryLane as QualifyingLane) || 'HOKIM_RELATED',
       lanes: (projectionRow?.lanes as QualifyingLane[]) || [
         topicRow.primaryLane as QualifyingLane,

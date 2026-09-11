@@ -122,6 +122,27 @@ export function formatTashkentActivityTime(isoString: string, currentCalendarDay
   }
 }
 
+export function formatTashkentRelativeTime(isoString?: string | null): string {
+  if (!isoString) return '';
+  try {
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return '';
+    const now = Date.now();
+    const diffMs = now - date.getTime();
+    if (diffMs < 0) return 'ҳозиргина';
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 60) return 'ҳозиргина';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} дақ олдин`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `${diffHours} соат олдин`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} кун олдин`;
+  } catch {
+    return '';
+  }
+}
+
 export function formatTashkentCalendarDate(calendarDay: string): string {
   try {
     if (calendarDay.includes('..')) {

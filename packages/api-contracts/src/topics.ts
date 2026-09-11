@@ -44,6 +44,7 @@ export const TopicCardItemSchema = z.object({
   isNew: z.boolean(),
   isUpdated: z.boolean(),
   searchMatchBadge: SearchMatchBadgeSchema.nullable().optional(),
+  latestUpdate: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

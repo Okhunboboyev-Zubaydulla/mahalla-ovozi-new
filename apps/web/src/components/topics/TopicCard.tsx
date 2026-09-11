@@ -16,6 +16,7 @@ import {
 } from '@mahalla-ovozi/api-contracts';
 import { formatTashkentCalendarDate, formatTashkentTime } from '../../lib/formatters.js';
 import { TopicSummaryBody } from './TopicSummaryBody.js';
+import { TopicLatestUpdateCallout } from './TopicLatestUpdateCallout.js';
 import { themeColors } from '../../theme/antd-theme.js';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 import { useTopicReadState } from '../../hooks/useTopicReadState.js';
@@ -270,6 +271,14 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
         lineHeight="20px"
         fontWeight={500}
         color="#0F172A"
+      />
+
+      {/* Dynamic Contextual Latest Message Update (gated to evidenceCount >= 2) */}
+      <TopicLatestUpdateCallout
+        latestUpdate={topic.latestUpdate}
+        evidenceCount={topic.evidenceCount}
+        timestamp={topic.latestMeaningfulActivityTimestamp}
+        searchQuery={searchQuery}
       />
 
       {/* Hokim Appeal Micro-Chip & Additional Lanes */}

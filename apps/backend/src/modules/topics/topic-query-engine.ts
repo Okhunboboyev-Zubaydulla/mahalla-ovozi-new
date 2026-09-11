@@ -125,6 +125,7 @@ export interface RawTopicRow extends Record<string, unknown> {
   createdAt: Date;
   updatedAt: Date;
   summary: string;
+  latestUpdate?: string | null;
   lanes: QualifyingLane[] | null;
   isHokimRelated: boolean;
   latestMeaningfulActivityTimestamp: Date;
@@ -311,6 +312,7 @@ export async function queryTopics(db: DbClient, params: TopicQueryFilters): Prom
       t.created_at AS "createdAt", 
       t.updated_at AS "updatedAt",
       COALESCE(tp.summary, 'Мавзу хулосаси тайёрланмоқда...') AS summary, 
+      tp.latest_update AS "latestUpdate",
       COALESCE(tp.lanes, jsonb_build_array(t.primary_lane)) AS lanes, 
       COALESCE(tp.is_hokim_related, (t.primary_lane = 'HOKIM_RELATED')) AS "isHokimRelated", 
       COALESCE(tp.latest_meaningful_activity_timestamp, t.latest_relevant_evidence_timestamp, t.created_at) AS "latestMeaningfulActivityTimestamp",
@@ -395,6 +397,7 @@ export async function queryTopics(db: DbClient, params: TopicQueryFilters): Prom
       mahallaName: row.mahallaName,
       calendarDay: row.calendarDay,
       summary: row.summary,
+      latestUpdate: row.latestUpdate ?? null,
       primaryLane: (row.primaryLane as QualifyingLane) || 'HOKIM_RELATED',
       lanes: allLanes,
       additionalLanes,

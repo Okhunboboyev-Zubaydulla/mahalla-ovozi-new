@@ -86,6 +86,13 @@ export const TopicProjectionResultSchema = z
         .describe(
           'Volume-aware cautious attribution (e.g. "Маҳалла фуқароси" for single report, "Маҳалла аҳолиси" or "Бир нечта фуқаролар" for multiple corroborating reports, or permitted resident username/display name)',
         ),
+      latest_update: z
+        .string()
+        .nullable()
+        .optional()
+        .describe(
+          'Concise 1-sentence contextual Uzbek Cyrillic synthesis of what the latest accepted message conveys in context (New Detail, Resolution, or Confirmation). Strictly null if target topic has only 1 message.',
+        ),
       is_hokim_related: z
         .boolean()
         .describe(
@@ -113,6 +120,7 @@ export interface TopicProjectionInput {
 
 export interface TopicProjectionEvaluation {
   summary: string;
+  latestUpdate: string | null;
   lanes: QualifyingLane[];
   primaryLane: QualifyingLane;
   anchorEvidenceId: string;
@@ -246,6 +254,15 @@ These empirical learnings guide accurate translation of colloquial Telegram comp
     - WATER: "Сув таъминотида узилиш ёки беқарорлик хабар қилинмоқда."
     - GAS: "Газ таъминотида узилиш ёки босим пастлиги хабар қилинмоқда."
     - ELECTRICITY: "Электр таъминотида узилиш ёки беқарорлик хабар қилинмоқда."
+
+### 9. CONTEXTUAL LATEST UPDATE (latest_update) DIRECTIVE
+- Evaluate what the LATEST accepted evidence item conveys in context of preceding accepted messages for the target topic:
+  - SINGLE-MESSAGE TOPICS: If target topic evidence has only 1 message, you MUST return "latest_update": null (the main summary already conveys the report).
+  - MULTI-MESSAGE TOPICS (2 or more messages): You MUST synthesize what the latest message communicates in context into exactly 1 concise, factual sentence in authentic Uzbek Cyrillic (max 150 characters), classifying it into one of three archetypes:
+    1. New Detail / Location / Hazard: If the latest message introduces a specific localized landmark, address, or hazard (e.g. "14-уй олдида кабел ёнаётгани маълум қилинди", "Боғзор кўчасида ҳам сув босими пасайгани айтилди").
+    2. Status Change / Resolution: If the latest message indicates service restoration, repair arrival, or resolution (e.g. "Аҳоли электр таъминоти қайта тикланганини хабар қилди", "Сув берилгани билдирилди").
+    3. Confirmation / Escalation: If the latest message is a dependent follow-up, reply, "+1", or repetition (e.g. "bizda ham o'chdi", "ha to'g'ri", "suv hali ham yo'q"), synthesize it as a corroborating confirmation or ongoing outage (e.g. "Яна бир фуқаро узилишни тасдиқлади", "Аҳоли муаммо ҳали ҳам бартараф этилмаганини таъкидлади").
+  - NEVER output conversational chat chatter, Latin/slang verbatim quotes, or bureaucratic filler in latest_update.
 
 ### OUTPUT FORMAT
 Respond strictly with valid JSON conforming to the requested schema.`;
@@ -486,7 +503,8 @@ ${otherSections.join('\n\n')}`);
     if (
       phoneRegex.test(data.summary) ||
       phoneRegex.test(data.anchor_quote) ||
-      (data.attribution && phoneRegex.test(data.attribution))
+      (data.attribution && phoneRegex.test(data.attribution)) ||
+      (data.latest_update && phoneRegex.test(data.latest_update))
     ) {
       throw new AiGatewayError(
         'INVALID_OUTPUT_SEMANTICS',
@@ -503,9 +521,28 @@ ${otherSections.join('\n\n')}`);
         `Summary contains prohibited bureaucratic filler/placeholder: "${data.summary}". Must state the core reported civic disruption directly.`,
       );
     }
+    if (data.latest_update && bureaucraticFillerRegex.test(data.latest_update)) {
+      throw new AiGatewayError(
+        'INVALID_OUTPUT_SEMANTICS',
+        `Latest update contains prohibited bureaucratic filler/placeholder: "${data.latest_update}".`,
+      );
+    }
+
+    // Guardrail 7: latest_update handling and Uzbek Cyrillic validation
+    let resolvedLatestUpdate: string | null = null;
+    if (targetEvidence.length > 1 && data.latest_update && data.latest_update.trim().length > 0) {
+      if (!isUzbekCyrillic(data.latest_update)) {
+        throw new AiGatewayError(
+          'INVALID_OUTPUT_SEMANTICS',
+          `Latest update must contain authentic Uzbek Cyrillic characters (got: "${data.latest_update}")`,
+        );
+      }
+      resolvedLatestUpdate = data.latest_update.trim();
+    }
 
     return {
       summary: data.summary,
+      latestUpdate: resolvedLatestUpdate,
       lanes: data.lanes,
       primaryLane: input.primaryLane,
       anchorEvidenceId: resolvedAnchorEvidence.id,

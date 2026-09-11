@@ -250,6 +250,7 @@ export async function processTopicProjectionJobs(
                     lanes: evaluation.lanes,
                     anchorEvidenceId: evaluation.anchorEvidenceId,
                     isHokimRelated: evaluation.isHokimRelated,
+                    latestUpdate: evaluation.latestUpdate,
                   },
                 })
                 .onConflictDoUpdate({
@@ -264,6 +265,7 @@ export async function processTopicProjectionJobs(
                       lanes: evaluation.lanes,
                       anchorEvidenceId: evaluation.anchorEvidenceId,
                       isHokimRelated: evaluation.isHokimRelated,
+                      latestUpdate: evaluation.latestUpdate,
                     },
                     updatedAt: new Date(),
                   },
@@ -287,6 +289,7 @@ export async function processTopicProjectionJobs(
                   mahallaName,
                   calendarDay,
                   summary: evaluation.summary,
+                  latestUpdate: evaluation.latestUpdate,
                   lanes: evaluation.lanes,
                   primaryLane: lockedTopic.primaryLane,
                   anchorEvidenceId: evaluation.anchorEvidenceId,
@@ -306,6 +309,7 @@ export async function processTopicProjectionJobs(
                   target: topicProjections.topicId,
                   set: {
                     summary: evaluation.summary,
+                    latestUpdate: evaluation.latestUpdate,
                     lanes: evaluation.lanes,
                     anchorEvidenceId: evaluation.anchorEvidenceId,
                     anchorQuote: evaluation.anchorQuote,

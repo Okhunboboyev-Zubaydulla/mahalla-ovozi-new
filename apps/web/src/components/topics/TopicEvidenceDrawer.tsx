@@ -16,6 +16,7 @@ import { LANE_LABELS, LANE_STYLES } from './TopicCard.js';
 import { EvidenceTimeline } from './EvidenceTimeline.js';
 import { formatTashkentActivityTime } from '../../lib/formatters.js';
 import { TopicSummaryBody } from './TopicSummaryBody.js';
+import { TopicLatestUpdateCallout } from './TopicLatestUpdateCallout.js';
 
 const { Title, Text } = Typography;
 
@@ -324,6 +325,13 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
               fontSize={14}
               lineHeight="20px"
               color="#1E293B"
+            />
+
+            {/* Dynamic Contextual Latest Message Update */}
+            <TopicLatestUpdateCallout
+              latestUpdate={topic.latestUpdate}
+              evidenceCount={topic.evidenceCount}
+              timestamp={topic.latestMeaningfulActivityTimestamp}
             />
 
             {/* Latest Activity Time + Total Evidence Count */}

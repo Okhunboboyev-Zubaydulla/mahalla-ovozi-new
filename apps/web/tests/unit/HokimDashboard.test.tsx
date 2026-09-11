@@ -180,7 +180,7 @@ describe('Hokim Dashboard Component & Integration Tests (Story 3.1)', () => {
       expect(screen.getByText('Сув босими пасайиши кузатилмоқда.')).toBeTruthy();
       expect(screen.getByText('4')).toBeTruthy();
       expect(screen.getByText('Янги мавзу')).toBeTruthy();
-      expect(screen.getByText('Ҳокимга оид')).toBeTruthy();
+      expect(screen.getByText('Ҳокимга мурожаат бор')).toBeTruthy();
     });
 
     it('renders unread delta badge in footer when isUpdated is true and isNew is false', () => {

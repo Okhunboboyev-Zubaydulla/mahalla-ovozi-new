@@ -1156,9 +1156,157 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
       expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('PART I: CORE PROJECTION PRINCIPLES & GUARDRAILS');
       expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('PART II: EMPIRICAL TELEGRAM FIELD LEARNINGS & DIALECT TRANSLATION KEYS');
       expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('UZBEK DIALECT HOMONYM & TARIFF/INTERMITTENCY DISAMBIGUATION');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('CONTEXTUAL LATEST UPDATE (latest_update) DIRECTIVE');
       expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('suv kemadiku');
       expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('qurimoq');
       expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('уй қурилиши');
+    });
+
+    describe('latest_update Contextual Field Tests', () => {
+      it('suppresses latestUpdate to null when topic has only 1 message, even if LLM generated a string', async () => {
+        const snapshot: MahallaDailySnapshot = {
+          districtId: 'dist_test_1',
+          mahallaName: 'Юнусобод',
+          calendarDay: '2026-09-11',
+          evidence: [
+            {
+              id: 'evi_single_1',
+              topicId: 'top_single_1',
+              lane: 'WATER',
+              verbatimText: 'Сув ўчди 14-уйда',
+              originalTimestamp: '2026-09-11T10:00:00.000Z',
+              telegramMessageId: '1001',
+            },
+          ],
+          contextRevision: 1,
+          snapshotFingerprint: 'fp_single',
+        };
+
+        const mockGateway = createMockAiGateway({
+          summary: 'Сув таъминотида узилиш хабар қилинмоқда.',
+          latest_update: '14-уйда сув ўчгани айтилмоқда',
+          lanes: ['WATER'],
+          anchor_evidence_id: 'evi_single_1',
+          anchor_quote: 'Сув ўчди 14-уйда',
+          latest_meaningful_activity_timestamp: '2026-09-11T10:00:00.000Z',
+          attribution: 'Маҳалла фуқароси',
+          is_hokim_related: false,
+        });
+
+        const evaluator = new TopicProjectionEvaluator(mockGateway);
+        const result = await evaluator.evaluateTopicProjection({
+          topicId: 'top_single_1',
+          primaryLane: 'WATER',
+          generation: 1,
+          snapshot,
+          profileId: 'prof_proj_2026_08_v1',
+        });
+
+        expect(result.summary).toBe('Сув таъминотида узилиш хабар қилинмоқда.');
+        expect(result.latestUpdate).toBeNull();
+      });
+
+      it('preserves valid Uzbek Cyrillic latestUpdate when topic has 2 or more messages', async () => {
+        const snapshot: MahallaDailySnapshot = {
+          districtId: 'dist_test_1',
+          mahallaName: 'Юнусобод',
+          calendarDay: '2026-09-11',
+          evidence: [
+            {
+              id: 'evi_multi_1',
+              topicId: 'top_multi_1',
+              lane: 'ELECTRICITY',
+              verbatimText: 'Свет ўчди',
+              originalTimestamp: '2026-09-11T10:00:00.000Z',
+              telegramMessageId: '1001',
+            },
+            {
+              id: 'evi_multi_2',
+              topicId: 'top_multi_1',
+              lane: 'ELECTRICITY',
+              verbatimText: '14-уй олдида сим ёниб кетди',
+              originalTimestamp: '2026-09-11T10:15:00.000Z',
+              telegramMessageId: '1002',
+            },
+          ],
+          contextRevision: 2,
+          snapshotFingerprint: 'fp_multi',
+        };
+
+        const mockGateway = createMockAiGateway({
+          summary: 'Электр таъминотида узилиш юз бергани хабар қилинмоқда.',
+          latest_update: '14-уй олдида электр сими ёнаётгани маълум қилинди',
+          lanes: ['ELECTRICITY'],
+          anchor_evidence_id: 'evi_multi_1',
+          anchor_quote: 'Свет ўчди',
+          latest_meaningful_activity_timestamp: '2026-09-11T10:15:00.000Z',
+          attribution: 'Маҳалла аҳолиси',
+          is_hokim_related: false,
+        });
+
+        const evaluator = new TopicProjectionEvaluator(mockGateway);
+        const result = await evaluator.evaluateTopicProjection({
+          topicId: 'top_multi_1',
+          primaryLane: 'ELECTRICITY',
+          generation: 2,
+          snapshot,
+          profileId: 'prof_proj_2026_08_v1',
+        });
+
+        expect(result.summary).toBe('Электр таъминотида узилиш юз бергани хабар қилинмоқда.');
+        expect(result.latestUpdate).toBe('14-уй олдида электр сими ёнаётгани маълум қилинди');
+        expect(isUzbekCyrillic(result.latestUpdate!)).toBe(true);
+      });
+
+      it('rejects latest_update with non-Cyrillic text when evidence count > 1', async () => {
+        const snapshot: MahallaDailySnapshot = {
+          districtId: 'dist_test_1',
+          mahallaName: 'Юнусобод',
+          calendarDay: '2026-09-11',
+          evidence: [
+            {
+              id: 'evi_lat_1',
+              topicId: 'top_lat_1',
+              lane: 'GAS',
+              verbatimText: 'Gaz yoq',
+              originalTimestamp: '2026-09-11T10:00:00.000Z',
+              telegramMessageId: '1001',
+            },
+            {
+              id: 'evi_lat_2',
+              topicId: 'top_lat_1',
+              lane: 'GAS',
+              verbatimText: 'Bizda ham ochdi',
+              originalTimestamp: '2026-09-11T10:15:00.000Z',
+              telegramMessageId: '1002',
+            },
+          ],
+          contextRevision: 2,
+          snapshotFingerprint: 'fp_lat',
+        };
+
+        const mockGateway = createMockAiGateway({
+          summary: 'Газ таъминотида узилиш ёки босим пастлиги хабар қилинмоқда.',
+          latest_update: 'Another resident confirmed gas outage',
+          lanes: ['GAS'],
+          anchor_evidence_id: 'evi_lat_1',
+          anchor_quote: 'Gaz yoq',
+          latest_meaningful_activity_timestamp: '2026-09-11T10:15:00.000Z',
+          attribution: 'Маҳалла аҳолиси',
+          is_hokim_related: false,
+        });
+
+        const evaluator = new TopicProjectionEvaluator(mockGateway);
+        await expect(
+          evaluator.evaluateTopicProjection({
+            topicId: 'top_lat_1',
+            primaryLane: 'GAS',
+            generation: 2,
+            snapshot,
+            profileId: 'prof_proj_2026_08_v1',
+          }),
+        ).rejects.toThrow('Latest update must contain authentic Uzbek Cyrillic characters');
+      });
     });
   });
 });

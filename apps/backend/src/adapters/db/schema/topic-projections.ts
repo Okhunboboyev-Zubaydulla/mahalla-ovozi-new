@@ -18,6 +18,7 @@ export const topicProjections = pgTable(
     mahallaName: text('mahalla_name').notNull(),
     calendarDay: text('calendar_day').notNull(), // 'YYYY-MM-DD' in Asia/Tashkent
     summary: text('summary').notNull(),
+    latestUpdate: text('latest_update'),
     lanes: jsonb('lanes').$type<QualifyingLane[]>().notNull(),
     primaryLane: text('primary_lane').notNull(), // 'WATER' | 'ELECTRICITY' | 'GAS' | 'WASTE' | 'HOKIM_RELATED'
     anchorEvidenceId: text('anchor_evidence_id')
