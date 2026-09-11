@@ -9,6 +9,8 @@ export interface AcceptedEvidenceItem {
   id: string;
   topicId?: string;
   telegramMessageId: string;
+  telegramUserId?: string;
+  authorHandle?: string;
   originalTimestamp: string; // ISO-8601 string
   verbatimText: string;
   lane?: string;
@@ -63,6 +65,8 @@ export async function getMahallaDailySnapshot(
         id: acceptedEvidence.id,
         topicId: acceptedEvidence.topicId,
         telegramMessageId: acceptedEvidence.telegramMessageId,
+        telegramUserId: acceptedEvidence.telegramUserId,
+        userMetadata: acceptedEvidence.userMetadata,
         originalTimestamp: acceptedEvidence.originalTimestamp,
         verbatimText: acceptedEvidence.verbatimText,
         lane: topics.primaryLane,
@@ -80,10 +84,19 @@ export async function getMahallaDailySnapshot(
       );
 
     for (const row of rows) {
+      const meta = row.userMetadata as { username?: string; firstName?: string; lastName?: string } | null;
+      const authorHandle = meta?.username
+        ? `@${meta.username}`
+        : meta?.firstName
+          ? meta.firstName
+          : undefined;
+
       evidence.push({
         id: row.id,
         topicId: row.topicId,
         telegramMessageId: row.telegramMessageId,
+        telegramUserId: row.telegramUserId || undefined,
+        authorHandle,
         originalTimestamp: row.originalTimestamp.toISOString(),
         verbatimText: row.verbatimText,
         lane: row.lane,
@@ -157,6 +170,8 @@ export function assertSnapshotRevision(currentRevision: number, expectedRevision
 export interface FormatEvidenceItemOptions {
   includeId?: boolean;
   includeLane?: boolean;
+  includeAuthor?: boolean;
+  authorLabel?: string;
   indent?: string;
   prefix?: string;
   timeLabel?: 'Timestamp' | 'Time';
@@ -174,10 +189,15 @@ export function formatEvidenceItemLine(
   const indent = options.indent ?? '';
   const prefix = options.prefix ?? `#${index + 1}`;
   const idPart = options.includeId ? `ID: ${item.id} | ` : '';
+  const authorPart = options.authorLabel
+    ? `Author: [${options.authorLabel}] | `
+    : options.includeAuthor && (item.authorHandle || item.telegramUserId)
+      ? `Author: [${item.authorHandle || item.telegramUserId}] | `
+      : '';
   const timeLabel = options.timeLabel ?? 'Timestamp';
   const offsetPart = options.relativeTimeOffset ? ` (${options.relativeTimeOffset})` : '';
   const lanePart = options.includeLane && item.lane ? ` | Lane: [${item.lane}]` : '';
-  return `${indent}[${prefix}] ${idPart}${timeLabel}: ${item.originalTimestamp}${offsetPart} | MsgID: ${item.telegramMessageId}${lanePart} | Text: "${item.verbatimText}"`;
+  return `${indent}[${prefix}] ${idPart}${authorPart}${timeLabel}: ${item.originalTimestamp}${offsetPart} | MsgID: ${item.telegramMessageId}${lanePart} | Text: "${item.verbatimText}"`;
 }
 
 /**

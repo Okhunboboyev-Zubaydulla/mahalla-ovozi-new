@@ -189,6 +189,102 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
       expect(prompt).toContain('top_water_2');
     });
 
+    it('formats single-citizen multi-message topic with Citizen #1 and Same citizen labels', () => {
+      const singleCitizenSnapshot: MahallaDailySnapshot = {
+        districtId: 'dist_tashkent_chilanzar',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-11',
+        contextRevision: 2,
+        snapshotFingerprint: 'fp_same_author',
+        evidence: [
+          {
+            id: 'evi_416',
+            topicId: 'top_water_1',
+            telegramMessageId: '416',
+            telegramUserId: 'user_zubaydulla_751',
+            authorHandle: '@ZubaydullaOkhunboboyev',
+            originalTimestamp: '2026-09-11T16:03:10.000Z',
+            verbatimText: 'suv quridimi hammada',
+            lane: 'WATER',
+          },
+          {
+            id: 'evi_417',
+            topicId: 'top_water_1',
+            telegramMessageId: '417',
+            telegramUserId: 'user_zubaydulla_751',
+            authorHandle: '@ZubaydullaOkhunboboyev',
+            originalTimestamp: '2026-09-11T16:03:25.000Z',
+            verbatimText: 'yoki bizdami faqat',
+            lane: 'WATER',
+          },
+        ],
+      };
+
+      const evaluator = new TopicProjectionEvaluator(createMockAiGateway({} as any));
+      const prompt = evaluator.buildUserPrompt({
+        topicId: 'top_water_1',
+        primaryLane: 'WATER',
+        generation: 1,
+        snapshot: singleCitizenSnapshot,
+      });
+
+      expect(prompt).toContain('- Distinct Reporting Residents: 1 unique citizen (Citizen #1)');
+      expect(prompt).toContain('- Total Evidence Items: 2 message(s)');
+      expect(prompt).toContain('Author: [Citizen #1 (@ZubaydullaOkhunboboyev)]');
+      expect(prompt).toContain('Author: [Citizen #1 (Same citizen)]');
+    });
+
+    it('formats multi-citizen topic with distinct citizen indices', () => {
+      const multiCitizenSnapshot: MahallaDailySnapshot = {
+        districtId: 'dist_tashkent_chilanzar',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-09-11',
+        contextRevision: 2,
+        snapshotFingerprint: 'fp_multi_author',
+        evidence: [
+          {
+            id: 'evi_1',
+            topicId: 'top_water_1',
+            telegramMessageId: '100',
+            telegramUserId: 'user_1',
+            authorHandle: '@citizen1',
+            originalTimestamp: '2026-09-11T16:00:00.000Z',
+            verbatimText: 'suv yo`q',
+            lane: 'WATER',
+          },
+          {
+            id: 'evi_2',
+            topicId: 'top_water_1',
+            telegramMessageId: '101',
+            telegramUserId: 'user_2',
+            authorHandle: '@citizen2',
+            originalTimestamp: '2026-09-11T16:05:00.000Z',
+            verbatimText: 'bizda ham yo`q',
+            lane: 'WATER',
+          },
+        ],
+      };
+
+      const evaluator = new TopicProjectionEvaluator(createMockAiGateway({} as any));
+      const prompt = evaluator.buildUserPrompt({
+        topicId: 'top_water_1',
+        primaryLane: 'WATER',
+        generation: 1,
+        snapshot: multiCitizenSnapshot,
+      });
+
+      expect(prompt).toContain('- Distinct Reporting Residents: 2 distinct citizens');
+      expect(prompt).toContain('Author: [Citizen #1 (@citizen1)]');
+      expect(prompt).toContain('Author: [Citizen #2 (@citizen2)]');
+    });
+
+    it('verifies system prompt contains author continuity invariants preventing false corroboration', () => {
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('CRITICAL AUTHOR CONTINUITY INVARIANT');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('SAME CITIZEN CONTINUATION');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('STRICTLY FORBIDDEN: "Яна бир фуқаро узилишни тасдиқлади"');
+      expect(TOPIC_PROJECTION_SYSTEM_PROMPT).toContain('DISTINCT CITIZEN CORROBORATION');
+    });
+
     it('successfully evaluates and returns projection when all guardrails pass', async () => {
       const validResult: TopicProjectionResult = {
         summary: 'Маҳалла аҳолиси хабарига кўра, электр таъминотида узилиш юз берган.',

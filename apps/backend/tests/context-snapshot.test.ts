@@ -129,6 +129,30 @@ describe('Context Snapshot Kernel & Cryptographic Integrity Tests (AD-5, AD-6)',
       );
     });
 
+    it('formats evidence item line with authorLabel when provided', () => {
+      const line = formatEvidenceItemLine(sampleEvidence[0]!, 0, {
+        prefix: 'Evidence #1',
+        includeId: true,
+        authorLabel: 'Citizen #1 (@Zubaydulla)',
+        timeLabel: 'Time',
+      });
+      expect(line).toBe(
+        '[Evidence #1] ID: ev_1 | Author: [Citizen #1 (@Zubaydulla)] | Time: 2026-08-25T10:00:00.000Z | MsgID: 1001 | Text: "Elektr ta`minotida uzilishlar bo`lyapti"',
+      );
+    });
+
+    it('formats evidence item line with includeAuthor using item.authorHandle or item.telegramUserId', () => {
+      const evidenceWithAuthor: AcceptedEvidenceItem = {
+        ...sampleEvidence[0]!,
+        authorHandle: '@testuser',
+        telegramUserId: '12345678',
+      };
+      const line = formatEvidenceItemLine(evidenceWithAuthor, 0, {
+        includeAuthor: true,
+      });
+      expect(line).toContain('Author: [@testuser]');
+    });
+
     it('formats flat evidence list correctly with relative time offsets', () => {
       const list = formatSnapshotEvidenceList(sampleEvidence.slice(0, 2), {
         includeLane: true,

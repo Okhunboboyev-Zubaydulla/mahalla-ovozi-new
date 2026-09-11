@@ -195,9 +195,9 @@ PART I: CORE PROJECTION PRINCIPLES & GUARDRAILS
   - Do NOT invent Hokim recommendations, sentiment, urgency scores, or required actions.
 
 ### 2. VOLUME-AWARE ATTRIBUTION & PRIVACY
-- Match attribution strictly to the volume and specificity of reporting residents:
-  - If the target Topic contains evidence from a single resident (1 message), attribute to "Маҳалла фуқароси" (or permitted resident Telegram display name/username if provided). NEVER attribute a single message to "Маҳалла аҳолиси" or plural "Фуқаролар".
-  - If the target Topic contains corroborating evidence from multiple residents, attribute to "Маҳалла аҳолиси" or "Бир нечта фуқаролар".
+- Match attribution strictly to the volume of UNIQUE REPORTING CITIZENS (Distinct Reporting Residents):
+  - If the target Topic contains evidence from a single unique resident (even across multiple messages, e.g. Citizen #1 continuing their thought), attribute to "Маҳалла фуқароси" (or permitted resident Telegram display name/username if provided). NEVER attribute reports from a single resident to "Маҳалла аҳолиси" or plural "Фуқаролар", even if there are multiple messages from that same resident.
+  - If the target Topic contains corroborating evidence from 2 or more DISTINCT residents (e.g. Citizen #1 and Citizen #2), attribute to "Маҳалла аҳолиси" or "Бир нечта фуқаролар".
 - NEVER include, infer, or reconstruct phone numbers.
 
 ### 3. MULTI-LANE DERIVATION
@@ -261,7 +261,12 @@ These empirical learnings guide accurate translation of colloquial Telegram comp
   - MULTI-MESSAGE TOPICS (2 or more messages): You MUST synthesize what the latest message communicates in context into exactly 1 concise, factual sentence in authentic Uzbek Cyrillic (max 150 characters), classifying it into one of three archetypes:
     1. New Detail / Location / Hazard: If the latest message introduces a specific localized landmark, address, or hazard (e.g. "14-уй олдида кабел ёнаётгани маълум қилинди", "Боғзор кўчасида ҳам сув босими пасайгани айтилди").
     2. Status Change / Resolution: If the latest message indicates service restoration, repair arrival, or resolution (e.g. "Аҳоли электр таъминоти қайта тикланганини хабар қилди", "Сув берилгани билдирилди").
-    3. Confirmation / Escalation: If the latest message is a dependent follow-up, reply, "+1", or repetition (e.g. "bizda ham o'chdi", "ha to'g'ri", "suv hali ham yo'q"), synthesize it as a corroborating confirmation or ongoing outage (e.g. "Яна бир фуқаро узилишни тасдиқлади", "Аҳоли муаммо ҳали ҳам бартараф этилмаганини таъкидлади").
+    3. Confirmation / Elaboration:
+       - CRITICAL AUTHOR CONTINUITY INVARIANT:
+         * SAME CITIZEN CONTINUATION: If the latest message is from the SAME citizen as the preceding message (marked as "Same citizen", e.g. Citizen #1 adding details, asking follow-up questions like "yoki bizdami faqat", or continuing their sentence), you MUST NEVER describe it as a new citizen or corroboration!
+           STRICTLY FORBIDDEN: "Яна бир фуқаро узилишни тасдиқлади", "Бошқа фуқаро тасдиқлади", "Яна бир фуқаро қўшилди".
+           Instead, synthesize what that same resident added, asked, or clarified (e.g. "Фуқаро муаммо бошқа хонадонларда ҳам бор-йўқлигини суриштирди", "Фуқаро хабарига қўшимча изоҳ берди", "Фуқаро вазият юзасидан қайта мурожаат қилди").
+         * DISTINCT CITIZEN CORROBORATION: ONLY when the latest message is sent by a DIFFERENT citizen (different Citizen # index, e.g. Citizen #2 replying "+1", "bizda ham o'chdi", "ha to'g'ri"), synthesize it as corroboration from another resident (e.g. "Яна бир фуқаро узилишни тасдиқлади", "Бошқа бир фуқаро ҳам таъминот йўқлигини маълум қилди", "Аҳоли муаммо ҳали ҳам бартараф этилмаганини таъкидлади").
   - NEVER output conversational chat chatter, Latin/slang verbatim quotes, or bureaucratic filler in latest_update.
 
 ### OUTPUT FORMAT
@@ -313,16 +318,43 @@ export class TopicProjectionEvaluator {
           ? targetEvidence.slice(-15)
           : targetEvidence;
 
+      const authorMap = new Map<string, number>();
+      let nextCitizenIndex = 1;
+
       const targetItemsText = cappedTargetEvidence
-        .map((it, idx) =>
-          formatEvidenceItemLine(it, idx, {
+        .map((it, idx) => {
+          const authorKey =
+            it.telegramUserId || it.authorHandle || `author_unknown_${it.telegramMessageId}`;
+          let citizenNum = authorMap.get(authorKey);
+          let isFirst = false;
+          if (citizenNum === undefined) {
+            citizenNum = nextCitizenIndex++;
+            authorMap.set(authorKey, citizenNum);
+            isFirst = true;
+          }
+
+          const handleSuffix = it.authorHandle ? ` (${it.authorHandle})` : '';
+          const authorLabel = isFirst
+            ? `Citizen #${citizenNum}${handleSuffix}`
+            : `Citizen #${citizenNum} (Same citizen)`;
+
+          return formatEvidenceItemLine(it, idx, {
             prefix: `Evidence #${idx + 1}`,
             includeId: true,
             indent: '  ',
             timeLabel: 'Time',
-          }),
-        )
+            authorLabel,
+          });
+        })
         .join('\n');
+
+      const uniqueCitizenCount = authorMap.size;
+      const citizenSummary =
+        uniqueCitizenCount === 1
+          ? `1 unique citizen (Citizen #1)`
+          : `${uniqueCitizenCount} distinct citizens`;
+
+      sections[0] += `\n- Distinct Reporting Residents: ${citizenSummary}\n- Total Evidence Items: ${targetEvidence.length} message(s)`;
 
       sections.push(`### ACCEPTED EVIDENCE FOR TARGET TOPIC (${input.topicId})
 ${targetItemsText}`);
