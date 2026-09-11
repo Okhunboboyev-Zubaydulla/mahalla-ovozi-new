@@ -31,15 +31,19 @@ export const districtTopicsClient = {
   async getTopicEvidence(
     districtId: string,
     topicId: string,
-    query: TopicEvidenceQuery = {},
+    query?: TopicEvidenceQuery,
     signal?: AbortSignal,
   ): Promise<TopicEvidenceResponse> {
+    const effectiveQuery = query ?? {};
     const searchParams = new URLSearchParams();
-    if (query.cursor) {
-      searchParams.set('cursor', query.cursor);
+    if (effectiveQuery.cursor) {
+      searchParams.set('cursor', effectiveQuery.cursor);
     }
-    if (query.limit) {
-      searchParams.set('limit', String(query.limit));
+    if (effectiveQuery.limit) {
+      searchParams.set('limit', String(effectiveQuery.limit));
+    }
+    if (effectiveQuery.order) {
+      searchParams.set('order', effectiveQuery.order);
     }
     const queryString = searchParams.toString() ? `?${searchParams.toString()}` : '';
 

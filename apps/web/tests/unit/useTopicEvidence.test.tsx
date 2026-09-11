@@ -198,4 +198,61 @@ describe('Story 3.3: useTopicEvidence Synchronization & Invalidation Tests', () 
     expect(boardCache?.lanes?.WATER?.topics[0]?.evidenceCount).toBe(3);
     expect(boardCache?.lanes?.WATER?.topics[0]?.latestMeaningfulActivityTimestamp).toBe('2026-08-24T09:15:00.000Z');
   });
+
+  it('passes order DESC to getTopicEvidence and sorts evidenceList descending', async () => {
+    const itemOld: TopicEvidenceItem = {
+      id: 'evi_1',
+      topicId: 'top_100',
+      verbatimText: 'Эски хабар',
+      contentType: 'TEXT',
+      originalTimestamp: '2026-08-24T08:00:00.000Z',
+      formattedTime: '24.08.2026 13:00',
+      authorName: 'Алишер',
+      authorUsername: '@alisher',
+      isAnchor: true,
+      isHokimRelated: false,
+      telegramDeepLink: null,
+    };
+
+    const itemNew: TopicEvidenceItem = {
+      id: 'evi_2',
+      topicId: 'top_100',
+      verbatimText: 'Янги хабар',
+      contentType: 'TEXT',
+      originalTimestamp: '2026-08-24T09:00:00.000Z',
+      formattedTime: '24.08.2026 14:00',
+      authorName: 'Ботир',
+      authorUsername: '@botir',
+      isAnchor: false,
+      isHokimRelated: false,
+      telegramDeepLink: null,
+    };
+
+    const mockEvidenceResponse: TopicEvidenceResponse = {
+      topic: mockTopic,
+      anchorQuote: 'Эски хабар',
+      anchorEvidenceId: 'evi_1',
+      evidence: [itemNew, itemOld],
+      totalCount: 2,
+      nextCursor: null,
+      hasNextPage: false,
+    };
+
+    const getSpy = vi.spyOn(hokimTopicsClient, 'getTopicEvidence').mockResolvedValueOnce(mockEvidenceResponse);
+
+    const { result } = renderHook(() => useTopicEvidence('top_100', { order: 'DESC' }), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(getSpy).toHaveBeenCalledWith(
+      'top_100',
+      expect.objectContaining({ order: 'DESC' }),
+      expect.any(AbortSignal),
+    );
+
+    expect(result.current.evidenceList[0]?.id).toBe('evi_2');
+    expect(result.current.evidenceList[1]?.id).toBe('evi_1');
+  });
 });

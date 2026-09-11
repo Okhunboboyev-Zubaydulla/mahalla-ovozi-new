@@ -5,23 +5,27 @@ export interface UseBottomSentinelObserverOptions {
   sentinelRef: RefObject<HTMLElement | null>;
   thresholdOffsetPx: number;
   enabled: boolean;
+  direction?: 'bottom' | 'top';
 }
 
 /**
  * Zero-overhead scroll position detection using native IntersectionObserver.
  * Completely replaces onScroll event listeners, eliminating layout thrashing and main-thread lag.
+ * Supports both bottom sentinel (detecting scroll-up) and top sentinel (detecting scroll-down).
  */
 export function useBottomSentinelObserver({
   rootRef,
   sentinelRef,
   thresholdOffsetPx,
   enabled,
+  direction,
 }: UseBottomSentinelObserverOptions): boolean {
-  const [isScrolledUp, setIsScrolledUp] = useState<boolean>(false);
+  const [isScrolledAway, setIsScrolledAway] = useState<boolean>(false);
+  const effectiveDirection = direction ?? 'bottom';
 
   useEffect(() => {
     if (!enabled) {
-      setIsScrolledUp(false);
+      setIsScrolledAway(false);
       return;
     }
 
@@ -35,21 +39,28 @@ export function useBottomSentinelObserver({
       return;
     }
 
-    // Positive bottom rootMargin extends the intersection trigger zone upwards by thresholdOffsetPx
+    // Root margin configuration:
+    // For bottom sentinel: extends upwards by thresholdOffsetPx
+    // For top sentinel: extends downwards by thresholdOffsetPx
+    const rootMargin =
+      effectiveDirection === 'top'
+        ? `${thresholdOffsetPx}px 0px 0px 0px`
+        : `0px 0px ${thresholdOffsetPx}px 0px`;
+
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
         if (!entry) return;
 
-        // When sentinel is NOT intersecting with (viewport + buffer), the user is scrolled up
-        const scrolledUp = !entry.isIntersecting;
+        // When sentinel is NOT intersecting with (viewport + buffer), user has scrolled away
+        const scrolledAway = !entry.isIntersecting;
         startTransition(() => {
-          setIsScrolledUp(scrolledUp);
+          setIsScrolledAway(scrolledAway);
         });
       },
       {
         root,
-        rootMargin: `0px 0px ${thresholdOffsetPx}px 0px`,
+        rootMargin,
         threshold: 0,
       },
     );
@@ -58,7 +69,9 @@ export function useBottomSentinelObserver({
     return () => {
       observer.disconnect();
     };
-  }, [rootRef, sentinelRef, thresholdOffsetPx, enabled]);
+  }, [rootRef, sentinelRef, thresholdOffsetPx, enabled, effectiveDirection]);
 
-  return isScrolledUp;
+  return isScrolledAway;
 }
+
+export const useSentinelObserver = useBottomSentinelObserver;

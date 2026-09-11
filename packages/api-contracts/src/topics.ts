@@ -296,6 +296,7 @@ export type TopicEvidenceItem = z.infer<typeof TopicEvidenceItemSchema>;
 export const TopicEvidenceQuerySchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
+  order: z.enum(['ASC', 'DESC']).default('ASC'),
 });
 export type TopicEvidenceQuery = z.input<typeof TopicEvidenceQuerySchema>;
 export type TopicEvidenceQueryOutput = z.output<typeof TopicEvidenceQuerySchema>;

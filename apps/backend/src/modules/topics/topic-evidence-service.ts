@@ -215,7 +215,8 @@ export class TopicEvidenceService {
       throw new TopicNotFoundError('Мавзу топилмади ёки сақлаш муддати тугаган.');
     }
 
-    // 2. Build Keyset Cursor Predicate (Oldest to newest: ASC, ASC, ASC)
+    // 2. Build Keyset Cursor Predicate (Bidirectional: ASC or DESC)
+    const order = query.order ?? 'ASC';
     let cursorPredicate = sql``;
     if (query.cursor) {
       const decoded = decodeEvidenceKeysetCursor(query.cursor);
@@ -223,12 +224,25 @@ export class TopicEvidenceService {
         throw new Error('Курсор нотўғри ёки муддати ўтган.');
       }
       const cursorDate = new Date(decoded.t);
-      cursorPredicate = sql`AND (
-        ae.original_timestamp > ${cursorDate}
-        OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id > ${decoded.msgId})
-        OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id = ${decoded.msgId} AND ae.id > ${decoded.id})
-      )`;
+      if (order === 'DESC') {
+        cursorPredicate = sql`AND (
+          ae.original_timestamp < ${cursorDate}
+          OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id < ${decoded.msgId})
+          OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id = ${decoded.msgId} AND ae.id < ${decoded.id})
+        )`;
+      } else {
+        cursorPredicate = sql`AND (
+          ae.original_timestamp > ${cursorDate}
+          OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id > ${decoded.msgId})
+          OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id = ${decoded.msgId} AND ae.id > ${decoded.id})
+        )`;
+      }
     }
+
+    const orderByClause =
+      order === 'DESC'
+        ? sql`ORDER BY ae.original_timestamp DESC, ae.telegram_message_id DESC, ae.id DESC`
+        : sql`ORDER BY ae.original_timestamp ASC, ae.telegram_message_id ASC, ae.id ASC`;
 
     const limit = query.limit ?? 50;
 
@@ -263,7 +277,7 @@ export class TopicEvidenceService {
         WHERE ae.topic_id = ${topicId}
           AND ae.district_id = ${actorContext.districtId}
           ${cursorPredicate}
-        ORDER BY ae.original_timestamp ASC, ae.telegram_message_id ASC, ae.id ASC
+        ${orderByClause}
         LIMIT ${limit + 1};
       `),
       districtAnalysisSettingsRepository.getActiveConfiguration(this.db, actorContext.districtId),

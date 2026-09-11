@@ -12,6 +12,7 @@ import { useAuth } from '../auth/auth-context.js';
 
 export interface UseTopicEvidenceOptions {
   onInvalidated?: () => void;
+  order?: 'ASC' | 'DESC';
 }
 
 export interface UseTopicEvidenceResult {
@@ -39,7 +40,8 @@ export function useTopicEvidence(
   const districtId = actor?.districtId || '';
   const queryClient = useQueryClient();
 
-  const queryKey = ['topic-evidence', districtId, topicId || ''];
+  const order = options?.order ?? 'ASC';
+  const queryKey = ['topic-evidence', districtId, topicId || '', order];
   const configuredRetry = queryClient.getDefaultOptions().queries?.retry;
   const effectiveRetry = configuredRetry !== undefined ? configuredRetry : 2;
 
@@ -60,7 +62,7 @@ export function useTopicEvidence(
     string[],
     string | undefined
   >({
-    queryKey: ['topic-evidence', districtId, topicId || ''],
+    queryKey,
     queryFn: async ({ pageParam, signal }) => {
       if (!topicId) {
         throw new Error('Мавзу идентификатори талаб қилинади.');
@@ -70,6 +72,7 @@ export function useTopicEvidence(
         {
           cursor: pageParam,
           limit: 50,
+          order,
         },
         signal,
       );
@@ -79,12 +82,21 @@ export function useTopicEvidence(
       lastPage.hasNextPage && lastPage.nextCursor ? lastPage.nextCursor : undefined,
     enabled: Boolean(districtId && topicId && actor?.role === 'DISTRICT_HOKIM'),
     staleTime: 2_000,
-    refetchInterval: 4_000,
+    refetchInterval: (query) => {
+      // Only auto-poll when on initial page; pause background polling during deep pagination
+      return (query.state.data?.pages.length ?? 0) <= 1 ? 4_000 : false;
+    },
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     networkMode: 'online',
     retry: effectiveRetry,
-    placeholderData: undefined, // Strictly omit keepPreviousData to prevent ghost evidence cache during topic switching (AC 7)
+    placeholderData: (previousData, previousQuery) => {
+      // Retain topic metadata across order switches; clear strictly when topicId changes (AC 7)
+      if (previousQuery?.queryKey[2] === (topicId || '')) {
+        return previousData;
+      }
+      return undefined;
+    },
   });
 
   const firstPage = data?.pages[0];
@@ -149,15 +161,18 @@ export function useTopicEvidence(
       }
     }
 
-    // Sort chronologically (oldest to newest)
+    // Sort matching order (ASC: oldest to newest, DESC: newest to oldest) with deterministic tie-breaker
     list.sort((a, b) => {
       const timeA = new Date(a.originalTimestamp).getTime();
       const timeB = new Date(b.originalTimestamp).getTime();
-      return timeA - timeB;
+      if (timeA !== timeB) {
+        return order === 'DESC' ? timeB - timeA : timeA - timeB;
+      }
+      return order === 'DESC' ? b.id.localeCompare(a.id) : a.id.localeCompare(b.id);
     });
 
     return list;
-  }, [data?.pages]);
+  }, [data?.pages, order]);
 
   // Intercept 404 (Topic deleted/superseded) or auth invalidation (AC 5)
   const isInvalidated = useMemo(() => {
@@ -176,12 +191,14 @@ export function useTopicEvidence(
   onInvalidatedRef.current = options?.onInvalidated;
 
   useEffect(() => {
-    if (isInvalidated && topicId) {
-      // Purge query cache for this topic and notify caller
-      queryClient.removeQueries({ queryKey });
+    if (isInvalidated && topicId && districtId) {
+      // Purge query cache across all orders for this topic and notify caller
+      queryClient.removeQueries({
+        queryKey: ['topic-evidence', districtId, topicId],
+      });
       onInvalidatedRef.current?.();
     }
-  }, [isInvalidated, topicId, queryClient]);
+  }, [isInvalidated, topicId, districtId, queryClient]);
 
   return {
     topic: firstPage?.topic ?? null,

@@ -478,6 +478,81 @@ describe('Story 3.2: Inspect Complete Topic Evidence Integration Tests', () => {
     expect(batch3.nextCursor).toBeNull();
   });
 
+  it('supports reverse ordering (order=DESC) with descending keyset pagination', async () => {
+    // Request Batch 1 in DESC order (limit = 2)
+    const batch1Res = await server.inject({
+      method: 'GET',
+      url: `/api/v1/hokim/topics/${topicA1Id}/evidence?limit=2&order=DESC`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: hokimACookie,
+      },
+    });
+
+    expect(batch1Res.statusCode).toBe(200);
+    const batch1: TopicEvidenceResponse = JSON.parse(batch1Res.body);
+    expect(batch1.evidence.length).toBe(2);
+    expect(batch1.totalCount).toBe(5);
+    expect(batch1.hasNextPage).toBe(true);
+    expect(batch1.nextCursor).toBeTruthy();
+
+    // First item in DESC must be the latest message (5-хабар)
+    expect(batch1.evidence[0]!.verbatimText).toContain('5-хабар:\nСув таъминоти тўхтатилди');
+    expect(batch1.evidence[1]!.verbatimText).toContain('4-хабар: Воқеа жойидан расм.');
+
+    const cursor1 = batch1.nextCursor!;
+
+    // Request Batch 2 with cursor in DESC order
+    const batch2Res = await server.inject({
+      method: 'GET',
+      url: `/api/v1/hokim/topics/${topicA1Id}/evidence?limit=2&cursor=${cursor1}&order=DESC`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: hokimACookie,
+      },
+    });
+
+    expect(batch2Res.statusCode).toBe(200);
+    const batch2: TopicEvidenceResponse = JSON.parse(batch2Res.body);
+    expect(batch2.evidence.length).toBe(2);
+    expect(batch2.evidence[0]!.verbatimText).toContain('3-хабар:\nАвария хизмати келдими?');
+    expect(batch2.evidence[1]!.verbatimText).toContain('2-хабар (Асосий)');
+    expect(batch2.hasNextPage).toBe(true);
+    expect(batch2.nextCursor).toBeTruthy();
+
+    const cursor2 = batch2.nextCursor!;
+
+    // Request Batch 3 (terminal batch in DESC order)
+    const batch3Res = await server.inject({
+      method: 'GET',
+      url: `/api/v1/hokim/topics/${topicA1Id}/evidence?limit=2&cursor=${cursor2}&order=DESC`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: hokimACookie,
+      },
+    });
+
+    expect(batch3Res.statusCode).toBe(200);
+    const batch3: TopicEvidenceResponse = JSON.parse(batch3Res.body);
+    expect(batch3.evidence.length).toBe(1);
+    expect(batch3.evidence[0]!.verbatimText).toContain('1-хабар:\nИчимлик суви босими');
+    expect(batch3.hasNextPage).toBe(false);
+    expect(batch3.nextCursor).toBeNull();
+  });
+
+  it('rejects invalid order query parameter with HTTP 400', async () => {
+    const res = await server.inject({
+      method: 'GET',
+      url: `/api/v1/hokim/topics/${topicA1Id}/evidence?order=INVALID`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: hokimACookie,
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+
   it('strictly sanitizes sender attribution and excludes citizen phone numbers or private IDs (AC 5, AD-11)', async () => {
     const res = await server.inject({
       method: 'GET',

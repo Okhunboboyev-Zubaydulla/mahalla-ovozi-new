@@ -15,6 +15,7 @@ export interface EvidenceTimelineProps {
   onFetchNextPage: () => void;
   focusHokim?: boolean;
   sentinelRef?: React.RefObject<HTMLDivElement | null>;
+  topSentinelRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export const EvidenceTimeline: React.FC<EvidenceTimelineProps> = ({
@@ -24,9 +25,11 @@ export const EvidenceTimeline: React.FC<EvidenceTimelineProps> = ({
   isFetchingNextPage,
   isFetchNextPageError,
   onFetchNextPage,
-  focusHokim = false,
+  focusHokim,
   sentinelRef,
+  topSentinelRef,
 }) => {
+  const effectiveFocusHokim = focusHokim ?? false;
   const hokimEvidenceIds = useMemo(() => {
     return evidenceList.filter((e) => e.isHokimRelated).map((e) => e.id);
   }, [evidenceList]);
@@ -36,7 +39,7 @@ export const EvidenceTimeline: React.FC<EvidenceTimelineProps> = ({
   const hasAutoScrolledRef = useRef<boolean>(false);
 
   useEffect(() => {
-    if (focusHokim && hokimEvidenceIds.length > 0 && !hasAutoScrolledRef.current) {
+    if (effectiveFocusHokim && hokimEvidenceIds.length > 0 && !hasAutoScrolledRef.current) {
       hasAutoScrolledRef.current = true;
       const firstId = hokimEvidenceIds[0]!;
       setTargetedId(firstId);
@@ -142,7 +145,16 @@ export const EvidenceTimeline: React.FC<EvidenceTimelineProps> = ({
         </div>
       )}
 
-      {/* Chronological list of evidence items (oldest to newest) */}
+      {/* Zero-height focusable top sentinel for IntersectionObserver and a11y keyboard anchoring */}
+      <div
+        ref={topSentinelRef}
+        id="evidence-top-sentinel"
+        tabIndex={-1}
+        aria-hidden="true"
+        style={{ height: 1, outline: 'none', pointerEvents: 'none' }}
+      />
+
+      {/* Chronological list of evidence items (oldest to newest or newest to oldest) */}
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {evidenceList.map((evidence) => (
           <EvidenceItem

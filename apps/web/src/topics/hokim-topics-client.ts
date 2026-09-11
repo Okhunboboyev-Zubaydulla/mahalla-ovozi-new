@@ -126,6 +126,9 @@ export const hokimTopicsClient = {
     if (query?.limit) {
       searchParams.set('limit', String(query.limit));
     }
+    if (query?.order) {
+      searchParams.set('order', query.order);
+    }
     const queryString = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
     return request<TopicEvidenceResponse>(

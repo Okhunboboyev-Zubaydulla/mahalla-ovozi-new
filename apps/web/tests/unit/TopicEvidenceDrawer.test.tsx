@@ -154,10 +154,14 @@ describe('TopicEvidenceDrawer Component Tests', () => {
     // Verify non-modal complementary landmark role (AC 7)
     expect(screen.getByRole('region', { name: 'Мавзу далиллари' })).toBeTruthy();
 
-    // Verify summary and anchor quote callout
+    // Verify summary
     expect(screen.getByText('Сув қувури ёрилиши сабабли кўчани сув босмоқда.')).toBeTruthy();
-    expect(screen.getByText('«Қувур ёрилиб кўчани сув босди!»')).toBeTruthy();
-    expect(screen.getByText('Дастлабки хабар иқтибоси:')).toBeTruthy();
+    // Verify standalone anchor quote callout was removed from drawer body (AC 9 updated)
+    expect(screen.queryByText('Дастлабки хабар иқтибоси:')).toBeNull();
+
+    // Verify order segmented control
+    expect(screen.getByText('Эскилари олдин')).toBeTruthy();
+    expect(screen.getByText('Янгилари олдин')).toBeTruthy();
 
     // Verify evidence items
     expect(screen.getByText('1-хабар: Сув босими пасайди.')).toBeTruthy();
@@ -277,7 +281,7 @@ describe('TopicEvidenceDrawer Component Tests', () => {
     });
 
     expect(screen.getByText('Электр таъминоти узилган.')).toBeTruthy();
-    expect(screen.getByText('«Сим узилиб тушган.»')).toBeTruthy();
+    expect(screen.queryByText('Дастлабки хабар иқтибоси:')).toBeNull();
   });
 
   it('synchronizes topic read status into localStorage when drawer opens and evidence loads', async () => {
@@ -372,8 +376,8 @@ describe('TopicEvidenceDrawer Component Tests', () => {
       expect(screen.getByText('Сақланган далиллар рўйхати')).toBeTruthy();
     });
 
-    const header = screen.getByText('Сақланган далиллар рўйхати').closest('div');
-    expect(header?.style.position).toBe('sticky');
+    const header = screen.getByTestId('evidence-sticky-header');
+    expect(header.style.position).toBe('sticky');
 
     // The button is in the DOM but has opacity: 0 and pointerEvents: none initially
     const jumpBtn = screen.getByText('Сўнгги хабарга').closest('button')!;
@@ -391,12 +395,15 @@ describe('TopicEvidenceDrawer Component Tests', () => {
       expect(jumpBtn.style.pointerEvents).toBe('auto');
     });
 
-    // Mock scrollIntoView and focus on the sentinel
+    // Mock scrollIntoView on sentinel and focus on the target item
     const sentinel = document.getElementById('evidence-bottom-sentinel');
     expect(sentinel).toBeTruthy();
     if (sentinel) {
       sentinel.scrollIntoView = vi.fn();
-      sentinel.focus = vi.fn();
+    }
+    const targetItem = document.getElementById('evidence-item-evi_2');
+    if (targetItem) {
+      targetItem.focus = vi.fn();
     }
 
     fireEvent.click(jumpBtn);
@@ -406,7 +413,40 @@ describe('TopicEvidenceDrawer Component Tests', () => {
         behavior: 'smooth',
         block: 'end',
       });
-      expect(sentinel.focus).toHaveBeenCalledWith({ preventScroll: true });
     }
+    if (targetItem) {
+      expect(targetItem.focus).toHaveBeenCalledWith({ preventScroll: true });
+    }
+  });
+
+  it('toggles evidence order between ASC and DESC via segmented control', async () => {
+    const getTopicEvidenceSpy = vi
+      .spyOn(hokimTopicsClient, 'getTopicEvidence')
+      .mockResolvedValue(mockEvidenceResponse1);
+
+    const onClose = vi.fn();
+    renderWithProviders(<TopicEvidenceDrawer topicId="top_1" onClose={onClose} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Бобур маҳалласи')).toBeTruthy();
+    });
+
+    expect(getTopicEvidenceSpy).toHaveBeenCalledWith(
+      'top_1',
+      expect.objectContaining({ order: 'ASC' }),
+      expect.any(AbortSignal),
+    );
+
+    // Switch to descending (newest first)
+    const newestFirstTab = screen.getByText('Янгилари олдин');
+    fireEvent.click(newestFirstTab);
+
+    await waitFor(() => {
+      expect(getTopicEvidenceSpy).toHaveBeenCalledWith(
+        'top_1',
+        expect.objectContaining({ order: 'DESC' }),
+        expect.any(AbortSignal),
+      );
+    });
   });
 });

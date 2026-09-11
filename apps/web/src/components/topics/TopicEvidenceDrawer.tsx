@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useCallback } from 'react';
-import { Drawer, Typography, Tag, Space, Skeleton, Button, Alert } from 'antd';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { Drawer, Typography, Tag, Space, Skeleton, Button, Alert, Segmented } from 'antd';
 import {
   CloseOutlined,
   EnvironmentOutlined,
@@ -7,6 +7,7 @@ import {
   ReloadOutlined,
   MessageOutlined,
   DownOutlined,
+  UpOutlined,
 } from '@ant-design/icons';
 import { useTopicEvidence } from '../../topics/useTopicEvidence.js';
 import { useTopicReadState } from '../../hooks/useTopicReadState.js';
@@ -28,16 +29,19 @@ export interface TopicEvidenceDrawerProps {
 
 export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
   topicId,
-  focusHokim = false,
+  focusHokim,
   onClose,
 }) => {
+  const effectiveFocusHokim = focusHokim ?? false;
   const headingRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomSentinelRef = useRef<HTMLDivElement>(null);
+  const topSentinelRef = useRef<HTMLDivElement>(null);
+
+  const [order, setOrder] = useState<'ASC' | 'DESC'>('ASC');
 
   const {
     topic,
-    anchorQuote,
     evidenceList,
     totalCount,
     isLoading,
@@ -48,16 +52,19 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
     hasNextPage,
     fetchNextPage,
     refetch,
-  } = useTopicEvidence(topicId);
+  } = useTopicEvidence(topicId, { order });
 
   const { markTopicAsRead } = useTopicReadState();
 
-  // Zero-overhead scroll position detection using native IntersectionObserver on bottom sentinel
-  const isScrolledUp = useBottomSentinelObserver({
+  // Zero-overhead scroll position detection:
+  // In ASC mode: observe bottom sentinel (detecting if scrolled away from bottom)
+  // In DESC mode: observe top sentinel (detecting if scrolled away from top)
+  const isScrolledAway = useBottomSentinelObserver({
     rootRef: scrollContainerRef,
-    sentinelRef: bottomSentinelRef,
+    sentinelRef: order === 'ASC' ? bottomSentinelRef : topSentinelRef,
     thresholdOffsetPx: 150,
     enabled: Boolean(topicId && !isLoading && topic),
+    direction: order === 'ASC' ? 'bottom' : 'top',
   });
 
   // Synchronize read state when topic evidence loads or updates in drawer
@@ -67,19 +74,45 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
     }
   }, [topic, totalCount, markTopicAsRead]);
 
-  // Motion-safe, keyboard-accessible glide to the latest evidence item at the bottom
-  const handleScrollToBottom = useCallback(() => {
-    const sentinel = bottomSentinelRef.current;
-    if (sentinel) {
-      const behavior = getSafeScrollBehavior();
-      sentinel.scrollIntoView({ behavior, block: 'end' });
-      sentinel.focus({ preventScroll: true });
-    } else if (scrollContainerRef.current) {
-      const behavior = getSafeScrollBehavior();
-      scrollContainerRef.current.scrollTo({
-        top: scrollContainerRef.current.scrollHeight,
+  // Motion-safe, keyboard-accessible glide to the latest evidence item
+  const handleScrollToLatest = useCallback(() => {
+    const behavior = getSafeScrollBehavior();
+    const targetId =
+      order === 'ASC'
+        ? evidenceList[evidenceList.length - 1]?.id
+        : evidenceList[0]?.id;
+
+    if (order === 'ASC') {
+      const sentinel = bottomSentinelRef.current;
+      if (sentinel) {
+        sentinel.scrollIntoView({ behavior, block: 'end' });
+      } else if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior,
+        });
+      }
+    } else {
+      // In DESC mode, scroll directly to top to bring summary card and latest message into view
+      scrollContainerRef.current?.scrollTo({
+        top: 0,
         behavior,
       });
+    }
+
+    // Accessible focus management: focus actual EvidenceItem article rather than aria-hidden sentinel (WCAG 4.1.2)
+    if (targetId) {
+      const targetEl = document.getElementById(`evidence-item-${targetId}`);
+      if (targetEl) {
+        targetEl.focus({ preventScroll: true });
+      }
+    }
+  }, [order, evidenceList]);
+
+  const handleOrderChange = useCallback((newOrder: 'ASC' | 'DESC') => {
+    setOrder(newOrder);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
     }
   }, []);
 
@@ -361,88 +394,64 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
               )}
             </div>
           </div>
+        </div>
 
-          {/* Anchor Quote Callout Box (AC 9) */}
-          {anchorQuote && (
-            <div
-              style={{
-                backgroundColor: '#F0F9FF',
-                border: '1px solid #BAE6FD',
-                borderLeft: '4px solid #0284C7',
-                borderRadius: '0 10px 10px 0',
-                padding: '12px 14px',
-                boxShadow: '0 1px 3px 0 rgba(2, 132, 199, 0.08)',
-              }}
-            >
-              <Text
-                style={{
-                  display: 'block',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: '#0369A1',
-                  marginBottom: 4,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.03em',
-                }}
-              >
-                Дастлабки хабар иқтибоси:
-              </Text>
-              <Text
-                italic
-                style={{
-                  fontSize: 13,
-                  color: '#0C4A6E',
-                  lineHeight: '18px',
-                  display: 'block',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                }}
-              >
-                «{anchorQuote}»
-              </Text>
-            </div>
-          )}
-            </div>
+        {/* Sticky Evidence Section Header */}
+        <div
+          data-testid="evidence-sticky-header"
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 15,
+            backgroundColor: '#F8FAFC',
+            borderBottom: '1px solid #E2E8F0',
+            padding: '10px 20px',
+            marginTop: 16,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+          }}
+        >
+              <Space size={8} align="center">
+                <Text
+                  strong
+                  style={{
+                    fontSize: 13,
+                    color: '#0F172A',
+                  }}
+                >
+                  Сақланган далиллар рўйхати
+                </Text>
+                <Tag
+                  style={{
+                    backgroundColor: '#E0F2FE',
+                    color: '#0284C7',
+                    borderColor: '#BAE6FD',
+                    borderRadius: 12,
+                    fontWeight: 600,
+                    fontSize: 12,
+                    margin: 0,
+                    padding: '1px 8px',
+                  }}
+                >
+                  {evidenceList.length} / {totalCount}
+                </Tag>
+              </Space>
 
-            {/* Sticky Evidence Section Header */}
-            <div
-              style={{
-                position: 'sticky',
-                top: 0,
-                zIndex: 15,
-                backgroundColor: '#F8FAFC',
-                borderBottom: '1px solid #E2E8F0',
-                padding: '12px 20px',
-                marginTop: 16,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-              }}
-            >
-              <Text
-                strong
+              <Segmented<'ASC' | 'DESC'>
+                size="small"
+                value={order}
+                onChange={handleOrderChange}
+                options={[
+                  { label: 'Эскилари олдин', value: 'ASC' },
+                  { label: 'Янгилари олдин', value: 'DESC' },
+                ]}
                 style={{
-                  fontSize: 14,
-                  color: '#0F172A',
-                }}
-              >
-                Сақланган далиллар рўйхати
-              </Text>
-              <Tag
-                style={{
-                  backgroundColor: '#E0F2FE',
-                  color: '#0284C7',
-                  borderColor: '#BAE6FD',
-                  borderRadius: 12,
-                  fontWeight: 600,
                   fontSize: 12,
-                  margin: 0,
-                  padding: '1px 8px',
+                  fontWeight: 500,
                 }}
-              >
-                {evidenceList.length} / {totalCount}
-              </Tag>
+              />
             </div>
 
             {/* Evidence Timeline */}
@@ -454,21 +463,28 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
                 isFetchingNextPage={isFetchingNextPage}
                 isFetchNextPageError={isFetchNextPageError}
                 onFetchNextPage={fetchNextPage}
-                focusHokim={focusHokim}
+                focusHokim={effectiveFocusHokim}
                 sentinelRef={bottomSentinelRef}
+                topSentinelRef={topSentinelRef}
               />
             </div>
           </div>
 
-          {/* Floating Jump-to-Latest Button (Telegram-style UX with 60fps CSS transitions & a11y focus) */}
+          {/* Floating Jump-to-Latest Button (Adaptive UX with 60fps CSS transitions & a11y focus) */}
           <Button
             type="primary"
             shape="round"
-            icon={<DownOutlined style={{ fontSize: 12 }} />}
-            onClick={handleScrollToBottom}
-            aria-label="Сўнгги хабарга ўтиш"
-            tabIndex={isScrolledUp ? 0 : -1}
-            aria-hidden={!isScrolledUp}
+            icon={
+              order === 'ASC' ? (
+                <DownOutlined style={{ fontSize: 12 }} />
+              ) : (
+                <UpOutlined style={{ fontSize: 12 }} />
+              )
+            }
+            onClick={handleScrollToLatest}
+            aria-label={order === 'ASC' ? 'Сўнгги хабарга пастга ўтиш' : 'Сўнгги хабарга юқорига ўтиш'}
+            tabIndex={isScrolledAway ? 0 : -1}
+            aria-hidden={!isScrolledAway}
             style={{
               position: 'absolute',
               bottom: 24,
@@ -485,10 +501,10 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
               gap: 6,
               height: 38,
               padding: '0 16px',
-              cursor: isScrolledUp ? 'pointer' : 'default',
-              opacity: isScrolledUp ? 1 : 0,
-              transform: isScrolledUp ? 'translateY(0) scale(1)' : 'translateY(10px) scale(0.95)',
-              pointerEvents: isScrolledUp ? 'auto' : 'none',
+              cursor: isScrolledAway ? 'pointer' : 'default',
+              opacity: isScrolledAway ? 1 : 0,
+              transform: isScrolledAway ? 'translateY(0) scale(1)' : 'translateY(10px) scale(0.95)',
+              pointerEvents: isScrolledAway ? 'auto' : 'none',
               transition:
                 'opacity 200ms cubic-bezier(0.16, 1, 0.3, 1), transform 200ms cubic-bezier(0.16, 1, 0.3, 1)',
             }}
