@@ -14,6 +14,7 @@ export interface EvidenceTimelineProps {
   isFetchNextPageError: boolean;
   onFetchNextPage: () => void;
   focusHokim?: boolean;
+  sentinelRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export const EvidenceTimeline: React.FC<EvidenceTimelineProps> = ({
@@ -24,6 +25,7 @@ export const EvidenceTimeline: React.FC<EvidenceTimelineProps> = ({
   isFetchNextPageError,
   onFetchNextPage,
   focusHokim = false,
+  sentinelRef,
 }) => {
   const hokimEvidenceIds = useMemo(() => {
     return evidenceList.filter((e) => e.isHokimRelated).map((e) => e.id);
@@ -207,8 +209,14 @@ export const EvidenceTimeline: React.FC<EvidenceTimelineProps> = ({
         </div>
       )}
 
-      {/* Invisible bottom sentinel for scroll targeting */}
-      <div id="evidence-bottom-sentinel" style={{ height: 1 }} />
+      {/* Zero-height focusable bottom sentinel for IntersectionObserver and a11y keyboard anchoring */}
+      <div
+        ref={sentinelRef}
+        id="evidence-bottom-sentinel"
+        tabIndex={-1}
+        aria-hidden="true"
+        style={{ height: 1, outline: 'none', pointerEvents: 'none' }}
+      />
     </div>
   );
 };

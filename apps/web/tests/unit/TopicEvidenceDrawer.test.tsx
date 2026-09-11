@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { ConfigProvider } from 'antd';
@@ -12,6 +12,10 @@ import {
   TopicEvidenceItem,
   TopicEvidenceResponse,
 } from '@mahalla-ovozi/api-contracts';
+
+let observerCallback: (entries: Array<{ isIntersecting: boolean }>) => void;
+const mockObserve = vi.fn();
+const mockDisconnect = vi.fn();
 
 function setupMatchMedia() {
   Object.defineProperty(window, 'matchMedia', {
@@ -29,8 +33,21 @@ function setupMatchMedia() {
   });
 }
 
+function setupIntersectionObserver() {
+  class MockIntersectionObserver {
+    constructor(cb: (entries: Array<{ isIntersecting: boolean }>) => void) {
+      observerCallback = cb;
+    }
+    observe = mockObserve;
+    unobserve = vi.fn();
+    disconnect = mockDisconnect;
+  }
+  window.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
+}
+
 beforeAll(() => {
   setupMatchMedia();
+  setupIntersectionObserver();
 });
 
 // Mock useAuth
@@ -120,6 +137,8 @@ function renderWithProviders(ui: React.ReactElement, queryClient?: QueryClient) 
 describe('TopicEvidenceDrawer Component Tests', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    setupMatchMedia();
+    setupIntersectionObserver();
   });
 
   it('renders topic metadata, anchor quote callout, and evidence list (AC 2, 6, 7, 9)', async () => {
@@ -342,7 +361,7 @@ describe('TopicEvidenceDrawer Component Tests', () => {
     expect(screen.getByRole('button', { name: 'Кейинги ҳоким мурожаати' })).toBeTruthy();
   });
 
-  it('displays sticky evidence section header and toggles floating jump-to-latest button upon scroll', async () => {
+  it('displays sticky evidence section header and toggles floating jump-to-latest button via IntersectionObserver', async () => {
     vi.spyOn(hokimTopicsClient, 'getTopicEvidence').mockResolvedValueOnce(mockEvidenceResponse1);
 
     renderWithProviders(
@@ -356,35 +375,38 @@ describe('TopicEvidenceDrawer Component Tests', () => {
     const header = screen.getByText('Сақланган далиллар рўйхати').closest('div');
     expect(header?.style.position).toBe('sticky');
 
-    // Find the scroll container
-    const scrollContainer = header?.parentElement;
-    expect(scrollContainer).toBeTruthy();
+    // The button is in the DOM but has opacity: 0 and pointerEvents: none initially
+    const jumpBtn = screen.getByText('Сўнгги хабарга').closest('button')!;
+    expect(jumpBtn).toBeTruthy();
+    expect(jumpBtn.style.opacity).toBe('0');
+    expect(jumpBtn.style.pointerEvents).toBe('none');
 
-    if (scrollContainer) {
-      scrollContainer.scrollTo = vi.fn();
+    // Simulate user scrolling up (bottom sentinel exits the viewport buffer -> isIntersecting = false)
+    act(() => {
+      observerCallback([{ isIntersecting: false }]);
+    });
 
-      // Initially, not scrolled up (button not visible)
-      expect(screen.queryByRole('button', { name: 'Сўнгги хабарга ўтиш' })).toBeNull();
+    await waitFor(() => {
+      expect(jumpBtn.style.opacity).toBe('1');
+      expect(jumpBtn.style.pointerEvents).toBe('auto');
+    });
 
-      // Trigger scroll event where user is scrolled up away from bottom
-      Object.defineProperty(scrollContainer, 'scrollHeight', { value: 1000, configurable: true });
-      Object.defineProperty(scrollContainer, 'clientHeight', { value: 400, configurable: true });
-      Object.defineProperty(scrollContainer, 'scrollTop', { value: 100, configurable: true });
+    // Mock scrollIntoView and focus on the sentinel
+    const sentinel = document.getElementById('evidence-bottom-sentinel');
+    expect(sentinel).toBeTruthy();
+    if (sentinel) {
+      sentinel.scrollIntoView = vi.fn();
+      sentinel.focus = vi.fn();
+    }
 
-      fireEvent.scroll(scrollContainer);
+    fireEvent.click(jumpBtn);
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Сўнгги хабарга ўтиш' })).toBeTruthy();
-      });
-
-      // Click the jump button
-      const jumpBtn = screen.getByRole('button', { name: 'Сўнгги хабарга ўтиш' });
-      fireEvent.click(jumpBtn);
-
-      expect(scrollContainer.scrollTo).toHaveBeenCalledWith({
-        top: 1000,
+    if (sentinel) {
+      expect(sentinel.scrollIntoView).toHaveBeenCalledWith({
         behavior: 'smooth',
+        block: 'end',
       });
+      expect(sentinel.focus).toHaveBeenCalledWith({ preventScroll: true });
     }
   });
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { Drawer, Typography, Tag, Space, Skeleton, Button, Alert } from 'antd';
 import {
   CloseOutlined,
@@ -10,6 +10,8 @@ import {
 } from '@ant-design/icons';
 import { useTopicEvidence } from '../../topics/useTopicEvidence.js';
 import { useTopicReadState } from '../../hooks/useTopicReadState.js';
+import { useBottomSentinelObserver } from '../../hooks/useBottomSentinelObserver.js';
+import { getSafeScrollBehavior } from '../../lib/scrollUtils.js';
 import { LANE_LABELS, LANE_STYLES } from './TopicCard.js';
 import { EvidenceTimeline } from './EvidenceTimeline.js';
 import { formatTashkentActivityTime } from '../../lib/formatters.js';
@@ -30,7 +32,7 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
 }) => {
   const headingRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isScrolledUp, setIsScrolledUp] = useState<boolean>(false);
+  const bottomSentinelRef = useRef<HTMLDivElement>(null);
 
   const {
     topic,
@@ -49,6 +51,14 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
 
   const { markTopicAsRead } = useTopicReadState();
 
+  // Zero-overhead scroll position detection using native IntersectionObserver on bottom sentinel
+  const isScrolledUp = useBottomSentinelObserver({
+    rootRef: scrollContainerRef,
+    sentinelRef: bottomSentinelRef,
+    thresholdOffsetPx: 150,
+    enabled: Boolean(topicId && !isLoading && topic),
+  });
+
   // Synchronize read state when topic evidence loads or updates in drawer
   useEffect(() => {
     if (topic) {
@@ -56,19 +66,18 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
     }
   }, [topic, totalCount, markTopicAsRead]);
 
-  // Track scroll position to show/hide jump-to-bottom floating button (Telegram-style UX)
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-    setIsScrolledUp(distanceFromBottom > 150);
-  }, []);
-
-  // Smooth glide to the latest evidence item at the bottom
+  // Motion-safe, keyboard-accessible glide to the latest evidence item at the bottom
   const handleScrollToBottom = useCallback(() => {
-    if (scrollContainerRef.current) {
+    const sentinel = bottomSentinelRef.current;
+    if (sentinel) {
+      const behavior = getSafeScrollBehavior();
+      sentinel.scrollIntoView({ behavior, block: 'end' });
+      sentinel.focus({ preventScroll: true });
+    } else if (scrollContainerRef.current) {
+      const behavior = getSafeScrollBehavior();
       scrollContainerRef.current.scrollTo({
         top: scrollContainerRef.current.scrollHeight,
-        behavior: 'smooth',
+        behavior,
       });
     }
   }, []);
@@ -76,10 +85,8 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
   // Programmatic focus on drawer heading and scroll reset when topicId opens or changes (AC 7)
   useEffect(() => {
     if (!topicId) {
-      setIsScrolledUp(false);
       return;
     }
-    setIsScrolledUp(false);
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = 0;
     }
@@ -238,7 +245,6 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
         <>
           <div
             ref={scrollContainerRef}
-            onScroll={handleScroll}
             style={{
               flex: 1,
               overflowY: 'auto',
@@ -441,40 +447,46 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
                 isFetchNextPageError={isFetchNextPageError}
                 onFetchNextPage={fetchNextPage}
                 focusHokim={focusHokim}
+                sentinelRef={bottomSentinelRef}
               />
             </div>
           </div>
 
-          {/* Floating Jump-to-Latest Button (Telegram-style UX) */}
-          {isScrolledUp && (
-            <Button
-              type="primary"
-              shape="round"
-              icon={<DownOutlined style={{ fontSize: 12 }} />}
-              onClick={handleScrollToBottom}
-              aria-label="Сўнгги хабарга ўтиш"
-              style={{
-                position: 'absolute',
-                bottom: 24,
-                right: 24,
-                zIndex: 25,
-                boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35), 0 2px 6px rgba(15, 23, 42, 0.12)',
-                fontWeight: 600,
-                fontSize: 13,
-                backgroundColor: '#0284C7',
-                borderColor: '#0284C7',
-                color: '#FFFFFF',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                height: 38,
-                padding: '0 16px',
-                cursor: 'pointer',
-              }}
-            >
-              Сўнгги хабарга
-            </Button>
-          )}
+          {/* Floating Jump-to-Latest Button (Telegram-style UX with 60fps CSS transitions & a11y focus) */}
+          <Button
+            type="primary"
+            shape="round"
+            icon={<DownOutlined style={{ fontSize: 12 }} />}
+            onClick={handleScrollToBottom}
+            aria-label="Сўнгги хабарга ўтиш"
+            tabIndex={isScrolledUp ? 0 : -1}
+            aria-hidden={!isScrolledUp}
+            style={{
+              position: 'absolute',
+              bottom: 24,
+              right: 24,
+              zIndex: 25,
+              boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35), 0 2px 6px rgba(15, 23, 42, 0.12)',
+              fontWeight: 600,
+              fontSize: 13,
+              backgroundColor: '#0284C7',
+              borderColor: '#0284C7',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              height: 38,
+              padding: '0 16px',
+              cursor: isScrolledUp ? 'pointer' : 'default',
+              opacity: isScrolledUp ? 1 : 0,
+              transform: isScrolledUp ? 'translateY(0) scale(1)' : 'translateY(10px) scale(0.95)',
+              pointerEvents: isScrolledUp ? 'auto' : 'none',
+              transition:
+                'opacity 200ms cubic-bezier(0.16, 1, 0.3, 1), transform 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          >
+            Сўнгги хабарга
+          </Button>
         </>
       )}
       </section>
