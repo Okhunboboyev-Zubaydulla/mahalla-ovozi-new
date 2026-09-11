@@ -95,7 +95,7 @@ export const EvidenceTimeline: React.FC<EvidenceTimelineProps> = ({
         <div
           style={{
             position: 'sticky',
-            top: 0,
+            top: 48,
             zIndex: 10,
             marginBottom: 12,
             padding: '8px 12px',
@@ -206,6 +206,9 @@ export const EvidenceTimeline: React.FC<EvidenceTimelineProps> = ({
           </Button>
         </div>
       )}
+
+      {/* Invisible bottom sentinel for scroll targeting */}
+      <div id="evidence-bottom-sentinel" style={{ height: 1 }} />
     </div>
   );
 };

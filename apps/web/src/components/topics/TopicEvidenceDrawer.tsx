@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Drawer, Typography, Tag, Space, Skeleton, Button, Alert } from 'antd';
 import {
   CloseOutlined,
@@ -6,6 +6,7 @@ import {
   ClockCircleOutlined,
   ReloadOutlined,
   MessageOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 import { useTopicEvidence } from '../../topics/useTopicEvidence.js';
 import { useTopicReadState } from '../../hooks/useTopicReadState.js';
@@ -28,6 +29,8 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
   onClose,
 }) => {
   const headingRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isScrolledUp, setIsScrolledUp] = useState<boolean>(false);
 
   const {
     topic,
@@ -53,10 +56,32 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
     }
   }, [topic, totalCount, markTopicAsRead]);
 
-  // Programmatic focus on drawer heading when topicId opens or changes (AC 7)
+  // Track scroll position to show/hide jump-to-bottom floating button (Telegram-style UX)
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    setIsScrolledUp(distanceFromBottom > 150);
+  }, []);
+
+  // Smooth glide to the latest evidence item at the bottom
+  const handleScrollToBottom = useCallback(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, []);
+
+  // Programmatic focus on drawer heading and scroll reset when topicId opens or changes (AC 7)
   useEffect(() => {
     if (!topicId) {
+      setIsScrolledUp(false);
       return;
+    }
+    setIsScrolledUp(false);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
     }
     // Small timeout allows DOM to mount drawer contents before focusing
     const timer = setTimeout(() => {
@@ -124,14 +149,13 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
           backgroundColor: '#FFFFFF',
         },
         body: {
-          padding: '20px',
+          padding: 0,
           display: 'flex',
           flexDirection: 'column',
           height: '100%',
-          overflowY: 'auto',
+          overflow: 'hidden',
           backgroundColor: '#F8FAFC',
-          scrollbarWidth: 'thin',
-          scrollbarColor: '#CBD5E1 transparent',
+          position: 'relative',
         },
       }}
       title={
@@ -172,18 +196,18 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
       <section
         role="region"
         aria-label="Мавзу далиллари"
-        style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+        style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', minHeight: 0 }}
       >
         {/* 1. Loading Skeleton during Initial Fetch / In-place Switching (AC 7) */}
         {isLoading && (
-          <div style={{ padding: '12px 0' }}>
+          <div style={{ padding: '20px' }}>
             <Skeleton active paragraph={{ rows: 8 }} />
           </div>
         )}
 
         {/* 2. Error State for Initial Load (AC 7) */}
         {!isLoading && isError && !topic && (
-          <div style={{ padding: '24px 0', textAlign: 'center' }}>
+          <div style={{ padding: '24px 20px', textAlign: 'center' }}>
           <Alert
             type="error"
             showIcon
@@ -211,7 +235,28 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
 
       {/* 3. Loaded Topic Header & Evidence Stream */}
       {!isLoading && topic && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <>
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#CBD5E1 transparent',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            {/* Context Summary & Anchor Quote (scrolls out of view) */}
+            <div
+              style={{
+                padding: '20px 20px 0 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+              }}
+            >
           {/* Topic Metadata & Summary Card */}
           <div
             style={{
@@ -343,53 +388,94 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
               </Text>
             </div>
           )}
+            </div>
 
-          {/* Evidence Section Header */}
-          <div
-            style={{
-              marginTop: 4,
-              marginBottom: 4,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <Text
-              strong
+            {/* Sticky Evidence Section Header */}
+            <div
               style={{
-                fontSize: 14,
-                color: '#0F172A',
+                position: 'sticky',
+                top: 0,
+                zIndex: 15,
+                backgroundColor: '#F8FAFC',
+                borderBottom: '1px solid #E2E8F0',
+                padding: '12px 20px',
+                marginTop: 16,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
               }}
             >
-              Сақланган далиллар рўйхати
-            </Text>
-            <Tag
-              style={{
-                backgroundColor: '#E0F2FE',
-                color: '#0284C7',
-                borderColor: '#BAE6FD',
-                borderRadius: 12,
-                fontWeight: 600,
-                fontSize: 12,
-                margin: 0,
-                padding: '1px 8px',
-              }}
-            >
-              {evidenceList.length} / {totalCount}
-            </Tag>
+              <Text
+                strong
+                style={{
+                  fontSize: 14,
+                  color: '#0F172A',
+                }}
+              >
+                Сақланган далиллар рўйхати
+              </Text>
+              <Tag
+                style={{
+                  backgroundColor: '#E0F2FE',
+                  color: '#0284C7',
+                  borderColor: '#BAE6FD',
+                  borderRadius: 12,
+                  fontWeight: 600,
+                  fontSize: 12,
+                  margin: 0,
+                  padding: '1px 8px',
+                }}
+              >
+                {evidenceList.length} / {totalCount}
+              </Tag>
+            </div>
+
+            {/* Evidence Timeline */}
+            <div style={{ padding: '16px 20px 24px 20px', flex: 1 }}>
+              <EvidenceTimeline
+                evidenceList={evidenceList}
+                totalCount={totalCount}
+                hasNextPage={hasNextPage}
+                isFetchingNextPage={isFetchingNextPage}
+                isFetchNextPageError={isFetchNextPageError}
+                onFetchNextPage={fetchNextPage}
+                focusHokim={focusHokim}
+              />
+            </div>
           </div>
 
-          {/* Evidence Timeline */}
-          <EvidenceTimeline
-            evidenceList={evidenceList}
-            totalCount={totalCount}
-            hasNextPage={hasNextPage}
-            isFetchingNextPage={isFetchingNextPage}
-            isFetchNextPageError={isFetchNextPageError}
-            onFetchNextPage={fetchNextPage}
-            focusHokim={focusHokim}
-          />
-        </div>
+          {/* Floating Jump-to-Latest Button (Telegram-style UX) */}
+          {isScrolledUp && (
+            <Button
+              type="primary"
+              shape="round"
+              icon={<DownOutlined style={{ fontSize: 12 }} />}
+              onClick={handleScrollToBottom}
+              aria-label="Сўнгги хабарга ўтиш"
+              style={{
+                position: 'absolute',
+                bottom: 24,
+                right: 24,
+                zIndex: 25,
+                boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35), 0 2px 6px rgba(15, 23, 42, 0.12)',
+                fontWeight: 600,
+                fontSize: 13,
+                backgroundColor: '#0284C7',
+                borderColor: '#0284C7',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                height: 38,
+                padding: '0 16px',
+                cursor: 'pointer',
+              }}
+            >
+              Сўнгги хабарга
+            </Button>
+          )}
+        </>
       )}
       </section>
     </Drawer>

@@ -341,4 +341,50 @@ describe('TopicEvidenceDrawer Component Tests', () => {
     expect(screen.getByRole('button', { name: 'Олдинги ҳоким мурожаати' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Кейинги ҳоким мурожаати' })).toBeTruthy();
   });
+
+  it('displays sticky evidence section header and toggles floating jump-to-latest button upon scroll', async () => {
+    vi.spyOn(hokimTopicsClient, 'getTopicEvidence').mockResolvedValueOnce(mockEvidenceResponse1);
+
+    renderWithProviders(
+      <TopicEvidenceDrawer topicId="top_1" onClose={vi.fn()} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Сақланган далиллар рўйхати')).toBeTruthy();
+    });
+
+    const header = screen.getByText('Сақланган далиллар рўйхати').closest('div');
+    expect(header?.style.position).toBe('sticky');
+
+    // Find the scroll container
+    const scrollContainer = header?.parentElement;
+    expect(scrollContainer).toBeTruthy();
+
+    if (scrollContainer) {
+      scrollContainer.scrollTo = vi.fn();
+
+      // Initially, not scrolled up (button not visible)
+      expect(screen.queryByRole('button', { name: 'Сўнгги хабарга ўтиш' })).toBeNull();
+
+      // Trigger scroll event where user is scrolled up away from bottom
+      Object.defineProperty(scrollContainer, 'scrollHeight', { value: 1000, configurable: true });
+      Object.defineProperty(scrollContainer, 'clientHeight', { value: 400, configurable: true });
+      Object.defineProperty(scrollContainer, 'scrollTop', { value: 100, configurable: true });
+
+      fireEvent.scroll(scrollContainer);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Сўнгги хабарга ўтиш' })).toBeTruthy();
+      });
+
+      // Click the jump button
+      const jumpBtn = screen.getByRole('button', { name: 'Сўнгги хабарга ўтиш' });
+      fireEvent.click(jumpBtn);
+
+      expect(scrollContainer.scrollTo).toHaveBeenCalledWith({
+        top: 1000,
+        behavior: 'smooth',
+      });
+    }
+  });
 });
