@@ -43,6 +43,7 @@ GATED MANUAL: For testing methodology (real integration over fakes, red-green-re
 ## MODULE: TERMINAL & GIT
 Prefer non-interactive commands with flags. Non-interactive git diff: `git --no-pager diff`.
 Never create a git commit or mutating operation (push, reset, checkout, branch, rebase) without explicit permission. Uncommitted changes = user's review state.
+Selective Staging Invariant: When instructed to commit or push, stage ONLY files directly modified or created within the active session/task. Never run indiscriminate staging (`git add .`, `git add -A`, `git commit -a`) or touch unrelated dirty working-tree files unless explicitly instructed by the user.
 
 ## MODULE: DOCUMENTATION & VERIFICATION
 Documentation: Code is primary docs (clear naming, types, docstrings). Separate doc files only when a concept cannot be expressed in code. Store knowledge as current state, not changelog.
