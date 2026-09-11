@@ -185,9 +185,9 @@ These empirical rules capture real-world communication habits observed across Uz
   - When combined with water ("suv", "suvchi", "kran", "ichimlik suvi") or billing/outage complaints, "qurib yotish" STRICTLY MEANS DESICCATION / LACK OF WATER, NEVER HOME CONSTRUCTION! You MUST NEVER hallucinate house building or private construction from "qurib yotibdi/yotoradimi".
 
 ### 9. MUNICIPAL UTILITY PERSONNEL VERNACULAR VS. PRIVATE CRAFTSMEN
-- In Uzbek neighborhood vernacular, terms compounding a utility name ("suvchi", "gazchi", "svetchi", "musorchi") denote MUNICIPAL UTILITY WORKERS/INSPECTORS (Suv ta'minoti, Hududgaz, HET/Elektroset, Toza Hudud), OR the interrogative discourse particle "-chi" ("suv-chi?", "gaz-chi?" = "And what about water/gas?").
-- Mentioning "suvchi", "gazchi", or "svetchi" in conjunction with a supply outage or delivery grievance belongs to public municipal service, NOT private domestic craftsmanship.
-- Private craftsmen/tradesmen are strictly designated by distinct terms: "santexnik", "elektrik", "usta", "remontchi".
+- In Uzbek neighborhood vernacular, terms compounding a utility name ("suvchi", "gazchi", "svetchi", "musorchi") OR referring to utility personnel ("gazdegila", "gazdagilar", "svetchila", "svetchilar", "suvchila", "suvchilar", "raygazdegila", "raygazdagilar") denote MUNICIPAL UTILITY WORKERS/INSPECTORS (Suv ta'minoti, Hududgaz, HET/Elektroset, Toza Hudud), OR the interrogative discourse particle "-chi" ("suv-chi?", "gaz-chi?" = "And what about water/gas?").
+- Mentioning "suvchi", "gazchi", "svetchi", "gazdegila", or "svetchila" in conjunction with a supply outage, maintenance grievance, or delivery failure belongs to public municipal service, NOT private domestic craftsmanship.
+- Private craftsmen/tradesmen are strictly designated by distinct terms: "santexnik", "elektrik", "usta", "remontchi" (when seeking or offering private in-house work). When residents say "remont qilib charchamaskanda bu gazdegila", this refers directly to the public communal utility provider, NOT a private repairman!
 
 ### 10. CULTURAL IRONY, SARCASM & RHETORICAL EXASPERATION
 - In Uzbek neighborhood Telegram chats, residents frequently express acute frustration through irony, sarcasm, rhetorical questions, or hyperbole.
@@ -253,6 +253,33 @@ These empirical rules capture real-world communication habits observed across Uz
     - "endi svettiyam o'chirishsa balans bo'ladi"
   - The verb root with conditional "-sa / -ishsa / -iwsa" imagines an unoccurred transition into an outage, inherently presupposing the service is STILL RUNNING.
   - This is purely fatalistic chatter and hypothetical banter -> MUST be classified as is_relevant: false (GENERAL_CHATTER).
+
+### 15. COMMUNAL MAINTENANCE SHUTOFFS, SEASONAL PREPARATIONS & RESIDENT GRIEVANCES
+- THE DOMAIN REALITY OF PREVENTATIVE & SEASONAL MAINTENANCE SHUTOFFS:
+  - Across Uzbekistan (especially in regional and district network distribution), municipal utility providers (Hududgaz, Regional Electric Networks / HET / Elektroset, Suv Ta'minoti) regularly shut off gas, electricity, or tap water to conduct repairs, preventative maintenance, or seasonal overhaul:
+    - "remont" / "remon" (universal Russian loanword used colloquially for communal maintenance / repair works)
+    - "kuz-qish mavsumiga tayyorgarlik" / "qish mavsumiga tayyorgarlik" / "mavsumga tayyorgarlik" (seasonal autumn/winter preparations)
+    - "profilaktika" / "profilaktik ta'mirlash" / "ta'mirlash ishlari"
+    - "gazdegila" / "gazdagilar" (Hududgaz), "svetchila" / "svetchilar" (Elektroset), "suvchila" / "suvchilar" (Suv Ta'minoti)
+  - CRITICAL MUNICIPAL INVARIANT: In public communal infrastructure, CONDUCTING REPAIRS OR SEASONAL PREPARATIONS INHERENTLY REQUIRES AND CAUSES THE SERVICE TO BE CUT OFF / SHUT DOWN.
+- CONTEXTUAL INQUIRIES ATTRIBUTING OUTAGE TO MAINTENANCE (is_relevant: true):
+  - When an outage has occurred or is actively discussed that day, resident inquiries wondering if the shutoff is due to maintenance or seasonal preparations:
+    - "Yana qish kuz mavsumiga tayyorgarlikmikan?"
+    - "Remont bo'lyaptimikan?" / "Gazda ta'mirlash ketyaptimi?"
+    - "Svetda profilaktikami yana?"
+  - These inquiries inherently communicate that the service is CURRENTLY ABSENT/CUT OFF, and the resident is asking why or confirming the cause.
+  - When preceded by same-lane outage context or same-day disruption topics, they inherit the active utility lane (e.g. GAS) and MUST be classified as is_relevant: true!
+- RESIDENT GRIEVANCES & EXASPERATION REGARDING MAINTENANCE SHUTOFFS (is_relevant: true):
+  - Residents routinely express acute frustration and grievance over prolonged, frequent, recurring, or unannounced maintenance shutoffs:
+    - "remont qilorib charchamaskanda bu gazdegila" (These gas utility people never tire of doing repairs)
+    - "remon digan narsa bir marta bumedimi, hadeb har yili qilinorsa, galati" (Doesn't a repair happen once? If it's done repeatedly every year, it's bizarre)
+    - "har yili shu ahvol, remont deb gazni/svetni o'chirib qo'yishadi"
+    - "svetni remont deb o'chirishdi, qachon yonadi o'zi?"
+  - In Uzbek neighborhood discourse, saying "remont qilib charchamadi bu gazdagilar/svetchilar" does NOT mean abstract discussion about repairs. IT IS A DIRECT CIVIC GRIEVANCE PROTESTING AN ACTIVE COMMUNAL SUPPLY CUTOFF!
+  - These messages satisfy the Substance Gate and MUST be classified as is_relevant: true under the corresponding utility lane (GAS, ELECTRICITY, WATER). In bursts, all constituent grievance clauses must be included in "accepted_message_ids".
+- STRICT BOUNDARY: PLANNED_ANNOUNCEMENT VS. CITIZEN GRIEVANCE:
+  - "PLANNED_ANNOUNCEMENT" applies ONLY to official maintenance broadcast notices posted by utility authorities or chat administrators ("Hurmatli iste'molchilar... ta'mirlash ishlari sababli o'chiriladi").
+  - Resident questions, grievances, and complaints about maintenance shutoffs are NEVER PLANNED_ANNOUNCEMENT and NEVER GENERAL_CHATTER; they are authentic citizen disruption reports and grievances!
 
 ### OUTPUT FORMAT
 Respond strictly with valid JSON conforming to the requested schema.`;

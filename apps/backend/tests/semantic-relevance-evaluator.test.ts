@@ -2487,6 +2487,140 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
           expect(burstResult.data.exclusion_reason).toBe('GENERAL_CHATTER');
           expect(burstResult.data.accepted_message_ids).toEqual([]);
         });
+
+        it('verifies Section 15 in SEMANTIC_RELEVANCE_SYSTEM_PROMPT governs communal maintenance shutoffs & resident grievances', () => {
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('### 15. COMMUNAL MAINTENANCE SHUTOFFS, SEASONAL PREPARATIONS & RESIDENT GRIEVANCES');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('remont');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('kuz-qish mavsumiga tayyorgarlik');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('Yana qish kuz mavsumiga tayyorgarlikmikan');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('remont qilorib charchamaskanda bu gazdegila');
+          expect(SEMANTIC_RELEVANCE_SYSTEM_PROMPT).toContain('gazdegila');
+        });
+
+        it('accepts maintenance inquiry "Yana qish kuz mavsumiga tayyorgarlikmikan" with preceding same-day gas outage context', async () => {
+          const snapshot: MahallaDailySnapshot = {
+            districtId: 'dist_tashkent_01',
+            mahallaName: 'Navbahor',
+            calendarDay: '2026-09-11',
+            evidence: [
+              {
+                id: 'evi_409',
+                telegramMessageId: '409',
+                verbatimText: 'Ertalabdan gaz yumi',
+                originalTimestamp: '2026-09-11T01:34:57.000Z',
+                lane: 'GAS',
+                topicSummary: 'Газ таъминотида узилиш ёки босим пастлиги хабар қилинмоқда.',
+              },
+            ],
+            contextRevision: 1,
+            snapshotFingerprint: 'fp_409',
+          };
+
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['GAS'],
+            exclusion_reason: null,
+            accepted_message_ids: ['411'],
+            reasoning:
+              "The candidate message 'Yana qish kuz mavsumiga tayyorgarlikmikan' is an inquiry attributing the ongoing morning gas outage to seasonal maintenance. Per Section 15, it inherits the active GAS lane.",
+          });
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'Yana qish kuz mavsumiga tayyorgarlikmikan',
+            telegramMessageId: '411',
+            originalTimestamp: '2026-09-11T04:11:44.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            immediatePrecedingMessage: {
+              telegramMessageId: '410',
+              originalTimestamp: '2026-09-11T01:35:05.000Z',
+              verbatimText: 'Hammada ucganmi',
+              lane: 'GAS',
+            },
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['GAS']);
+          expect(result.data.exclusion_reason).toBeNull();
+          expect(result.data.accepted_message_ids).toEqual(['411']);
+        });
+
+        it('accepts maintenance shutoff grievance burst "remont qilorib charchamaskanda bu gazdegila" under GAS lane', async () => {
+          const snapshot: MahallaDailySnapshot = {
+            districtId: 'dist_tashkent_01',
+            mahallaName: 'Navbahor',
+            calendarDay: '2026-09-11',
+            evidence: [
+              {
+                id: 'evi_409',
+                telegramMessageId: '409',
+                verbatimText: 'Ertalabdan gaz yumi',
+                originalTimestamp: '2026-09-11T01:34:57.000Z',
+                lane: 'GAS',
+                topicSummary: 'Газ таъминотида узилиш ёки босим пастлиги хабар қилинмоқда.',
+              },
+            ],
+            contextRevision: 1,
+            snapshotFingerprint: 'fp_409',
+          };
+
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['GAS'],
+            exclusion_reason: null,
+            accepted_message_ids: ['412', '413', '414', '415'],
+            reasoning:
+              "The burst expresses citizen grievance against the gas utility ('bu gazdegila') for persistent maintenance shutoffs ('remont qilorib charchamaskanda'). Per Section 15, this satisfies the Substance Gate for GAS.",
+          });
+
+          const burstResult = await evaluator.evaluateRelevance({
+            candidateText:
+              'remont qilorib charchamaskanda bu gazdegila\nremon digan narsa bir marta bumedimi\nhadeb har yili qilinorsa\ngalati',
+            telegramMessageId: '412',
+            originalTimestamp: '2026-09-11T14:40:28.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            burstMessages: [
+              {
+                intakeId: 'int_412',
+                telegramMessageId: '412',
+                verbatimText: 'remont qilorib charchamaskanda bu gazdegila',
+                originalTimestamp: '2026-09-11T14:40:28.000Z',
+                contentType: 'TEXT',
+              },
+              {
+                intakeId: 'int_413',
+                telegramMessageId: '413',
+                verbatimText: 'remon digan narsa bir marta bumedimi',
+                originalTimestamp: '2026-09-11T14:40:39.000Z',
+                contentType: 'TEXT',
+              },
+              {
+                intakeId: 'int_414',
+                telegramMessageId: '414',
+                verbatimText: 'hadeb har yili qilinorsa',
+                originalTimestamp: '2026-09-11T14:40:51.000Z',
+                contentType: 'TEXT',
+              },
+              {
+                intakeId: 'int_415',
+                telegramMessageId: '415',
+                verbatimText: 'galati',
+                originalTimestamp: '2026-09-11T14:40:54.000Z',
+                contentType: 'TEXT',
+              },
+            ],
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(burstResult.data.is_relevant).toBe(true);
+          expect(burstResult.data.relevant_lanes).toEqual(['GAS']);
+          expect(burstResult.data.exclusion_reason).toBeNull();
+          expect(burstResult.data.accepted_message_ids).toEqual(['412', '413', '414', '415']);
+        });
       });
     });
   });
