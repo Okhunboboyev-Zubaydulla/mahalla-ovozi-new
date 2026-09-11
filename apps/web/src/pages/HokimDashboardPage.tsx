@@ -11,7 +11,6 @@ import { TopicEvidenceDrawer } from '../components/topics/TopicEvidenceDrawer.js
 import { DashboardHelpDrawer } from '../components/topics/DashboardHelpDrawer.js';
 import { useHokimTopicBoard } from '../topics/useHokimTopicBoard.js';
 import { useTopicStatistics } from '../topics/useTopicStatistics.js';
-import { useTopicEvidence } from '../topics/useTopicEvidence.js';
 import { useDashboardFilterParams } from '../hooks/useDashboardFilterParams.js';
 import { useFocusFallback } from '../hooks/useFocusFallback.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
@@ -117,21 +116,7 @@ export const HokimDashboardPage: React.FC = () => {
     }, 50);
   }, [originatingLane, returnFocus]);
 
-  const evidenceQuery = useTopicEvidence(selectedTopicId, {
-    onInvalidated: handleInvalidatedTopic,
-  });
-  const refetchEvidence = evidenceQuery.refetch;
 
-  // Revalidate open evidence drawer when board refresh completes (AC 5)
-  const prevRefreshedAtRef = useRef<string | null>(lastRefreshedAt);
-  useEffect(() => {
-    if (lastRefreshedAt && lastRefreshedAt !== prevRefreshedAtRef.current) {
-      prevRefreshedAtRef.current = lastRefreshedAt;
-      if (selectedTopicId) {
-        refetchEvidence();
-      }
-    }
-  }, [lastRefreshedAt, selectedTopicId, refetchEvidence]);
 
   const handleOpenHelp = useCallback(() => {
     if (window.innerWidth < 1024) {
@@ -420,6 +405,7 @@ export const HokimDashboardPage: React.FC = () => {
         topicId={selectedTopicId}
         focusHokim={focusHokimEvidence}
         onClose={handleCloseDrawer}
+        onInvalidated={handleInvalidatedTopic}
       />
 
       <DashboardHelpDrawer

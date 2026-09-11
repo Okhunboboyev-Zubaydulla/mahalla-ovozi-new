@@ -25,12 +25,14 @@ export interface TopicEvidenceDrawerProps {
   topicId: string | null;
   focusHokim?: boolean;
   onClose: () => void;
+  onInvalidated?: () => void;
 }
 
 export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
   topicId,
   focusHokim,
   onClose,
+  onInvalidated,
 }) => {
   const effectiveFocusHokim = focusHokim ?? false;
   const headingRef = useRef<HTMLDivElement>(null);
@@ -52,7 +54,7 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
     hasNextPage,
     fetchNextPage,
     refetch,
-  } = useTopicEvidence(topicId, { order });
+  } = useTopicEvidence(topicId, { order, onInvalidated });
 
   const { markTopicAsRead } = useTopicReadState();
 
