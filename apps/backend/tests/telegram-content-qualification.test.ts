@@ -6,6 +6,7 @@ import {
   isTelegramCommand,
   isTelegramServiceMessage,
   extractReplyMetadata,
+  hasSelfContainedCivicSignal,
   type TelegramMessage,
   type TelegramIntakeRecordInput,
 } from '../src/modules/telegram-intake/telegram-content-qualification.js';
@@ -647,6 +648,44 @@ describe('Story 2.2: Telegram Content Qualification Engine Unit Tests', () => {
       if (result.status === 'SUPPORTED') {
         expect(result.candidate.telegramUserId).toBe('0');
       }
+    });
+  });
+
+  describe('hasSelfContainedCivicSignal', () => {
+    it('returns true for messages with explicit civic subject and failure predicate in Uzbek and Russian', () => {
+      expect(hasSelfContainedCivicSignal("Bizda ham svet o'chdi")).toBe(true);
+      expect(hasSelfContainedCivicSignal('бизда хам чироқ ўчди')).toBe(true);
+      expect(hasSelfContainedCivicSignal("Suv to'xtab qoldi, bosim yo'q")).toBe(true);
+      expect(hasSelfContainedCivicSignal('Газ босими жуда паст')).toBe(true);
+      expect(hasSelfContainedCivicSignal('Трансформатор портлади ёки куйди')).toBe(true);
+      expect(hasSelfContainedCivicSignal('Сув качон буладими?')).toBe(true);
+      expect(hasSelfContainedCivicSignal('Чиқинди тўлиб кетган, олиб кетишмади')).toBe(true);
+      expect(hasSelfContainedCivicSignal('труба ёрилди сув оқяпти')).toBe(true);
+      expect(hasSelfContainedCivicSignal('канализация тўлиб тошди')).toBe(true);
+    });
+
+    it('returns true for compound civic problem terms', () => {
+      expect(hasSelfContainedCivicSignal('Svetsizlikdan charchadik')).toBe(true);
+      expect(hasSelfContainedCivicSignal('Сувсизлик қийнаяпти')).toBe(true);
+      expect(hasSelfContainedCivicSignal('Газсизликдан музлаб қолдик')).toBe(true);
+    });
+
+    it('returns false for vague fragments, chat chatter, or dependent remarks', () => {
+      // The exact phrase from contaminated message 66312:
+      expect(hasSelfContainedCivicSignal('каерда экан бизга керек')).toBe(false);
+      expect(hasSelfContainedCivicSignal('bizga ham kerak')).toBe(false);
+      expect(hasSelfContainedCivicSignal('qayerda ekan')).toBe(false);
+      expect(hasSelfContainedCivicSignal('ha tushundim rahmat')).toBe(false);
+      expect(hasSelfContainedCivicSignal('kim biladi?')).toBe(false);
+      expect(hasSelfContainedCivicSignal('kimga murojaat qilsak boladi')).toBe(false);
+      expect(hasSelfContainedCivicSignal('')).toBe(false);
+    });
+
+    it('returns false for bare utility mentions without failure/disruption predicates', () => {
+      expect(hasSelfContainedCivicSignal('svet')).toBe(false);
+      expect(hasSelfContainedCivicSignal('suv')).toBe(false);
+      expect(hasSelfContainedCivicSignal('gaz')).toBe(false);
+      expect(hasSelfContainedCivicSignal('chiqindi')).toBe(false);
     });
   });
 });

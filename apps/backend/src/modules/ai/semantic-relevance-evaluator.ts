@@ -61,6 +61,23 @@ export interface PrecedingMessageContext {
   lane?: string | null;
 }
 
+export interface ChatContinuityContext {
+  interveningCount: number;
+  precedingRelevantMessage?: PrecedingMessageContext | null;
+  truePrecedingMessage?: {
+    telegramMessageId: string;
+    originalTimestamp: string;
+    verbatimText: string;
+  } | null;
+}
+
+export interface ParentReplyContext {
+  parentMessageId: string;
+  parentStatus: 'RELEVANT' | 'EXCLUDED' | 'NOT_FOUND' | 'PENDING';
+  parentExclusionReason?: string | null;
+  parentVerbatimText?: string | null;
+}
+
 export interface EvaluateRelevanceInput {
   candidateText: string;
   telegramMessageId: string;
@@ -72,6 +89,8 @@ export interface EvaluateRelevanceInput {
   vocabularyGuidance?: string[];
   profileId?: string;
   immediatePrecedingMessage?: PrecedingMessageContext | null;
+  chatContinuity?: ChatContinuityContext | null;
+  parentReplyContext?: ParentReplyContext | null;
 }
 
 export { SEMANTIC_RELEVANCE_SYSTEM_PROMPT };
@@ -106,7 +125,15 @@ CRITICAL: Scrutinize each message individually. In "accepted_message_ids", list 
 - Text: "${input.candidateText}"`);
     }
 
-    if (input.replyMetadata) {
+    if (input.parentReplyContext && input.parentReplyContext.parentStatus === 'EXCLUDED') {
+      const parentReason = input.parentReplyContext.parentExclusionReason || 'NON_CIVIC_CHAT';
+      const excerpt = input.parentReplyContext.parentVerbatimText
+        ? `\n- Parent Verbatim Text: "${input.parentReplyContext.parentVerbatimText.slice(0, 150)}"`
+        : '';
+      sections.push(`### REPLY CONTEXT (PARENT IS CONFIRMED NON-CIVIC MESSAGE)
+- Reply To Message ID: ${input.parentReplyContext.parentMessageId} (Status: EXCLUDED / ${parentReason})${excerpt}
+- CRITICAL ISOLATION RULE: The parent message is a non-civic chat/ad. The candidate MUST contain an independent, self-contained municipal problem report to qualify. If its meaning depends on or replies to the non-civic parent, exclude it as ${parentReason === 'ADVERTISEMENT_OR_SPAM' ? 'ADVERTISEMENT_OR_SPAM' : 'GENERAL_CHATTER'}.`);
+    } else if (input.replyMetadata) {
       if (input.replyMetadata.replyToIsForwarded) {
         sections.push(`### REPLY CONTEXT
 - Note: This message is a reply to a Telegram-forwarded parent message.
@@ -117,10 +144,12 @@ CRITICAL: Scrutinize each message individually. In "accepted_message_ids", list 
       }
     }
 
-    // Extract Immediate Preceding Message (N-1 in Chat)
-    let precedingMsg: PrecedingMessageContext | null = input.immediatePrecedingMessage ?? null;
+    // Extract Immediate Preceding Message or Chat Continuity
+    const continuity = input.chatContinuity;
+    let precedingMsg: PrecedingMessageContext | null =
+      continuity?.precedingRelevantMessage ?? input.immediatePrecedingMessage ?? null;
 
-    if (!precedingMsg && input.snapshot.evidence.length > 0) {
+    if (!precedingMsg && !continuity && input.snapshot.evidence.length > 0) {
       const candidateTime = new Date(input.originalTimestamp).getTime();
       const earlierItems = input.snapshot.evidence.filter(
         (e) => new Date(e.originalTimestamp).getTime() <= candidateTime,
@@ -137,7 +166,26 @@ CRITICAL: Scrutinize each message individually. In "accepted_message_ids", list 
       }
     }
 
-    if (precedingMsg) {
+    if (continuity && continuity.interveningCount > 0 && precedingMsg) {
+      const candidateTime = new Date(input.originalTimestamp).getTime();
+      const prevTime = new Date(precedingMsg.originalTimestamp).getTime();
+      const diffMinutes =
+        !Number.isNaN(prevTime) && !Number.isNaN(candidateTime)
+          ? Math.round((candidateTime - prevTime) / 60000)
+          : null;
+      const diffText = diffMinutes !== null ? ` (+${diffMinutes}m before candidate)` : '';
+      const laneText = precedingMsg.lane ? ` (Lane: [${precedingMsg.lane}])` : '';
+      const replyTargetText = input.replyMetadata?.replyToMessageId
+        ? `MsgID ${input.replyMetadata.replyToMessageId}`
+        : 'None (posted openly in chat)';
+
+      sections.push(`### CHAT CONTINUITY STATUS (INTERRUPTED THREAD)
+- Earlier Civic Evidence: MsgID ${precedingMsg.telegramMessageId}${diffText}${laneText}
+- Intervening Unrelated Messages: ${continuity.interveningCount} message(s) occurred in chat between earlier civic evidence and candidate
+- Conversational Continuity: BROKEN (Thread interrupted by unrelated chat)
+- Explicit Reply Target: ${replyTargetText}
+- RULE: Candidate must be fully self-contained. Vague fragments without municipal keywords MUST be excluded as UNRESOLVED_AMBIGUOUS_FRAGMENT.`);
+    } else if (precedingMsg) {
       const candidateTime = new Date(input.originalTimestamp).getTime();
       const prevTime = new Date(precedingMsg.originalTimestamp).getTime();
       const diffMinutes =

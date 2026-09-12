@@ -1473,6 +1473,61 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
         );
         expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('suv oqib yotibdi / yotipti');
       });
+
+      it('verifies TOPIC_MATCHING_SYSTEM_PROMPT mandates UNASSIGNABLE_VAGUE for unanchored dependent fragments and forbids force-merging', () => {
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain('UNANCHORED DEPENDENT FRAGMENTS & NON-TOPIC REPLIES');
+        expect(TOPIC_MATCHING_SYSTEM_PROMPT).toContain(
+          'STRICTLY FORBIDDEN from force-merging unanchored ambiguous fragments into an existing topic just because that topic happens to be the only active topic',
+        );
+      });
+
+      it('classifies unanchored ambiguous fragment replying to non-topic message as UNASSIGNABLE_VAGUE even when an active topic exists in snapshot', async () => {
+        const expectedOutput: TopicMatchingResult = {
+          decision: 'UNASSIGNABLE_VAGUE',
+          matched_topic_id: null,
+          primary_lane: null,
+          reasoning: 'Ambiguous dependent fragment lacking independent municipal subject and whose reply target is not an active civic topic',
+        };
+
+        mockAdapter.setNextResponse(expectedOutput);
+
+        const snapshot: MahallaDailySnapshot = {
+          districtId: 'dist_1',
+          mahallaName: "Navro'z",
+          calendarDay: '2026-09-12',
+          contextRevision: 1,
+          snapshotFingerprint: 'fp_waste_1',
+          evidence: [
+            {
+              id: 'evi_66306',
+              topicId: 'top_waste_navroz_1',
+              telegramMessageId: '66306',
+              originalTimestamp: '2026-09-12T12:47:00.000Z',
+              verbatimText: 'musor moshina kemadi',
+              lane: 'WASTE',
+            },
+          ],
+        };
+
+        const result = await evaluator.evaluateTopicAssignment({
+          candidateText: 'каерда экан бизга керек',
+          telegramMessageId: '66312',
+          originalTimestamp: '2026-09-12T14:07:37.000Z',
+          contentType: 'TEXT',
+          replyMetadata: {
+            replyToMessageId: '66307',
+            replyToUserId: '998877',
+            replyToIsForwarded: false,
+          },
+          relevantLanes: ['WASTE'],
+          snapshot,
+          profileId: 'prof_match_2026_08_v1',
+        });
+
+        expect(result.data.decision).toBe('UNASSIGNABLE_VAGUE');
+        expect(result.data.matched_topic_id).toBeNull();
+        expect(result.data.primary_lane).toBeNull();
+      });
     });
   });
 });

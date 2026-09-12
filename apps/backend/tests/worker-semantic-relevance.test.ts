@@ -870,4 +870,146 @@ describe('Story 2.3: Worker Semantic Relevance 25-Row Verification Matrix Integr
     expect((rec2!.rawPayload as any).status).toBe('EXCLUDED');
     expect((rec2!.rawPayload as any).exclusionReason).toBe('GENERAL_CHATTER');
   });
+
+  it('Deterministic Fast-Fail Gate: excludes replies to non-civic excluded parents without calling AI gateway', async () => {
+    aiController.mockAdapter.clearHistory();
+
+    // 1. Seed excluded parent message (e.g. Ad for concrete rubble)
+    const parentText = 'кимга битон тош керак текинга олиб кетинг';
+    const parentIntakeId = await createTestIntake(parentText, '66307');
+
+    await db
+      .update(telegramIntakeRecords)
+      .set({
+        rawPayload: {
+          update_id: 1,
+          message: {
+            message_id: 66307,
+            date: 1787389000,
+            chat: { id: Number(testChatId), type: 'supergroup', title: 'Guliston Mahalla' },
+            text: parentText,
+          },
+          status: 'EXCLUDED',
+          exclusionReason: 'ADVERTISEMENT_OR_SPAM',
+        },
+      })
+      .where(eq(telegramIntakeRecords.id, parentIntakeId));
+
+    await db.insert(aiOperations).values({
+      id: `aiop_${crypto.randomUUID()}`,
+      districtId: testDistrictId,
+      mahallaName: 'Guliston',
+      calendarDay: '2026-08-22',
+      operationType: 'SEMANTIC_RELEVANCE',
+      targetId: parentIntakeId,
+      pinnedProfileId: 'prof_rel_2026_08_v1',
+      contextRevision: 0,
+      snapshotFingerprint: 'parent_fp',
+      finalStatus: 'COMPLETED_IRRELEVANT',
+      resultPayload: {
+        is_relevant: false,
+        relevant_lanes: [],
+        exclusion_reason: 'ADVERTISEMENT_OR_SPAM',
+        accepted_message_ids: [],
+        reasoning: 'Commercial or private scrap giveaway',
+      },
+    });
+
+    // 2. Candidate message replies to parent 66307 with ambiguous phrase lacking civic signal
+    const candidateText = 'каерда экан бизга керек';
+    const candidateIntakeId = await createTestIntake(candidateText, '66312');
+
+    const initialCalls = aiController.mockAdapter.getCalls().length;
+
+    await processCandidateJob(candidateIntakeId, candidateText, '66312', {
+      replyToMessageId: '66307',
+      replyToUserId: '998877',
+      replyToIsForwarded: false,
+    });
+
+    const op = await waitForOperation(candidateIntakeId);
+    expect(op).toBeDefined();
+    expect(op.finalStatus).toBe('COMPLETED_IRRELEVANT');
+    expect((op.resultPayload as any).exclusion_reason).toBe('ADVERTISEMENT_OR_SPAM');
+    expect((op.resultPayload as any).reasoning).toContain('Deterministic fast-fail');
+
+    // 3. Verify zero AI provider calls were made (100% deterministic fast-fail)
+    const afterCalls = aiController.mockAdapter.getCalls().length;
+    expect(afterCalls).toBe(initialCalls);
+
+    // 4. Verify candidate rawPayload updated with status: 'EXCLUDED'
+    const [candidateRecord] = await db
+      .select()
+      .from(telegramIntakeRecords)
+      .where(eq(telegramIntakeRecords.id, candidateIntakeId));
+    expect(candidateRecord).toBeDefined();
+    expect((candidateRecord!.rawPayload as any).status).toBe('EXCLUDED');
+    expect((candidateRecord!.rawPayload as any).exclusionReason).toBe('ADVERTISEMENT_OR_SPAM');
+  });
+
+  it('Candidate replying to excluded parent with self-contained civic signal bypasses fast-fail and evaluates via AI', async () => {
+    aiController.mockAdapter.clearHistory();
+
+    // 1. Seed excluded parent message
+    const parentText = 'кимга битон тош керак текинга олиб кетинг';
+    const parentIntakeId = await createTestIntake(parentText, '66320');
+
+    await db
+      .update(telegramIntakeRecords)
+      .set({
+        rawPayload: {
+          status: 'EXCLUDED',
+          exclusionReason: 'ADVERTISEMENT_OR_SPAM',
+        },
+      })
+      .where(eq(telegramIntakeRecords.id, parentIntakeId));
+
+    await db.insert(aiOperations).values({
+      id: `aiop_${crypto.randomUUID()}`,
+      districtId: testDistrictId,
+      mahallaName: 'Guliston',
+      calendarDay: '2026-08-22',
+      operationType: 'SEMANTIC_RELEVANCE',
+      targetId: parentIntakeId,
+      pinnedProfileId: 'prof_rel_2026_08_v1',
+      contextRevision: 0,
+      snapshotFingerprint: 'parent_fp',
+      finalStatus: 'COMPLETED_IRRELEVANT',
+      resultPayload: {
+        is_relevant: false,
+        relevant_lanes: [],
+        exclusion_reason: 'ADVERTISEMENT_OR_SPAM',
+        accepted_message_ids: [],
+        reasoning: 'Commercial advertisement',
+      },
+    });
+
+    // 2. Candidate message has an independent civic signal ("бизда хам чироқ ўчди")
+    const candidateText = 'бизда хам чироқ ўчди';
+    const candidateIntakeId = await createTestIntake(candidateText, '66321');
+
+    aiController.mockAdapter.setNextResponse({
+      is_relevant: true,
+      relevant_lanes: ['ELECTRICITY'],
+      exclusion_reason: null,
+      reasoning: 'Electricity outage reported despite replying to unrelated message',
+    });
+
+    await processCandidateJob(candidateIntakeId, candidateText, '66321', {
+      replyToMessageId: '66320',
+      replyToUserId: '998877',
+      replyToIsForwarded: false,
+    });
+
+    const op = await waitForOperation(candidateIntakeId);
+    expect(op).toBeDefined();
+    expect(op.finalStatus).toBe('COMPLETED_RELEVANT');
+    expect((op.resultPayload as any).relevant_lanes).toEqual(['ELECTRICITY']);
+
+    // Verify AI gateway WAS called
+    const calls = aiController.mockAdapter.getCalls();
+    expect(calls.length).toBeGreaterThan(0);
+    const lastCall = calls[calls.length - 1];
+    expect(lastCall?.userPrompt).toContain('### REPLY CONTEXT (PARENT IS CONFIRMED NON-CIVIC MESSAGE)');
+  });
 });

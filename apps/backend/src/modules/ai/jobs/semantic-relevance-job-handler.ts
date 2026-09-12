@@ -6,6 +6,7 @@ import {
   districts,
   telegramIntakeRecords,
   aiOperations,
+  aiProfiles,
 } from '../../../adapters/db/schema/index.js';
 import {
   TELEGRAM_SEMANTIC_RELEVANCE_QUEUE,
@@ -23,8 +24,22 @@ import {
 import type {
   SemanticRelevanceEvaluator,
   PrecedingMessageContext,
+  ChatContinuityContext,
+  ParentReplyContext,
+  ExclusionReason,
 } from '../semantic-relevance-evaluator.js';
+import { hasSelfContainedCivicSignal } from '../../telegram-intake/telegram-content-qualification.js';
 import { clearPendingRetryFlag } from '../../issues/retry-service.js';
+
+function extractVerbatimTextFromRawPayload(rawPayload: unknown): string {
+  if (typeof rawPayload !== 'object' || rawPayload === null) return '';
+  const record = rawPayload as Record<string, unknown>;
+  const msg = record.message as Record<string, unknown> | undefined;
+  if (typeof msg?.text === 'string') return msg.text;
+  if (typeof msg?.caption === 'string') return msg.caption;
+  if (typeof record.verbatimText === 'string') return record.verbatimText;
+  return '';
+}
 
 export interface SemanticRelevanceJobDeps {
   db: DbClient;
@@ -129,6 +144,198 @@ export async function processSemanticRelevanceJobs(
             continue;
           }
 
+          // Layer 1: Deterministic Parent-Reply Fast-Fail Gate
+          let parentReplyContext: ParentReplyContext | null = null;
+          let shouldFastFailExcludedParent = false;
+          let parentExclusionReason: ExclusionReason | null = null;
+
+          if (replyMetadata?.replyToMessageId) {
+            try {
+              const [parentIntake] = await db
+                .select({
+                  id: telegramIntakeRecords.id,
+                  rawPayload: telegramIntakeRecords.rawPayload,
+                  telegramMessageId: telegramIntakeRecords.telegramMessageId,
+                })
+                .from(telegramIntakeRecords)
+                .where(
+                  and(
+                    eq(telegramIntakeRecords.districtId, districtId),
+                    eq(telegramIntakeRecords.telegramChatId, telegramChatId),
+                    eq(telegramIntakeRecords.telegramMessageId, replyMetadata.replyToMessageId),
+                  ),
+                )
+                .limit(1);
+
+              if (parentIntake) {
+                const raw = parentIntake.rawPayload as Record<string, unknown> | null;
+                const parentVerbatimText = extractVerbatimTextFromRawPayload(raw);
+
+                const isExcludedAtQualification = raw?.status === 'EXCLUDED';
+                const qualificationReason =
+                  typeof raw?.exclusionReason === 'string' ? raw.exclusionReason : null;
+
+                const [parentOp] = await db
+                  .select({
+                    id: aiOperations.id,
+                    finalStatus: aiOperations.finalStatus,
+                    resultPayload: aiOperations.resultPayload,
+                  })
+                  .from(aiOperations)
+                  .where(
+                    and(
+                      eq(aiOperations.districtId, districtId),
+                      eq(aiOperations.operationType, 'SEMANTIC_RELEVANCE'),
+                      eq(aiOperations.targetId, parentIntake.id),
+                    ),
+                  )
+                  .limit(1);
+
+                const isExcludedAtAi = parentOp?.finalStatus === 'COMPLETED_IRRELEVANT';
+                const isRelevantAtAi = parentOp?.finalStatus === 'COMPLETED_RELEVANT';
+                const aiPayload = parentOp?.resultPayload as Record<string, unknown> | null;
+                const aiExclusionReason =
+                  typeof aiPayload?.exclusion_reason === 'string' ? aiPayload.exclusion_reason : null;
+
+                const isParentExcluded = isExcludedAtQualification || isExcludedAtAi;
+                const effectiveParentExclusionReason =
+                  (aiExclusionReason || qualificationReason || 'GENERAL_CHATTER') as ExclusionReason;
+
+                if (isParentExcluded) {
+                  const candidateHasCivicSignal =
+                    (burstMessages && burstMessages.length > 0
+                      ? burstMessages.some((m) => hasSelfContainedCivicSignal(m.verbatimText))
+                      : false) || hasSelfContainedCivicSignal(verbatimText);
+
+                  if (!candidateHasCivicSignal) {
+                    shouldFastFailExcludedParent = true;
+                    parentExclusionReason = effectiveParentExclusionReason;
+                  } else {
+                    parentReplyContext = {
+                      parentMessageId: replyMetadata.replyToMessageId,
+                      parentStatus: 'EXCLUDED',
+                      parentExclusionReason: effectiveParentExclusionReason,
+                      parentVerbatimText,
+                    };
+                  }
+                } else if (isRelevantAtAi) {
+                  parentReplyContext = {
+                    parentMessageId: replyMetadata.replyToMessageId,
+                    parentStatus: 'RELEVANT',
+                    parentVerbatimText,
+                  };
+                } else {
+                  parentReplyContext = {
+                    parentMessageId: replyMetadata.replyToMessageId,
+                    parentStatus: 'PENDING',
+                    parentVerbatimText,
+                  };
+                }
+              } else {
+                parentReplyContext = {
+                  parentMessageId: replyMetadata.replyToMessageId,
+                  parentStatus: 'NOT_FOUND',
+                };
+              }
+            } catch (parentErr) {
+              console.warn(
+                JSON.stringify({
+                  event: 'TELEGRAM_SEMANTIC_PARENT_REPLY_LOOKUP_FAILED',
+                  districtId,
+                  telegramChatId,
+                  replyToMessageId: replyMetadata.replyToMessageId,
+                  error: (parentErr as Error).message,
+                }),
+              );
+            }
+          }
+
+          if (shouldFastFailExcludedParent) {
+            const [activeProfile] = await db
+              .select({ id: aiProfiles.id })
+              .from(aiProfiles)
+              .where(and(eq(aiProfiles.operationType, 'SEMANTIC_RELEVANCE'), eq(aiProfiles.isActive, true)))
+              .orderBy(desc(aiProfiles.version))
+              .limit(1);
+
+            const fallbackProfileId = activeProfile?.id ?? 'prof_rel_default';
+            const finalExclusionReason = parentExclusionReason || 'GENERAL_CHATTER';
+            const fastFailReasoning = `Deterministic fast-fail: Reply to excluded parent (${finalExclusionReason}) without independent civic signal`;
+
+            const allBurstIntakes =
+              burstMessages && burstMessages.length > 0
+                ? burstMessages
+                : [{ intakeId, telegramMessageId }];
+
+            const aiOperationId = `aiop_${crypto.randomUUID()}`;
+
+            await withTransactionalIntake(pool, boss, async ({ tx }) => {
+              for (const item of allBurstIntakes) {
+                const opId = item.intakeId === intakeId ? aiOperationId : `aiop_${crypto.randomUUID()}`;
+                await tx
+                  .insert(aiOperations)
+                  .values({
+                    id: opId,
+                    districtId,
+                    mahallaName,
+                    calendarDay,
+                    operationType: 'SEMANTIC_RELEVANCE',
+                    targetId: item.intakeId,
+                    pinnedProfileId: fallbackProfileId,
+                    contextRevision: 0,
+                    snapshotFingerprint: 'fast_fail_parent_excluded',
+                    finalStatus: 'COMPLETED_IRRELEVANT',
+                    resultPayload: {
+                      is_relevant: false,
+                      relevant_lanes: [],
+                      exclusion_reason: finalExclusionReason,
+                      accepted_message_ids: [],
+                      reasoning: fastFailReasoning,
+                    },
+                  })
+                  .onConflictDoNothing();
+              }
+
+              const allIntakeIds = allBurstIntakes.map((m) => m.intakeId);
+              const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+              const exclusionMeta = JSON.stringify({
+                status: 'EXCLUDED',
+                exclusionReason: finalExclusionReason,
+                verbatimText,
+                reasoning: fastFailReasoning,
+                expiresAt,
+                purgedAt: null,
+              });
+
+              await tx
+                .update(telegramIntakeRecords)
+                .set({
+                  rawPayload: sql`COALESCE(${telegramIntakeRecords.rawPayload}, '{}'::jsonb) || ${exclusionMeta}::jsonb`,
+                  updatedAt: new Date(),
+                })
+                .where(inArray(telegramIntakeRecords.id, allIntakeIds));
+
+              verbatimText = '';
+            });
+
+            const durationMs = Math.round(performance.now() - startTime);
+            console.log(
+              JSON.stringify({
+                event: 'TELEGRAM_SEMANTIC_EXCLUDED_REPLY_TO_NON_CIVIC_PARENT',
+                districtId,
+                mahallaName,
+                calendarDay,
+                telegramChatId,
+                telegramMessageId,
+                aiOperationId,
+                parentMessageId: replyMetadata?.replyToMessageId,
+                parentExclusionReason: finalExclusionReason,
+                durationMs,
+              }),
+            );
+            continue;
+          }
+
           // Fetch injected evidence if provided (e.g. In tests), otherwise query DB
           let injectedEvidence: AcceptedEvidenceItem[] | undefined;
           if (options?.injectedEvidenceResolver) {
@@ -150,13 +357,15 @@ export async function processSemanticRelevanceJobs(
           const initialRevision = snapshot.contextRevision;
           const initialFingerprint = snapshot.snapshotFingerprint;
 
-          // Resolve Immediate Preceding Message (N-1) in this chat, bridging the queue race condition
+          // Layer 2: Resolve Immediate Preceding Message & Chat Continuity in this chat
           let immediatePrecedingMessage: PrecedingMessageContext | null = null;
+          let chatContinuity: ChatContinuityContext | null = null;
           const candidateTimestamp = new Date(originalTimestamp);
           const candidateTimeMs = candidateTimestamp.getTime();
-          const fifteenMinutesAgo = new Date(candidateTimeMs - 15 * 60 * 1000);
+          const twoHoursAgo = new Date(candidateTimeMs - 2 * 60 * 60 * 1000);
 
           try {
+            // 1. Look back up to 2 hours for the most recent COMPLETED_RELEVANT message in this chat
             const [recentRelevantOp] = await db
               .select({
                 id: aiOperations.id,
@@ -172,7 +381,7 @@ export async function processSemanticRelevanceJobs(
                   eq(telegramIntakeRecords.districtId, districtId),
                   eq(telegramIntakeRecords.telegramChatId, telegramChatId),
                   eq(aiOperations.finalStatus, 'COMPLETED_RELEVANT'),
-                  gt(telegramIntakeRecords.originalTimestamp, fifteenMinutesAgo),
+                  gt(telegramIntakeRecords.originalTimestamp, twoHoursAgo),
                   lt(telegramIntakeRecords.originalTimestamp, candidateTimestamp),
                 ),
               )
@@ -180,25 +389,85 @@ export async function processSemanticRelevanceJobs(
               .limit(1);
 
             if (recentRelevantOp) {
-              const raw = recentRelevantOp.rawPayload as Record<string, unknown> | null;
-              const msg = raw?.message as Record<string, unknown> | undefined;
-              const prevText =
-                (typeof msg?.text === 'string'
-                  ? msg.text
-                  : typeof msg?.caption === 'string'
-                    ? msg.caption
-                    : '') || '';
+              const prevText = extractVerbatimTextFromRawPayload(recentRelevantOp.rawPayload);
               const payload = recentRelevantOp.resultPayload as Record<string, unknown> | null;
               const lanes = payload?.relevant_lanes as string[] | undefined;
               const prevLane = lanes && lanes.length > 0 ? lanes[0] : null;
 
               if (prevText) {
-                immediatePrecedingMessage = {
+                const precedingCtx: PrecedingMessageContext = {
                   telegramMessageId: recentRelevantOp.telegramMessageId,
                   originalTimestamp: recentRelevantOp.originalTimestamp.toISOString(),
                   verbatimText: prevText,
                   lane: prevLane,
                 };
+
+                // 2. Count intervening messages between earlier relevant message and candidate
+                const [interveningResult] = await db
+                  .select({ count: sql<number>`count(*)::int` })
+                  .from(telegramIntakeRecords)
+                  .where(
+                    and(
+                      eq(telegramIntakeRecords.districtId, districtId),
+                      eq(telegramIntakeRecords.telegramChatId, telegramChatId),
+                      gt(telegramIntakeRecords.originalTimestamp, recentRelevantOp.originalTimestamp),
+                      lt(telegramIntakeRecords.originalTimestamp, candidateTimestamp),
+                    ),
+                  );
+
+                const interveningCount = interveningResult?.count ?? 0;
+
+                // 3. Query true immediately preceding message (regardless of relevance)
+                let truePrecedingMsg: {
+                  telegramMessageId: string;
+                  originalTimestamp: string;
+                  verbatimText: string;
+                } | null = null;
+
+                if (interveningCount > 0) {
+                  const [truePrecedingRecord] = await db
+                    .select({
+                      telegramMessageId: telegramIntakeRecords.telegramMessageId,
+                      originalTimestamp: telegramIntakeRecords.originalTimestamp,
+                      rawPayload: telegramIntakeRecords.rawPayload,
+                    })
+                    .from(telegramIntakeRecords)
+                    .where(
+                      and(
+                        eq(telegramIntakeRecords.districtId, districtId),
+                        eq(telegramIntakeRecords.telegramChatId, telegramChatId),
+                        lt(telegramIntakeRecords.originalTimestamp, candidateTimestamp),
+                      ),
+                    )
+                    .orderBy(desc(telegramIntakeRecords.originalTimestamp))
+                    .limit(1);
+
+                  if (truePrecedingRecord) {
+                    truePrecedingMsg = {
+                      telegramMessageId: truePrecedingRecord.telegramMessageId,
+                      originalTimestamp: truePrecedingRecord.originalTimestamp.toISOString(),
+                      verbatimText: extractVerbatimTextFromRawPayload(truePrecedingRecord.rawPayload),
+                    };
+                  }
+                }
+
+                const timeDiffMs = candidateTimeMs - recentRelevantOp.originalTimestamp.getTime();
+                const isWithin15Min = timeDiffMs <= 15 * 60 * 1000;
+
+                if (interveningCount === 0 && isWithin15Min) {
+                  immediatePrecedingMessage = precedingCtx;
+                  chatContinuity = {
+                    interveningCount: 0,
+                    precedingRelevantMessage: precedingCtx,
+                    truePrecedingMessage: null,
+                  };
+                } else {
+                  chatContinuity = {
+                    interveningCount: Math.max(interveningCount, isWithin15Min ? 0 : 1),
+                    precedingRelevantMessage: precedingCtx,
+                    truePrecedingMessage: truePrecedingMsg,
+                  };
+                }
               }
             }
           } catch (queryErr) {
@@ -222,6 +491,8 @@ export async function processSemanticRelevanceJobs(
             snapshot,
             burstMessages,
             immediatePrecedingMessage,
+            chatContinuity,
+            parentReplyContext,
           });
 
           // Gate 2: Pre-Commit District Lifecycle Verification (AC 13 / Matrix #21)

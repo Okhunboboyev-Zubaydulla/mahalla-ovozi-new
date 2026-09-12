@@ -2622,6 +2622,158 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
           expect(burstResult.data.accepted_message_ids).toEqual(['412', '413', '414', '415']);
         });
       });
+
+      describe('Chat Continuity & Parent-Reply Validation Isolation', () => {
+        it('formats prompt with INTERRUPTED THREAD when interveningCount > 0', () => {
+          const snapshot: MahallaDailySnapshot = {
+            districtId: 'dist_act_123',
+            mahallaName: "Navro'z",
+            calendarDay: '2026-09-12',
+            contextRevision: 1,
+            snapshotFingerprint: 'fp_test',
+            topics: [],
+            evidence: [],
+          };
+
+          const prompt = evaluator.buildUserPrompt({
+            candidateText: 'каерда экан бизга керек',
+            telegramMessageId: '66312',
+            originalTimestamp: '2026-09-12T14:07:37.000Z',
+            contentType: 'TEXT',
+            replyMetadata: {
+              replyToMessageId: '66307',
+              replyToUserId: '556677',
+              replyToIsForwarded: false,
+            },
+            snapshot,
+            chatContinuity: {
+              interveningCount: 4,
+              precedingRelevantMessage: {
+                telegramMessageId: '66306',
+                originalTimestamp: '2026-09-12T12:47:00.000Z',
+                verbatimText: 'musor moshina kemadi',
+                lane: 'WASTE',
+              },
+              truePrecedingMessage: {
+                telegramMessageId: '66310',
+                originalTimestamp: '2026-09-12T14:00:00.000Z',
+                verbatimText: 'salom hammaga',
+              },
+            },
+            parentReplyContext: {
+              parentMessageId: '66307',
+              parentStatus: 'EXCLUDED',
+              parentExclusionReason: 'ADVERTISEMENT_OR_SPAM',
+              parentVerbatimText: 'кимга битон тош керак текинга олиб кетинг',
+            },
+          });
+
+          // 1. Verify parent reply context with exclusion status and isolation rule
+          expect(prompt).toContain('### REPLY CONTEXT (PARENT IS CONFIRMED NON-CIVIC MESSAGE)');
+          expect(prompt).toContain('Reply To Message ID: 66307 (Status: EXCLUDED / ADVERTISEMENT_OR_SPAM)');
+          expect(prompt).toContain('Parent Verbatim Text: "кимга битон тош керак текинга олиб кетинг"');
+          expect(prompt).toContain('CRITICAL ISOLATION RULE: The parent message is a non-civic chat/ad');
+
+          // 2. Verify chat continuity status marked as BROKEN
+          expect(prompt).toContain('### CHAT CONTINUITY STATUS (INTERRUPTED THREAD)');
+          expect(prompt).toContain('Earlier Civic Evidence: MsgID 66306 (+81m before candidate) (Lane: [WASTE])');
+          expect(prompt).toContain('Intervening Unrelated Messages: 4 message(s) occurred in chat between earlier civic evidence and candidate');
+          expect(prompt).toContain('Conversational Continuity: BROKEN (Thread interrupted by unrelated chat)');
+          expect(prompt).toContain('Explicit Reply Target: MsgID 66307');
+          expect(prompt).toContain('RULE: Candidate must be fully self-contained. Vague fragments without municipal keywords MUST be excluded as UNRESOLVED_AMBIGUOUS_FRAGMENT.');
+
+          // 3. Ensure it is NOT labeled as Immediate Preceding N-1
+          expect(prompt).not.toContain('### IMMEDIATE PRECEDING MESSAGE (N-1 IN CHAT, DIRECT CONTINUATION)');
+        });
+
+        it('formats prompt with IMMEDIATE PRECEDING MESSAGE when interveningCount === 0 and direct continuation', () => {
+          const snapshot: MahallaDailySnapshot = {
+            districtId: 'dist_act_123',
+            mahallaName: "Navro'z",
+            calendarDay: '2026-09-12',
+            contextRevision: 1,
+            snapshotFingerprint: 'fp_test',
+            topics: [],
+            evidence: [],
+          };
+
+          const prompt = evaluator.buildUserPrompt({
+            candidateText: 'bizda ham ochdi',
+            telegramMessageId: '1002',
+            originalTimestamp: '2026-09-12T12:48:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            chatContinuity: {
+              interveningCount: 0,
+              precedingRelevantMessage: {
+                telegramMessageId: '1001',
+                originalTimestamp: '2026-09-12T12:47:00.000Z',
+                verbatimText: "Svet o'chdi",
+                lane: 'ELECTRICITY',
+              },
+              truePrecedingMessage: null,
+            },
+          });
+
+          expect(prompt).toContain('### IMMEDIATE PRECEDING MESSAGE (N-1 IN CHAT)');
+          expect(prompt).toContain('Message ID: 1001 (+1m before candidate) (Lane: [ELECTRICITY])');
+          expect(prompt).toContain('Text: "Svet o\'chdi"');
+          expect(prompt).not.toContain('### CHAT CONTINUITY STATUS (INTERRUPTED THREAD)');
+        });
+
+        it('evaluates ambiguous dependent fragment across broken continuity as UNRESOLVED_AMBIGUOUS_FRAGMENT', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'UNRESOLVED_AMBIGUOUS_FRAGMENT',
+            accepted_message_ids: [],
+            reasoning: 'Ambiguous dependent fragment across broken chat continuity without independent municipal keywords',
+          });
+
+          const snapshot: MahallaDailySnapshot = {
+            districtId: 'dist_act_123',
+            mahallaName: "Navro'z",
+            calendarDay: '2026-09-12',
+            contextRevision: 1,
+            snapshotFingerprint: 'fp_test',
+            topics: [],
+            evidence: [],
+          };
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'каерда экан бизга керек',
+            telegramMessageId: '66312',
+            originalTimestamp: '2026-09-12T14:07:37.000Z',
+            contentType: 'TEXT',
+            replyMetadata: {
+              replyToMessageId: '66307',
+              replyToUserId: '556677',
+              replyToIsForwarded: false,
+            },
+            snapshot,
+            chatContinuity: {
+              interveningCount: 4,
+              precedingRelevantMessage: {
+                telegramMessageId: '66306',
+                originalTimestamp: '2026-09-12T12:47:00.000Z',
+                verbatimText: 'musor moshina kemadi',
+                lane: 'WASTE',
+              },
+            },
+            parentReplyContext: {
+              parentMessageId: '66307',
+              parentStatus: 'EXCLUDED',
+              parentExclusionReason: 'ADVERTISEMENT_OR_SPAM',
+            },
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(false);
+          expect(result.data.exclusion_reason).toBe('UNRESOLVED_AMBIGUOUS_FRAGMENT');
+          expect(result.data.relevant_lanes).toHaveLength(0);
+        });
+      });
     });
   });
 });

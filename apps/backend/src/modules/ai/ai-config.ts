@@ -281,5 +281,23 @@ These empirical rules capture real-world communication habits observed across Uz
   - "PLANNED_ANNOUNCEMENT" applies ONLY to official maintenance broadcast notices posted by utility authorities or chat administrators ("Hurmatli iste'molchilar... ta'mirlash ishlari sababli o'chiriladi").
   - Resident questions, grievances, and complaints about maintenance shutoffs are NEVER PLANNED_ANNOUNCEMENT and NEVER GENERAL_CHATTER; they are authentic citizen disruption reports and grievances!
 
+### 16. CHAT CONTINUITY, INTERVENING UNRELATED MESSAGES & PARENT REPLIES
+- THE NATURE OF NEIGHBORHOOD CHAT DYNAMICS:
+  - In Telegram community groups, conversation threads frequently interleave. Multiple residents may post advertisements, private sales/errands, greetings, or unrelated chatter between genuine municipal complaints.
+- CHAT CONTINUITY STATUS:
+  1. DIRECT CONTINUATION (0 Intervening Messages):
+     - When a candidate message immediately follows a municipal issue message with 0 intervening messages, it is part of the active thread. Elliptical questions or "+1" confirmations (e.g. "bizda ham", "qachon berishadi") inherit the preceding lane.
+  2. INTERRUPTED THREAD (Intervening Unrelated Messages > 0):
+     - When the prompt indicates "Conversational Continuity: BROKEN" (intervening unrelated messages exist between earlier civic evidence and the candidate) and the candidate has NO explicit reply target:
+     - THE CANDIDATE MUST BE FULLY SELF-CONTAINED: It must independently contain both an explicit municipal/utility subject (e.g. "suv", "svet", "gaz", "musor") AND a disruption/inquiry predicate.
+     - VAGUE DEPENDENT FRAGMENTS MUST BE EXCLUDED:
+       - Ambiguous questions or fragments lacking an explicit municipal subject (e.g. "qayerda ekan", "bizga kerak", "kaerda ekan bizga kerak", "manga kerak", "narxi qancha", "bizda ham", "keldimi?") MUST NEVER be assumed to refer to a distant civic message across intervening chat messages!
+       - In real context, such questions almost always respond to intervening ads, sales offers (e.g. someone selling concrete rubble, wood, goods), or general chatter.
+       - They MUST be classified as is_relevant: false with exclusion_reason: UNRESOLVED_AMBIGUOUS_FRAGMENT or GENERAL_CHATTER!
+- REPLIES TO CONFIRMED NON-CIVIC MESSAGES:
+  - When the candidate is an explicit Telegram reply to a confirmed non-civic parent message (Parent Status: EXCLUDED / ADVERTISEMENT_OR_SPAM / GENERAL_CHATTER):
+  - If the candidate does not contain an independent, self-contained municipal problem report, it belongs strictly to that non-civic parent conversation.
+  - MUST be classified as is_relevant: false with exclusion_reason: ADVERTISEMENT_OR_SPAM or GENERAL_CHATTER!
+
 ### OUTPUT FORMAT
 Respond strictly with valid JSON conforming to the requested schema.`;

@@ -475,3 +475,25 @@ export function filterTelegramMessage(
   return { accepted: true, text: rawText };
 }
 
+const CIVIC_SUBJECT_REGEX =
+  /(?:^|[^\p{L}\p{N}_])(svet|chiroq|elektr|tok|voltaj|napryajeni|suv|vodoprovod|kranta|gaz|musor|chiqindi|axlat|truba|quvur|kanalizatsiy[a-z]*|lyuk|yo['`ʻʼ]?l|ko['`ʻʼ]?cha|asfalt|transformator|hokim|xokim|hokimiyat|hokimlik|свет|чироқ|электр|ток|вольтаж|напряжени|сув|водопровод|кранта|вода|воды|газ|мусор|чиқинди|ахлат|труба|қувур|канализаци[а-я]*|люк|йўл|кўча|асфальт|трансформатор|дорог[а-я]|ҳоким|ҳокимият|ҳокимлик)(?:$|[^\p{L}\p{N}_])/iu;
+
+const CIVIC_PREDICATE_REGEX =
+  /(?:^|[^\p{L}\p{N}_])(o['`ʻʼ]?chdi|o['`ʻʼ]?chgan|yo['`ʻʼ]?q|yo['`ʻʼ]?qligi|kelmadi|kemadi|kemapti|past|bosim|yorildi|teshildi|oqyapti|oqib|to['`ʻʼ]?lib|toshdi|yonmadi|kuydi|uzildi|buzildi|qachon|bo['`ʻʼ]?ladimi|bormi|[ўу]чди|[ўу]чган|йўқ|келмади|кемади|паст|босим|ёрилди|тешилди|оқяпти|оқиб|тўлиб|тошди|ёнмади|куйди|узилди|бузилди|[қк]ачон|[бўу]+ладими|борми|нет|отключили|прорвало|когда|будет|давление|не\s+горит|потух|течет|забилось)(?:$|[^\p{L}\p{N}_])/iu;
+
+const COMPOUND_CIVIC_REGEX =
+  /(?:^|[^\p{L}\p{N}_])(suvsizlik|gazsizlik|svetsizlik|chiroqsizlik|elektrsizlik|сувсизлик|газсизлик|светсизлик|чироқсизлик|электрсизлик|чиқиндилар|мусорлар)/iu;
+
+/**
+ * Checks whether text contains an independent, self-contained municipal civic signal
+ * (possessing both a municipal subject and a failure/inquiry predicate, or a compound term).
+ */
+export function hasSelfContainedCivicSignal(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return false;
+  if (COMPOUND_CIVIC_REGEX.test(trimmed)) return true;
+  return CIVIC_SUBJECT_REGEX.test(trimmed) && CIVIC_PREDICATE_REGEX.test(trimmed);
+}
+
+

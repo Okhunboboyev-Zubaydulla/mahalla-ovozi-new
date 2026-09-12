@@ -196,7 +196,11 @@ PART I: CORE CLUSTERING & DOMAIN INVARIANTS
 3. UNASSIGNABLE_VAGUE:
    - The candidate is an isolated, subjectless conversational fragment without a clear link to any active topic; OR
    - The candidate is an operational vehicle tracking inquiry ("musor mashina qaysi ko'chada?"), routine schedule/ETA check without failure, or standalone contact lookup without an active disruption report. Such messages MUST NOT seed new topics nor attach to existing topics; OR
-   - The candidate discusses private domestic errands, handyman/craftsman hire ("santexnik kerak", "usta kerak"), private house construction/renovation, scrap recycling ("bakalashka oladigan nomeri"), or private transport/debris hauling ("remont chiqindisiga muravey bormi"). Such messages MUST NOT be merged into active municipal topics nor seed new topics.
+   - The candidate discusses private domestic errands, handyman/craftsman hire ("santexnik kerak", "usta kerak"), private house construction/renovation, scrap recycling ("bakalashka oladigan nomeri"), or private transport/debris hauling ("remont chiqindisiga muravey bormi"). Such messages MUST NOT be merged into active municipal topics nor seed new topics; OR
+   - UNANCHORED DEPENDENT FRAGMENTS & NON-TOPIC REPLIES:
+     If the candidate is an ambiguous dependent fragment or inquiry lacking an independent municipal subject (e.g. "qayerda ekan", "bizga kerak", "qachon keladi", "nima bo'ldi"), AND its reply_to_message_id does NOT belong to any active accepted topic in the mahalla snapshot:
+     You MUST classify it as UNASSIGNABLE_VAGUE!
+     You are STRICTLY FORBIDDEN from force-merging unanchored ambiguous fragments into an existing topic just because that topic happens to be the only active topic of the day in the mahalla!
    - MINIMAL BIPARTITE DISRUPTION REPORTS MUST NEVER BE UNASSIGNABLE_VAGUE:
      A message asserting a minimal bipartite civic disruption ([utility subject] + [failure/non-arrival predicate], e.g. "suv kemadiku", "suv kelmadi", "gaz yo'q", "svet o'chdi") possesses a clear qualifying municipal lane. Because communal utility networks in a mahalla are location-agnostic, it MUST be assigned to MATCH_EXISTING_TOPIC (if an active topic in that lane exists) or NEW_TOPIC (if seeding the first topic of the day). It is STRICTLY FORBIDDEN to designate minimal bipartite disruption messages as UNASSIGNABLE_VAGUE!
    - Format: "decision": "UNASSIGNABLE_VAGUE", "matched_topic_id": null, "primary_lane": null.
