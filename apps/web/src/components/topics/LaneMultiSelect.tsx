@@ -1,5 +1,5 @@
-import React from 'react';
-import { Button, Checkbox, Popover, Space, Typography, Tag } from 'antd';
+import React, { useState } from 'react';
+import { Button, Checkbox, Popover, Space, Typography, Tag, ConfigProvider } from 'antd';
 import { DownOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { QualifyingLane } from '@mahalla-ovozi/api-contracts';
 import { LANE_LABELS, LANE_STYLES } from './TopicCard.js';
@@ -27,6 +27,7 @@ export const LaneMultiSelect: React.FC<LaneMultiSelectProps> = ({
   disabled = false,
   style,
 }) => {
+  const [isOpen, setIsOpen] = useState(false);
   const selectedLanes = value && value.length > 0 ? value : CANONICAL_LANES;
 
   const handleToggleLane = (lane: QualifyingLane, checked: boolean) => {
@@ -120,43 +121,64 @@ export const LaneMultiSelect: React.FC<LaneMultiSelectProps> = ({
   );
 
   return (
-    <Popover
-      content={content}
-      trigger="click"
-      placement="bottomLeft"
-      arrow={false}
-      styles={{
-        body: {
-          borderRadius: 8,
-          boxShadow: 'none',
-          border: '1px solid #E2E8F0',
+    <ConfigProvider
+      theme={{
+        token: {
+          controlOutline: 'rgba(2, 132, 199, 0.2)',
+          controlOutlineWidth: 2,
+        },
+        components: {
+          Button: {
+            colorText: '#64748B',
+            defaultBorderColor: '#CBD5E1',
+            defaultHoverBorderColor: '#0284C7',
+            defaultActiveBorderColor: '#CBD5E1',
+            borderRadius: 6,
+            controlHeight: 32,
+          },
         },
       }}
     >
-      <Button
-        disabled={disabled}
-        icon={<AppstoreOutlined style={{ color: '#64748B', fontSize: 14 }} />}
-        style={{
-          height: 32,
-          borderRadius: 6,
-          borderColor: '#CBD5E1',
-          boxShadow: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          fontWeight: 400,
-          fontSize: 14,
-          color: '#64748B',
-          flexShrink: 0,
-          ...style,
+      <Popover
+        content={content}
+        trigger="click"
+        placement="bottomLeft"
+        arrow={false}
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        styles={{
+          body: {
+            borderRadius: 8,
+            boxShadow: 'none',
+            border: '1px solid #E2E8F0',
+          },
         }}
-        aria-label={`Йўналишлар фильтри: ${selectedLanes.length} та йўналиш танланган`}
       >
-        <span style={{ fontSize: 14, fontWeight: 400, color: '#64748B' }}>
-          Йўналишлар: {selectedLanes.length}/5
-        </span>
-        <DownOutlined style={{ fontSize: 12, color: '#64748B' }} />
-      </Button>
-    </Popover>
+        <Button
+          disabled={disabled}
+          icon={<AppstoreOutlined style={{ color: '#64748B', fontSize: 14 }} />}
+          style={{
+            height: 32,
+            borderRadius: 6,
+            borderColor: '#CBD5E1',
+            boxShadow: isOpen ? '0 0 0 2px rgba(2, 132, 199, 0.2)' : undefined,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontWeight: 400,
+            fontSize: 14,
+            color: '#64748B',
+            flexShrink: 0,
+            ...style,
+          }}
+          aria-label={`Йўналишлар фильтри: ${selectedLanes.length} та йўналиш танланган`}
+        >
+          <span style={{ fontSize: 14, fontWeight: 400, color: '#64748B' }}>
+            Йўналишлар: {selectedLanes.length}/5
+          </span>
+          <DownOutlined style={{ fontSize: 12, color: '#64748B' }} />
+        </Button>
+      </Popover>
+    </ConfigProvider>
   );
 };

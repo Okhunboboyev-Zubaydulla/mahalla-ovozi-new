@@ -218,31 +218,45 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
           </Title>
           {!isPhone && <div style={{ width: 1, height: 18, backgroundColor: '#E2E8F0', flexShrink: 0 }} />}
           <Tooltip title={formattedDistrictName} placement="bottom">
-            <Text
-              strong
+            <div
               style={{
-                fontSize: isPhone ? 13 : 14,
-                color: '#0F172A',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
+                backgroundColor: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: 6,
+                height: 32,
+                padding: '0 10px',
                 maxWidth: isPhone ? 150 : 260,
+                boxSizing: 'border-box',
               }}
             >
-              <EnvironmentOutlined
+              <Text
+                strong
                 style={{
-                  color: '#0284C7',
                   fontSize: isPhone ? 13 : 14,
-                  marginRight: isPhone ? 4 : 6,
-                  flexShrink: 0,
+                  color: '#0F172A',
+                  display: 'flex',
+                  alignItems: 'center',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  width: '100%',
                 }}
-              />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {isPhone ? mobileDistrictName : formattedDistrictName}
-              </span>
-            </Text>
+              >
+                <EnvironmentOutlined
+                  style={{
+                    color: '#0284C7',
+                    fontSize: isPhone ? 13 : 14,
+                    marginRight: isPhone ? 4 : 6,
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {isPhone ? mobileDistrictName : formattedDistrictName}
+                </span>
+              </Text>
+            </div>
           </Tooltip>
         </div>
 
@@ -868,8 +882,10 @@ export const BoardToolbar: React.FC<BoardToolbarProps> = ({
                   boxShadow: 'none',
                   height: 32,
                   width: 'auto',
-                  padding: '0 8px',
+                  padding: '0 10px',
                   borderRadius: 6,
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
                 }}
               >
                 {actor?.username || 'Ҳоким'}

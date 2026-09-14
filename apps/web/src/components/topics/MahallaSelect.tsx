@@ -28,6 +28,10 @@ export const MahallaSelect: React.FC<MahallaSelectProps> = ({
   return (
     <ConfigProvider
       theme={{
+        token: {
+          controlOutline: 'rgba(2, 132, 199, 0.2)',
+          controlOutlineWidth: 2,
+        },
         components: {
           Select: {
             colorText: '#64748B',
@@ -36,8 +40,8 @@ export const MahallaSelect: React.FC<MahallaSelectProps> = ({
             controlHeight: 32,
             borderRadius: 6,
             colorBorder: '#CBD5E1',
-            hoverBorderColor: '#0284C7',
-            activeBorderColor: '#0284C7',
+            hoverBorderColor: '#CBD5E1',
+            activeBorderColor: '#CBD5E1',
             activeOutlineColor: 'rgba(2, 132, 199, 0.2)',
           },
         },
@@ -59,10 +63,7 @@ export const MahallaSelect: React.FC<MahallaSelectProps> = ({
         }
         style={{
           width: 180,
-          height: 32,
-          fontSize: 14,
           fontWeight: 400,
-          color: '#64748B',
           flexShrink: 0,
           ...style,
         }}
