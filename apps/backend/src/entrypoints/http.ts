@@ -57,7 +57,7 @@ export function registerAllDomainRoutes(
   registerTelegramBotRoutes(server, ctx.db);
   registerTelegramGroupRoutes(server, ctx.db);
   registerHokimAccountRoutes(server, ctx.db);
-  registerTelegramIntakeRoutes(server, { pool: ctx.pool, boss: ctx.boss });
+  registerTelegramIntakeRoutes(server, { pool: ctx.pool, boss: ctx.boss, db: ctx.db });
   registerAiOperationsRoutes(server, { db: ctx.db, pool: ctx.pool, boss: ctx.boss });
   registerHokimTopicsRoutes(server, ctx.db);
   registerHealthRoutes(server, {

@@ -1,6 +1,10 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
+import type { DbClient } from '../../adapters/db/client.js';
+import { createDbClient } from '../../adapters/db/client.js';
+import { globalTestSessionManager } from '../telegram-groups/telegram-test-session-store.js';
+import { handleIncomingWebhookMessage } from '../telegram-groups/telegram-group-engine.js';
 import {
   deriveWebhookSecret,
   verifyTelegramSecretToken,
@@ -10,10 +14,12 @@ import {
   processTelegramWebhookUpdate,
   TelegramUpdate,
 } from './telegram-intake-service.js';
+import type { TelegramMessage } from '../../adapters/telegram/telegram-types.js';
 
 export interface TelegramIntakeRoutesOptions {
   pool: pg.Pool;
   boss: PgBoss;
+  db?: DbClient;
 }
 
 export function registerTelegramIntakeRoutes(
@@ -48,6 +54,70 @@ export function registerTelegramIntakeRoutes(
     ) => {
       const { botId } = req.params;
       const startTime = performance.now();
+
+      // Check for active onboarding test session on this chat
+      const raw = req.body as {
+        message?: TelegramMessage;
+        channel_post?: TelegramMessage;
+        edited_message?: TelegramMessage;
+        edited_channel_post?: TelegramMessage;
+      };
+
+      const rawMsg =
+        raw?.message ??
+        raw?.channel_post ??
+        raw?.edited_message ??
+        raw?.edited_channel_post;
+
+      const chatId = rawMsg?.chat?.id != null ? String(rawMsg.chat.id) : null;
+
+      if (chatId) {
+        const activeSession = globalTestSessionManager.findActiveSessionByChatId(chatId);
+        if (activeSession) {
+          try {
+            const db = options.db || createDbClient(options.pool);
+            const testResult = await handleIncomingWebhookMessage(db, botId, req.body);
+            if (testResult.handled) {
+              const durationMs = Math.round(performance.now() - startTime);
+              if (testResult.accepted) {
+                console.log('[telemetry:telegram-intake-test-session]', {
+                  event: 'TELEGRAM_TEST_SESSION_ACCEPTED',
+                  botId,
+                  chatId,
+                  groupId: activeSession.groupId,
+                  districtId: activeSession.districtId,
+                  durationMs,
+                  latencyMs: durationMs,
+                });
+
+                return reply.status(200).send({
+                  ok: true,
+                  status: 'ACCEPTED_TEST_SESSION',
+                  result: testResult,
+                });
+              }
+
+              console.log('[telemetry:telegram-intake-test-session]', {
+                event: 'TELEGRAM_TEST_SESSION_REJECTED_CONTENT',
+                botId,
+                chatId,
+                groupId: activeSession.groupId,
+                reason: testResult.reason,
+                durationMs,
+                latencyMs: durationMs,
+              });
+
+              return reply.status(200).send({
+                ok: true,
+                status: 'IGNORED_TEST_UPDATE',
+                reason: testResult.reason,
+              });
+            }
+          } catch (err: unknown) {
+            req.log.error({ err, botId, chatId }, 'Failed processing test session update');
+          }
+        }
+      }
 
       try {
         const result = await processTelegramWebhookUpdate(

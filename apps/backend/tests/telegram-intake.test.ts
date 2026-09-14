@@ -8,6 +8,7 @@ import { buildHttpServer } from '../src/entrypoints/http.js';
 import { createDbPool, createDbClient, DbClient } from '../src/adapters/db/client.js';
 import { createBossClient, initBossQueues } from '../src/adapters/jobs/boss-client.js';
 import { deriveWebhookSecret } from '../src/modules/telegram-intake/webhook-security.js';
+import { globalTestSessionManager } from '../src/modules/telegram-groups/telegram-test-session-store.js';
 import {
   districts,
   districtTelegramBots,
@@ -647,5 +648,106 @@ describe('Story 2.1: Telegram Webhook Ingress & Durability Integration Tests', (
       .from(telegramIntakeRecords)
       .where(eq(telegramIntakeRecords.telegramBotId, invalidBotId));
     expect(records.length).toBe(0);
+  });
+
+  // Test 12: Active onboarding test session validates group on /api/v1/webhooks/telegram/:botId
+  it('Test 12: Active onboarding test session intercepts incoming message, validates group, and transitions status to VALID', async () => {
+    const testOnboardingChatId = `-100${Date.now() + 50}${Math.floor(Math.random() * 1000)}`;
+    const groupId = `dtg_${crypto.randomUUID()}`;
+
+    // 1. Insert an unapproved group in TESTING status
+    await db.insert(districtTelegramGroups).values({
+      id: groupId,
+      districtId: activeDistrictId,
+      mahallaName: `Onboarding Mahalla ${crypto.randomUUID().slice(0, 6)}`,
+      telegramChatId: testOnboardingChatId,
+      telegramChatTitle: 'Onboarding Test Group',
+      status: 'TESTING',
+    });
+
+    // 2. Register test session in globalTestSessionManager
+    globalTestSessionManager.createSession({
+      districtId: activeDistrictId,
+      groupId,
+      chatId: testOnboardingChatId,
+      botId: activeBotId,
+      ttlMs: 60000,
+    });
+
+    const secret = deriveWebhookSecret(activeBotId);
+    const testMessageId = 8801;
+
+    // 3. Send test message to authoritative webhook ingress
+    const res = await server.inject({
+      method: 'POST',
+      url: `/api/v1/webhooks/telegram/${activeBotId}`,
+      headers: { 'x-telegram-bot-api-secret-token': secret },
+      payload: {
+        update_id: 9901,
+        message: {
+          message_id: testMessageId,
+          date: Math.floor(Date.now() / 1000),
+          chat: {
+            id: testOnboardingChatId,
+            title: 'Onboarding Test Group',
+            type: 'supergroup',
+          },
+          from: {
+            id: 777123,
+            is_bot: false,
+            first_name: 'Resident',
+          },
+          text: 'Salom, test xabari',
+        },
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.ok).toBe(true);
+    expect(body.status).toBe('ACCEPTED_TEST_SESSION');
+    expect(body.result.handled).toBe(true);
+    expect(body.result.accepted).toBe(true);
+
+    // 4. Verify group is now VALID in the database
+    const [updatedGroup] = await db
+      .select()
+      .from(districtTelegramGroups)
+      .where(eq(districtTelegramGroups.id, groupId));
+
+    expect(updatedGroup).toBeDefined();
+    expect(updatedGroup!.status).toBe('VALID');
+    expect(updatedGroup!.testMessageReceivedAt).toBeDefined();
+
+    // 5. Subsequent citizen message for this now VALID group is processed by normal intake
+    const citizenMsgId = 8802;
+    const resCitizen = await server.inject({
+      method: 'POST',
+      url: `/api/v1/webhooks/telegram/${activeBotId}`,
+      headers: { 'x-telegram-bot-api-secret-token': secret },
+      payload: {
+        update_id: 9902,
+        message: {
+          message_id: citizenMsgId,
+          date: Math.floor(Date.now() / 1000),
+          chat: {
+            id: testOnboardingChatId,
+            title: 'Onboarding Test Group',
+            type: 'supergroup',
+          },
+          from: {
+            id: 777124,
+            is_bot: false,
+            first_name: 'Resident 2',
+          },
+          text: 'Mahallamizda svet o‘chdi, iltimos tekshiring',
+        },
+      },
+    });
+
+    expect(resCitizen.statusCode).toBe(200);
+    const citizenBody = resCitizen.json();
+    expect(citizenBody.ok).toBe(true);
+    expect(citizenBody.status).toBe('ACCEPTED');
   });
 });
