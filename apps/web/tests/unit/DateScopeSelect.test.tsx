@@ -40,6 +40,8 @@ describe('DateScopeSelect', () => {
       expect.objectContaining({ dateScope: 'custom' }),
     );
     expect(screen.getByRole('dialog', { name: 'Сана оралиғини танлаш' })).toBeTruthy();
+    const applyBtn = screen.getByLabelText('Киритилган саналарни қўллаш') as HTMLButtonElement;
+    expect(applyBtn.disabled).toBe(true);
   });
 
   it('toggles overlay when custom tab is clicked while already in custom scope', () => {

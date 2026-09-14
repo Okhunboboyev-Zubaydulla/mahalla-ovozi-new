@@ -84,9 +84,12 @@ export const DateScopeSelect: React.FC<DateScopeSelectProps> = ({
   const todayYmd = getTashkentToday();
   const ninetyDaysAgoYmd = dayjs(todayYmd, 'YYYY-MM-DD').subtract(90, 'day').format('YYYY-MM-DD');
 
+  const defaultFromFormatted = dayjs(todayYmd, 'YYYY-MM-DD').subtract(6, 'day').format('DD.MM.YYYY');
+  const defaultToFormatted = dayjs(todayYmd, 'YYYY-MM-DD').format('DD.MM.YYYY');
+
   const [isOpen, setIsOpen] = useState(false);
-  const [manualFrom, setManualFrom] = useState(() => (dateFrom ? dayjs(dateFrom).format('DD.MM.YYYY') : ''));
-  const [manualTo, setManualTo] = useState(() => (dateTo ? dayjs(dateTo).format('DD.MM.YYYY') : ''));
+  const [manualFrom, setManualFrom] = useState(() => (dateFrom ? dayjs(dateFrom).format('DD.MM.YYYY') : defaultFromFormatted));
+  const [manualTo, setManualTo] = useState(() => (dateTo ? dayjs(dateTo).format('DD.MM.YYYY') : defaultToFormatted));
   const [manualError, setManualError] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -247,8 +250,8 @@ export const DateScopeSelect: React.FC<DateScopeSelectProps> = ({
   })();
 
   const isDirty = (() => {
-    const currentAppliedFrom = dateFrom ? dayjs(dateFrom).format('DD.MM.YYYY') : '';
-    const currentAppliedTo = dateTo ? dayjs(dateTo).format('DD.MM.YYYY') : '';
+    const currentAppliedFrom = dateFrom ? dayjs(dateFrom).format('DD.MM.YYYY') : defaultFromFormatted;
+    const currentAppliedTo = dateTo ? dayjs(dateTo).format('DD.MM.YYYY') : defaultToFormatted;
     return manualFrom.trim() !== currentAppliedFrom || manualTo.trim() !== currentAppliedTo;
   })();
 
