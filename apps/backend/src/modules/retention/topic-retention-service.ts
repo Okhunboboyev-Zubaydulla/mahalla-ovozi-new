@@ -29,7 +29,8 @@ export function calculateRetentionDeadline(latestEvidenceTimestamp: Date): Date 
 /**
  * Determines whether a given retention deadline has arrived (is <= now).
  */
-export function isRetentionExpired(retentionExpiresAt: Date, now: Date = new Date()): boolean {
+export function isRetentionExpired(retentionExpiresAt: Date, nowInput?: Date): boolean {
+  const now = nowInput ?? new Date();
   if (!retentionExpiresAt || Number.isNaN(retentionExpiresAt.getTime()) || Number.isNaN(now.getTime())) {
     return false;
   }

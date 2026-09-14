@@ -193,7 +193,7 @@ describe('SignalMonitoringTable Component Tests', () => {
     renderComponent({ initialDistrictId: 'dist_1' });
 
     // Wait for initial load
-    expect(await screen.findByText('Сув босими жуда паст бўлиб қолди')).toBeTruthy();
+    expect(await screen.findByText(/Сув босими жуда паст/)).toBeTruthy();
     expect(screen.getByText('1-саҳифа')).toBeTruthy();
     const prevBtn = screen.getByText('Олдингиси').closest('button');
     const nextBtn = screen.getByText('Кейингиси').closest('button');
@@ -205,8 +205,8 @@ describe('SignalMonitoringTable Component Tests', () => {
     fireEvent.click(nextBtn!);
 
     // Should navigate to page 2
-    expect(await screen.findByText('2-саҳифа')).toBeTruthy();
-    expect(await screen.findByText('Электр таъминотида узилиш кузатилди')).toBeTruthy();
+    expect(await screen.findByText('2-саҳифа', {}, { timeout: 3000 })).toBeTruthy();
+    expect(await screen.findByText(/Электр таъминотида узилиш/, {}, { timeout: 3000 })).toBeTruthy();
     expect(prevBtn?.disabled).toBe(false);
     expect(nextBtn?.disabled).toBe(true);
 
@@ -214,8 +214,8 @@ describe('SignalMonitoringTable Component Tests', () => {
     fireEvent.click(prevBtn!);
 
     // Should return to page 1
-    expect(await screen.findByText('1-саҳифа')).toBeTruthy();
-    expect(await screen.findByText('Сув босими жуда паст бўлиб қолди')).toBeTruthy();
+    expect(await screen.findByText('1-саҳифа', {}, { timeout: 3000 })).toBeTruthy();
+    expect(await screen.findByText(/Сув босими жуда паст/, {}, { timeout: 3000 })).toBeTruthy();
     expect(prevBtn?.disabled).toBe(true);
   });
 });

@@ -33,26 +33,104 @@ import {
   TelegramBotIsAdminError,
   TelegramPrivacyModeEnabledError,
 } from '../telegram-bot/ports/telegram-client-port.js';
+import { z } from 'zod';
+import {
+  deriveWebhookSecret,
+  verifyTelegramSecretToken,
+} from '../telegram-intake/webhook-security.js';
+
+const TelegramIncomingMessageSchema = z
+  .object({
+    message_id: z.number().optional(),
+    date: z.number().optional(),
+    chat: z
+      .object({
+        id: z.union([z.number(), z.string()]),
+        type: z.string().optional(),
+        title: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+    from: z
+      .object({
+        id: z.union([z.number(), z.string()]).optional(),
+        is_bot: z.boolean().optional(),
+        first_name: z.string().optional(),
+        username: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+    text: z.string().optional(),
+    caption: z.string().optional(),
+  })
+  .passthrough();
+
+const TelegramTestWebhookPayloadSchema = z
+  .object({
+    update_id: z.number().optional(),
+    message: TelegramIncomingMessageSchema.optional(),
+    channel_post: TelegramIncomingMessageSchema.optional(),
+    edited_message: TelegramIncomingMessageSchema.optional(),
+    edited_channel_post: TelegramIncomingMessageSchema.optional(),
+  })
+  .passthrough();
 
 export function registerTelegramGroupRoutes(fastify: FastifyInstance, db: DbClient): void {
   // Public Webhook Ingress for Test Session Validation during Onboarding
   fastify.post(
     '/api/v1/telegram/webhook/:botId',
+    {
+      bodyLimit: 262144, // 256KB payload limit
+      preHandler: async (
+        req: FastifyRequest<{ Params: { botId: string } }>,
+        reply: FastifyReply,
+      ) => {
+        const { botId } = req.params;
+        const secretHeader = req.headers['x-telegram-bot-api-secret-token'];
+        const expectedSecret = deriveWebhookSecret(botId);
+
+        if (!verifyTelegramSecretToken(secretHeader, expectedSecret)) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHORIZED_WEBHOOK',
+              message: 'Ноқонуний Telegram webhook сўрови.',
+            },
+          });
+        }
+      },
+    },
     async (
       req: FastifyRequest<{ Params: { botId: string }; Body: unknown }>,
       reply: FastifyReply,
     ) => {
       const { botId } = req.params;
+
+      const parseResult = TelegramTestWebhookPayloadSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return reply.status(400).send({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Нотуғри Telegram update формати.',
+          },
+        });
+      }
+
       try {
-        const result = await handleIncomingWebhookMessage(db, botId, req.body);
+        const result = await handleIncomingWebhookMessage(db, botId, parseResult.data);
         if (result.handled) {
           return reply.status(200).send({ ok: true, result });
         }
         return reply
           .status(200)
           .send({ ok: true, message: 'Message ignored or not for test session' });
-      } catch {
-        return reply.status(200).send({ ok: true, error: 'Internal processing error' });
+      } catch (err) {
+        req.log.error({ err, botId }, 'Failed to process Telegram onboarding test message');
+        return reply.status(500).send({
+          error: {
+            code: 'WEBHOOK_PROCESSING_FAILED',
+            message: 'Тест хабарини қабул қилишда хатолик юз берди.',
+          },
+        });
       }
     },
   );

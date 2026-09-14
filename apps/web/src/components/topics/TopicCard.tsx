@@ -150,15 +150,15 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
         setIsFocused(false);
       }}
       style={{
-        backgroundColor: isPulseActive ? '#FFFBFB' : '#FFFFFF',
+        backgroundColor: isPulseActive ? '#FFFBFB' : themeColors.colorBgLaneTrack,
         border: `1px solid ${
           isSelected || isFocused
-            ? '#0284C7'
+            ? themeColors.colorPrimary
             : isPulseActive
               ? '#FECACA'
               : isElevated
-                ? '#CBD5E1'
-                : '#E2E8F0'
+                ? themeColors.colorBorderInput
+                : themeColors.colorBorder
         }`,
         borderRadius: 8,
         padding: '16px',
@@ -172,7 +172,7 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
           : isPulseActive
             ? '0 0 0 2px #FECACA, 0 4px 6px -1px rgba(220, 38, 38, 0.08)'
             : themeColors.shadowCard,
-        outline: isSelected || isFocused ? '2px solid #0284C7' : 'none',
+        outline: isSelected || isFocused ? `2px solid ${themeColors.colorPrimary}` : 'none',
         outlineOffset: isSelected || isFocused ? '2px' : undefined,
         transition: prefersReducedMotion
           ? 'none'
@@ -361,20 +361,20 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
           flexWrap: 'wrap',
           gap: 6,
           paddingTop: 8,
-          borderTop: '1px solid #E2E8F0',
+          borderTop: `1px solid ${themeColors.colorBorder}`,
           marginTop: 2,
         }}
       >
-        <Space size={6} style={{ color: '#64748B', fontSize: 13, alignItems: 'center' }}>
-          <MessageOutlined style={{ fontSize: 13, color: '#94A3B8' }} />
-          <Text style={{ fontSize: 13, color: '#64748B' }}>
-            <span style={{ fontWeight: 600, color: '#0F172A' }}>{displayedEvidenceCount}</span> та хабар
+        <Space size={6} style={{ color: themeColors.colorTextSecondary, fontSize: 13, alignItems: 'center' }}>
+          <MessageOutlined style={{ fontSize: 13, color: themeColors.colorTextMuted }} />
+          <Text style={{ fontSize: 13, color: themeColors.colorTextSecondary }}>
+            <span style={{ fontWeight: 600, color: themeColors.colorText }}>{displayedEvidenceCount}</span> та хабар
           </Text>
           {effectiveUnreadDelta !== null && (
             <span
               style={{
-                backgroundColor: '#FEF3C7',
-                color: '#D97706',
+                backgroundColor: themeColors.colorWarningBg,
+                color: themeColors.colorWarning,
                 border: '1px solid #FDE68A',
                 borderRadius: 10,
                 padding: '0 6px',
@@ -397,9 +397,9 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
         </Space>
 
         {formattedTimestamp && (
-          <Space size={4} style={{ color: '#64748B', fontSize: 13 }}>
-            <ClockCircleOutlined style={{ fontSize: 13, color: '#94A3B8' }} />
-            <Text style={{ fontSize: 13, color: '#64748B' }}>{formattedTimestamp}</Text>
+          <Space size={4} style={{ color: themeColors.colorTextSecondary, fontSize: 13 }}>
+            <ClockCircleOutlined style={{ fontSize: 13, color: themeColors.colorTextMuted }} />
+            <Text style={{ fontSize: 13, color: themeColors.colorTextSecondary }}>{formattedTimestamp}</Text>
           </Space>
         )}
       </div>

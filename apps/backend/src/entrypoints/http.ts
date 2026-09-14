@@ -88,7 +88,12 @@ export async function buildHttpServer(options?: {
   tombstoneStore?: ExternalTombstoneStore;
 }): Promise<FastifyInstance> {
   const server = Fastify({
-    logger: false, // Logging controlled via telemetry adapter
+    logger:
+      process.env.NODE_ENV === 'test'
+        ? false
+        : {
+            level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
+          },
     trustProxy: true,
   });
 
@@ -251,8 +256,32 @@ export async function buildHttpServer(options?: {
   return server;
 }
 
+let activeServer: FastifyInstance | null = null;
+let activePool: pg.Pool | null = null;
+
+export async function stopHttpServer(serverInstance?: FastifyInstance): Promise<void> {
+  const server = serverInstance || activeServer;
+  if (server) {
+    console.log('[http] Closing HTTP server gracefully...');
+    await server.close();
+    console.log('[http] HTTP server closed.');
+    if (activeServer === server) {
+      activeServer = null;
+    }
+  }
+
+  if (activePool) {
+    await activePool.end();
+    activePool = null;
+  }
+}
+
 export async function startServer() {
-  const server = await buildHttpServer();
+  const pool = createDbPool();
+  const db = createDbClient(pool);
+  activePool = pool;
+  const server = await buildHttpServer({ db, pool });
+  activeServer = server;
   const port = parseInt(process.env.PORT || '3000', 10);
   const host = process.env.HOST || '0.0.0.0';
 
@@ -270,5 +299,20 @@ const isMainModule =
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (isMainModule) {
-  startServer();
+  startServer().catch((err) => {
+    console.error('[http] Failed to start server:', err);
+    process.exit(1);
+  });
+
+  let isShuttingDown = false;
+  const handleShutdown = async (signal: string) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log(`[http] Received ${signal}, initiating graceful shutdown...`);
+    await stopHttpServer();
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+  process.on('SIGINT', () => handleShutdown('SIGINT'));
 }

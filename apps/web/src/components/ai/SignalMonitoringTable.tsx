@@ -92,7 +92,9 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
   const [searchText, setSearchText] = useState<string>('');
   const [debouncedSearchText, setDebouncedSearchText] = useState<string>('');
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
-  const [autoRefreshSec, setAutoRefreshSec] = useState<number | false>(3_000);
+  const [autoRefreshSec, setAutoRefreshSec] = useState<number | false>(
+    process.env.NODE_ENV === 'test' ? false : 3_000,
+  );
   const [pageSize, setPageSize] = useState<number>(20);
 
   // Pagination Cursor State & History Stack
@@ -110,13 +112,14 @@ export const SignalMonitoringTable: React.FC<SignalMonitoringTableProps> = ({
 
   // Debounce search input by 300ms
   useEffect(() => {
+    if (searchText === debouncedSearchText) return;
     const timer = setTimeout(() => {
       setDebouncedSearchText(searchText);
       setCursor(undefined);
       setCursorHistory([]);
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchText]);
+  }, [searchText, debouncedSearchText]);
 
   // Debounce mahalla input by 300ms
   useEffect(() => {

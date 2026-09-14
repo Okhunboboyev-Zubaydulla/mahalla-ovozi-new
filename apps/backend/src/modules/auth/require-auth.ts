@@ -52,6 +52,17 @@ export function createRequireAuth(db: DbClient, options: RequireAuthOptions = {}
 
     const { account } = validation;
 
+    // Enforce temporary password change barrier (F2.1)
+    if (account.mustChangePassword) {
+      reply.status(403).send({
+        error: {
+          code: 'PASSWORD_CHANGE_REQUIRED',
+          message: 'Тизимдан фойдаланиш учун аввал бошланғич паролни ўзгартиришингиз шарт.',
+        },
+      });
+      return;
+    }
+
     // 1. Role validation
     if (options.allowedRoles && options.allowedRoles.length > 0) {
       if (!options.allowedRoles.includes(account.role)) {

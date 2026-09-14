@@ -10,6 +10,7 @@ import { hokimTopicsClient } from './hokim-topics-client.js';
 import { useAuth } from '../auth/auth-context.js';
 import { LiveAnnouncerContext } from '../hooks/useLiveAnnouncer.js';
 import { DashboardFilterState } from '../hooks/useDashboardFilterParams.js';
+import { useTopicReadState } from '../hooks/useTopicReadState.js';
 import { ApiError } from '../lib/api-client.js';
 
 export interface LaneLocalState extends HokimLaneBoardData {
@@ -81,6 +82,10 @@ export function useHokimTopicBoard(
   const liveAnnouncer = useContext(LiveAnnouncerContext);
   const liveAnnouncerRef = useRef(liveAnnouncer);
   liveAnnouncerRef.current = liveAnnouncer;
+
+  const { observeTopics } = useTopicReadState();
+  const observeTopicsRef = useRef(observeTopics);
+  observeTopicsRef.current = observeTopics;
 
   const queryClient = useQueryClient();
 
@@ -238,11 +243,13 @@ export function useHokimTopicBoard(
       const newLanes: Record<QualifyingLane, LaneLocalState> = {} as Record<QualifyingLane, LaneLocalState>;
       const initialIds = new Set<string>();
       const initialTimestamps = new Map<string, string>();
+      const allInitialTopics: TopicCardItem[] = [];
 
       for (const k of CANONICAL_LANES) {
         const laneData = incomingLanes[k];
         const topics = laneData?.topics || [];
         for (const t of topics) {
+          allInitialTopics.push(t);
           initialIds.add(t.id);
           initialTimestamps.set(t.id, t.updatedAt);
         }
@@ -262,6 +269,7 @@ export function useHokimTopicBoard(
       previousTopicTimestampsRef.current = initialTimestamps;
       lanesStateRef.current = newLanes;
       setLanesState(newLanes);
+      observeTopicsRef.current(allInitialTopics);
 
       if (isDayRollover) {
         // Cancel in-flight lane pagination from yesterday
@@ -280,6 +288,7 @@ export function useHokimTopicBoard(
       const prevLanes = lanesStateRef.current;
 
       const updatedLanes: Record<QualifyingLane, LaneLocalState> = {} as Record<QualifyingLane, LaneLocalState>;
+      const allPrependedItems: TopicCardItem[] = [];
 
       for (const k of CANONICAL_LANES) {
         const prevLane = prevLanes[k];
@@ -321,6 +330,7 @@ export function useHokimTopicBoard(
               newCanonicalTopicIds.add(item.id);
             }
             itemsToPrepend.push(item);
+            allPrependedItems.push(item);
             existingVisibleIds.add(item.id);
           }
         }
@@ -339,6 +349,9 @@ export function useHokimTopicBoard(
 
       lanesStateRef.current = updatedLanes;
       setLanesState(updatedLanes);
+      if (allPrependedItems.length > 0) {
+        observeTopicsRef.current(allPrependedItems);
+      }
 
       // Deduplicate: remove any ID from updated if it is newly added (AC 4)
       for (const id of newCanonicalTopicIds) {
@@ -462,6 +475,7 @@ export function useHokimTopicBoard(
             },
           };
           lanesStateRef.current = nextState;
+          observeTopicsRef.current(response.topics);
 
           // Synchronize paginated topics to TanStack Query cache so back-navigation retains all loaded cards
           queryClient.setQueryData<HokimTopicBoardResponse>(queryKey, (oldBoard) => {

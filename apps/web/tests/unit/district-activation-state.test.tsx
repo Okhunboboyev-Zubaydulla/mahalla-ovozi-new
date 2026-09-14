@@ -6,6 +6,7 @@ import { ApiError } from '../../src/lib/api-client.js';
 import { districtClient } from '../../src/district/district-client.js';
 import { authClient } from '../../src/auth/auth-client.js';
 import { useDistrictActivation } from '../../src/district/useDistrictActivation.js';
+import { districtQueryKeys } from '../../src/district/query-keys.js';
 import { AuthProvider, useAuth } from '../../src/auth/auth-context.js';
 import { PrerequisiteItem } from '@mahalla-ovozi/api-contracts';
 
@@ -87,14 +88,14 @@ describe('District Activation & First Login Password State Integration (Phase 5)
       });
 
       expect(activateSpy).toHaveBeenCalledWith('dist_123');
-      expect(setQueryDataSpy).toHaveBeenCalledWith(['district', 'dist_123'], {
+      expect(setQueryDataSpy).toHaveBeenCalledWith(districtQueryKeys.district('dist_123'), {
         district: mockDistrict,
       });
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: ['district', 'dist_123', 'readiness'],
+        queryKey: districtQueryKeys.readiness('dist_123'),
       });
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: ['districts'],
+        queryKey: districtQueryKeys.list(),
       });
     });
 
@@ -123,9 +124,12 @@ describe('District Activation & First Login Password State Integration (Phase 5)
       });
 
       expect(thrownError).toBe(alreadyActiveError);
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['district', 'dist_123'] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: districtQueryKeys.district('dist_123') });
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: ['district', 'dist_123', 'readiness'],
+        queryKey: districtQueryKeys.readiness('dist_123'),
+      });
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: districtQueryKeys.list(),
       });
     });
 

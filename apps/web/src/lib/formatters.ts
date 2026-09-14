@@ -167,23 +167,7 @@ export function formatTashkentCalendarDate(calendarDay: string): string {
   }
 }
 
-export function getTashkentToday(referenceDate?: Date): string {
-  try {
-    const d = referenceDate || new Date();
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Tashkent',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(d);
-  } catch {
-    const d = referenceDate || new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-}
+export { getTashkentToday } from '@mahalla-ovozi/api-contracts';
 
 const ACTION_DISPLAY_NAMES_UZ: Record<string, string> = {
   AUTH_SIGN_IN_SUCCESS: 'Тизимга муваффақиятли кириш',

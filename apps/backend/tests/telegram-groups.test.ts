@@ -14,6 +14,7 @@ import {
 } from '../src/adapters/db/schema/index.js';
 import { encryptToken } from '../src/adapters/crypto/token-cipher.js';
 import { globalTestSessionManager } from '../src/modules/telegram-groups/telegram-test-session-store.js';
+import { deriveWebhookSecret } from '../src/modules/telegram-intake/webhook-security.js';
 
 const SAME_ORIGIN_HEADERS = { 'sec-fetch-site': 'same-origin' } as const;
 
@@ -534,11 +535,32 @@ describe('Telegram Groups Management & Validation Integration Tests', () => {
       },
     });
 
-    // Ingest incoming Telegram webhook
-    const webhookRes = await server.inject({
+    // Ingest incoming Telegram webhook without secret -> 401 Unauthorized
+    const unauthRes = await server.inject({
       method: 'POST',
       url: `/api/v1/telegram/webhook/${testBotId}`,
       headers: { 'content-type': 'application/json' },
+      payload: {
+        update_id: 10001,
+        message: {
+          message_id: 55,
+          date: Math.floor(Date.now() / 1000),
+          chat: { id: chatId, type: 'supergroup' },
+          from: { id: 777, is_bot: false, first_name: 'Anvar' },
+          text: 'Unauthorized attempt',
+        },
+      },
+    });
+    expect(unauthRes.statusCode).toBe(401);
+
+    // Ingest incoming Telegram webhook with valid secret -> 200 OK
+    const webhookRes = await server.inject({
+      method: 'POST',
+      url: `/api/v1/telegram/webhook/${testBotId}`,
+      headers: {
+        'content-type': 'application/json',
+        'x-telegram-bot-api-secret-token': deriveWebhookSecret(testBotId),
+      },
       payload: {
         update_id: 10001,
         message: {

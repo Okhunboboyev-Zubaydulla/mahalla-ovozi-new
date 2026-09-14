@@ -2,6 +2,15 @@
     root * /srv/web
     encode gzip zstd
 
+    # Security headers (F7.5)
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    }
+
     # 1. Mutually exclusive API reverse proxy
     handle /api/* {
         reverse_proxy backend:3000 {

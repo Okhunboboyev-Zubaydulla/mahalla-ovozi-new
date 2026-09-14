@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useTelegramBot } from '../../src/district/useTelegramBot.js';
 import { telegramBotClient } from '../../src/district/telegram-bot-client.js';
+import { districtQueryKeys } from '../../src/district/query-keys.js';
 import { TelegramBotInfo } from '@mahalla-ovozi/api-contracts';
 
 const mockBot: TelegramBotInfo = {
@@ -87,10 +88,10 @@ describe('useTelegramBot Hook Tests', () => {
     });
 
     expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: ['district', 'dist_test_1', 'telegram-bot'],
+      queryKey: districtQueryKeys.bot('dist_test_1'),
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: ['district', 'dist_test_1', 'readiness'],
+      queryKey: districtQueryKeys.readiness('dist_test_1'),
     });
   });
 
@@ -117,10 +118,10 @@ describe('useTelegramBot Hook Tests', () => {
     expect(telegramBotClient.disconnectDistrictTelegramBot).toHaveBeenCalledWith('dist_test_1');
 
     expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: ['district', 'dist_test_1', 'telegram-bot'],
+      queryKey: districtQueryKeys.bot('dist_test_1'),
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: ['district', 'dist_test_1', 'readiness'],
+      queryKey: districtQueryKeys.readiness('dist_test_1'),
     });
   });
 });

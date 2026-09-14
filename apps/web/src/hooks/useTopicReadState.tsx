@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { TopicCardItem } from '@mahalla-ovozi/api-contracts';
-import { useAuth } from '../auth/auth-context.js';
+import { useOptionalAuth } from '../auth/auth-context.js';
 
 export interface TopicReadEntry {
   lastReadCount: number;
@@ -17,6 +17,7 @@ export interface TopicFreshnessResult {
 export interface TopicReadStateContextValue {
   getTopicFreshness: (topic: Pick<TopicCardItem, 'id' | 'evidenceCount' | 'isNew' | 'isUpdated'>) => TopicFreshnessResult;
   markTopicAsRead: (topicId: string, currentEvidenceCount: number) => void;
+  observeTopics: (topics: Array<Pick<TopicCardItem, 'id' | 'evidenceCount' | 'isNew'>>) => void;
 }
 
 const STORAGE_PREFIX = 'mahalla_ovozi_topic_reads_';
@@ -63,14 +64,8 @@ export const TopicReadStateProvider: React.FC<TopicReadStateProviderProps> = ({
   districtId: propDistrictId,
   userId: propUserId,
 }) => {
-  let authActor = null;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const auth = useAuth();
-    authActor = auth.actor;
-  } catch {
-    // Graceful fallback when rendered in isolated test environment without AuthProvider
-  }
+  const auth = useOptionalAuth();
+  const authActor = auth?.actor ?? null;
 
   const districtId = propDistrictId || authActor?.districtId || 'default';
   const userId = propUserId || authActor?.id || 'guest';
@@ -101,14 +96,41 @@ export const TopicReadStateProvider: React.FC<TopicReadStateProviderProps> = ({
     [storageKey],
   );
 
+  const observeTopics = useCallback(
+    (topics: Array<Pick<TopicCardItem, 'id' | 'evidenceCount' | 'isNew'>>) => {
+      if (!topics || topics.length === 0) return;
+      setStore((prevStore) => {
+        let hasChanges = false;
+        const nextStore: TopicReadStore = { ...prevStore };
+
+        for (const topic of topics) {
+          if (!nextStore[topic.id]) {
+            nextStore[topic.id] = {
+              lastReadCount: topic.evidenceCount,
+              isNewDismissed: !topic.isNew,
+            };
+            hasChanges = true;
+          }
+        }
+
+        if (!hasChanges) {
+          return prevStore;
+        }
+
+        saveReadStore(storageKey, nextStore);
+        return nextStore;
+      });
+    },
+    [storageKey],
+  );
+
   const getTopicFreshness = useCallback(
     (topic: Pick<TopicCardItem, 'id' | 'evidenceCount' | 'isNew' | 'isUpdated'>): TopicFreshnessResult => {
       const entry = store[topic.id];
 
-      // 1. «Янги мавзу» (New Topic Genesis)
+      // 1. «Янги мавзу» (New Topic Genesis) takes precedence
       const showNewBadge = Boolean(topic.isNew && !entry?.isNewDismissed);
 
-      // If the topic is brand-new and unreviewed, Genesis takes precedence (Option A: unreadDelta = null)
       if (showNewBadge) {
         return {
           showNewBadge: true,
@@ -116,7 +138,7 @@ export const TopicReadStateProvider: React.FC<TopicReadStateProviderProps> = ({
         };
       }
 
-      // 2. Unread message delta in footer (+[N] or +)
+      // 2. Unread message delta in footer (+[N])
       if (entry) {
         const delta = topic.evidenceCount - entry.lastReadCount;
         return {
@@ -125,14 +147,7 @@ export const TopicReadStateProvider: React.FC<TopicReadStateProviderProps> = ({
         };
       }
 
-      // 3. Cold-Start for existing topics without localStorage history
-      if (topic.isUpdated) {
-        return {
-          showNewBadge: false,
-          unreadDelta: '+',
-        };
-      }
-
+      // 3. Unrecorded topic fallback (clean baseline, no bare '+')
       return {
         showNewBadge: false,
         unreadDelta: null,
@@ -145,8 +160,9 @@ export const TopicReadStateProvider: React.FC<TopicReadStateProviderProps> = ({
     () => ({
       getTopicFreshness,
       markTopicAsRead,
+      observeTopics,
     }),
-    [getTopicFreshness, markTopicAsRead],
+    [getTopicFreshness, markTopicAsRead, observeTopics],
   );
 
   return <TopicReadStateContext.Provider value={value}>{children}</TopicReadStateContext.Provider>;
@@ -165,6 +181,7 @@ export function useTopicReadState(): TopicReadStateContextValue {
         unreadDelta: !topic.isNew && topic.isUpdated ? '+' : null,
       }),
       markTopicAsRead: () => {},
+      observeTopics: () => {},
     };
   }
   return context;

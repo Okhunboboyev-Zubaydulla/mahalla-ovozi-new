@@ -85,7 +85,7 @@ describe('useTopicReadState Hook & Read-Receipt Tests', () => {
     expect(freshness.unreadDelta).toBeNull();
   });
 
-  it('Test 5: Cold-start updated topic without prior history shows unreadDelta = "+"', () => {
+  it('Test 5: Cold-start unrecorded topic without prior history shows clean baseline (unreadDelta = null)', () => {
     const { result } = renderHook(() => useTopicReadState(), { wrapper });
 
     const freshness = result.current.getTopicFreshness({
@@ -96,7 +96,91 @@ describe('useTopicReadState Hook & Read-Receipt Tests', () => {
     });
 
     expect(freshness.showNewBadge).toBe(false);
-    expect(freshness.unreadDelta).toBe('+');
+    expect(freshness.unreadDelta).toBeNull();
+  });
+
+  it('Test 8: observeTopics establishes initial baseline without dismissing Genesis badge for new topics', () => {
+    const { result } = renderHook(() => useTopicReadState(), { wrapper });
+
+    act(() => {
+      result.current.observeTopics([
+        { id: 'topic_new_genesis', evidenceCount: 1, isNew: true },
+        { id: 'topic_existing', evidenceCount: 4, isNew: false },
+      ]);
+    });
+
+    const newTopicFreshness = result.current.getTopicFreshness({
+      id: 'topic_new_genesis',
+      evidenceCount: 1,
+      isNew: true,
+      isUpdated: false,
+    });
+    expect(newTopicFreshness.showNewBadge).toBe(true);
+    expect(newTopicFreshness.unreadDelta).toBeNull();
+
+    const existingFreshness = result.current.getTopicFreshness({
+      id: 'topic_existing',
+      evidenceCount: 4,
+      isNew: false,
+      isUpdated: false,
+    });
+    expect(existingFreshness.showNewBadge).toBe(false);
+    expect(existingFreshness.unreadDelta).toBeNull();
+  });
+
+  it('Test 9: observeTopics establishes baseline and yields exact numeric +N on evidence increment', () => {
+    const { result } = renderHook(() => useTopicReadState(), { wrapper });
+
+    // Step 1: Initial observation at count 4
+    act(() => {
+      result.current.observeTopics([
+        { id: 'topic_counter', evidenceCount: 4, isNew: false },
+      ]);
+    });
+
+    // Step 2: Live intake increases count to 5
+    const freshnessAt5 = result.current.getTopicFreshness({
+      id: 'topic_counter',
+      evidenceCount: 5,
+      isNew: false,
+      isUpdated: true,
+    });
+    expect(freshnessAt5.unreadDelta).toBe(1);
+
+    // Step 3: Another message arrives (count 6) before user opens drawer
+    const freshnessAt6 = result.current.getTopicFreshness({
+      id: 'topic_counter',
+      evidenceCount: 6,
+      isNew: false,
+      isUpdated: true,
+    });
+    expect(freshnessAt6.unreadDelta).toBe(2);
+
+    // Step 4: Re-calling observeTopics with updated count does not reset baseline
+    act(() => {
+      result.current.observeTopics([
+        { id: 'topic_counter', evidenceCount: 6, isNew: false },
+      ]);
+    });
+    const freshnessAfterReobserve = result.current.getTopicFreshness({
+      id: 'topic_counter',
+      evidenceCount: 6,
+      isNew: false,
+      isUpdated: true,
+    });
+    expect(freshnessAfterReobserve.unreadDelta).toBe(2);
+
+    // Step 5: User opens drawer, marking as read at count 6
+    act(() => {
+      result.current.markTopicAsRead('topic_counter', 6);
+    });
+    const freshnessAfterRead = result.current.getTopicFreshness({
+      id: 'topic_counter',
+      evidenceCount: 6,
+      isNew: false,
+      isUpdated: false,
+    });
+    expect(freshnessAfterRead.unreadDelta).toBeNull();
   });
 
   it('Test 6: Persists read status in localStorage across provider reloads', () => {

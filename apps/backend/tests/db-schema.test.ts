@@ -828,6 +828,102 @@ describe('Database Schema & Migration Verification', () => {
       await db.delete(districts).where(eq(districts.id, districtId));
     });
 
+    it('enforces status check constraint and default PENDING on telegram_intake_records', async () => {
+      const districtId = `dist_intk_stat_${crypto.randomUUID()}`;
+      const intakeIdValid = `intk_stat_v_${crypto.randomUUID()}`;
+      const intakeIdInvalid = `intk_stat_inv_${crypto.randomUUID()}`;
+      const now = new Date();
+
+      await db.insert(districts).values({
+        id: districtId,
+        name: `IntakeStatDist_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
+      });
+
+      // 1. Insert with default status -> defaults to 'PENDING'
+      await db.insert(telegramIntakeRecords).values({
+        id: intakeIdValid,
+        districtId,
+        mahallaName: 'Yangiobod',
+        telegramBotId: 'bot_status_test',
+        telegramChatId: '-100999888',
+        telegramMessageId: '1001',
+        originalTimestamp: now,
+        calendarDay: '2026-08-22',
+        rawPayload: { text: 'Test message' },
+      });
+
+      const [validRow] = await db
+        .select({ status: telegramIntakeRecords.status })
+        .from(telegramIntakeRecords)
+        .where(eq(telegramIntakeRecords.id, intakeIdValid));
+
+      expect(validRow?.status).toBe('PENDING');
+
+      // 2. Insert with illegal status -> rejected by CHECK constraint
+      await expect(
+        db.insert(telegramIntakeRecords).values({
+          id: intakeIdInvalid,
+          districtId,
+          mahallaName: 'Yangiobod',
+          telegramBotId: 'bot_status_test',
+          telegramChatId: '-100999888',
+          telegramMessageId: '1002',
+          originalTimestamp: now,
+          calendarDay: '2026-08-22',
+          rawPayload: { text: 'Invalid status test' },
+          status: 'ILLEGAL_STATUS',
+        }),
+      ).rejects.toThrow();
+
+      // Cleanup
+      await db.delete(telegramIntakeRecords).where(eq(telegramIntakeRecords.id, intakeIdValid));
+      await db.delete(districts).where(eq(districts.id, districtId));
+    });
+
+    it('enforces status check constraint on topics table (F3.2)', async () => {
+      const districtId = `dist_top_stat_${crypto.randomUUID()}`;
+      const topicIdValid = `top_stat_v_${crypto.randomUUID()}`;
+      const topicIdInvalid = `top_stat_inv_${crypto.randomUUID()}`;
+      const now = new Date();
+
+      await db.insert(districts).values({
+        id: districtId,
+        name: `TopicStatDist_${crypto.randomUUID().slice(0, 8)}`,
+        status: 'ACTIVE',
+      });
+
+      // 1. Valid status ('ACTIVE') succeeds
+      await db.insert(topics).values({
+        id: topicIdValid,
+        districtId,
+        mahallaName: 'Yangiobod',
+        calendarDay: '2026-08-22',
+        primaryLane: 'WATER',
+        status: 'ACTIVE',
+        latestRelevantEvidenceTimestamp: now,
+        retentionExpiresAt: new Date(now.getTime() + 90 * 86400000),
+      });
+
+      // 2. Illegal status rejected by CHECK constraint
+      await expect(
+        db.insert(topics).values({
+          id: topicIdInvalid,
+          districtId,
+          mahallaName: 'Yangiobod',
+          calendarDay: '2026-08-22',
+          primaryLane: 'WATER',
+          status: 'ILLEGAL_STATUS',
+          latestRelevantEvidenceTimestamp: now,
+          retentionExpiresAt: new Date(now.getTime() + 90 * 86400000),
+        }),
+      ).rejects.toThrow();
+
+      // Cleanup
+      await db.delete(topics).where(eq(topics.id, topicIdValid));
+      await db.delete(districts).where(eq(districts.id, districtId));
+    });
+
     it('enforces composite unique constraint on accepted_evidence (districtId, telegramChatId, telegramMessageId)', async () => {
       const districtId = `dist_evi_uniq_${crypto.randomUUID()}`;
       const topicId = `top_${crypto.randomUUID()}`;

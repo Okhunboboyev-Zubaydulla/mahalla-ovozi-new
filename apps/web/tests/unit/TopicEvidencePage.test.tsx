@@ -24,16 +24,20 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-// Mock useAuth
-vi.mock('../../src/auth/auth-context.js', () => ({
-  useAuth: () => ({
+// Mock useAuth & useOptionalAuth
+vi.mock('../../src/auth/auth-context.js', () => {
+  const authState = {
     actor: {
       id: 'acc_hokim_1',
       districtId: 'dist_test_1',
       role: 'DISTRICT_HOKIM',
     },
-  }),
-}));
+  };
+  return {
+    useAuth: () => authState,
+    useOptionalAuth: () => authState,
+  };
+});
 
 beforeAll(() => {
   Object.defineProperty(window, 'matchMedia', {

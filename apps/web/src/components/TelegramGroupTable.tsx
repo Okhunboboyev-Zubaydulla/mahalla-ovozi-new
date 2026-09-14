@@ -39,7 +39,8 @@ interface TelegramGroupTableProps {
   isOffline?: boolean;
 }
 
-export function TelegramGroupTable({ districtId, isOffline = false }: TelegramGroupTableProps) {
+export function TelegramGroupTable({ districtId, isOffline: isOfflineProp }: TelegramGroupTableProps) {
+  const isOffline = isOfflineProp ?? false;
   const screens = useBreakpoint();
   const isDesktop = screens.md ?? true;
 

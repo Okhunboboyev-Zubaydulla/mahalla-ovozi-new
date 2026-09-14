@@ -35,6 +35,9 @@ services:
       PORT: 3000
       HOST: 0.0.0.0
       DATABASE_URL: postgresql://${POSTGRES_USER:-mahalla_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mahalla_ovozi}
+      TOMBSTONE_STORE_PATH: /app/deploy/backup/tombstones.json
+    volumes:
+      - ../backup:/app/deploy/backup
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -68,6 +71,9 @@ services:
       NODE_ENV: production
       NODE_OPTIONS: "--dns-result-order=ipv4first"
       DATABASE_URL: postgresql://${POSTGRES_USER:-mahalla_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mahalla_ovozi}
+      TOMBSTONE_STORE_PATH: /app/deploy/backup/tombstones.json
+    volumes:
+      - ../backup:/app/deploy/backup
     dns:
       - 8.8.8.8
       - 1.1.1.1

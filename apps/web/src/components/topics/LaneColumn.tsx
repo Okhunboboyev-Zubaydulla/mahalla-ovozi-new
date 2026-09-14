@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, useLayoutEffect, useContext, useState, useCallback } from 'react';
-import { Button, Typography, Empty, Alert } from 'antd';
-import { ReloadOutlined, DownOutlined, HolderOutlined } from '@ant-design/icons';
+import { Typography, Empty } from 'antd';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { QualifyingLane, TopicCardItem } from '@mahalla-ovozi/api-contracts';
-import { TopicCard, LANE_LABELS, LANE_STYLES, LANE_ICONS } from './TopicCard.js';
+import { TopicCard, LANE_LABELS } from './TopicCard.js';
+import { LaneHeader } from './LaneHeader.js';
+import { LanePaginationTrigger } from './LanePaginationTrigger.js';
 import { themeColors } from '../../theme/antd-theme.js';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 import { LiveAnnouncerContext } from '../../hooks/useLiveAnnouncer.js';
@@ -45,7 +46,6 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
   isDragDisabled = false,
 }) => {
   const laneLabel = LANE_LABELS[lane];
-  const laneStyle = LANE_STYLES[lane];
   const prefersReducedMotion = usePrefersReducedMotion();
   const liveAnnouncer = useContext(LiveAnnouncerContext);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -166,106 +166,15 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
       }}
     >
       {/* Fixed Lane Header */}
-      <header
-        id={`lane-header-${lane}`}
-        tabIndex={-1}
-        style={{
-          padding: '12px 14px',
-          backgroundColor: '#FFFFFF',
-          borderBottom: '1px solid #E2E8F0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          outline: 'none',
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {/* Drag Handle Icon (visible on desktop) */}
-          <Button
-            ref={setActivatorNodeRef}
-            type="text"
-            size="small"
-            disabled={isDragDisabled}
-            aria-label={
-              isDragDisabled
-                ? `${laneLabel} устуни (суриш фаол эмас)`
-                : `${laneLabel} устунини суриш`
-            }
-            title={
-              isDragDisabled
-                ? 'Барча йўналишлар кўрсатилганда тартибни ўзгартириш мумкин'
-                : 'Устунни суриш'
-            }
-            icon={
-              <HolderOutlined
-                style={{
-                  color: isDragDisabled ? '#CBD5E1' : '#94A3B8',
-                  fontSize: 14,
-                }}
-              />
-            }
-            {...attributes}
-            {...listeners}
-            className="lane-drag-handle"
-            style={{
-              cursor: isDragDisabled ? 'not-allowed' : isDragging ? 'grabbing' : 'grab',
-              padding: 0,
-              height: 24,
-              width: 18,
-              minWidth: 18,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: 'none',
-              boxShadow: 'none',
-            }}
-          />
-
-          {/* Domain Icon Badge */}
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 26,
-              height: 26,
-              borderRadius: 6,
-              backgroundColor: laneStyle.bg,
-              color: laneStyle.text,
-              fontSize: 13,
-              flexShrink: 0,
-            }}
-          >
-            {LANE_ICONS[lane]}
-          </span>
-
-          {/* Isolated Bold Lane Title */}
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: 700,
-              color: '#0F172A',
-              letterSpacing: '-0.01em',
-            }}
-          >
-            {laneLabel}
-          </Text>
-        </div>
-
-        <span
-          style={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: laneStyle.text,
-            backgroundColor: laneStyle.bg,
-            padding: '2px 8px',
-            borderRadius: 12,
-          }}
-        >
-          {totalCount}
-        </span>
-      </header>
+      <LaneHeader
+        lane={lane}
+        totalCount={totalCount}
+        isDragDisabled={isDragDisabled}
+        isDragging={isDragging}
+        setActivatorNodeRef={setActivatorNodeRef}
+        attributes={attributes}
+        listeners={listeners}
+      />
 
       {/* Relative wrapper for scroll container and edge fade overlays */}
       <div
@@ -353,84 +262,18 @@ const LaneColumnComponent: React.FC<LaneColumnProps> = ({
             ))
           )}
 
-          {/* Local Failure Retry Banner (Preserving existing cards) */}
-          {loadMoreError && (
-            <div style={{ marginTop: 8, marginBottom: 8 }}>
-              <Alert
-                message={loadMoreError}
-                type="error"
-                showIcon
-                style={{
-                  fontSize: 13,
-                  borderRadius: 6,
-                  border: '1px solid #FECACA',
-                  backgroundColor: '#FEE2E2',
-                  boxShadow: 'none',
-                }}
-                action={
-                  <Button
-                    size="small"
-                    type="text"
-                    danger
-                    icon={<ReloadOutlined />}
-                    onClick={(e) => {
-                      isKeyboardTriggerRef.current = e.detail === 0;
-                      onLoadMore(lane);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        isKeyboardTriggerRef.current = true;
-                      }
-                    }}
-                    style={{ fontWeight: 600, fontSize: 12, boxShadow: 'none' }}
-                  >
-                    Қайта уриниш
-                  </Button>
-                }
-              />
-            </div>
-          )}
-
-          {/* Keyset Pagination Load More Button */}
-          {hasNextPage && !loadMoreError && (
-            <div style={{ marginTop: 4, marginBottom: 8, textAlign: 'center' }}>
-              <Button
-                block
-                onClick={(e) => {
-                  isKeyboardTriggerRef.current = e.detail === 0;
-                  onLoadMore(lane);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    isKeyboardTriggerRef.current = true;
-                  }
-                }}
-                loading={isLoadingMore}
-                icon={!isLoadingMore ? <DownOutlined style={{ fontSize: 12 }} /> : undefined}
-                aria-label={`${laneLabel} бўйича яна 20 та мавзуни юклаш`}
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  borderColor: '#CBD5E1',
-                  color: '#0F172A',
-                  fontWeight: 600,
-                  fontSize: 13,
-                  minHeight: 44,
-                  height: 44,
-                  borderRadius: 6,
-                  boxShadow: 'none',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.outline = '2px solid #0284C7';
-                  e.currentTarget.style.outlineOffset = '2px';
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.outline = 'none';
-                }}
-              >
-                {isLoadingMore ? 'Юкланмоқда...' : 'Яна кўрсатиш'}
-              </Button>
-            </div>
-          )}
+          {/* Keyset Pagination Load More & Failure Retry Controls */}
+          <LanePaginationTrigger
+            lane={lane}
+            laneLabel={laneLabel}
+            hasNextPage={hasNextPage}
+            isLoadingMore={isLoadingMore}
+            loadMoreError={loadMoreError}
+            onLoadMore={onLoadMore}
+            onTriggerKeyboard={() => {
+              isKeyboardTriggerRef.current = true;
+            }}
+          />
         </div>
 
         {/* Bottom Edge Gradient Fade */}

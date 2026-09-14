@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, jsonb, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { pgTable, text, timestamp, jsonb, uniqueIndex, index, check } from 'drizzle-orm/pg-core';
 import { districts } from './districts.js';
 
 export const telegramIntakeRecords = pgTable(
@@ -17,12 +18,18 @@ export const telegramIntakeRecords = pgTable(
     originalTimestamp: timestamp('original_timestamp', { withTimezone: true }).notNull(),
     calendarDay: text('calendar_day').notNull(), // 'YYYY-MM-DD' in Asia/Tashkent
     rawPayload: jsonb('raw_payload').notNull(),
+    status: text('status').notNull().default('PENDING'),
     batchId: text('batch_id'),
     processedAt: timestamp('processed_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    // Status check constraint: explicit finite states
+    check(
+      'telegram_intakes_status_check',
+      sql`${table.status} IN ('PENDING', 'PROCESSING', 'ACCEPTED', 'EXCLUDED', 'IRRELEVANT', 'FAILED')`,
+    ),
     // Deduplication constraint: exactly 1 record per district + chat + message
     uniqueIndex('telegram_intakes_district_chat_msg_idx').on(
       table.districtId,
@@ -47,6 +54,8 @@ export const telegramIntakeRecords = pgTable(
       table.telegramUserId,
       table.processedAt,
     ),
+    // Index for status queries
+    index('telegram_intakes_district_status_idx').on(table.districtId, table.status),
   ],
 );
 

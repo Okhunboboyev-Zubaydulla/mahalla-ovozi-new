@@ -87,6 +87,19 @@ describe('Hokim First Sign-In Password Replacement Integration Tests (AC 10, 11,
     await pool.end();
   });
 
+  it('blocks access to protected endpoints with 403 PASSWORD_CHANGE_REQUIRED when mustChangePassword is true (F2.1)', async () => {
+    const res = await server.inject({
+      method: 'GET',
+      url: `/api/v1/districts/${testDistrictId}/topics`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: hokimAuthCookie,
+      },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error.code).toBe('PASSWORD_CHANGE_REQUIRED');
+  });
+
   it('rejects password change if unauthenticated with 401', async () => {
     const res = await server.inject({
       method: 'POST',
