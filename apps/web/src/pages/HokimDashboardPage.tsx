@@ -31,6 +31,7 @@ export const HokimDashboardPage: React.FC = () => {
   const liveAnnouncer = useContext(LiveAnnouncerContext);
   const { markTopicAsRead } = useTopicReadState();
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<TopicCardItem | null>(null);
   const [focusHokimEvidence, setFocusHokimEvidence] = useState(false);
   const [originatingLane, setOriginatingLane] = useState<string | undefined>(undefined);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
@@ -49,6 +50,8 @@ export const HokimDashboardPage: React.FC = () => {
     resetFilters,
   } = useDashboardFilterParams();
 
+  const isDrawerOpen = Boolean(selectedTopicId);
+
   const {
     board,
     isLoading,
@@ -64,7 +67,7 @@ export const HokimDashboardPage: React.FC = () => {
     manualRefresh,
     refetch,
     retryFilter,
-  } = useHokimTopicBoard(filters, searchQuery);
+  } = useHokimTopicBoard(filters, searchQuery, { isPaused: isDrawerOpen });
 
   const {
     statistics,
@@ -72,7 +75,7 @@ export const HokimDashboardPage: React.FC = () => {
     isFetching: isStatsFetching,
     isError: isStatsError,
     refetch: refetchStats,
-  } = useTopicStatistics(filters, searchQuery);
+  } = useTopicStatistics(filters, searchQuery, { isPaused: isDrawerOpen });
 
   // Announce search result count when search query settles (AC 3, AC 7)
   const prevSearchAnnouncedRef = useRef<string>('');
@@ -163,6 +166,7 @@ export const HokimDashboardPage: React.FC = () => {
         });
       } else {
         setSelectedTopicId(topic.id);
+        setSelectedTopic(topic);
       }
     },
     [navigate, location.search, markTopicAsRead],
@@ -172,6 +176,7 @@ export const HokimDashboardPage: React.FC = () => {
     const prevTopicId = selectedTopicId;
     const prevLane = originatingLane;
     setSelectedTopicId(null);
+    setSelectedTopic(null);
     setFocusHokimEvidence(false);
     setTimeout(() => {
       const card = prevTopicId ? document.getElementById(`topic-card-${prevTopicId}`) : null;
@@ -403,6 +408,7 @@ export const HokimDashboardPage: React.FC = () => {
 
       <TopicEvidenceDrawer
         topicId={selectedTopicId}
+        initialTopic={selectedTopic}
         focusHokim={focusHokimEvidence}
         onClose={handleCloseDrawer}
         onInvalidated={handleInvalidatedTopic}

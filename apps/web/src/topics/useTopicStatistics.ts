@@ -26,9 +26,14 @@ export interface UseTopicStatisticsResult {
   evaluationId?: string;
 }
 
+export interface UseTopicStatisticsOptions {
+  isPaused?: boolean;
+}
+
 export function useTopicStatistics(
   appliedFilters?: DashboardFilterState | string,
   searchQuery?: string,
+  options?: UseTopicStatisticsOptions,
 ): UseTopicStatisticsResult {
   const { actor } = useAuth();
   const districtId = actor?.districtId || '';
@@ -104,7 +109,7 @@ export function useTopicStatistics(
       return previousData;
     },
     staleTime: 5_000,
-    refetchInterval: 10_000,
+    refetchInterval: options?.isPaused ? false : 10_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     networkMode: 'online',

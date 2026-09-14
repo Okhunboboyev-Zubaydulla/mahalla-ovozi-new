@@ -201,21 +201,7 @@ export class TopicEvidenceService {
       throw new Error('Ҳоким ҳисоби туманга бириктирилмаган.');
     }
 
-    // 1. Fixed-district topic validation with retention deadline guardrail
-    const topicRow = await this.db.query.topics.findFirst({
-      where: and(
-        eq(topics.id, topicId),
-        eq(topics.districtId, actorContext.districtId),
-        eq(topics.status, 'ACTIVE'),
-        gt(topics.retentionExpiresAt, new Date()),
-      ),
-    });
-
-    if (!topicRow) {
-      throw new TopicNotFoundError('Мавзу топилмади ёки сақлаш муддати тугаган.');
-    }
-
-    // 2. Build Keyset Cursor Predicate (Bidirectional: ASC or DESC)
+    // 1. Build Keyset Cursor Predicate (Bidirectional: ASC or DESC)
     const order = query.order ?? 'ASC';
     let cursorPredicate = sql``;
     if (query.cursor) {
@@ -246,42 +232,55 @@ export class TopicEvidenceService {
 
     const limit = query.limit ?? 50;
 
-    // 3. Parallelize independent queries: projection, total count, evidence rows, and district settings (M-3)
-    const [projectionRow, countResult, rawEvidenceRows, activeDistrictSettings] = await Promise.all([
-      this.db.query.topicProjections.findFirst({
-        where: eq(topicProjections.topicId, topicId),
-      }),
-      this.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(acceptedEvidence)
-        .where(
-          and(
-            eq(acceptedEvidence.topicId, topicId),
-            eq(acceptedEvidence.districtId, actorContext.districtId),
+    // 2. Parallelize all queries: topic validation, projection, count, evidence rows, and settings (P3)
+    const [topicRow, projectionRow, countResult, rawEvidenceRows, activeDistrictSettings] =
+      await Promise.all([
+        this.db.query.topics.findFirst({
+          where: and(
+            eq(topics.id, topicId),
+            eq(topics.districtId, actorContext.districtId),
+            eq(topics.status, 'ACTIVE'),
+            gt(topics.retentionExpiresAt, new Date()),
           ),
-        ),
-      this.db.execute<RawEvidenceRow>(sql`
-        SELECT 
-          ae.id,
-          ae.topic_id AS "topicId",
-          ae.verbatim_text AS "verbatimText",
-          ae.content_type AS "contentType",
-          ae.original_timestamp AS "originalTimestamp",
-          ae.telegram_chat_id AS "telegramChatId",
-          ae.telegram_message_id AS "telegramMessageId",
-          ae.user_metadata AS "userMetadata",
-          dtg.telegram_chat_username AS "telegramChatUsername"
-        FROM accepted_evidence ae
-        LEFT JOIN district_telegram_groups dtg 
-          ON dtg.district_id = ae.district_id AND dtg.telegram_chat_id = ae.telegram_chat_id
-        WHERE ae.topic_id = ${topicId}
-          AND ae.district_id = ${actorContext.districtId}
-          ${cursorPredicate}
-        ${orderByClause}
-        LIMIT ${limit + 1};
-      `),
-      districtAnalysisSettingsRepository.getActiveConfiguration(this.db, actorContext.districtId),
-    ]);
+        }),
+        this.db.query.topicProjections.findFirst({
+          where: eq(topicProjections.topicId, topicId),
+        }),
+        this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(acceptedEvidence)
+          .where(
+            and(
+              eq(acceptedEvidence.topicId, topicId),
+              eq(acceptedEvidence.districtId, actorContext.districtId),
+            ),
+          ),
+        this.db.execute<RawEvidenceRow>(sql`
+          SELECT 
+            ae.id,
+            ae.topic_id AS "topicId",
+            ae.verbatim_text AS "verbatimText",
+            ae.content_type AS "contentType",
+            ae.original_timestamp AS "originalTimestamp",
+            ae.telegram_chat_id AS "telegramChatId",
+            ae.telegram_message_id AS "telegramMessageId",
+            ae.user_metadata AS "userMetadata",
+            dtg.telegram_chat_username AS "telegramChatUsername"
+          FROM accepted_evidence ae
+          LEFT JOIN district_telegram_groups dtg 
+            ON dtg.district_id = ae.district_id AND dtg.telegram_chat_id = ae.telegram_chat_id
+          WHERE ae.topic_id = ${topicId}
+            AND ae.district_id = ${actorContext.districtId}
+            ${cursorPredicate}
+          ${orderByClause}
+          LIMIT ${limit + 1};
+        `),
+        districtAnalysisSettingsRepository.getActiveConfiguration(this.db, actorContext.districtId),
+      ]);
+
+    if (!topicRow) {
+      throw new TopicNotFoundError('Мавзу топилмади ёки сақлаш муддати тугаган.');
+    }
 
     const totalCount = countResult[0]?.count ?? 0;
 

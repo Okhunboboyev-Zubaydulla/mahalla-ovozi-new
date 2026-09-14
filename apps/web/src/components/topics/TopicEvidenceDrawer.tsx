@@ -18,11 +18,13 @@ import { EvidenceTimeline } from './EvidenceTimeline.js';
 import { formatTashkentActivityTime } from '../../lib/formatters.js';
 import { TopicSummaryBody } from './TopicSummaryBody.js';
 import { TopicLatestUpdateCallout } from './TopicLatestUpdateCallout.js';
+import { TopicCardItem } from '@mahalla-ovozi/api-contracts';
 
 const { Title, Text } = Typography;
 
 export interface TopicEvidenceDrawerProps {
   topicId: string | null;
+  initialTopic?: TopicCardItem | null;
   focusHokim?: boolean;
   onClose: () => void;
   onInvalidated?: () => void;
@@ -30,6 +32,7 @@ export interface TopicEvidenceDrawerProps {
 
 export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
   topicId,
+  initialTopic,
   focusHokim,
   onClose,
   onInvalidated,
@@ -54,7 +57,7 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
     hasNextPage,
     fetchNextPage,
     refetch,
-  } = useTopicEvidence(topicId, { order, onInvalidated });
+  } = useTopicEvidence(topicId, { order, onInvalidated, initialTopic });
 
   const { markTopicAsRead } = useTopicReadState();
 
@@ -241,8 +244,8 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
         aria-label="Мавзу далиллари"
         style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', minHeight: 0 }}
       >
-        {/* 1. Loading Skeleton during Initial Fetch / In-place Switching (AC 7) */}
-        {isLoading && (
+        {/* 1. Loading Skeleton during Initial Fetch when no topic metadata exists (AC 7) */}
+        {isLoading && !topic && (
           <div style={{ padding: '20px' }}>
             <Skeleton active paragraph={{ rows: 8 }} />
           </div>
@@ -276,8 +279,8 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
         </div>
       )}
 
-      {/* 3. Loaded Topic Header & Evidence Stream */}
-      {!isLoading && topic && (
+      {/* 3. Loaded / Optimistic Topic Header & Evidence Stream */}
+      {topic && (
         <>
           <div
             ref={scrollContainerRef}
@@ -458,23 +461,31 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
 
             {/* Evidence Timeline */}
             <div style={{ padding: '16px 20px 24px 20px', flex: 1 }}>
-              <EvidenceTimeline
-                evidenceList={evidenceList}
-                totalCount={totalCount}
-                hasNextPage={hasNextPage}
-                isFetchingNextPage={isFetchingNextPage}
-                isFetchNextPageError={isFetchNextPageError}
-                onFetchNextPage={fetchNextPage}
-                focusHokim={effectiveFocusHokim}
-                sentinelRef={bottomSentinelRef}
-                topSentinelRef={topSentinelRef}
-              />
+              {isLoading && evidenceList.length === 0 ? (
+                <div style={{ padding: '12px 0' }} data-testid="evidence-timeline-skeleton">
+                  <Skeleton active avatar paragraph={{ rows: 3 }} />
+                  <Skeleton active avatar paragraph={{ rows: 3 }} style={{ marginTop: 24 }} />
+                </div>
+              ) : (
+                <EvidenceTimeline
+                  evidenceList={evidenceList}
+                  totalCount={totalCount}
+                  hasNextPage={hasNextPage}
+                  isFetchingNextPage={isFetchingNextPage}
+                  isFetchNextPageError={isFetchNextPageError}
+                  onFetchNextPage={fetchNextPage}
+                  focusHokim={effectiveFocusHokim}
+                  sentinelRef={bottomSentinelRef}
+                  topSentinelRef={topSentinelRef}
+                />
+              )}
             </div>
           </div>
 
           {/* Floating Jump-to-Latest Button (Adaptive UX with 60fps CSS transitions & a11y focus) */}
-          <Button
-            type="primary"
+          {evidenceList.length > 0 && (
+            <Button
+              type="primary"
             shape="round"
             icon={
               order === 'ASC' ? (
@@ -513,8 +524,9 @@ export const TopicEvidenceDrawer: React.FC<TopicEvidenceDrawerProps> = ({
           >
             Сўнгги хабарга
           </Button>
-        </>
-      )}
+        )}
+      </>
+    )}
       </section>
     </Drawer>
   );

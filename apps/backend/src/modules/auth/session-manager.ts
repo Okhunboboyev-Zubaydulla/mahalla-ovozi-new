@@ -5,6 +5,7 @@ import { sessions, accounts, Account, Session } from '../../adapters/db/schema/i
 
 export const IDLE_TIMEOUT_MS = 12 * 60 * 60 * 1000;    // 12 hours sliding
 export const ABSOLUTE_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours absolute ceiling
+export const SESSION_TOUCH_THROTTLE_MS = 60 * 1000;     // 60s throttle to eliminate DB row-lock contention
 export const COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'mahalla_session';
 
 export function generateSessionToken(): string {
@@ -136,14 +137,21 @@ export async function validateAndTouchSession(
   const slidingExpiry = now.getTime() + IDLE_TIMEOUT_MS;
   const newExpiresAt = new Date(Math.min(slidingExpiry, maxPossibleExpiry));
 
-  await db
-    .update(sessions)
-    .set({
-      createdAt: effectiveCreatedAt,
-      lastActiveAt: now,
-      expiresAt: newExpiresAt,
-    })
-    .where(eq(sessions.id, session.id));
+  // Throttle session touch UPDATE to once every SESSION_TOUCH_THROTTLE_MS (60s) unless effectiveCreatedAt changed
+  const needsTouchUpdate =
+    effectiveCreatedAt.getTime() !== session.createdAt.getTime() ||
+    idleAgeMs >= SESSION_TOUCH_THROTTLE_MS;
+
+  if (needsTouchUpdate) {
+    await db
+      .update(sessions)
+      .set({
+        createdAt: effectiveCreatedAt,
+        lastActiveAt: now,
+        expiresAt: newExpiresAt,
+      })
+      .where(eq(sessions.id, session.id));
+  }
 
   return {
     isValid: true,
@@ -151,8 +159,8 @@ export async function validateAndTouchSession(
     session: {
       ...session,
       createdAt: effectiveCreatedAt,
-      lastActiveAt: now,
-      expiresAt: newExpiresAt,
+      lastActiveAt: needsTouchUpdate ? now : session.lastActiveAt,
+      expiresAt: needsTouchUpdate ? newExpiresAt : session.expiresAt,
     },
   };
 }

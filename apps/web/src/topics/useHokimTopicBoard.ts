@@ -73,9 +73,14 @@ function extractTopicTimestamps(
   return map;
 }
 
+export interface UseHokimTopicBoardOptions {
+  isPaused?: boolean;
+}
+
 export function useHokimTopicBoard(
   appliedFilters?: DashboardFilterState | string,
   searchQuery?: string,
+  options?: UseHokimTopicBoardOptions,
 ) {
   const { actor } = useAuth();
   const districtId = actor?.districtId || '';
@@ -213,7 +218,7 @@ export function useHokimTopicBoard(
       return previousData;
     },
     staleTime: 2_000,
-    refetchInterval: 4_000,
+    refetchInterval: options?.isPaused ? false : 4_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     networkMode: 'online',

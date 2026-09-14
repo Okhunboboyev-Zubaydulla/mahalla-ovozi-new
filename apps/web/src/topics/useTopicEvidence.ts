@@ -9,10 +9,12 @@ import {
 } from '@mahalla-ovozi/api-contracts';
 import { hokimTopicsClient } from './hokim-topics-client.js';
 import { useAuth } from '../auth/auth-context.js';
+import { ApiError } from '../lib/api-client.js';
 
 export interface UseTopicEvidenceOptions {
   onInvalidated?: () => void;
   order?: 'ASC' | 'DESC';
+  initialTopic?: TopicCardItem | null;
 }
 
 export interface UseTopicEvidenceResult {
@@ -43,7 +45,7 @@ export function useTopicEvidence(
   const order = options?.order ?? 'ASC';
   const queryKey = ['topic-evidence', districtId, topicId || '', order];
   const configuredRetry = queryClient.getDefaultOptions().queries?.retry;
-  const effectiveRetry = configuredRetry !== undefined ? configuredRetry : 2;
+  const effectiveRetry = typeof configuredRetry === 'number' ? configuredRetry : 2;
 
   const {
     data,
@@ -89,7 +91,28 @@ export function useTopicEvidence(
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     networkMode: 'online',
-    retry: effectiveRetry,
+    retry: (failureCount, err) => {
+      // Do not retry terminal client/auth errors (4xx) or schema parsing mismatches
+      if (err instanceof ApiError) {
+        if (err.statusCode >= 400 && err.statusCode < 500) {
+          return false;
+        }
+        if (err.code === 'INVALID_RESPONSE') {
+          return false;
+        }
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        msg.includes('404') ||
+        msg.includes('not found') ||
+        msg.includes('топилмади') ||
+        msg.includes('401') ||
+        msg.includes('403')
+      ) {
+        return false;
+      }
+      return failureCount < effectiveRetry;
+    },
     placeholderData: (previousData, previousQuery) => {
       // Retain topic metadata across order switches; clear strictly when topicId changes (AC 7)
       if (previousQuery?.queryKey[2] === (topicId || '')) {
@@ -200,12 +223,17 @@ export function useTopicEvidence(
     }
   }, [isInvalidated, topicId, districtId, queryClient]);
 
+  const fallbackTopic =
+    options?.initialTopic && options.initialTopic.id === topicId
+      ? options.initialTopic
+      : null;
+
   return {
-    topic: firstPage?.topic ?? null,
+    topic: firstPage?.topic ?? fallbackTopic,
     anchorQuote: firstPage?.anchorQuote ?? '',
     anchorEvidenceId: firstPage?.anchorEvidenceId ?? '',
     evidenceList,
-    totalCount: firstPage?.totalCount ?? 0,
+    totalCount: firstPage?.totalCount ?? fallbackTopic?.evidenceCount ?? 0,
     isLoading,
     isError,
     isInvalidated,
