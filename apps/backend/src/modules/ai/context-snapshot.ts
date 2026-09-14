@@ -172,6 +172,7 @@ export interface FormatEvidenceItemOptions {
   includeLane?: boolean;
   includeAuthor?: boolean;
   authorLabel?: string;
+  authorTag?: string;
   indent?: string;
   prefix?: string;
   timeLabel?: 'Timestamp' | 'Time';
@@ -189,11 +190,14 @@ export function formatEvidenceItemLine(
   const indent = options.indent ?? '';
   const prefix = options.prefix ?? `#${index + 1}`;
   const idPart = options.includeId ? `ID: ${item.id} | ` : '';
+  const tagSuffix = options.authorTag ? ` [${options.authorTag}]` : '';
   const authorPart = options.authorLabel
-    ? `Author: [${options.authorLabel}] | `
+    ? `Author: [${options.authorLabel}]${tagSuffix} | `
     : options.includeAuthor && (item.authorHandle || item.telegramUserId)
-      ? `Author: [${item.authorHandle || item.telegramUserId}] | `
-      : '';
+      ? `Author: [${item.authorHandle || item.telegramUserId}]${tagSuffix} | `
+      : options.authorTag
+        ? `[${options.authorTag}] | `
+        : '';
   const timeLabel = options.timeLabel ?? 'Timestamp';
   const offsetPart = options.relativeTimeOffset ? ` (${options.relativeTimeOffset})` : '';
   const lanePart = options.includeLane && item.lane ? ` | Lane: [${item.lane}]` : '';

@@ -2631,7 +2631,6 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
             calendarDay: '2026-09-12',
             contextRevision: 1,
             snapshotFingerprint: 'fp_test',
-            topics: [],
             evidence: [],
           };
 
@@ -2644,6 +2643,7 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
               replyToMessageId: '66307',
               replyToUserId: '556677',
               replyToIsForwarded: false,
+              replyToIsBot: false,
             },
             snapshot,
             chatContinuity: {
@@ -2677,10 +2677,11 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
           // 2. Verify chat continuity status marked as BROKEN
           expect(prompt).toContain('### CHAT CONTINUITY STATUS (INTERRUPTED THREAD)');
           expect(prompt).toContain('Earlier Civic Evidence: MsgID 66306 (+81m before candidate) (Lane: [WASTE])');
+          expect(prompt).toContain('Sender of Earlier Evidence: DIFFERENT SENDER (Third-party message - strict anti-latching applies)');
           expect(prompt).toContain('Intervening Unrelated Messages: 4 message(s) occurred in chat between earlier civic evidence and candidate');
           expect(prompt).toContain('Conversational Continuity: BROKEN (Thread interrupted by unrelated chat)');
           expect(prompt).toContain('Explicit Reply Target: MsgID 66307');
-          expect(prompt).toContain('RULE: Candidate must be fully self-contained. Vague fragments without municipal keywords MUST be excluded as UNRESOLVED_AMBIGUOUS_FRAGMENT.');
+          expect(prompt).toContain('RULE: Candidate must be fully self-contained UNLESS sent by the same resident continuing their earlier civic grievance.');
 
           // 3. Ensure it is NOT labeled as Immediate Preceding N-1
           expect(prompt).not.toContain('### IMMEDIATE PRECEDING MESSAGE (N-1 IN CHAT, DIRECT CONTINUATION)');
@@ -2693,7 +2694,6 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
             calendarDay: '2026-09-12',
             contextRevision: 1,
             snapshotFingerprint: 'fp_test',
-            topics: [],
             evidence: [],
           };
 
@@ -2737,7 +2737,6 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
             calendarDay: '2026-09-12',
             contextRevision: 1,
             snapshotFingerprint: 'fp_test',
-            topics: [],
             evidence: [],
           };
 
@@ -2750,6 +2749,7 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
               replyToMessageId: '66307',
               replyToUserId: '556677',
               replyToIsForwarded: false,
+              replyToIsBot: false,
             },
             snapshot,
             chatContinuity: {
@@ -2771,6 +2771,198 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
 
           expect(result.data.is_relevant).toBe(false);
           expect(result.data.exclusion_reason).toBe('UNRESOLVED_AMBIGUOUS_FRAGMENT');
+          expect(result.data.relevant_lanes).toHaveLength(0);
+        });
+
+        it('formats prompt with AUTHOR PRIOR SAME-DAY CIVIC CONTEXT and SAME SENDER continuity', () => {
+          const snapshot: MahallaDailySnapshot = {
+            districtId: 'dist_act_123',
+            mahallaName: 'Navbahor',
+            calendarDay: '2026-09-14',
+            contextRevision: 2,
+            snapshotFingerprint: 'fp_author_test',
+            evidence: [
+              {
+                id: 'ev_428',
+                topicId: 'top_waste_1',
+                telegramMessageId: '428',
+                telegramUserId: '7512582881',
+                originalTimestamp: '2026-09-14T02:52:00.000Z',
+                verbatimText: 'Musr kemadiku keca',
+                lane: 'WASTE',
+              },
+            ],
+          };
+
+          const prompt = evaluator.buildUserPrompt({
+            candidateText: 'Nme pul olepti vaqtida kemasa',
+            telegramMessageId: '430',
+            telegramUserId: '7512582881',
+            originalTimestamp: '2026-09-14T07:17:34.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            authorPriorEvidence: [
+              {
+                id: 'ev_428',
+                topicId: 'top_waste_1',
+                telegramMessageId: '428',
+                telegramUserId: '7512582881',
+                originalTimestamp: '2026-09-14T02:52:00.000Z',
+                verbatimText: 'Musr kemadiku keca',
+                lane: 'WASTE',
+              },
+            ],
+            chatContinuity: {
+              interveningCount: 2,
+              precedingRelevantMessage: {
+                telegramMessageId: '428',
+                telegramUserId: '7512582881',
+                originalTimestamp: '2026-09-14T02:52:00.000Z',
+                verbatimText: 'Musr kemadiku keca',
+                lane: 'WASTE',
+              },
+            },
+          });
+
+          // Verify author section is rendered
+          expect(prompt).toContain("### AUTHOR'S PRIOR SAME-DAY CIVIC CONTEXT (SAME SENDER)");
+          expect(prompt).toContain('MsgID: 428, Time: 2026-09-14T02:52:00.000Z | Lane: [WASTE] | Topic: top_waste_1');
+          expect(prompt).toContain('"Musr kemadiku keca"');
+          expect(prompt).toContain('CONTEXTUAL CONTINUITY: This prior context establishes the sender\'s active civic problem thread.');
+
+          // Verify sender relation in interrupted thread is SAME SENDER
+          expect(prompt).toContain('Sender of Earlier Evidence: SAME SENDER AS CANDIDATE (Author Continuity applies - see AUTHOR\'S PRIOR SAME-DAY CIVIC CONTEXT)');
+        });
+
+        it('evaluates same-author grievance follow-up (Nme pul olepti vaqtida kemasa) as RELEVANT under author continuity', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['WASTE'],
+            exclusion_reason: null,
+            accepted_message_ids: ['430'],
+            reasoning: 'Citizen fee dispute regarding uncollected waste continuing author prior civic report',
+          });
+
+          const snapshot: MahallaDailySnapshot = {
+            districtId: 'dist_act_123',
+            mahallaName: 'Navbahor',
+            calendarDay: '2026-09-14',
+            contextRevision: 2,
+            snapshotFingerprint: 'fp_author_test',
+            evidence: [
+              {
+                id: 'ev_428',
+                topicId: 'top_waste_1',
+                telegramMessageId: '428',
+                telegramUserId: '7512582881',
+                originalTimestamp: '2026-09-14T02:52:00.000Z',
+                verbatimText: 'Musr kemadiku keca',
+                lane: 'WASTE',
+              },
+            ],
+          };
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'Nme pul olepti vaqtida kemasa',
+            telegramMessageId: '430',
+            telegramUserId: '7512582881',
+            originalTimestamp: '2026-09-14T07:17:34.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            authorPriorEvidence: [
+              {
+                id: 'ev_428',
+                topicId: 'top_waste_1',
+                telegramMessageId: '428',
+                telegramUserId: '7512582881',
+                originalTimestamp: '2026-09-14T02:52:00.000Z',
+                verbatimText: 'Musr kemadiku keca',
+                lane: 'WASTE',
+              },
+            ],
+            chatContinuity: {
+              interveningCount: 2,
+              precedingRelevantMessage: {
+                telegramMessageId: '428',
+                telegramUserId: '7512582881',
+                originalTimestamp: '2026-09-14T02:52:00.000Z',
+                verbatimText: 'Musr kemadiku keca',
+                lane: 'WASTE',
+              },
+            },
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['WASTE']);
+          expect(result.data.exclusion_reason).toBeNull();
+          expect(result.data.accepted_message_ids).toEqual(['430']);
+        });
+
+        it('evaluates same-author domestic chatter as EXCLUDED (GENERAL_CHATTER) even with prior civic report', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'GENERAL_CHATTER',
+            accepted_message_ids: [],
+            reasoning: 'Domestic cooking inquiry unrelated to civic municipal services',
+          });
+
+          const snapshot: MahallaDailySnapshot = {
+            districtId: 'dist_act_123',
+            mahallaName: 'Navbahor',
+            calendarDay: '2026-09-14',
+            contextRevision: 2,
+            snapshotFingerprint: 'fp_author_test',
+            evidence: [
+              {
+                id: 'ev_428',
+                topicId: 'top_waste_1',
+                telegramMessageId: '428',
+                telegramUserId: '7512582881',
+                originalTimestamp: '2026-09-14T02:52:00.000Z',
+                verbatimText: 'Musr kemadiku keca',
+                lane: 'WASTE',
+              },
+            ],
+          };
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: 'Qozon qayerda qoldi?',
+            telegramMessageId: '435',
+            telegramUserId: '7512582881',
+            originalTimestamp: '2026-09-14T07:30:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            authorPriorEvidence: [
+              {
+                id: 'ev_428',
+                topicId: 'top_waste_1',
+                telegramMessageId: '428',
+                telegramUserId: '7512582881',
+                originalTimestamp: '2026-09-14T02:52:00.000Z',
+                verbatimText: 'Musr kemadiku keca',
+                lane: 'WASTE',
+              },
+            ],
+            chatContinuity: {
+              interveningCount: 2,
+              precedingRelevantMessage: {
+                telegramMessageId: '428',
+                telegramUserId: '7512582881',
+                originalTimestamp: '2026-09-14T02:52:00.000Z',
+                verbatimText: 'Musr kemadiku keca',
+                lane: 'WASTE',
+              },
+            },
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(false);
+          expect(result.data.exclusion_reason).toBe('GENERAL_CHATTER');
           expect(result.data.relevant_lanes).toHaveLength(0);
         });
       });

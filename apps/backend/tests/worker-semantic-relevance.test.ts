@@ -125,6 +125,7 @@ describe('Story 2.3: Worker Semantic Relevance 25-Row Verification Matrix Integr
     text: string,
     messageId: string = '1001',
     replyMetadata: any = null,
+    telegramUserId?: string,
   ): Promise<void> {
     const jobData: TelegramSemanticRelevanceJobData = {
       intakeId,
@@ -133,6 +134,7 @@ describe('Story 2.3: Worker Semantic Relevance 25-Row Verification Matrix Integr
       calendarDay: '2026-08-22',
       telegramChatId: testChatId,
       telegramMessageId: messageId,
+      telegramUserId,
       originalTimestamp: '2026-08-22T09:00:00.000Z',
       contentType: 'TEXT',
       verbatimText: text,
@@ -1011,5 +1013,56 @@ describe('Story 2.3: Worker Semantic Relevance 25-Row Verification Matrix Integr
     expect(calls.length).toBeGreaterThan(0);
     const lastCall = calls[calls.length - 1];
     expect(lastCall?.userPrompt).toContain('### REPLY CONTEXT (PARENT IS CONFIRMED NON-CIVIC MESSAGE)');
+  });
+
+  it('Author Continuity: candidate without keywords qualifies as RELEVANT when author has prior accepted evidence today', async () => {
+    aiController.mockAdapter.clearHistory();
+
+    const authorUserId = '7512582881';
+    const authorPriorEvidenceItem = {
+      id: 'evi_author_prior_1',
+      topicId: 'top_waste_author_1',
+      telegramMessageId: '428',
+      telegramUserId: authorUserId,
+      originalTimestamp: '2026-08-22T02:52:00.000Z',
+      verbatimText: 'Musr kemadiku keca',
+      lane: 'WASTE',
+      topicSummary: 'Waste collection failure in Guliston',
+    };
+
+    // Inject author prior evidence into snapshot via customEvidenceStore
+    const key = `${testDistrictId}:Guliston:2026-08-22`;
+    customEvidenceStore.set(key, [authorPriorEvidenceItem]);
+
+    const candidateText = 'Nme pul olepti vaqtida kemasa';
+    const candidateIntakeId = await createTestIntake(candidateText, '430');
+
+    aiController.mockAdapter.setNextResponse({
+      is_relevant: true,
+      relevant_lanes: ['WASTE'],
+      exclusion_reason: null,
+      accepted_message_ids: ['430'],
+      reasoning: 'Grievance disputing service fee when municipal waste collection failed to arrive, continuing author earlier report',
+    });
+
+    await processCandidateJob(
+      candidateIntakeId,
+      candidateText,
+      '430',
+      null,
+      authorUserId,
+    );
+
+    const op = await waitForOperation(candidateIntakeId);
+    expect(op).toBeDefined();
+    expect(op.finalStatus).toBe('COMPLETED_RELEVANT');
+    expect((op.resultPayload as any).relevant_lanes).toEqual(['WASTE']);
+
+    // Verify AI gateway received authorPriorEvidence in userPrompt
+    const calls = aiController.mockAdapter.getCalls();
+    expect(calls.length).toBeGreaterThan(0);
+    const lastCall = calls[calls.length - 1];
+    expect(lastCall?.userPrompt).toContain("### AUTHOR'S PRIOR SAME-DAY CIVIC CONTEXT (SAME SENDER)");
+    expect(lastCall?.userPrompt).toContain('"Musr kemadiku keca"');
   });
 });

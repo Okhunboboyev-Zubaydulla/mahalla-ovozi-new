@@ -135,6 +135,7 @@ export async function assignEvidenceToTopic(
     originalTimestamp,
     contentType,
     replyMetadata,
+    userMetadata,
     aiOperationId,
     relevantLanes,
     reasoning,
@@ -251,10 +252,17 @@ export async function assignEvidenceToTopic(
       initialFingerprint = snapshot.snapshotFingerprint;
       orderedSnapshotTopicIds = Array.from(groupSnapshotByTopic(snapshot).keys());
 
+      const effectiveUserId = telegramUserId ?? userMetadata?.telegramUserId;
+      const authorHandle = userMetadata?.username
+        ? `@${userMetadata.username}`
+        : userMetadata?.firstName || undefined;
+
       // Execute AI Gateway outside DB transaction (AD-5, AD-8 / AC 14)
       matchingAiResult = await topicMatchingEvaluator.evaluateTopicAssignment({
         candidateText: verbatimText,
         telegramMessageId,
+        telegramUserId: effectiveUserId,
+        authorHandle,
         originalTimestamp,
         contentType,
         replyMetadata,

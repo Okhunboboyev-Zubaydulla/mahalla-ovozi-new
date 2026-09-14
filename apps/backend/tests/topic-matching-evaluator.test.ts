@@ -1518,6 +1518,7 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
             replyToMessageId: '66307',
             replyToUserId: '998877',
             replyToIsForwarded: false,
+            replyToIsBot: false,
           },
           relevantLanes: ['WASTE'],
           snapshot,
@@ -1526,6 +1527,69 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
 
         expect(result.data.decision).toBe('UNASSIGNABLE_VAGUE');
         expect(result.data.matched_topic_id).toBeNull();
+        expect(result.data.primary_lane).toBeNull();
+      });
+
+      it('matches unanchored follow-up without utility keywords to author existing topic (Author Continuity)', async () => {
+        mockAdapter.setNextResponse({
+          decision: 'MATCH_EXISTING_TOPIC',
+          matched_topic_id: 'top_d7c35c03-9ab7-4bde-acf3-05d27a438421',
+          matched_topic_index: 1,
+          primary_lane: null,
+          reasoning: 'Candidate continues author own earlier reported waste collection issue via author continuity',
+        });
+
+        const snapshot: MahallaDailySnapshot = {
+          districtId: 'dist_act_123',
+          mahallaName: 'Navbahor',
+          calendarDay: '2026-09-14',
+          contextRevision: 2,
+          snapshotFingerprint: 'fp_author_matching',
+          evidence: [
+            {
+              id: 'ev_428',
+              topicId: 'top_d7c35c03-9ab7-4bde-acf3-05d27a438421',
+              telegramMessageId: '428',
+              telegramUserId: '7512582881',
+              originalTimestamp: '2026-09-14T02:52:00.000Z',
+              verbatimText: 'Musr kemadiku keca',
+              lane: 'WASTE',
+              topicSummary: 'Missed municipal waste collection in Navbahor',
+            },
+          ],
+        };
+
+        const prompt = evaluator.buildUserPrompt({
+          candidateText: 'Nme pul olepti vaqtida kemasa',
+          telegramMessageId: '430',
+          telegramUserId: '7512582881',
+          originalTimestamp: '2026-09-14T07:17:34.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          relevantLanes: ['WASTE'],
+          relevanceReasoning: 'Citizen fee dispute regarding uncollected waste continuing author prior civic report',
+          snapshot,
+        });
+
+        // Verify author markers in topic matching prompt
+        expect(prompt).toContain('Author: [7512582881]');
+        expect(prompt).toContain('[SAME AUTHOR AS CANDIDATE]');
+
+        const result = await evaluator.evaluateTopicAssignment({
+          candidateText: 'Nme pul olepti vaqtida kemasa',
+          telegramMessageId: '430',
+          telegramUserId: '7512582881',
+          originalTimestamp: '2026-09-14T07:17:34.000Z',
+          contentType: 'TEXT',
+          replyMetadata: null,
+          relevantLanes: ['WASTE'],
+          relevanceReasoning: 'Citizen fee dispute regarding uncollected waste continuing author prior civic report',
+          snapshot,
+          profileId: 'prof_match_2026_08_v1',
+        });
+
+        expect(result.data.decision).toBe('MATCH_EXISTING_TOPIC');
+        expect(result.data.matched_topic_id).toBe('top_d7c35c03-9ab7-4bde-acf3-05d27a438421');
         expect(result.data.primary_lane).toBeNull();
       });
     });

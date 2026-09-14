@@ -72,8 +72,14 @@ export async function processSemanticRelevanceJobs(
           contentType,
           verbatimText,
           replyMetadata,
+          userMetadata,
           burstMessages,
         } = job.data;
+
+        telegramUserId = telegramUserId ?? userMetadata?.telegramUserId;
+        const authorHandle = userMetadata?.username
+          ? `@${userMetadata.username}`
+          : userMetadata?.firstName || undefined;
 
         const startTime = performance.now();
 
@@ -357,6 +363,21 @@ export async function processSemanticRelevanceJobs(
           const initialRevision = snapshot.contextRevision;
           const initialFingerprint = snapshot.snapshotFingerprint;
 
+          // Extract author's prior same-day accepted civic evidence in this Mahalla
+          let authorPriorEvidence: AcceptedEvidenceItem[] | undefined;
+          if (telegramUserId) {
+            const candidateTimeMs = new Date(originalTimestamp).getTime();
+            const priorItems = snapshot.evidence.filter(
+              (item) =>
+                item.telegramUserId === telegramUserId &&
+                item.telegramMessageId !== telegramMessageId &&
+                new Date(item.originalTimestamp).getTime() <= candidateTimeMs,
+            );
+            if (priorItems.length > 0) {
+              authorPriorEvidence = priorItems;
+            }
+          }
+
           // Layer 2: Resolve Immediate Preceding Message & Chat Continuity in this chat
           let immediatePrecedingMessage: PrecedingMessageContext | null = null;
           let chatContinuity: ChatContinuityContext | null = null;
@@ -372,6 +393,7 @@ export async function processSemanticRelevanceJobs(
                 resultPayload: aiOperations.resultPayload,
                 rawPayload: telegramIntakeRecords.rawPayload,
                 telegramMessageId: telegramIntakeRecords.telegramMessageId,
+                telegramUserId: telegramIntakeRecords.telegramUserId,
                 originalTimestamp: telegramIntakeRecords.originalTimestamp,
               })
               .from(aiOperations)
@@ -397,6 +419,7 @@ export async function processSemanticRelevanceJobs(
               if (prevText) {
                 const precedingCtx: PrecedingMessageContext = {
                   telegramMessageId: recentRelevantOp.telegramMessageId,
+                  telegramUserId: recentRelevantOp.telegramUserId,
                   originalTimestamp: recentRelevantOp.originalTimestamp.toISOString(),
                   verbatimText: prevText,
                   lane: prevLane,
@@ -420,6 +443,7 @@ export async function processSemanticRelevanceJobs(
                 // 3. Query true immediately preceding message (regardless of relevance)
                 let truePrecedingMsg: {
                   telegramMessageId: string;
+                  telegramUserId?: string | null;
                   originalTimestamp: string;
                   verbatimText: string;
                 } | null = null;
@@ -428,6 +452,7 @@ export async function processSemanticRelevanceJobs(
                   const [truePrecedingRecord] = await db
                     .select({
                       telegramMessageId: telegramIntakeRecords.telegramMessageId,
+                      telegramUserId: telegramIntakeRecords.telegramUserId,
                       originalTimestamp: telegramIntakeRecords.originalTimestamp,
                       rawPayload: telegramIntakeRecords.rawPayload,
                     })
@@ -445,6 +470,7 @@ export async function processSemanticRelevanceJobs(
                   if (truePrecedingRecord) {
                     truePrecedingMsg = {
                       telegramMessageId: truePrecedingRecord.telegramMessageId,
+                      telegramUserId: truePrecedingRecord.telegramUserId,
                       originalTimestamp: truePrecedingRecord.originalTimestamp.toISOString(),
                       verbatimText: extractVerbatimTextFromRawPayload(truePrecedingRecord.rawPayload),
                     };
@@ -485,11 +511,14 @@ export async function processSemanticRelevanceJobs(
           const aiResult = await relevanceEvaluator.evaluateRelevance({
             candidateText: verbatimText,
             telegramMessageId,
+            telegramUserId,
+            authorHandle,
             originalTimestamp,
             contentType,
             replyMetadata,
             snapshot,
             burstMessages,
+            authorPriorEvidence,
             immediatePrecedingMessage,
             chatContinuity,
             parentReplyContext,

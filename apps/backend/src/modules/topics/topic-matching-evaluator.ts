@@ -126,6 +126,8 @@ export type TopicMatchingResult = z.infer<typeof TopicMatchingResultSchema>;
 export interface EvaluateTopicAssignmentInput {
   candidateText: string;
   telegramMessageId: string;
+  telegramUserId?: string;
+  authorHandle?: string;
   originalTimestamp: string;
   contentType: 'TEXT' | 'MEDIA_CAPTION';
   replyMetadata: TelegramReplyMetadata | null;
@@ -201,6 +203,10 @@ PART I: CORE CLUSTERING & DOMAIN INVARIANTS
      If the candidate is an ambiguous dependent fragment or inquiry lacking an independent municipal subject (e.g. "qayerda ekan", "bizga kerak", "qachon keladi", "nima bo'ldi"), AND its reply_to_message_id does NOT belong to any active accepted topic in the mahalla snapshot:
      You MUST classify it as UNASSIGNABLE_VAGUE!
      You are STRICTLY FORBIDDEN from force-merging unanchored ambiguous fragments into an existing topic just because that topic happens to be the only active topic of the day in the mahalla!
+   - AUTHOR CONTINUITY EXCEPTION FOR UNANCHORED FOLLOW-UPS:
+     If the candidate is an unanchored dependent follow-up or grievance fragment (e.g. "nme pul olepti vaqtida kemasa", "biz bilme qoldkmi") lacking an independent municipal subject or direct reply target, BUT was sent by the SAME resident who already reported or contributed to an active same-day Topic in that lane today (marked [SAME AUTHOR AS CANDIDATE] in Accepted Evidence):
+     You MUST classify it as MATCH_EXISTING_TOPIC (assigning to that author's existing topic), UNLESS it asserts a distinct acute physical infrastructure hazard with an incompatible failure predicate.
+     It is STRICTLY FORBIDDEN to designate same-author follow-up grievances as UNASSIGNABLE_VAGUE when their active topic exists!
    - MINIMAL BIPARTITE DISRUPTION REPORTS MUST NEVER BE UNASSIGNABLE_VAGUE:
      A message asserting a minimal bipartite civic disruption ([utility subject] + [failure/non-arrival predicate], e.g. "suv kemadiku", "suv kelmadi", "gaz yo'q", "svet o'chdi") possesses a clear qualifying municipal lane. Because communal utility networks in a mahalla are location-agnostic, it MUST be assigned to MATCH_EXISTING_TOPIC (if an active topic in that lane exists) or NEW_TOPIC (if seeding the first topic of the day). It is STRICTLY FORBIDDEN to designate minimal bipartite disruption messages as UNASSIGNABLE_VAGUE!
    - Format: "decision": "UNASSIGNABLE_VAGUE", "matched_topic_id": null, "primary_lane": null.
@@ -274,8 +280,12 @@ export class TopicMatchingEvaluator {
     const sections: string[] = [];
 
     // 1. Candidate message
+    const authorHeader = input.authorHandle || input.telegramUserId
+      ? `\n- Author: [${input.authorHandle || input.telegramUserId}]`
+      : '';
+
     sections.push(`### CANDIDATE RELEVANT TELEGRAM MESSAGE TO ASSIGN
-- Message ID: ${input.telegramMessageId}
+- Message ID: ${input.telegramMessageId}${authorHeader}
 - Timestamp: ${input.originalTimestamp}
 - Content Type: ${input.contentType}
 - Relevant Lanes: [${input.relevantLanes.join(', ')}]
@@ -302,12 +312,17 @@ ${input.relevanceReasoning ? `- Relevance Reasoning: "${input.relevanceReasoning
       let topicIndex = 1;
       for (const [topicId, group] of topicMap.entries()) {
         const itemsText = group.items
-          .map((it, idx) =>
-            formatEvidenceItemLine(it, idx, {
+          .map((it, idx) => {
+            const isCurrentSender = Boolean(
+              input.telegramUserId && it.telegramUserId && input.telegramUserId === it.telegramUserId,
+            );
+            return formatEvidenceItemLine(it, idx, {
               indent: '    ',
               timeLabel: 'Time',
-            }),
-          )
+              includeAuthor: true,
+              authorTag: isCurrentSender ? 'SAME AUTHOR AS CANDIDATE' : undefined,
+            });
+          })
           .join('\n');
 
         const cleanSummary = group.summary?.trim().replace(/\n/g, ' ');

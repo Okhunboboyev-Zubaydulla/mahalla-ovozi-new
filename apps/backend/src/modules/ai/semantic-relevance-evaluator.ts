@@ -6,6 +6,7 @@ import {
 import type { AiGatewayPort } from './ai-gateway.js';
 import {
   type MahallaDailySnapshot,
+  type AcceptedEvidenceItem,
   formatSnapshotForSemanticRelevance,
 } from './context-snapshot.js';
 import type { TelegramReplyMetadata, BurstMessageItem } from '../../adapters/jobs/job-types.js';
@@ -41,7 +42,7 @@ export const SemanticRelevanceResultSchema = z
   .refine(
     (data) => {
       if (data.is_relevant) {
-        return data.relevant_lanes.length >= 1 && data.exclusion_reason === null;
+        return data.relevant_lanes.length > 0 && data.exclusion_reason === null;
       } else {
         return data.relevant_lanes.length === 0 && data.exclusion_reason !== null;
       }
@@ -56,6 +57,7 @@ export type SemanticRelevanceResult = z.infer<typeof SemanticRelevanceResultSche
 
 export interface PrecedingMessageContext {
   telegramMessageId: string;
+  telegramUserId?: string | null;
   originalTimestamp: string;
   verbatimText: string;
   lane?: string | null;
@@ -66,6 +68,7 @@ export interface ChatContinuityContext {
   precedingRelevantMessage?: PrecedingMessageContext | null;
   truePrecedingMessage?: {
     telegramMessageId: string;
+    telegramUserId?: string | null;
     originalTimestamp: string;
     verbatimText: string;
   } | null;
@@ -81,11 +84,14 @@ export interface ParentReplyContext {
 export interface EvaluateRelevanceInput {
   candidateText: string;
   telegramMessageId: string;
+  telegramUserId?: string;
+  authorHandle?: string;
   originalTimestamp: string;
   contentType: 'TEXT' | 'MEDIA_CAPTION';
   replyMetadata: TelegramReplyMetadata | null;
   snapshot: MahallaDailySnapshot;
   burstMessages?: BurstMessageItem[];
+  authorPriorEvidence?: AcceptedEvidenceItem[];
   vocabularyGuidance?: string[];
   profileId?: string;
   immediatePrecedingMessage?: PrecedingMessageContext | null;
@@ -104,6 +110,9 @@ export class SemanticRelevanceEvaluator {
 
   public buildUserPrompt(input: EvaluateRelevanceInput): string {
     const sections: string[] = [];
+    const authorHeader = input.authorHandle || input.telegramUserId
+      ? `\n- Author: [${input.authorHandle || input.telegramUserId}]`
+      : '';
 
     if (input.burstMessages && input.burstMessages.length > 1) {
       const itemsList = input.burstMessages
@@ -113,16 +122,33 @@ export class SemanticRelevanceEvaluator {
         )
         .join('\n');
 
-      sections.push(`### CANDIDATE MESSAGE BURST (${input.burstMessages.length} CONSECUTIVE MESSAGES FROM SAME SENDER)
+      sections.push(`### CANDIDATE MESSAGE BURST (${input.burstMessages.length} CONSECUTIVE MESSAGES FROM SAME SENDER)${authorHeader}
 ${itemsList}
 
 CRITICAL: Scrutinize each message individually. In "accepted_message_ids", list ONLY the message IDs that actually describe the municipal problem or provide vital spatial/temporal details (e.g. street address, outage confirmation). Do NOT include unrelated chatter, jokes, or non-signal messages (e.g. "Katyol bor", "Gaz girpi bor").`);
     } else {
       sections.push(`### CANDIDATE TELEGRAM MESSAGE TO EVALUATE
-- Message ID: ${input.telegramMessageId}
+- Message ID: ${input.telegramMessageId}${authorHeader}
 - Timestamp: ${input.originalTimestamp}
 - Content Type: ${input.contentType}
 - Text: "${input.candidateText}"`);
+    }
+
+    if (input.authorPriorEvidence && input.authorPriorEvidence.length > 0) {
+      const authorReports = input.authorPriorEvidence
+        .map((ev, idx) => {
+          const laneStr = ev.lane ? `Lane: [${ev.lane}]` : 'Lane: [Unknown]';
+          const topicStr = ev.topicId ? ` | Topic: ${ev.topicId}` : '';
+          return `- Report #${idx + 1} (MsgID: ${ev.telegramMessageId}, Time: ${ev.originalTimestamp} | ${laneStr}${topicStr}): "${ev.verbatimText}"`;
+        })
+        .join('\n');
+
+      sections.push(`### AUTHOR'S PRIOR SAME-DAY CIVIC CONTEXT (SAME SENDER)
+The candidate sender previously posted the following accepted civic disruption report(s) today in this Mahalla:
+${authorReports}
+
+- CONTEXTUAL CONTINUITY: This prior context establishes the sender's active civic problem thread. If the candidate message expresses an ongoing grievance, tariff/fee dispute (e.g. disputing service fee when municipal utility failed to arrive), non-arrival complaint, or status check related to their prior report, it qualifies as RELEVANT in that lane even if intervening chat messages occurred or explicit utility keywords are omitted in this sentence.
+- BOUNDARY: The candidate must express an active municipal failure, grievance, or service fee dispute. Pure domestic chatter ("ovqat tayyormi"), greetings ("salom"), or private sales inquiries remain EXCLUDED.`);
     }
 
     if (input.parentReplyContext && input.parentReplyContext.parentStatus === 'EXCLUDED') {
@@ -159,6 +185,7 @@ CRITICAL: Scrutinize each message individually. In "accepted_message_ids", list 
       if (nearestEarlier) {
         precedingMsg = {
           telegramMessageId: nearestEarlier.telegramMessageId,
+          telegramUserId: nearestEarlier.telegramUserId ?? null,
           originalTimestamp: nearestEarlier.originalTimestamp,
           verbatimText: nearestEarlier.verbatimText,
           lane: nearestEarlier.lane ?? null,
@@ -179,12 +206,21 @@ CRITICAL: Scrutinize each message individually. In "accepted_message_ids", list 
         ? `MsgID ${input.replyMetadata.replyToMessageId}`
         : 'None (posted openly in chat)';
 
+      const isSameSender =
+        Boolean(input.telegramUserId && precedingMsg.telegramUserId && input.telegramUserId === precedingMsg.telegramUserId) ||
+        Boolean(input.authorPriorEvidence && input.authorPriorEvidence.some((e) => e.telegramMessageId === precedingMsg?.telegramMessageId));
+
+      const senderRelationText = isSameSender
+        ? "SAME SENDER AS CANDIDATE (Author Continuity applies - see AUTHOR'S PRIOR SAME-DAY CIVIC CONTEXT)"
+        : 'DIFFERENT SENDER (Third-party message - strict anti-latching applies)';
+
       sections.push(`### CHAT CONTINUITY STATUS (INTERRUPTED THREAD)
 - Earlier Civic Evidence: MsgID ${precedingMsg.telegramMessageId}${diffText}${laneText}
+- Sender of Earlier Evidence: ${senderRelationText}
 - Intervening Unrelated Messages: ${continuity.interveningCount} message(s) occurred in chat between earlier civic evidence and candidate
 - Conversational Continuity: BROKEN (Thread interrupted by unrelated chat)
 - Explicit Reply Target: ${replyTargetText}
-- RULE: Candidate must be fully self-contained. Vague fragments without municipal keywords MUST be excluded as UNRESOLVED_AMBIGUOUS_FRAGMENT.`);
+- RULE: Candidate must be fully self-contained UNLESS sent by the same resident continuing their earlier civic grievance. Vague fragments from third parties without municipal keywords MUST be excluded as UNRESOLVED_AMBIGUOUS_FRAGMENT.`);
     } else if (precedingMsg) {
       const candidateTime = new Date(input.originalTimestamp).getTime();
       const prevTime = new Date(precedingMsg.originalTimestamp).getTime();

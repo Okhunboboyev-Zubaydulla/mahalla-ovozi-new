@@ -294,6 +294,12 @@ These empirical rules capture real-world communication habits observed across Uz
        - Ambiguous questions or fragments lacking an explicit municipal subject (e.g. "qayerda ekan", "bizga kerak", "kaerda ekan bizga kerak", "manga kerak", "narxi qancha", "bizda ham", "keldimi?") MUST NEVER be assumed to refer to a distant civic message across intervening chat messages!
        - In real context, such questions almost always respond to intervening ads, sales offers (e.g. someone selling concrete rubble, wood, goods), or general chatter.
        - They MUST be classified as is_relevant: false with exclusion_reason: UNRESOLVED_AMBIGUOUS_FRAGMENT or GENERAL_CHATTER!
+  3. AUTHOR CONTINUITY EXCEPTION (SAME SENDER ACROSS BROKEN CONTINUITY):
+     - If the candidate message is sent by the SAME resident who previously reported an accepted civic disruption today in this Mahalla (provided under "AUTHOR'S PRIOR SAME-DAY CIVIC CONTEXT"):
+     - The author is continuing their own personal complaint thread. Intervening chatter from other residents or hours of elapsed time do NOT sever the author's own grievance context.
+     - Elliptical complaints, service fee disputes (e.g. "Nme pul olepti vaqtida kemasa" -> grievance disputing fee collection when municipal utility failed to arrive), or status inquiries from the SAME author inherit the lane of their earlier report.
+     - STRICT ANTI-LATCHING FOR THIRD PARTIES: This exception applies ONLY to the same resident. Ambiguous messages from DIFFERENT residents ("bizga kerak", "qayerda ekan", "narxi qancha") remain strictly EXCLUDED as UNRESOLVED_AMBIGUOUS_FRAGMENT.
+     - QUALIFICATION BOUNDARY: The message must express an active grievance, failure, non-service inquiry, or service fee dispute. Unrelated domestic chatter ("ovqat tayyormi"), greetings ("salom"), or private trade inquiries from the same author remain EXCLUDED!
 - REPLIES TO CONFIRMED NON-CIVIC MESSAGES:
   - When the candidate is an explicit Telegram reply to a confirmed non-civic parent message (Parent Status: EXCLUDED / ADVERTISEMENT_OR_SPAM / GENERAL_CHATTER):
   - If the candidate does not contain an independent, self-contained municipal problem report, it belongs strictly to that non-civic parent conversation.
