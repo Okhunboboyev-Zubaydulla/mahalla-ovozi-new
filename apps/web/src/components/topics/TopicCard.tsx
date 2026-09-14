@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Tag, Typography, Space } from 'antd';
 import {
   ClockCircleOutlined,
@@ -20,6 +20,7 @@ import { TopicLatestUpdateCallout } from './TopicLatestUpdateCallout.js';
 import { themeColors } from '../../theme/antd-theme.js';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 import { useTopicReadState } from '../../hooks/useTopicReadState.js';
+import { getMahallaColor } from '../../utils/mahalla-colors.js';
 
 const { Text } = Typography;
 
@@ -119,6 +120,8 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
     ? topic.mahallaName
     : `${topic.mahallaName} маҳалласи`;
 
+  const mahallaColor = useMemo(() => getMahallaColor(topic.mahallaName), [topic.mahallaName]);
+
   const formattedDate = formatTashkentCalendarDate(topic.calendarDay);
   const timeStr = formatTashkentTime(topic.latestMeaningfulActivityTimestamp);
   const formattedTimestamp = timeStr ? `${formattedDate}, ${timeStr}` : formattedDate;
@@ -201,7 +204,7 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
             strong
             style={{
               fontSize: 13,
-              color: '#475569',
+              color: mahallaColor.text,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
