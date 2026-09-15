@@ -209,6 +209,12 @@ PART I: CORE CLUSTERING & DOMAIN INVARIANTS
      It is STRICTLY FORBIDDEN to designate same-author follow-up grievances as UNASSIGNABLE_VAGUE when their active topic exists!
    - MINIMAL BIPARTITE DISRUPTION REPORTS MUST NEVER BE UNASSIGNABLE_VAGUE:
      A message asserting a minimal bipartite civic disruption ([utility subject] + [failure/non-arrival predicate], e.g. "suv kemadiku", "suv kelmadi", "gaz yo'q", "svet o'chdi") possesses a clear qualifying municipal lane. Because communal utility networks in a mahalla are location-agnostic, it MUST be assigned to MATCH_EXISTING_TOPIC (if an active topic in that lane exists) or NEW_TOPIC (if seeding the first topic of the day). It is STRICTLY FORBIDDEN to designate minimal bipartite disruption messages as UNASSIGNABLE_VAGUE!
+   - RELEVANCE-QUALIFIED CITIZEN COPING PROPOSALS & WORKAROUNDS:
+     When a candidate has been qualified upstream by Semantic Relevance as a citizen coping proposal, workaround, or self-help initiative (e.g. proposing an informal waste dump point because the municipal truck is unserved: "Bitta obshiy to'kadigan joy qilganimiz yaxshimasmikan undan ko'ra... zato qachon kelarkan deb kutib o'tirmaymiz perejivat qilib"; or proposing a shared water pump/generator/firewood due to utility failure):
+     Such messages possess a verified municipal Lane qualification (e.g. WASTE, WATER, ELECTRICITY, GAS) derived from the underlying service breakdown.
+     - If an active Topic in that service lane already exists today: Assign as MATCH_EXISTING_TOPIC.
+     - If NO active Topic exists in that lane today: Seed a NEW_TOPIC with primary_lane set to that qualified service lane.
+     - STRICT PROHIBITION: You MUST NEVER designate relevance-qualified citizen coping proposals or workarounds as UNASSIGNABLE_VAGUE!
    - Format: "decision": "UNASSIGNABLE_VAGUE", "matched_topic_id": null, "primary_lane": null.
 
 ### 3. DOMAIN BOUNDARIES & HOKIM_RELATED CAUSAL CONSOLIDATION

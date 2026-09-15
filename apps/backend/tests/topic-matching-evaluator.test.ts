@@ -1592,6 +1592,92 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
         expect(result.data.matched_topic_id).toBe('top_d7c35c03-9ab7-4bde-acf3-05d27a438421');
         expect(result.data.primary_lane).toBeNull();
       });
+
+      describe('Relevance-Qualified Citizen Coping Proposals & Workarounds', () => {
+        it('seeds NEW_TOPIC when no active topic exists in the Mahalla today for a waste coping proposal', async () => {
+          mockAdapter.setNextResponse({
+            decision: 'NEW_TOPIC',
+            matched_topic_id: null,
+            primary_lane: 'WASTE',
+            reasoning:
+              'Relevance-qualified waste coping proposal seeds the first WASTE topic of the day in Navbahor.',
+          });
+
+          const emptySnapshot: MahallaDailySnapshot = {
+            districtId: 'dist_test_1',
+            mahallaName: 'Navbahor',
+            calendarDay: '2026-09-15',
+            contextRevision: 0,
+            snapshotFingerprint: 'fp_empty_navbahor',
+            evidence: [],
+          };
+
+          const result = await evaluator.evaluateTopicAssignment({
+            candidateText:
+              'Bitta obshiy tukedigan joy qiganimiz yaxshimasmikan undan kura\nBorib tukb keloramz\nMahallani icida\nZato qacon kelarkn dib kutb utirmemiz perejivat qilib',
+            telegramMessageId: '438',
+            telegramUserId: '7512582881',
+            originalTimestamp: '2026-09-15T13:20:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            relevantLanes: ['WASTE'],
+            relevanceReasoning:
+              'Coping proposal proposing informal neighborhood waste collection point due to unpredictable municipal truck schedule',
+            snapshot: emptySnapshot,
+            profileId: 'prof_match_2026_08_v1',
+          });
+
+          expect(result.data.decision).toBe('NEW_TOPIC');
+          expect(result.data.primary_lane).toBe('WASTE');
+          expect(result.data.matched_topic_id).toBeNull();
+        });
+
+        it('matches MATCH_EXISTING_TOPIC when an active WASTE topic already exists in the Mahalla', async () => {
+          mockAdapter.setNextResponse({
+            decision: 'MATCH_EXISTING_TOPIC',
+            matched_topic_id: 'top_waste_active_1',
+            primary_lane: null,
+            reasoning:
+              'Waste coping proposal attaches to the existing active municipal waste collection disruption topic.',
+          });
+
+          const activeSnapshot: MahallaDailySnapshot = {
+            districtId: 'dist_test_1',
+            mahallaName: 'Navbahor',
+            calendarDay: '2026-09-15',
+            contextRevision: 1,
+            snapshotFingerprint: 'fp_active_waste',
+            evidence: [
+              {
+                id: 'ev_428',
+                topicId: 'top_waste_active_1',
+                telegramMessageId: '428',
+                originalTimestamp: '2026-09-15T08:00:00.000Z',
+                verbatimText: 'Musr moshina kelmadi hali ham',
+                lane: 'WASTE',
+                topicSummary: 'Chiqindi tashish xizmati kelmaganligi',
+              },
+            ],
+          };
+
+          const result = await evaluator.evaluateTopicAssignment({
+            candidateText:
+              'Bitta obshiy tukedigan joy qiganimiz yaxshimasmikan undan kura\nZato qacon kelarkn dib kutb utirmemiz perejivat qilib',
+            telegramMessageId: '438',
+            originalTimestamp: '2026-09-15T13:20:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            relevantLanes: ['WASTE'],
+            relevanceReasoning: 'Coping proposal for waste collection breakdown',
+            snapshot: activeSnapshot,
+            profileId: 'prof_match_2026_08_v1',
+          });
+
+          expect(result.data.decision).toBe('MATCH_EXISTING_TOPIC');
+          expect(result.data.matched_topic_id).toBe('top_waste_active_1');
+          expect(result.data.primary_lane).toBeNull();
+        });
+      });
     });
   });
 });

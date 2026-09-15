@@ -668,6 +668,21 @@ describe('Story 2.2: Telegram Content Qualification Engine Unit Tests', () => {
       expect(hasSelfContainedCivicSignal('Svetsizlikdan charchadik')).toBe(true);
       expect(hasSelfContainedCivicSignal('Сувсизлик қийнаяпти')).toBe(true);
       expect(hasSelfContainedCivicSignal('Газсизликдан музлаб қолдик')).toBe(true);
+      expect(hasSelfContainedCivicSignal('кўчада мусирлар тўлиб кетди')).toBe(true);
+      expect(hasSelfContainedCivicSignal('musirlar toplanib qolgan')).toBe(true);
+    });
+
+    it('returns true for dialectal waste terms, accumulation verbs, and elapsed failure predicates', () => {
+      // Production Navro'z message 66410 excerpt
+      expect(
+        hasSelfContainedCivicSignal(
+          'кучада Росса йотибди мусирлар Хамма кушниники 3 хафта ужи кемаганига мусир машинани',
+        ),
+      ).toBe(true);
+      expect(hasSelfContainedCivicSignal('musr kemaganiga 3 hafta boldi')).toBe(true);
+      expect(hasSelfContainedCivicSignal('musr mashinasi kemibdi')).toBe(true);
+      expect(hasSelfContainedCivicSignal('kuchada musr yotibdi')).toBe(true);
+      expect(hasSelfContainedCivicSignal('мусир кемади')).toBe(true);
     });
 
     it('returns false for vague fragments, chat chatter, or dependent remarks', () => {

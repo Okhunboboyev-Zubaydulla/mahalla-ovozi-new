@@ -2966,6 +2966,187 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
           expect(result.data.relevant_lanes).toHaveLength(0);
         });
       });
+
+      describe('Section 17: Citizen Coping Proposals, Workarounds & Self-Organization Grievances', () => {
+        it('evaluates Navbahor multi-message waste coping burst as RELEVANT with all constituent clauses accepted', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['WASTE'],
+            exclusion_reason: null,
+            accepted_message_ids: ['438', '439', '440', '441', '442', '443'],
+            reasoning:
+              "The burst proposes creating an informal communal waste collection point due to the municipal garbage truck being erratic and unserved ('Zato qacon kelarkn dib kutb utirmemiz perejivat qilib'). This coping workaround satisfies Section 17 for WASTE.",
+          });
+
+          const snapshot: MahallaDailySnapshot = {
+            districtId: 'dist_act_123',
+            mahallaName: 'Navbahor',
+            calendarDay: '2026-09-15',
+            contextRevision: 0,
+            snapshotFingerprint: 'fp_navbahor_coping',
+            evidence: [],
+          };
+
+          const burstCandidateText = [
+            'Bitta obshiy tukedigan joy qiganimiz yaxshimasmikan undan kura',
+            'Borib tukb keloramz',
+            'Mahallani icida',
+            'Mayli sal uzoro bular kimgadir',
+            'Amallemiz',
+            'Zato qacon kelarkn dib kutb utirmemiz perejivat qilib',
+          ].join('\n');
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: burstCandidateText,
+            telegramMessageId: '438',
+            telegramUserId: '7512582881',
+            originalTimestamp: '2026-09-15T13:20:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['WASTE']);
+          expect(result.data.exclusion_reason).toBeNull();
+          expect(result.data.accepted_message_ids).toEqual(['438', '439', '440', '441', '442', '443']);
+        });
+
+        it('evaluates water pump self-help proposal motivated by utility abandonment as RELEVANT under WATER', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['WATER'],
+            exclusion_reason: null,
+            accepted_message_ids: ['501'],
+            reasoning:
+              "Proposes installing a private water pump because tap water supply has failed and provider has abandoned service ('vodokanaldan umid yo'q').",
+          });
+
+          const snapshot: MahallaDailySnapshot = {
+            districtId: 'dist_act_123',
+            mahallaName: 'Navbahor',
+            calendarDay: '2026-09-15',
+            contextRevision: 0,
+            snapshotFingerprint: 'fp_water_coping',
+            evidence: [],
+          };
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: "O'zimiz ko'chadan pul yig'ib bitta nasos qo'yib olaylik, vodokanaldan umid yo'q",
+            telegramMessageId: '501',
+            originalTimestamp: '2026-09-15T14:00:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['WATER']);
+          expect(result.data.exclusion_reason).toBeNull();
+        });
+
+        it('evaluates generator proposal motivated by persistent blackouts as RELEVANT under ELECTRICITY', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: true,
+            relevant_lanes: ['ELECTRICITY'],
+            exclusion_reason: null,
+            accepted_message_ids: ['502'],
+            reasoning:
+              "Proposes purchasing a generator due to grid power failure and lack of response from electric grid ('svetchilardan darak yo'q').",
+          });
+
+          const snapshot: MahallaDailySnapshot = {
+            districtId: 'dist_act_123',
+            mahallaName: 'Navbahor',
+            calendarDay: '2026-09-15',
+            contextRevision: 0,
+            snapshotFingerprint: 'fp_elec_coping',
+            evidence: [],
+          };
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: "O'zimiz generator olmasak bo'lmaydi, svetchilardan darak yo'q",
+            telegramMessageId: '502',
+            originalTimestamp: '2026-09-15T14:10:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(true);
+          expect(result.data.relevant_lanes).toEqual(['ELECTRICITY']);
+          expect(result.data.exclusion_reason).toBeNull();
+        });
+
+        it('evaluates decorative landscaping wishlist without municipal failure as EXCLUDED (GENERAL_CHATTER)', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'GENERAL_CHATTER',
+            accepted_message_ids: [],
+            reasoning: 'Decorative landscaping proposal lacking an active municipal utility failure predicate.',
+          });
+
+          const snapshot: MahallaDailySnapshot = {
+            districtId: 'dist_act_123',
+            mahallaName: 'Navbahor',
+            calendarDay: '2026-09-15',
+            contextRevision: 0,
+            snapshotFingerprint: 'fp_decor_coping',
+            evidence: [],
+          };
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: "Mahallani obodonlashtiraylik, yangi archalar ekaylik",
+            telegramMessageId: '503',
+            originalTimestamp: '2026-09-15T14:20:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(false);
+          expect(result.data.exclusion_reason).toBe('GENERAL_CHATTER');
+          expect(result.data.relevant_lanes).toHaveLength(0);
+        });
+
+        it('evaluates private road barrier proposal without Hokim appeal as EXCLUDED (GENERAL_CHATTER)', async () => {
+          mockAdapter.setNextResponse({
+            is_relevant: false,
+            relevant_lanes: [],
+            exclusion_reason: 'GENERAL_CHATTER',
+            accepted_message_ids: [],
+            reasoning: 'Private road gate idea without municipal utility breakdown or Hokim appeal.',
+          });
+
+          const snapshot: MahallaDailySnapshot = {
+            districtId: 'dist_act_123',
+            mahallaName: 'Navbahor',
+            calendarDay: '2026-09-15',
+            contextRevision: 0,
+            snapshotFingerprint: 'fp_gate_coping',
+            evidence: [],
+          };
+
+          const result = await evaluator.evaluateRelevance({
+            candidateText: "Ko'chamizga bitta shlagbaum qo'ysak yaxshi bo'larmidi?",
+            telegramMessageId: '504',
+            originalTimestamp: '2026-09-15T14:30:00.000Z',
+            contentType: 'TEXT',
+            replyMetadata: null,
+            snapshot,
+            profileId: 'prof_rel_2026_08_v1',
+          });
+
+          expect(result.data.is_relevant).toBe(false);
+          expect(result.data.exclusion_reason).toBe('GENERAL_CHATTER');
+          expect(result.data.relevant_lanes).toHaveLength(0);
+        });
+      });
     });
   });
 });

@@ -305,5 +305,42 @@ These empirical rules capture real-world communication habits observed across Uz
   - If the candidate does not contain an independent, self-contained municipal problem report, it belongs strictly to that non-civic parent conversation.
   - MUST be classified as is_relevant: false with exclusion_reason: ADVERTISEMENT_OR_SPAM or GENERAL_CHATTER!
 
+### 17. CITIZEN COPING PROPOSALS, WORKAROUNDS & SELF-ORGANIZATION GRIEVANCES
+- THE DYNAMICS OF RESIDENT SELF-ORGANIZATION IN REACTION TO MUNICIPAL FAILURES:
+  - When official municipal communal services (Water, Electricity, Gas, Waste) are chronic, erratic, delayed, or absent, residents frequently transition from passive waiting to proposing coping workarounds, alternative local collection points, or collective self-help measures.
+  - CAUSAL PRESUPPOSITION OF MUNICIPAL BREAKDOWN:
+    - While abstract ideas and community brainstorming without a failure predicate represent conversational chatter, A COPING PROPOSAL WHOSE MOTIVATING PREMISE PRESUPPOSES OR ARTICULATES AN ACTIVE MUNICIPAL BREAKDOWN CONSTITUTES PRIMARY CIVIC INTELLIGENCE (is_relevant: true).
+    - In neighborhood discourse, proposing a local workaround or self-help action is an emphatic civic grievance: the citizen is asserting that the municipal utility has failed them so severely that they must resort to coping alternatives.
+- CROSS-LANE QUALIFICATION PATTERNS:
+  1. WASTE (Чиқинди):
+     - Proposing informal communal dumpsites, designated neighborhood waste corners, or collective carting because the municipal garbage truck is erratic, unscheduled, or absent:
+       - "Bitta obshiy to'kadigan joy qilganimiz yaxshimasmikan undan ko'ra, borib to'kib kelaveramiz, zato qachon kelarkan deb kutib o'tirmaymiz perejivat qilib" (Proposes neighborhood collection point because municipal truck schedule is completely unpredictable and unserved) -> is_relevant: true (WASTE).
+       - "Har ko'cha boshiga 2 tadan yashik qo'yilsa edi zo'r bo'lardi, hech kim kelmadi moshin" (Proposes dumpsters because truck failed to arrive) -> is_relevant: true (WASTE).
+  2. WATER (Сув):
+     - Proposing private pump installations, shared boreholes, or collective hose/pipe runs because tap water supply is absent or unpressured:
+       - "O'zimiz ko'chadan pul yig'ib bitta nasos qo'yib olaylik, vodokanaldan umid yo'q" -> is_relevant: true (WATER).
+       - "Undan ko'ra bitta kachevalik qazdiraylik, bu suv keladiganga o'xshamaydi" -> is_relevant: true (WATER).
+  3. ELECTRICITY (Электр):
+     - Proposing shared generators or private transformers due to persistent grid blackouts:
+       - "O'zimiz generator olmasak bo'lmaydi, svetchilardan darak yo'q" -> is_relevant: true (ELECTRICITY).
+       - "Bitta transformator olib qo'yganimiz yaxshi undan ko'ra, bu svet har kuni o'chaversa qiyin" -> is_relevant: true (ELECTRICITY).
+  4. GAS (Газ):
+     - Proposing alternative heating/cooking preparations (buying coal, firewood, electric stoves) motivated by gas shutoffs:
+       - "O'tin g'amlab qo'yaveramiz undan ko'ra, gaz keladiganga o'xshamaydi" -> is_relevant: true (GAS).
+- MANDATORY LINGUISTIC ANCHORS (STRICT ANTI-HALLUCINATION GATES):
+  - To qualify (is_relevant: true), the proposal or workaround MUST contain at least one of the following explicit signals:
+    a) A comparative exasperation clause indicating official service failure: "undan ko'ra...", "o'rniga...", "bo'lmasa shunday qilaylik".
+    b) An explicit delay, anxiety, or pain-point motive clause: "zato qachon kelarkan deb kutib o'tirmaymiz perejivat qilib", "kutib o'tirmaymiz", "charchadik kutib", "suv yo'qligidan", "svet o'chaverganidan", "kelmaganiga", "kelmadi moshin".
+    c) An explicit utility abandonment clause: "vodokanaldan / raygazdan / svetchilardan umid yo'q", "bulardan foyda yo'q", "baribir kelmaydi".
+- STRICT COUNTER-EXCLUSIONS (is_relevant: false -> GENERAL_CHATTER):
+  - Standalone community suggestions or wishlists that do NOT cite or presuppose an active utility failure:
+    - Decorative / landscaping ideas: "Mahallani obodonlashtiraylik, yangi archalar ekaylik" -> GENERAL_CHATTER.
+    - Private neighborhood security / road gates: "Ko'chamizga bitta shlagbaum qo'ysak yaxshi bo'larmidi?" -> GENERAL_CHATTER (general road/gate idea without municipal utility failure or Hokim appeal).
+    - Social / domestic community activities: "Bitta obshiy choyxona / qozon qilsak bo'lardi" -> GENERAL_CHATTER.
+    - Unsubstantiated suggestions without comparative or failure rationale: "Bitta obshiy joy qilsakmikan?" (without "undan ko'ra", without delay clause, without context) -> GENERAL_CHATTER.
+- BURST THOUGHT INTEGRITY & MULTI-MESSAGE ACCEPTANCE:
+  - When a coping proposal is articulated across multiple short consecutive messages in a burst (e.g. Message 1: "Bitta obshiy tukedigan joy qiganimiz yaxshimasmikan undan kura", Message 2: "Borib tukb keloramz", Message 3: "Mahallani icida", Message 4: "Mayli sal uzoro bular kimgadir", Message 5: "Amallemiz", Message 6: "Zato qacon kelarkn dib kutb utirmemiz perejivat qilib"):
+  - The entire coherent thought sequence—including the proposal, local logistics, and concluding pain-point rationale—forms one unified civic grievance evidence item. ALL constituent clause IDs MUST be included in "accepted_message_ids".
+
 ### OUTPUT FORMAT
 Respond strictly with valid JSON conforming to the requested schema.`;
