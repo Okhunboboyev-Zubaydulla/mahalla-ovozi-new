@@ -6,6 +6,7 @@ import {
   StopOutlined,
   CheckCircleOutlined,
   SafetyCertificateOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import type { DistrictHokimAccount } from '@mahalla-ovozi/api-contracts';
 import { themeColors } from '../theme/antd-theme.js';
@@ -15,6 +16,7 @@ const { Title, Text } = Typography;
 interface HokimActiveAccountCardProps {
   account: DistrictHokimAccount;
   isOffline: boolean;
+  onEditClick: () => void;
   onResetClick: () => void;
   onReplaceClick: () => void;
   onDisableClick: () => void;
@@ -23,6 +25,7 @@ interface HokimActiveAccountCardProps {
 export function HokimActiveAccountCard({
   account,
   isOffline,
+  onEditClick,
   onResetClick,
   onReplaceClick,
   onDisableClick,
@@ -59,7 +62,7 @@ export function HokimActiveAccountCard({
           <div>
             <Space align="center" size={8}>
               <Title level={4} style={{ margin: 0 }}>
-                @{account.username}
+                {account.username.includes(' ') ? account.username : `@${account.username}`}
               </Title>
               <Tag color="blue" icon={<SafetyCertificateOutlined />}>
                 Туман ҳокими
@@ -75,6 +78,9 @@ export function HokimActiveAccountCard({
         </Space>
 
         <Space wrap size={12}>
+          <Button icon={<EditOutlined />} onClick={onEditClick} disabled={isOffline} style={{ height: 44 }}>
+            Исмни таҳрирлаш
+          </Button>
           <Button icon={<KeyOutlined />} onClick={onResetClick} disabled={isOffline} style={{ height: 44 }}>
             Паролни янгилаш
           </Button>

@@ -59,21 +59,21 @@ export const CreateHokimModal: React.FC<CreateHokimModalProps> = ({
         )}
 
         <Form.Item
-          label="Фойдаланувчи номи (Логин)"
+          label="Ҳоким исми (Фойдаланувчи номи / Логин)"
           name="username"
-          extra="Фақат лотин ҳарфлари, рақамлар ва тагчизиқ (3-64 белги)."
+          extra="Ҳарфлар, рақамлар, бўш жой, дефис ва тагчизиқ (3-64 белги)."
           rules={[
-            { required: true, message: 'Фойдаланувчи номини киритинг' },
+            { required: true, message: 'Ҳоким исми / логинини киритинг' },
             { min: 3, message: 'Камида 3 та белги бўлиши керак' },
             { max: 64, message: '64 та белгидан ошмаслиги керак' },
             {
-              pattern: /^[a-zA-Z0-9_]+$/,
-              message: 'Фақат лотин ҳарфлари, рақамлар ва тагчизиқ ишлатилиши мумкин',
+              pattern: /^[\p{L}\p{N}][\p{L}\p{N}_ -]*[\p{L}\p{N}]$/u,
+              message: 'Ҳарфлар, рақамлар, бўш жой, дефис ва тагчизиқ ишлатилиши мумкин',
             },
           ]}
         >
           <Input
-            placeholder="Масалан: hokim_chilonzor"
+            placeholder="Масалан: Botir Zoirov ёки Ботир Зоиров"
             autoComplete="off"
             style={{ height: 44 }}
           />

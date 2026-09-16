@@ -7,6 +7,7 @@ import {
   ResetHokimPasswordResponse,
   DisableHokimAccountResponse,
   ReplaceHokimAccountResponse,
+  UpdateHokimUsernameResponse,
 } from '@mahalla-ovozi/api-contracts';
 
 export function useHokimAccount(districtId: string | null) {
@@ -74,6 +75,16 @@ export function useHokimAccount(districtId: string | null) {
     onSuccess: invalidateHokimAndReadiness,
   });
 
+  const updateUsernameMutation = useMutation<UpdateHokimUsernameResponse, Error, { username: string }>({
+    mutationFn: async ({ username }) => {
+      if (!districtId) {
+        throw new Error('Туман танланмаган.');
+      }
+      return hokimAccountClient.updateDistrictHokimUsername(districtId, { username });
+    },
+    onSuccess: invalidateHokimAndReadiness,
+  });
+
   return {
     ...query,
     hokimState: query.data?.state ?? 'NO_ACCOUNT',
@@ -97,5 +108,10 @@ export function useHokimAccount(districtId: string | null) {
     isReplacing: replaceMutation.isPending,
     replaceError: replaceMutation.error,
     resetReplaceError: replaceMutation.reset,
+
+    updateHokimUsername: updateUsernameMutation.mutateAsync,
+    isUpdatingUsername: updateUsernameMutation.isPending,
+    updateUsernameError: updateUsernameMutation.error,
+    resetUpdateUsernameError: updateUsernameMutation.reset,
   };
 }

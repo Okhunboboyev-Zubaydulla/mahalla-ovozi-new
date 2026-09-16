@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, ne } from 'drizzle-orm';
 import { DbClient, mapPostgresConstraintError } from '../../adapters/db/client.js';
 import { accounts, Account } from '../../adapters/db/schema/index.js';
 import {
@@ -546,3 +546,119 @@ export async function replaceDistrictHokimAccount(
     throw err;
   }
 }
+
+/**
+ * Updates the username / displayed name of an active Hokim account in-place.
+ * Preserves the account ID, password hash, and active sessions.
+ */
+export async function updateDistrictHokimUsername(
+  db: DbClient,
+  districtId: string,
+  params: { username: string },
+  actor: ActorContext,
+  clientInfo?: ClientContext,
+): Promise<{ account: DistrictHokimAccount }> {
+  const district = await assertDistrictExists(db, districtId);
+
+  const normalizedUsername = params.username.trim().replace(/\s+/g, ' ');
+
+  // 1. Find active Hokim account
+  const [activeAccount] = await db
+    .select()
+    .from(accounts)
+    .where(
+      and(
+        eq(accounts.districtId, districtId),
+        eq(accounts.role, 'DISTRICT_HOKIM'),
+        eq(accounts.status, 'ACTIVE'),
+      ),
+    )
+    .limit(1);
+
+  if (!activeAccount) {
+    throw new HokimAccountNotFoundError(districtId);
+  }
+
+  // 2. No-op if username is unchanged
+  if (activeAccount.username === normalizedUsername) {
+    return {
+      account: toDistrictHokimAccount(activeAccount),
+    };
+  }
+
+  // 3. Pre-check uniqueness against other accounts
+  const [existingOther] = await db
+    .select()
+    .from(accounts)
+    .where(
+      and(
+        eq(accounts.username, normalizedUsername),
+        ne(accounts.id, activeAccount.id),
+      ),
+    )
+    .limit(1);
+
+  if (existingOther) {
+    throw new UsernameAlreadyTakenError(normalizedUsername);
+  }
+
+  const now = new Date();
+
+  // 4. In-place update + audit logging
+  try {
+    const updatedAccount = await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(accounts)
+        .set({
+          username: normalizedUsername,
+          updatedAt: now,
+        })
+        .where(eq(accounts.id, activeAccount.id))
+        .returning();
+
+      if (!updated) {
+        throw new HokimAccountNotFoundError(districtId);
+      }
+
+      await recordAuditEvent(tx, {
+        actorId: actor.id,
+        actorRole: actor.role,
+        districtId,
+        action: 'ACCOUNT_HOKIM_USERNAME_UPDATED',
+        ipAddress: clientInfo?.ipAddress ?? null,
+        userAgent: clientInfo?.userAgent ?? null,
+        metadata: {
+          districtId,
+          districtName: district.name,
+          accountId: activeAccount.id,
+          previousUsername: activeAccount.username,
+          newUsername: normalizedUsername,
+        },
+      });
+
+      return updated;
+    });
+
+    return {
+      account: toDistrictHokimAccount(updatedAccount),
+    };
+  } catch (err: unknown) {
+    if (
+      err instanceof DistrictNotFoundError ||
+      err instanceof HokimAccountNotFoundError ||
+      err instanceof UsernameAlreadyTakenError
+    ) {
+      throw err;
+    }
+    mapPostgresConstraintError(
+      err,
+      {
+        username: () => new UsernameAlreadyTakenError(normalizedUsername),
+        accounts_username_unique: () => new UsernameAlreadyTakenError(normalizedUsername),
+      },
+      () => new UsernameAlreadyTakenError(normalizedUsername),
+    );
+    throw err;
+  }
+}
+

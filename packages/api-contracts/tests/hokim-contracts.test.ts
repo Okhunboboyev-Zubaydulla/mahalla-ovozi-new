@@ -11,6 +11,8 @@ import {
   ResetHokimPasswordResponseSchema,
   ReplaceHokimAccountRequestSchema,
   ReplaceHokimAccountResponseSchema,
+  UpdateHokimUsernameRequestSchema,
+  UpdateHokimUsernameResponseSchema,
   DisableHokimAccountResponseSchema,
 } from '../src/index.js';
 
@@ -93,12 +95,14 @@ describe('Hokim Account API Contracts', () => {
   });
 
   describe('CreateHokimAccountRequestSchema & ResponseSchema', () => {
-    it('validates valid usernames (3–64 chars, alphanumeric + underscore)', () => {
+    it('validates valid usernames (3–64 chars, letters, numbers, spaces, dashes, underscores)', () => {
       expect(CreateHokimAccountRequestSchema.safeParse({ username: 'hokim_chilonzor' }).success).toBe(true);
       expect(CreateHokimAccountRequestSchema.safeParse({ username: 'hokim123' }).success).toBe(true);
+      expect(CreateHokimAccountRequestSchema.safeParse({ username: 'Botir Zoirov' }).success).toBe(true);
+      expect(CreateHokimAccountRequestSchema.safeParse({ username: 'Ботир Зоиров' }).success).toBe(true);
+      expect(CreateHokimAccountRequestSchema.safeParse({ username: 'hokim-with-dash' }).success).toBe(true);
       expect(CreateHokimAccountRequestSchema.safeParse({ username: 'ab' }).success).toBe(false); // too short
-      expect(CreateHokimAccountRequestSchema.safeParse({ username: 'hokim-with-dash' }).success).toBe(false); // invalid char
-      expect(CreateHokimAccountRequestSchema.safeParse({ username: 'hokim with spaces' }).success).toBe(false);
+      expect(CreateHokimAccountRequestSchema.safeParse({ username: 'hokim@special!' }).success).toBe(false); // invalid special chars
     });
 
     it('validates CreateHokimAccountResponseSchema containing temporaryPassword', () => {
@@ -174,6 +178,32 @@ describe('Hokim Account API Contracts', () => {
         },
       };
       expect(DisableHokimAccountResponseSchema.safeParse(resp).success).toBe(true);
+    });
+  });
+
+  describe('UpdateHokimUsernameRequestSchema & ResponseSchema', () => {
+    it('validates valid username updates with letters, spaces, numbers, Cyrillic', () => {
+      expect(UpdateHokimUsernameRequestSchema.safeParse({ username: 'Botir Zoirov' }).success).toBe(true);
+      expect(UpdateHokimUsernameRequestSchema.safeParse({ username: 'Ботир Зоиров' }).success).toBe(true);
+      expect(UpdateHokimUsernameRequestSchema.safeParse({ username: 'botir_zoirov_2' }).success).toBe(true);
+      expect(UpdateHokimUsernameRequestSchema.safeParse({ username: 'ab' }).success).toBe(false);
+      expect(UpdateHokimUsernameRequestSchema.safeParse({ username: '   ' }).success).toBe(false);
+    });
+
+    it('validates UpdateHokimUsernameResponseSchema', () => {
+      const resp = {
+        account: {
+          id: 'acc_hokim_123',
+          username: 'Botir Zoirov',
+          role: 'DISTRICT_HOKIM',
+          status: 'ACTIVE',
+          districtId: 'dist_yunusobod',
+          credentialVersion: 1,
+          createdAt: '2026-08-19T10:00:00.000Z',
+          updatedAt: '2026-08-19T12:00:00.000Z',
+        },
+      };
+      expect(UpdateHokimUsernameResponseSchema.safeParse(resp).success).toBe(true);
     });
   });
 });

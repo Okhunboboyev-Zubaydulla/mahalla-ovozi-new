@@ -1,20 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Modal, Form, Input, Button, Alert, Typography } from 'antd';
-import { SwapOutlined, WarningOutlined } from '@ant-design/icons';
+import { EditOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { themeColors } from '../theme/antd-theme.js';
 
 const { Text } = Typography;
 
-export interface ReplaceHokimModalProps {
+export interface EditHokimUsernameModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (values: { newUsername: string }) => Promise<void>;
+  onSubmit: (values: { username: string }) => Promise<void>;
   currentUsername: string;
   isLoading: boolean;
   error: Error | null;
 }
 
-export const ReplaceHokimModal: React.FC<ReplaceHokimModalProps> = ({
+export const EditHokimUsernameModal: React.FC<EditHokimUsernameModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
@@ -24,12 +24,18 @@ export const ReplaceHokimModal: React.FC<ReplaceHokimModalProps> = ({
 }) => {
   const [form] = Form.useForm();
 
+  useEffect(() => {
+    if (isOpen) {
+      form.setFieldsValue({ username: currentUsername });
+    }
+  }, [isOpen, currentUsername, form]);
+
   const handleCancel = () => {
     form.resetFields();
     onClose();
   };
 
-  const handleFinish = async (values: { newUsername: string }) => {
+  const handleFinish = async (values: { username: string }) => {
     await onSubmit(values);
     form.resetFields();
   };
@@ -40,8 +46,8 @@ export const ReplaceHokimModal: React.FC<ReplaceHokimModalProps> = ({
       onCancel={handleCancel}
       title={
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <SwapOutlined style={{ color: themeColors.colorPrimary }} />
-          Ҳоким аккаунтини алмаштириш
+          <EditOutlined style={{ color: themeColors.colorPrimary }} />
+          Ҳоким исмини таҳрирлаш
         </span>
       }
       footer={null}
@@ -49,21 +55,21 @@ export const ReplaceHokimModal: React.FC<ReplaceHokimModalProps> = ({
     >
       <div style={{ marginTop: 16 }}>
         <Alert
-          message="Амалдаги аккаунт фаолсизлантирилади"
+          message="Маълумот"
           description={
             <span>
-              Ушбу амал ҳозирги <Text strong>@{currentUsername}</Text> аккаунтини фаолсизлантиради ва барча сессияларини бекор қилади. Янги фойдаланувчи номи билан янги аккаунт яратилади.
+              Ушбу амал ҳокимнинг тизимда кўринадиган исми / фойдаланувчи номини ўзгартиради. Ҳозирги <Text strong>{currentUsername}</Text> ҳисобининг пароли ва фаол сессиялари сақланиб қолади.
             </span>
           }
-          type="warning"
+          type="info"
           showIcon
-          icon={<WarningOutlined />}
+          icon={<InfoCircleOutlined />}
           style={{ marginBottom: 16 }}
         />
 
         {error && (
           <Alert
-            message={error.message || 'Аккаунтни алмаштиришда хатолик юз берди.'}
+            message={error.message || 'Исмни ўзгартиришда хатолик юз берди.'}
             type="error"
             showIcon
             style={{ marginBottom: 16 }}
@@ -74,13 +80,14 @@ export const ReplaceHokimModal: React.FC<ReplaceHokimModalProps> = ({
           form={form}
           layout="vertical"
           onFinish={handleFinish}
+          initialValues={{ username: currentUsername }}
         >
           <Form.Item
-            label="Янги ҳоким исми (Фойдаланувчи номи / Логин)"
-            name="newUsername"
+            label="Ҳоким исми (Фойдаланувчи номи / Логин)"
+            name="username"
             extra="Ҳарфлар, рақамлар, бўш жой, дефис ва тагчизиқ (3-64 белги)."
             rules={[
-              { required: true, message: 'Янги ҳоким исми / логинини киритинг' },
+              { required: true, message: 'Ҳоким исми / логинини киритинг' },
               { min: 3, message: 'Камида 3 та белги бўлиши керак' },
               { max: 64, message: '64 та белгидан ошмаслиги керак' },
               {
@@ -106,7 +113,7 @@ export const ReplaceHokimModal: React.FC<ReplaceHokimModalProps> = ({
               loading={isLoading}
               style={{ height: 44, paddingInline: 24 }}
             >
-              Аккаунтни алмаштириш
+              Сақлаш
             </Button>
           </div>
         </Form>

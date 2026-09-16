@@ -159,9 +159,46 @@ describe('HokimAccountsPage Component Tests', () => {
     expect(await screen.findByText(/hokim_chilonzor/i)).toBeTruthy();
     expect(screen.getAllByText('Фаол').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Туман ҳокими')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Исмни таҳрирлаш/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Паролни янгилаш/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Аккаунтни алмаштириш/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Фаолсизлантириш/i })).toBeTruthy();
+  });
+
+  it('opens edit modal and updates Hokim name in-place', async () => {
+    vi.spyOn(hokimAccountClient, 'getDistrictHokimAccount').mockResolvedValue({
+      state: 'ACTIVE',
+      account: mockActiveAccount,
+    });
+
+    const updateSpy = vi.spyOn(hokimAccountClient, 'updateDistrictHokimUsername').mockResolvedValue({
+      account: {
+        ...mockActiveAccount,
+        username: 'Botir Zoirov',
+      },
+    });
+
+    renderWithProviders(<HokimAccountsPage districtId="dist_test_1" />);
+
+    expect(await screen.findByText(/hokim_chilonzor/i)).toBeTruthy();
+
+    // Click edit button
+    fireEvent.click(screen.getByRole('button', { name: /Исмни таҳрирлаш/i }));
+
+    // Input should be prefilled or present
+    const input = await screen.findByDisplayValue('hokim_chilonzor');
+    expect(input).toBeTruthy();
+
+    // Change to natural name with spaces
+    fireEvent.change(input, { target: { value: 'Botir Zoirov' } });
+
+    // Submit form
+    const saveBtn = screen.getByRole('button', { name: 'Сақлаш' });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith('dist_test_1', { username: 'Botir Zoirov' });
+    });
   });
 
   it('renders DISABLED state with disabled badge and action buttons (AC 1)', async () => {

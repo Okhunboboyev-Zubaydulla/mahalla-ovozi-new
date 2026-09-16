@@ -18,6 +18,7 @@ import { OneTimeCredentialModal } from '../components/OneTimeCredentialModal.js'
 import { CreateHokimModal } from '../components/CreateHokimModal.js';
 import { ResetHokimModal } from '../components/ResetHokimModal.js';
 import { ReplaceHokimModal } from '../components/ReplaceHokimModal.js';
+import { EditHokimUsernameModal } from '../components/EditHokimUsernameModal.js';
 import { DisableHokimModal } from '../components/DisableHokimModal.js';
 import { HokimNoAccountCard } from '../components/HokimNoAccountCard.js';
 import { HokimActiveAccountCard } from '../components/HokimActiveAccountCard.js';
@@ -62,11 +63,16 @@ export function HokimAccountsPage({ districtId }: HokimAccountsPageProps) {
     isReplacing,
     replaceError,
     resetReplaceError,
+    updateHokimUsername,
+    isUpdatingUsername,
+    updateUsernameError,
+    resetUpdateUsernameError,
   } = useHokimAccount(effectiveDistrictId);
 
   const isOffline = useOnlineStatus();
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
   const [isDisableModalOpen, setIsDisableModalOpen] = useState(false);
@@ -82,6 +88,11 @@ export function HokimAccountsPage({ districtId }: HokimAccountsPageProps) {
     resetCreateError();
     setIsCreateModalOpen(true);
   }, [resetCreateError]);
+
+  const handleOpenEdit = useCallback(() => {
+    resetUpdateUsernameError();
+    setIsEditModalOpen(true);
+  }, [resetUpdateUsernameError]);
 
   const handleOpenReset = useCallback(() => {
     resetPasswordResetError();
@@ -99,6 +110,7 @@ export function HokimAccountsPage({ districtId }: HokimAccountsPageProps) {
   }, [resetDisableError]);
 
   const handleCloseCreate = useCallback(() => setIsCreateModalOpen(false), []);
+  const handleCloseEdit = useCallback(() => setIsEditModalOpen(false), []);
   const handleCloseReset = useCallback(() => setIsResetModalOpen(false), []);
   const handleCloseReplace = useCallback(() => setIsReplaceModalOpen(false), []);
   const handleCloseDisable = useCallback(() => setIsDisableModalOpen(false), []);
@@ -109,6 +121,11 @@ export function HokimAccountsPage({ districtId }: HokimAccountsPageProps) {
     setIsCreateModalOpen(false);
     setOneTimeCredential({ username: res.account.username, temporaryPassword: res.temporaryPassword, title: 'Ҳоким аккаунти муваффақиятли яратилди' });
   }, [createHokimAccount]);
+
+  const handleEditSubmit = useCallback(async (values: { username: string }) => {
+    await updateHokimUsername(values);
+    setIsEditModalOpen(false);
+  }, [updateHokimUsername]);
 
   const handleResetConfirm = useCallback(async () => {
     const res = await resetPassword();
@@ -195,6 +212,7 @@ export function HokimAccountsPage({ districtId }: HokimAccountsPageProps) {
         <HokimActiveAccountCard
           account={account}
           isOffline={isOffline}
+          onEditClick={handleOpenEdit}
           onResetClick={handleOpenReset}
           onReplaceClick={handleOpenReplace}
           onDisableClick={handleOpenDisable}
@@ -226,6 +244,14 @@ export function HokimAccountsPage({ districtId }: HokimAccountsPageProps) {
         onSubmit={handleCreateSubmit}
         isLoading={isCreating}
         error={createError}
+      />
+      <EditHokimUsernameModal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEdit}
+        onSubmit={handleEditSubmit}
+        currentUsername={account?.username ?? ''}
+        isLoading={isUpdatingUsername}
+        error={updateUsernameError}
       />
       <ResetHokimModal
         isOpen={isResetModalOpen}

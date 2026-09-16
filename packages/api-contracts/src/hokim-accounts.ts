@@ -25,10 +25,17 @@ export const GetDistrictHokimAccountResponseSchema = z.object({
 });
 export type GetDistrictHokimAccountResponse = z.infer<typeof GetDistrictHokimAccountResponseSchema>;
 
+export const HokimUsernameSchema = z
+  .string()
+  .trim()
+  .min(3, 'Фойдаланувчи номи камида 3 та белги бўлиши керак.')
+  .max(64, 'Фойдаланувчи номи 64 та белгидан ошмаслиги керак.')
+  .regex(/^[\p{L}\p{N}][\p{L}\p{N}_ -]*[\p{L}\p{N}]$/u, {
+    message: 'Фойдаланувчи номи ҳарфлар, рақамлар, бўш жой, дефис ва тагчизиқдан иборат бўлиши керак.',
+  });
+
 export const CreateHokimAccountRequestSchema = z.object({
-  username: z.string().min(3).max(64).regex(/^[a-zA-Z0-9_]+$/, {
-    message: 'Фойдаланувчи номи фақат лотин ҳарфлари, рақамлар ва тагчизиқдан иборат бўлиши керак.',
-  }),
+  username: HokimUsernameSchema,
 });
 export type CreateHokimAccountRequest = z.infer<typeof CreateHokimAccountRequestSchema>;
 
@@ -45,9 +52,7 @@ export const ResetHokimPasswordResponseSchema = z.object({
 export type ResetHokimPasswordResponse = z.infer<typeof ResetHokimPasswordResponseSchema>;
 
 export const ReplaceHokimAccountRequestSchema = z.object({
-  newUsername: z.string().min(3).max(64).regex(/^[a-zA-Z0-9_]+$/, {
-    message: 'Фойдаланувчи номи фақат лотин ҳарфлари, рақамлар ва тагчизиқдан иборат бўлиши керак.',
-  }),
+  newUsername: HokimUsernameSchema,
 });
 export type ReplaceHokimAccountRequest = z.infer<typeof ReplaceHokimAccountRequestSchema>;
 
@@ -57,6 +62,16 @@ export const ReplaceHokimAccountResponseSchema = z.object({
   previousAccountId: z.string().min(1),
 });
 export type ReplaceHokimAccountResponse = z.infer<typeof ReplaceHokimAccountResponseSchema>;
+
+export const UpdateHokimUsernameRequestSchema = z.object({
+  username: HokimUsernameSchema,
+});
+export type UpdateHokimUsernameRequest = z.infer<typeof UpdateHokimUsernameRequestSchema>;
+
+export const UpdateHokimUsernameResponseSchema = z.object({
+  account: DistrictHokimAccountSchema,
+});
+export type UpdateHokimUsernameResponse = z.infer<typeof UpdateHokimUsernameResponseSchema>;
 
 export const DisableHokimAccountResponseSchema = z.object({
   account: DistrictHokimAccountSchema,

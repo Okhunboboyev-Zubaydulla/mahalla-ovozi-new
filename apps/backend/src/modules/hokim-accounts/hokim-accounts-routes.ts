@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import {
   CreateHokimAccountRequestSchema,
   ReplaceHokimAccountRequestSchema,
+  UpdateHokimUsernameRequestSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import { verifyStateChangingOrigin } from '../auth/origin-guard.js';
@@ -12,6 +13,7 @@ import {
   resetDistrictHokimPassword,
   disableDistrictHokimAccount,
   replaceDistrictHokimAccount,
+  updateDistrictHokimUsername,
   DistrictHokimAlreadyExistsError,
   HokimAccountNotFoundError,
   UsernameAlreadyTakenError,
@@ -134,6 +136,41 @@ export function registerHokimAccountRoutes(fastify: FastifyInstance, db: DbClien
 
         try {
           const result = await replaceDistrictHokimAccount(
+            db,
+            districtId,
+            parseResult.data,
+            { id: req.actor!.id, role: req.actor!.role },
+            { ipAddress: req.ip, userAgent: req.headers['user-agent'] },
+          );
+          return reply.status(200).send(result);
+        } catch (err: unknown) {
+          return handleHokimAccountError(err, reply);
+        }
+      },
+    );
+
+    // 6. PATCH /api/v1/districts/:districtId/hokim-account (Update Username)
+    scope.patch(
+      '/api/v1/districts/:districtId/hokim-account',
+      async (
+        req: FastifyRequest<{ Params: { districtId: string }; Body: unknown }>,
+        reply: FastifyReply,
+      ) => {
+        const { districtId } = req.params;
+        const parseResult = UpdateHokimUsernameRequestSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message:
+                parseResult.error.errors[0]?.message ||
+                'Фойдаланувчи номи талаблари нотўғри (3-64 белги, ҳарфлар, рақамлар, бўш жой).',
+            },
+          });
+        }
+
+        try {
+          const result = await updateDistrictHokimUsername(
             db,
             districtId,
             parseResult.data,

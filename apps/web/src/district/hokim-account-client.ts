@@ -6,11 +6,14 @@ import {
   DisableHokimAccountResponse,
   ReplaceHokimAccountRequest,
   ReplaceHokimAccountResponse,
+  UpdateHokimUsernameRequest,
+  UpdateHokimUsernameResponse,
   GetDistrictHokimAccountResponseSchema,
   CreateHokimAccountResponseSchema,
   ResetHokimPasswordResponseSchema,
   DisableHokimAccountResponseSchema,
   ReplaceHokimAccountResponseSchema,
+  UpdateHokimUsernameResponseSchema,
 } from '@mahalla-ovozi/api-contracts';
 import { request } from '../lib/api-client.js';
 
@@ -70,6 +73,20 @@ export const hokimAccountClient = {
         body: JSON.stringify(payload),
       },
       ReplaceHokimAccountResponseSchema
+    );
+  },
+
+  updateDistrictHokimUsername(
+    districtId: string,
+    payload: UpdateHokimUsernameRequest
+  ): Promise<UpdateHokimUsernameResponse> {
+    return request<UpdateHokimUsernameResponse>(
+      `/api/v1/districts/${encodeURIComponent(districtId)}/hokim-account`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      },
+      UpdateHokimUsernameResponseSchema
     );
   },
 };

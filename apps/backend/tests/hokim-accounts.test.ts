@@ -437,4 +437,157 @@ describe('Hokim Accounts Management API & Service Integration Tests', () => {
       expect(json.error.code).toBe('INVALID_CREDENTIALS');
     });
   });
+
+  describe('PATCH /api/v1/districts/:districtId/hokim-account (Update Username)', () => {
+    it('updates username in-place with spaces and preserves existing password & authentication', async () => {
+      const initialUsername = `hokim_before_${crypto.randomUUID().replace(/-/g, '').slice(0, 6)}`;
+      const newUsername = `Botir Zoirov ${crypto.randomUUID().replace(/-/g, '').slice(0, 4)}`;
+
+      // 1. Create initial Hokim account
+      const createRes = await server.inject({
+        method: 'POST',
+        url: `/api/v1/districts/${testDistrictId}/hokim-account`,
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: poCookie },
+        payload: { username: initialUsername },
+      });
+      expect(createRes.statusCode).toBe(201);
+      const { account: initialAccount, temporaryPassword } = JSON.parse(createRes.payload);
+
+      // Activate district for auth testing
+      await db.update(districts).set({ status: 'ACTIVE' }).where(eq(districts.id, testDistrictId));
+
+      // 2. Patch Hokim username
+      const patchRes = await server.inject({
+        method: 'PATCH',
+        url: `/api/v1/districts/${testDistrictId}/hokim-account`,
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: poCookie },
+        payload: { username: newUsername },
+      });
+
+      expect(patchRes.statusCode).toBe(200);
+      const patchJson = JSON.parse(patchRes.payload);
+      expect(patchJson.account.id).toBe(initialAccount.id);
+      expect(patchJson.account.username).toBe(newUsername);
+      expect(patchJson.account.districtId).toBe(testDistrictId);
+
+      // 3. Verify DB state: password hash remains intact, credentialVersion unchanged
+      const [dbAccount] = await db.select().from(accounts).where(eq(accounts.id, initialAccount.id)).limit(1);
+      expect(dbAccount).toBeDefined();
+      expect(dbAccount!.username).toBe(newUsername);
+      expect(dbAccount!.credentialVersion).toBe(initialAccount.credentialVersion);
+
+      // 4. Verify authentication succeeds with new username and existing password
+      const signInRes = await server.inject({
+        method: 'POST',
+        url: '/api/v1/auth/sign-in',
+        headers: SAME_ORIGIN_HEADERS,
+        payload: {
+          username: newUsername,
+          password: temporaryPassword,
+        },
+      });
+      expect(signInRes.statusCode).toBe(200);
+      const signInJson = JSON.parse(signInRes.payload);
+      expect(signInJson.actor.username).toBe(newUsername);
+
+      // 5. Verify audit event was logged
+      const auditRows = await db
+        .select()
+        .from(auditEvents)
+        .where(eq(auditEvents.action, 'ACCOUNT_HOKIM_USERNAME_UPDATED'));
+      const event = auditRows.find(
+        (r) => (r.metadata as Record<string, unknown>)?.newUsername === newUsername,
+      );
+      expect(event).toBeDefined();
+      expect((event!.metadata as Record<string, unknown>).previousUsername).toBe(initialUsername);
+    });
+
+    it('supports Cyrillic names in username update', async () => {
+      const initialUsername = `hokim_cyr_${crypto.randomUUID().replace(/-/g, '').slice(0, 6)}`;
+      const cyrillicName = `Ботир Зоиров ${crypto.randomUUID().replace(/-/g, '').slice(0, 4)}`;
+
+      await server.inject({
+        method: 'POST',
+        url: `/api/v1/districts/${testDistrictId}/hokim-account`,
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: poCookie },
+        payload: { username: initialUsername },
+      });
+
+      const patchRes = await server.inject({
+        method: 'PATCH',
+        url: `/api/v1/districts/${testDistrictId}/hokim-account`,
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: poCookie },
+        payload: { username: cyrillicName },
+      });
+
+      expect(patchRes.statusCode).toBe(200);
+      const json = JSON.parse(patchRes.payload);
+      expect(json.account.username).toBe(cyrillicName);
+    });
+
+    it('rejects duplicate username with 409 USERNAME_ALREADY_EXISTS', async () => {
+      const existingUser = `other_hokim_${crypto.randomUUID().replace(/-/g, '').slice(0, 6)}`;
+      const currentHokim = `current_hokim_${crypto.randomUUID().replace(/-/g, '').slice(0, 6)}`;
+
+      // Create another account
+      const otherDistrictId = `dist_${crypto.randomUUID()}`;
+      await db.insert(districts).values({
+        id: otherDistrictId,
+        name: `OtherDistrict_${crypto.randomUUID().slice(0, 6)}`,
+        status: 'SETUP_INCOMPLETE',
+      });
+      await server.inject({
+        method: 'POST',
+        url: `/api/v1/districts/${otherDistrictId}/hokim-account`,
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: poCookie },
+        payload: { username: existingUser },
+      });
+
+      // Create current hokim
+      await server.inject({
+        method: 'POST',
+        url: `/api/v1/districts/${testDistrictId}/hokim-account`,
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: poCookie },
+        payload: { username: currentHokim },
+      });
+
+      // Try to update current hokim to other hokim's username
+      const patchRes = await server.inject({
+        method: 'PATCH',
+        url: `/api/v1/districts/${testDistrictId}/hokim-account`,
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: poCookie },
+        payload: { username: existingUser },
+      });
+
+      expect(patchRes.statusCode).toBe(409);
+      const json = JSON.parse(patchRes.payload);
+      expect(json.error.code).toBe('USERNAME_ALREADY_EXISTS');
+    });
+
+    it('returns 404 when district has no active Hokim account', async () => {
+      const patchRes = await server.inject({
+        method: 'PATCH',
+        url: `/api/v1/districts/${testDistrictId}/hokim-account`,
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: poCookie },
+        payload: { username: 'New Valid Hokim' },
+      });
+
+      expect(patchRes.statusCode).toBe(404);
+      const json = JSON.parse(patchRes.payload);
+      expect(json.error.code).toBe('HOKIM_ACCOUNT_NOT_FOUND');
+    });
+
+    it('rejects invalid username formats with 400 VALIDATION_ERROR', async () => {
+      const patchRes = await server.inject({
+        method: 'PATCH',
+        url: `/api/v1/districts/${testDistrictId}/hokim-account`,
+        headers: { ...SAME_ORIGIN_HEADERS, cookie: poCookie },
+        payload: { username: 'ab' }, // too short
+      });
+
+      expect(patchRes.statusCode).toBe(400);
+      const json = JSON.parse(patchRes.payload);
+      expect(json.error.code).toBe('VALIDATION_ERROR');
+    });
+  });
 });
