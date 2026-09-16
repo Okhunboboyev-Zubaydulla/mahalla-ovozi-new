@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
 import type { DbClient } from '../../adapters/db/client.js';
@@ -13,7 +14,14 @@ import {
 } from '@mahalla-ovozi/api-contracts';
 import { createRequireProductOwner } from '../auth/require-auth.js';
 import {
-  topicEvidenceManagementService,
+  listSignals,
+  getSignalDetail,
+  promoteSignal,
+  reclassifyEvidence,
+  updateEvidenceText,
+  deleteEvidence,
+  createManualSignal,
+  batchDeleteSignals,
   SignalNotFoundError,
   SignalAlreadyAcceptedError,
 } from './topic-evidence-management-service.js';
@@ -57,31 +65,24 @@ export function registerAdminSignalsRoutes(
 ): void {
   const { db, pool, boss } = deps;
 
-  fastify.register(async (scope) => {
+  fastify.register(async (instance) => {
+    const scope = instance.withTypeProvider<ZodTypeProvider>();
     scope.addHook('preHandler', createRequireProductOwner(db));
 
     // GET /api/v1/admin/signals
     scope.get(
       '/api/v1/admin/signals',
-      async (
-        req: FastifyRequest<{ Querystring: Record<string, unknown> }>,
-        reply: FastifyReply,
-      ) => {
-        const parseResult = ListSignalsQuerySchema.safeParse(req.query);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Қидирув параметрлари нотўғри.',
-            },
-          });
-        }
-
+      {
+        schema: {
+          querystring: ListSignalsQuerySchema,
+        },
+      },
+      async (req, reply) => {
         try {
-          const result = await topicEvidenceManagementService.listSignals(db, parseResult.data);
+          const result = await listSignals(db, req.query);
           return reply.status(200).send(result);
         } catch (err: unknown) {
-          return handleSignalError(err, reply, req);
+          return handleSignalError(err, reply, req as FastifyRequest);
         }
       },
     );
@@ -89,11 +90,8 @@ export function registerAdminSignalsRoutes(
     // GET /api/v1/admin/signals/:id
     scope.get(
       '/api/v1/admin/signals/:id',
-      async (
-        req: FastifyRequest<{ Params: { id: string } }>,
-        reply: FastifyReply,
-      ) => {
-        const { id } = req.params;
+      async (req, reply) => {
+        const { id } = req.params as { id: string };
         if (!id || typeof id !== 'string' || id.trim() === '') {
           return reply.status(404).send({
             error: {
@@ -104,10 +102,10 @@ export function registerAdminSignalsRoutes(
         }
 
         try {
-          const details = await topicEvidenceManagementService.getSignalDetail(db, id.trim());
+          const details = await getSignalDetail(db, id.trim());
           return reply.status(200).send(details);
         } catch (err: unknown) {
-          return handleSignalError(err, reply, req);
+          return handleSignalError(err, reply, req as FastifyRequest);
         }
       },
     );
@@ -115,23 +113,13 @@ export function registerAdminSignalsRoutes(
     // POST /api/v1/admin/signals/:id/promote
     scope.post(
       '/api/v1/admin/signals/:id/promote',
-      async (
-        req: FastifyRequest<{
-          Params: { id: string };
-          Body: unknown;
-        }>,
-        reply: FastifyReply,
-      ) => {
-        const { id } = req.params;
-        const parseResult = PromoteSignalRequestSchema.safeParse(req.body);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Нотўғри маълумотлар киритилди.',
-            },
-          });
-        }
+      {
+        schema: {
+          body: PromoteSignalRequestSchema,
+        },
+      },
+      async (req, reply) => {
+        const { id } = req.params as { id: string };
 
         if (!pool || !boss) {
           return reply.status(500).send({
@@ -154,17 +142,17 @@ export function registerAdminSignalsRoutes(
 
         try {
           const actor = req.actor;
-          const result = await topicEvidenceManagementService.promoteSignal(pool, boss, db, {
+          const result = await promoteSignal(pool, boss, db, {
             intakeId: id.trim(),
-            lanes: parseResult.data.lanes,
-            changeReason: parseResult.data.changeReason,
+            lanes: req.body.lanes,
+            changeReason: req.body.changeReason,
             actorId: actor.id,
             actorRole: actor.role,
           });
 
           return reply.status(200).send(result);
         } catch (err: unknown) {
-          return handleSignalError(err, reply, req);
+          return handleSignalError(err, reply, req as FastifyRequest);
         }
       },
     );
@@ -172,23 +160,13 @@ export function registerAdminSignalsRoutes(
     // POST /api/v1/admin/signals/:id/reclassify
     scope.post(
       '/api/v1/admin/signals/:id/reclassify',
-      async (
-        req: FastifyRequest<{
-          Params: { id: string };
-          Body: unknown;
-        }>,
-        reply: FastifyReply,
-      ) => {
-        const { id } = req.params;
-        const parseResult = ReclassifyEvidenceRequestSchema.safeParse(req.body);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Нотўғри маълумотлар киритилди.',
-            },
-          });
-        }
+      {
+        schema: {
+          body: ReclassifyEvidenceRequestSchema,
+        },
+      },
+      async (req, reply) => {
+        const { id } = req.params as { id: string };
 
         if (!pool || !boss) {
           return reply.status(500).send({
@@ -211,17 +189,17 @@ export function registerAdminSignalsRoutes(
 
         try {
           const actor = req.actor;
-          const result = await topicEvidenceManagementService.reclassifyEvidence(pool, boss, db, {
+          const result = await reclassifyEvidence(pool, boss, db, {
             evidenceId: id.trim(),
-            lanes: parseResult.data.lanes,
-            changeReason: parseResult.data.changeReason,
+            lanes: req.body.lanes,
+            changeReason: req.body.changeReason,
             actorId: actor.id,
             actorRole: actor.role,
           });
 
           return reply.status(200).send(result);
         } catch (err: unknown) {
-          return handleSignalError(err, reply, req);
+          return handleSignalError(err, reply, req as FastifyRequest);
         }
       },
     );
@@ -229,23 +207,13 @@ export function registerAdminSignalsRoutes(
     // PATCH /api/v1/admin/signals/:id/evidence
     scope.patch(
       '/api/v1/admin/signals/:id/evidence',
-      async (
-        req: FastifyRequest<{
-          Params: { id: string };
-          Body: unknown;
-        }>,
-        reply: FastifyReply,
-      ) => {
-        const { id } = req.params;
-        const parseResult = UpdateEvidenceTextRequestSchema.safeParse(req.body);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Нотўғри маълумотлар киритилди.',
-            },
-          });
-        }
+      {
+        schema: {
+          body: UpdateEvidenceTextRequestSchema,
+        },
+      },
+      async (req, reply) => {
+        const { id } = req.params as { id: string };
 
         if (!pool || !boss) {
           return reply.status(500).send({
@@ -268,17 +236,17 @@ export function registerAdminSignalsRoutes(
 
         try {
           const actor = req.actor;
-          const result = await topicEvidenceManagementService.updateEvidenceText(pool, boss, db, {
+          const result = await updateEvidenceText(pool, boss, db, {
             evidenceId: id.trim(),
-            verbatimText: parseResult.data.verbatimText,
-            changeReason: parseResult.data.changeReason,
+            verbatimText: req.body.verbatimText,
+            changeReason: req.body.changeReason,
             actorId: actor.id,
             actorRole: actor.role,
           });
 
           return reply.status(200).send(result);
         } catch (err: unknown) {
-          return handleSignalError(err, reply, req);
+          return handleSignalError(err, reply, req as FastifyRequest);
         }
       },
     );
@@ -286,23 +254,13 @@ export function registerAdminSignalsRoutes(
     // DELETE /api/v1/admin/signals/:id/evidence
     scope.delete(
       '/api/v1/admin/signals/:id/evidence',
-      async (
-        req: FastifyRequest<{
-          Params: { id: string };
-          Body: unknown;
-        }>,
-        reply: FastifyReply,
-      ) => {
-        const { id } = req.params;
-        const parseResult = DeleteEvidenceRequestSchema.safeParse(req.body);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Ўчириш сабабини киритиш шарт.',
-            },
-          });
-        }
+      {
+        schema: {
+          body: DeleteEvidenceRequestSchema,
+        },
+      },
+      async (req, reply) => {
+        const { id } = req.params as { id: string };
 
         if (!pool || !boss) {
           return reply.status(500).send({
@@ -325,16 +283,16 @@ export function registerAdminSignalsRoutes(
 
         try {
           const actor = req.actor;
-          const result = await topicEvidenceManagementService.deleteEvidence(pool, boss, db, {
+          const result = await deleteEvidence(pool, boss, db, {
             evidenceId: id.trim(),
-            changeReason: parseResult.data.changeReason,
+            changeReason: req.body.changeReason,
             actorId: actor.id,
             actorRole: actor.role,
           });
 
           return reply.status(200).send(result);
         } catch (err: unknown) {
-          return handleSignalError(err, reply, req);
+          return handleSignalError(err, reply, req as FastifyRequest);
         }
       },
     );
@@ -342,22 +300,12 @@ export function registerAdminSignalsRoutes(
     // POST /api/v1/admin/signals/manual
     scope.post(
       '/api/v1/admin/signals/manual',
-      async (
-        req: FastifyRequest<{
-          Body: unknown;
-        }>,
-        reply: FastifyReply,
-      ) => {
-        const parseResult = CreateManualSignalRequestSchema.safeParse(req.body);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Нотўғри маълумотлар киритилди.',
-            },
-          });
-        }
-
+      {
+        schema: {
+          body: CreateManualSignalRequestSchema,
+        },
+      },
+      async (req, reply) => {
         if (!pool || !boss) {
           return reply.status(500).send({
             error: {
@@ -379,15 +327,15 @@ export function registerAdminSignalsRoutes(
 
         try {
           const actor = req.actor;
-          const result = await topicEvidenceManagementService.createManualSignal(pool, boss, db, {
-            ...parseResult.data,
+          const result = await createManualSignal(pool, boss, db, {
+            ...req.body,
             actorId: actor.id,
             actorRole: actor.role,
           });
 
           return reply.status(201).send(result);
         } catch (err: unknown) {
-          return handleSignalError(err, reply, req);
+          return handleSignalError(err, reply, req as FastifyRequest);
         }
       },
     );
@@ -395,22 +343,12 @@ export function registerAdminSignalsRoutes(
     // POST /api/v1/admin/signals/batch-delete
     scope.post(
       '/api/v1/admin/signals/batch-delete',
-      async (
-        req: FastifyRequest<{
-          Body: unknown;
-        }>,
-        reply: FastifyReply,
-      ) => {
-        const parseResult = BatchDeleteSignalsRequestSchema.safeParse(req.body);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Нотўғри маълумотлар киритилди.',
-            },
-          });
-        }
-
+      {
+        schema: {
+          body: BatchDeleteSignalsRequestSchema,
+        },
+      },
+      async (req, reply) => {
         if (!pool || !boss) {
           return reply.status(500).send({
             error: {
@@ -432,16 +370,16 @@ export function registerAdminSignalsRoutes(
 
         try {
           const actor = req.actor;
-          const result = await topicEvidenceManagementService.batchDeleteSignals(pool, boss, db, {
-            ids: parseResult.data.ids,
-            changeReason: parseResult.data.changeReason,
+          const result = await batchDeleteSignals(pool, boss, db, {
+            ids: req.body.ids,
+            changeReason: req.body.changeReason,
             actorId: actor.id,
             actorRole: actor.role,
           });
 
           return reply.status(200).send(result);
         } catch (err: unknown) {
-          return handleSignalError(err, reply, req);
+          return handleSignalError(err, reply, req as FastifyRequest);
         }
       },
     );

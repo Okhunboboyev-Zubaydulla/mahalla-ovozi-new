@@ -1,38 +1,41 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance, FastifyReply } from 'fastify';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { eq } from 'drizzle-orm';
 import {
   DistrictTopicsQuerySchema,
   DistrictTopicsSearchBodySchema,
   TopicEvidenceQuerySchema,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
+import { districts } from '../../adapters/db/schema/index.js';
 import { verifyStateChangingOrigin } from '../auth/origin-guard.js';
 import { createRequireProductOwner } from '../auth/require-product-owner.js';
 import {
-  DistrictTopicsService,
   DistrictNotFoundError,
   DistrictRequiredError,
   InvalidCursorError,
   InvalidDateRangeError,
+  decodeTopicKeysetCursor,
+  queryDistrictMahallas,
+  queryDistrictTopicsPage,
+} from './topic-query-engine.js';
+import {
+  getTopicEvidence,
   TopicNotFoundError,
-  decodeDistrictTopicKeysetCursor,
-} from './district-topics-service.js';
-import { decodeEvidenceKeysetCursor } from './topic-evidence-service.js';
+  decodeEvidenceKeysetCursor,
+} from './topic-evidence-service.js';
 
 export function registerDistrictTopicsRoutes(fastify: FastifyInstance, db: DbClient): void {
-  const districtTopicsService = new DistrictTopicsService(db);
-
-  fastify.register(async (scope) => {
+  fastify.register(async (instance) => {
+    const scope = instance.withTypeProvider<ZodTypeProvider>();
     scope.addHook('preHandler', verifyStateChangingOrigin);
     scope.addHook('preHandler', createRequireProductOwner(db));
 
     // 1. Get district mahallas
     scope.get(
       '/api/v1/districts/:districtId/topics/mahallas',
-      async (
-        req: FastifyRequest<{ Params: { districtId: string } }>,
-        reply: FastifyReply,
-      ) => {
-        const { districtId } = req.params;
+      async (req, reply) => {
+        const { districtId } = req.params as { districtId: string };
         if (!districtId || typeof districtId !== 'string' || districtId.trim() === '') {
           return reply.status(400).send({
             error: {
@@ -43,7 +46,7 @@ export function registerDistrictTopicsRoutes(fastify: FastifyInstance, db: DbCli
         }
 
         try {
-          const mahallas = await districtTopicsService.getDistrictMahallas(districtId);
+          const mahallas = await queryDistrictMahallas(db, districtId);
           return reply.status(200).send({ mahallas });
         } catch (err: unknown) {
           return handleDistrictTopicsError(err, reply);
@@ -54,11 +57,13 @@ export function registerDistrictTopicsRoutes(fastify: FastifyInstance, db: DbCli
     // 2. Get district topics (GET)
     scope.get(
       '/api/v1/districts/:districtId/topics',
-      async (
-        req: FastifyRequest<{ Params: { districtId: string }; Querystring: unknown }>,
-        reply: FastifyReply,
-      ) => {
-        const { districtId } = req.params;
+      {
+        schema: {
+          querystring: DistrictTopicsQuerySchema,
+        },
+      },
+      async (req, reply) => {
+        const { districtId } = req.params as { districtId: string };
         if (!districtId || typeof districtId !== 'string' || districtId.trim() === '') {
           return reply.status(400).send({
             error: {
@@ -68,18 +73,8 @@ export function registerDistrictTopicsRoutes(fastify: FastifyInstance, db: DbCli
           });
         }
 
-        const parseResult = DistrictTopicsQuerySchema.safeParse(req.query);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Сўров параметрлари нотўғри.',
-            },
-          });
-        }
-
-        const { cursor } = parseResult.data;
-        if (cursor && !decodeDistrictTopicKeysetCursor(cursor)) {
+        const { cursor } = req.query;
+        if (cursor && !decodeTopicKeysetCursor(cursor)) {
           return reply.status(400).send({
             error: {
               code: 'INVALID_CURSOR',
@@ -89,9 +84,9 @@ export function registerDistrictTopicsRoutes(fastify: FastifyInstance, db: DbCli
         }
 
         try {
-          const page = await districtTopicsService.getDistrictTopics({
+          const page = await queryDistrictTopicsPage(db, {
             districtId,
-            filter: parseResult.data,
+            filter: req.query,
           });
           return reply.status(200).send(page);
         } catch (err: unknown) {
@@ -103,11 +98,13 @@ export function registerDistrictTopicsRoutes(fastify: FastifyInstance, db: DbCli
     // 3. Search district topics (POST for privacy-safe search term transmission)
     scope.post(
       '/api/v1/districts/:districtId/topics/search',
-      async (
-        req: FastifyRequest<{ Params: { districtId: string }; Body: unknown }>,
-        reply: FastifyReply,
-      ) => {
-        const { districtId } = req.params;
+      {
+        schema: {
+          body: DistrictTopicsSearchBodySchema,
+        },
+      },
+      async (req, reply) => {
+        const { districtId } = req.params as { districtId: string };
         if (!districtId || typeof districtId !== 'string' || districtId.trim() === '') {
           return reply.status(400).send({
             error: {
@@ -117,18 +114,8 @@ export function registerDistrictTopicsRoutes(fastify: FastifyInstance, db: DbCli
           });
         }
 
-        const parseResult = DistrictTopicsSearchBodySchema.safeParse(req.body);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Сўров параметрлари нотўғри.',
-            },
-          });
-        }
-
-        const { cursor } = parseResult.data;
-        if (cursor && !decodeDistrictTopicKeysetCursor(cursor)) {
+        const { cursor } = req.body;
+        if (cursor && !decodeTopicKeysetCursor(cursor)) {
           return reply.status(400).send({
             error: {
               code: 'INVALID_CURSOR',
@@ -138,9 +125,9 @@ export function registerDistrictTopicsRoutes(fastify: FastifyInstance, db: DbCli
         }
 
         try {
-          const page = await districtTopicsService.getDistrictTopics({
+          const page = await queryDistrictTopicsPage(db, {
             districtId,
-            filter: parseResult.data,
+            filter: req.body,
           });
           return reply.status(200).send(page);
         } catch (err: unknown) {
@@ -152,14 +139,13 @@ export function registerDistrictTopicsRoutes(fastify: FastifyInstance, db: DbCli
     // 4. Get district topic evidence (GET)
     scope.get(
       '/api/v1/districts/:districtId/topics/:topicId/evidence',
-      async (
-        req: FastifyRequest<{
-          Params: { districtId: string; topicId: string };
-          Querystring: unknown;
-        }>,
-        reply: FastifyReply,
-      ) => {
-        const { districtId, topicId } = req.params;
+      {
+        schema: {
+          querystring: TopicEvidenceQuerySchema,
+        },
+      },
+      async (req, reply) => {
+        const { districtId, topicId } = req.params as { districtId: string; topicId: string };
         if (!districtId || typeof districtId !== 'string' || districtId.trim() === '') {
           return reply.status(400).send({
             error: {
@@ -177,17 +163,7 @@ export function registerDistrictTopicsRoutes(fastify: FastifyInstance, db: DbCli
           });
         }
 
-        const parseResult = TopicEvidenceQuerySchema.safeParse(req.query);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Сўров параметрлари нотўғри.',
-            },
-          });
-        }
-
-        const { cursor } = parseResult.data;
+        const { cursor } = req.query;
         if (cursor && !decodeEvidenceKeysetCursor(cursor)) {
           return reply.status(400).send({
             error: {
@@ -198,11 +174,20 @@ export function registerDistrictTopicsRoutes(fastify: FastifyInstance, db: DbCli
         }
 
         try {
-          const evidenceResponse = await districtTopicsService.getDistrictTopicEvidence({
-            districtId,
-            topicId,
-            query: parseResult.data,
+          const district = await db.query.districts.findFirst({
+            where: eq(districts.id, districtId),
           });
+
+          if (!district) {
+            throw new DistrictNotFoundError('Туман топилмади.');
+          }
+
+          const evidenceResponse = await getTopicEvidence(
+            db,
+            { id: 'product_owner', districtId, role: 'PRODUCT_OWNER' },
+            topicId,
+            req.query,
+          );
           return reply.status(200).send(evidenceResponse);
         } catch (err: unknown) {
           return handleDistrictTopicsError(err, reply);

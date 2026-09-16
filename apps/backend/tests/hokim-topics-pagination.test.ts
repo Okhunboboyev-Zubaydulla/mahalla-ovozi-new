@@ -10,7 +10,7 @@ import { eq, inArray } from 'drizzle-orm';
 import { hashPassword } from '../src/adapters/crypto/argon2.js';
 import { COOKIE_NAME } from '../src/modules/auth/session-manager.js';
 import { getTashkentCalendarDay } from '../src/modules/telegram-intake/timezone-util.js';
-import { encodeKeysetCursor } from '../src/modules/topics/hokim-topic-service.js';
+import { encodeKeysetCursor } from '@mahalla-ovozi/api-contracts';
 
 const SAME_ORIGIN_HEADERS = {
   'sec-fetch-site': 'same-origin',
@@ -506,7 +506,7 @@ describe('Story 3.8: Keyset Pagination & Safe Continuation Integration Tests', (
 
     // Out-of-bounds future cursor (>NOW + 1 min)
     const futureTimestamp = new Date(Date.now() + 10 * 86400 * 1000).toISOString();
-    const futureCursor = encodeKeysetCursor(futureTimestamp, 'top_future');
+    const futureCursor = encodeKeysetCursor({ t: futureTimestamp, id: 'top_future' });
     const res2 = await server.inject({
       method: 'GET',
       url: `/api/v1/hokim/topics/lane?lane=WATER&cursor=${futureCursor}`,
@@ -521,7 +521,7 @@ describe('Story 3.8: Keyset Pagination & Safe Continuation Integration Tests', (
 
     // Out-of-bounds old cursor (>90 days ago)
     const ancientTimestamp = new Date(Date.now() - 100 * 86400 * 1000).toISOString();
-    const ancientCursor = encodeKeysetCursor(ancientTimestamp, 'top_old');
+    const ancientCursor = encodeKeysetCursor({ t: ancientTimestamp, id: 'top_old' });
     const res3 = await server.inject({
       method: 'POST',
       url: `/api/v1/hokim/topics/lane/search`,

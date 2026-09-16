@@ -1,4 +1,5 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
+import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import {
   HokimTopicBoardQuerySchema,
   HokimLaneQuerySchema,
@@ -7,29 +8,35 @@ import {
   HokimTopicBoardSearchBodySchema,
   HokimLaneSearchBodySchema,
   HokimTopicStatisticsSearchBodySchema,
+  decodeKeysetCursor,
 } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import { verifyStateChangingOrigin } from '../auth/origin-guard.js';
 import { createRequireHokim } from '../auth/require-hokim.js';
-import { HokimTopicService, decodeKeysetCursor } from './hokim-topic-service.js';
 import {
-  TopicEvidenceService,
+  queryHokimBoard,
+  queryHokimLaneBatch,
+  queryDistrictMahallas,
+  queryHokimStatistics,
+  decodeTopicKeysetCursor,
+  InvalidCursorError,
+} from './topic-query-engine.js';
+import {
+  getTopicEvidence,
   TopicNotFoundError,
   decodeEvidenceKeysetCursor,
 } from './topic-evidence-service.js';
 
 export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient): void {
-  const topicService = new HokimTopicService(db);
-  const topicEvidenceService = new TopicEvidenceService(db);
-
-  fastify.register(async (scope) => {
+  fastify.register(async (instance) => {
+    const scope = instance.withTypeProvider<ZodTypeProvider>();
     scope.addHook('preHandler', verifyStateChangingOrigin);
     scope.addHook('preHandler', createRequireHokim(db));
 
     // 1. Get district mahallas list (sorted uz-Cyrl)
     scope.get(
       '/api/v1/hokim/topics/mahallas',
-      async (req: FastifyRequest, reply: FastifyReply) => {
+      async (req, reply) => {
         if (!req.actor) {
           return reply.status(401).send({
             error: {
@@ -39,10 +46,18 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
           });
         }
 
+        const actor = req.actor as { id: string; districtId: string; role: string };
+        if (!actor.districtId) {
+          return reply.status(400).send({
+            error: {
+              code: 'MAHALLAS_QUERY_ERROR',
+              message: 'Ҳоким ҳисоби туманга бириктирилмаган.',
+            },
+          });
+        }
+
         try {
-          const mahallas = await topicService.getDistrictMahallas(
-            req.actor as { id: string; districtId: string; role: string },
-          );
+          const mahallas = await queryDistrictMahallas(db, actor.districtId);
           return reply.status(200).send({ mahallas });
         } catch (err: unknown) {
           const message =
@@ -60,10 +75,12 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
     // 2. Get today's or filtered 5-lane topic board
     scope.get(
       '/api/v1/hokim/topics/board',
-      async (
-        req: FastifyRequest<{ Querystring: unknown }>,
-        reply: FastifyReply,
-      ) => {
+      {
+        schema: {
+          querystring: HokimTopicBoardQuerySchema,
+        },
+      },
+      async (req, reply) => {
         if (!req.actor) {
           return reply.status(401).send({
             error: {
@@ -73,20 +90,11 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
           });
         }
 
-        const parseResult = HokimTopicBoardQuerySchema.safeParse(req.query);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Сўров параметрлари нотўғри.',
-            },
-          });
-        }
-
         try {
-          const board = await topicService.getTodayBoard(
+          const board = await queryHokimBoard(
+            db,
             req.actor as { id: string; districtId: string; role: string },
-            parseResult.data,
+            req.query,
           );
           return reply.status(200).send(board);
         } catch (err: unknown) {
@@ -104,7 +112,12 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
     // 3. Get paginated batch for a specific lane
     scope.get(
       '/api/v1/hokim/topics/lane',
-      async (req: FastifyRequest<{ Querystring: unknown }>, reply: FastifyReply) => {
+      {
+        schema: {
+          querystring: HokimLaneQuerySchema,
+        },
+      },
+      async (req, reply) => {
         if (!req.actor) {
           return reply.status(401).send({
             error: {
@@ -114,19 +127,9 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
           });
         }
 
-        const parseResult = HokimLaneQuerySchema.safeParse(req.query);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Сўров параметрлари нотўғри.',
-            },
-          });
-        }
+        const { cursor } = req.query;
 
-        const { cursor } = parseResult.data;
-
-        if (cursor && !decodeKeysetCursor(cursor)) {
+        if (cursor && (!decodeKeysetCursor(cursor) || !decodeTopicKeysetCursor(cursor))) {
           return reply.status(400).send({
             error: {
               code: 'INVALID_CURSOR',
@@ -136,13 +139,21 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         }
 
         try {
-          const laneBatch = await topicService.getLaneBatch({
+          const laneBatch = await queryHokimLaneBatch(db, {
             actorContext: req.actor as { id: string; districtId: string; role: string },
-            ...parseResult.data,
+            ...req.query,
           });
 
           return reply.status(200).send(laneBatch);
         } catch (err: unknown) {
+          if (err instanceof InvalidCursorError) {
+            return reply.status(400).send({
+              error: {
+                code: 'INVALID_CURSOR',
+                message: err.message,
+              },
+            });
+          }
           const message = err instanceof Error ? err.message : 'Йўналиш маълумотларини юклашда хатолик юз берди.';
           return reply.status(400).send({
             error: {
@@ -157,10 +168,12 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
     // 4. Get complete retained evidence for a specific topic (AC 1-6)
     scope.get(
       '/api/v1/hokim/topics/:id/evidence',
-      async (
-        req: FastifyRequest<{ Params: { id: string }; Querystring: unknown }>,
-        reply: FastifyReply,
-      ) => {
+      {
+        schema: {
+          querystring: TopicEvidenceQuerySchema,
+        },
+      },
+      async (req, reply) => {
         if (!req.actor) {
           return reply.status(401).send({
             error: {
@@ -170,7 +183,7 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
           });
         }
 
-        const topicId = req.params.id;
+        const topicId = (req.params as { id: string }).id;
         if (!topicId || typeof topicId !== 'string') {
           return reply.status(400).send({
             error: {
@@ -180,17 +193,7 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
           });
         }
 
-        const parseResult = TopicEvidenceQuerySchema.safeParse(req.query);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Сўров параметрлари нотўғри.',
-            },
-          });
-        }
-
-        const { cursor } = parseResult.data;
+        const { cursor } = req.query;
         if (cursor && !decodeEvidenceKeysetCursor(cursor)) {
           return reply.status(400).send({
             error: {
@@ -201,10 +204,11 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         }
 
         try {
-          const evidenceResponse = await topicEvidenceService.getTopicEvidence(
+          const evidenceResponse = await getTopicEvidence(
+            db,
             req.actor as { id: string; districtId: string; role: string },
             topicId,
-            parseResult.data,
+            req.query,
           );
 
           return reply.status(200).send(evidenceResponse);
@@ -237,10 +241,12 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
     // 5. Get compact neutral statistics for active scope
     scope.get(
       '/api/v1/hokim/topics/statistics',
-      async (
-        req: FastifyRequest<{ Querystring: unknown }>,
-        reply: FastifyReply,
-      ) => {
+      {
+        schema: {
+          querystring: HokimTopicStatisticsQuerySchema,
+        },
+      },
+      async (req, reply) => {
         if (!req.actor) {
           return reply.status(401).send({
             error: {
@@ -250,20 +256,11 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
           });
         }
 
-        const parseResult = HokimTopicStatisticsQuerySchema.safeParse(req.query);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Сўров параметрлари нотўғри.',
-            },
-          });
-        }
-
         try {
-          const statistics = await topicService.getStatistics(
+          const statistics = await queryHokimStatistics(
+            db,
             req.actor as { id: string; districtId: string; role: string },
-            parseResult.data,
+            req.query,
           );
           return reply.status(200).send(statistics);
         } catch (err: unknown) {
@@ -282,10 +279,12 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
     // 6. Search 5-lane topic board via validated POST request body (AD-09, AD-10)
     scope.post(
       '/api/v1/hokim/topics/board/search',
-      async (
-        req: FastifyRequest<{ Body: unknown }>,
-        reply: FastifyReply,
-      ) => {
+      {
+        schema: {
+          body: HokimTopicBoardSearchBodySchema,
+        },
+      },
+      async (req, reply) => {
         if (!req.actor) {
           return reply.status(401).send({
             error: {
@@ -295,20 +294,11 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
           });
         }
 
-        const parseResult = HokimTopicBoardSearchBodySchema.safeParse(req.body);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Сўров параметрлари нотўғри.',
-            },
-          });
-        }
-
         try {
-          const board = await topicService.getTodayBoard(
+          const board = await queryHokimBoard(
+            db,
             req.actor as { id: string; districtId: string; role: string },
-            parseResult.data,
+            req.body,
           );
           return reply.status(200).send(board);
         } catch (err: unknown) {
@@ -326,7 +316,12 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
     // 7. Search paginated batch for a specific lane via validated POST request body (AD-09, AD-10)
     scope.post(
       '/api/v1/hokim/topics/lane/search',
-      async (req: FastifyRequest<{ Body: unknown }>, reply: FastifyReply) => {
+      {
+        schema: {
+          body: HokimLaneSearchBodySchema,
+        },
+      },
+      async (req, reply) => {
         if (!req.actor) {
           return reply.status(401).send({
             error: {
@@ -336,19 +331,9 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
           });
         }
 
-        const parseResult = HokimLaneSearchBodySchema.safeParse(req.body);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Сўров параметрлари нотўғри.',
-            },
-          });
-        }
+        const { cursor } = req.body;
 
-        const { cursor } = parseResult.data;
-
-        if (cursor && !decodeKeysetCursor(cursor)) {
+        if (cursor && (!decodeKeysetCursor(cursor) || !decodeTopicKeysetCursor(cursor))) {
           return reply.status(400).send({
             error: {
               code: 'INVALID_CURSOR',
@@ -358,13 +343,21 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         }
 
         try {
-          const laneBatch = await topicService.getLaneBatch({
+          const laneBatch = await queryHokimLaneBatch(db, {
             actorContext: req.actor as { id: string; districtId: string; role: string },
-            ...parseResult.data,
+            ...req.body,
           });
 
           return reply.status(200).send(laneBatch);
         } catch (err: unknown) {
+          if (err instanceof InvalidCursorError) {
+            return reply.status(400).send({
+              error: {
+                code: 'INVALID_CURSOR',
+                message: err.message,
+              },
+            });
+          }
           const message = err instanceof Error ? err.message : 'Йўналиш бўйича қидирувда хатолик юз берди.';
           return reply.status(400).send({
             error: {
@@ -379,10 +372,12 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
     // 8. Search compact neutral statistics for active scope via validated POST request body (AD-09, AD-10)
     scope.post(
       '/api/v1/hokim/topics/statistics/search',
-      async (
-        req: FastifyRequest<{ Body: unknown }>,
-        reply: FastifyReply,
-      ) => {
+      {
+        schema: {
+          body: HokimTopicStatisticsSearchBodySchema,
+        },
+      },
+      async (req, reply) => {
         if (!req.actor) {
           return reply.status(401).send({
             error: {
@@ -392,20 +387,11 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
           });
         }
 
-        const parseResult = HokimTopicStatisticsSearchBodySchema.safeParse(req.body);
-        if (!parseResult.success) {
-          return reply.status(400).send({
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: parseResult.error.errors[0]?.message || 'Сўров параметрлари нотўғри.',
-            },
-          });
-        }
-
         try {
-          const statistics = await topicService.getStatistics(
+          const statistics = await queryHokimStatistics(
+            db,
             req.actor as { id: string; districtId: string; role: string },
-            parseResult.data,
+            req.body,
           );
           return reply.status(200).send(statistics);
         } catch (err: unknown) {

@@ -7,7 +7,7 @@ import {
   TELEGRAM_TOPIC_RETENTION_QUEUE,
   type TelegramTopicRetentionJobData,
 } from '../../../adapters/jobs/boss-client.js';
-import { TopicRetentionService } from '../topic-retention-service.js';
+import { purgeDistrictExpiredTopicsBatch } from '../topic-retention-service.js';
 import { purgeExpiredDebugIntakePayloads } from '../debug-payload-retention.js';
 
 import { clearPendingRetryFlag } from '../../issues/retry-service.js';
@@ -23,7 +23,6 @@ export async function processRetentionJobs(
   deps: RetentionJobDeps,
 ): Promise<void> {
   const { db, pool, boss } = deps;
-  const retentionService = new TopicRetentionService(pool, boss, db);
 
   for (const job of jobs) {
     const startTime = performance.now();
@@ -60,7 +59,7 @@ export async function processRetentionJobs(
           continue;
         }
 
-        const result = await retentionService.purgeDistrictExpiredTopicsBatch(districtId);
+        const result = await purgeDistrictExpiredTopicsBatch(pool, boss, db, districtId);
         const durationMs = Math.round(performance.now() - startTime);
         console.log(
           JSON.stringify({
@@ -94,7 +93,7 @@ export async function processRetentionJobs(
 
         for (const d of eligibleDistricts) {
           try {
-            const result = await retentionService.purgeDistrictExpiredTopicsBatch(d.id);
+            const result = await purgeDistrictExpiredTopicsBatch(pool, boss, db, d.id);
             totalEvaluated += result.topicsEvaluated;
             totalPurged += result.topicsPurged;
             totalEvidence += result.evidencePurged;

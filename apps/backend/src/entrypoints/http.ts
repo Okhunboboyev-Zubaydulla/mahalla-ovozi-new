@@ -7,7 +7,11 @@ import Fastify, { FastifyInstance } from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
 import fastifyCompress from '@fastify/compress';
-import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
+import {
+  serializerCompiler,
+  validatorCompiler,
+  hasZodFastifySchemaValidationErrors,
+} from 'fastify-type-provider-zod';
 import { createDbPool, createDbClient, DbClient } from '../adapters/db/client.js';
 import { registerAuthRoutes } from '../modules/auth/auth-routes.js';
 import { registerDistrictRoutes } from '../modules/districts/districts-routes.js';
@@ -156,7 +160,23 @@ export async function buildHttpServer(options?: {
       },
       'Unhandled request error',
     );
-    console.error('[http] Unhandled request error:', error);
+
+    if (hasZodFastifySchemaValidationErrors(error)) {
+      const issues = error.validation.map((v) => v.params.issue);
+      reply.status(400).send({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: issues[0]?.message || 'Киритилган маълумотларда хатолик бор.',
+          statusCode: 400,
+          validationErrors: issues.map((issue) => ({
+            path: issue.path,
+            message: issue.message,
+            code: issue.code,
+          })),
+        },
+      });
+      return;
+    }
 
     // Zod validation error handling
     if (

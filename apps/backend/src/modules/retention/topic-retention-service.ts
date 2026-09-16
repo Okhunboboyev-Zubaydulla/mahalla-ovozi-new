@@ -60,135 +60,128 @@ export function validateTopicId(topicId: string): void {
 }
 
 /**
- * TopicRetentionService manages topic-level 90-day retention evaluation,
+ * Topic retention functions manage topic-level 90-day retention evaluation,
  * atomic multi-table purging, concurrency protection, and district-scoped batch scanning.
  * Governed by FR-12, AD-3, AD-4, AD-5, AD-6, AD-7, AD-9, AD-11.
  */
-export class TopicRetentionService {
-  private readonly pool: pg.Pool;
-  private readonly boss: PgBoss;
-  private readonly db: DbClient;
 
-  constructor(
-    pool: pg.Pool,
-    boss: PgBoss,
-    db: DbClient,
-  ) {
-    this.pool = pool;
-    this.boss = boss;
-    this.db = db;
-  }
+/**
+ * Purges a single expired Topic and its associated evidence and projections atomically.
+ * Re-evaluates retention under an exclusive row lock to prevent race conditions with in-flight ingestion.
+ */
+export async function purgeExpiredTopic(
+  pool: pg.Pool,
+  boss: PgBoss,
+  _db: DbClient,
+  districtId: string,
+  topicId: string,
+  nowInput?: Date,
+): Promise<RetentionPurgeResult> {
+  const now = nowInput ?? new Date();
+  validateDistrictScope(districtId);
+  validateTopicId(topicId);
 
-  /**
-   * Purges a single expired Topic and its associated evidence and projections atomically.
-   * Re-evaluates retention under an exclusive row lock to prevent race conditions with in-flight ingestion.
-   */
-  async purgeExpiredTopic(
-    districtId: string,
-    topicId: string,
-    now: Date = new Date(),
-  ): Promise<RetentionPurgeResult> {
-    validateDistrictScope(districtId);
-    validateTopicId(topicId);
+  return withTransactionalIntake(pool, boss, async ({ tx }) => {
+    const result = await deleteTopicWithEvidenceAtomic(
+      tx,
+      districtId.trim(),
+      topicId.trim(),
+      now,
+    );
 
-    return withTransactionalIntake(this.pool, this.boss, async ({ tx }) => {
-      const result = await deleteTopicWithEvidenceAtomic(
-        tx,
-        districtId.trim(),
-        topicId.trim(),
-        now,
-      );
+    return {
+      topicId,
+      districtId,
+      evidenceCount: result.evidenceCount,
+      projectionsCount: result.projectionsCount,
+      purged: result.purged,
+      reason: result.reason,
+    };
+  });
+}
 
-      return {
-        topicId,
-        districtId,
-        evidenceCount: result.evidenceCount,
-        projectionsCount: result.projectionsCount,
-        purged: result.purged,
-        reason: result.reason,
-      };
-    });
-  }
+/**
+ * Scans a District for expired Topics and purges them in bounded batches.
+ * Each expired Topic is purged independently within its own atomic transaction to isolate failures.
+ */
+export async function purgeDistrictExpiredTopicsBatch(
+  pool: pg.Pool,
+  boss: PgBoss,
+  db: DbClient,
+  districtId: string,
+  options?: RetentionScanOptions,
+  nowInput?: Date,
+): Promise<RetentionBatchResult> {
+  const now = nowInput ?? new Date();
+  validateDistrictScope(districtId);
 
-  /**
-   * Scans a District for expired Topics and purges them in bounded batches.
-   * Each expired Topic is purged independently within its own atomic transaction to isolate failures.
-   */
-  async purgeDistrictExpiredTopicsBatch(
-    districtId: string,
-    options?: RetentionScanOptions,
-    now: Date = new Date(),
-  ): Promise<RetentionBatchResult> {
-    validateDistrictScope(districtId);
+  const startTime = performance.now();
+  const cleanDistrictId = districtId.trim();
+  const limit =
+    typeof options?.limit === 'number' && Number.isFinite(options.limit) && options.limit > 0
+      ? Math.floor(options.limit)
+      : 100;
 
-    const startTime = performance.now();
-    const cleanDistrictId = districtId.trim();
-    const limit =
-      typeof options?.limit === 'number' && Number.isFinite(options.limit) && options.limit > 0
-        ? Math.floor(options.limit)
-        : 100;
+  const expiredTopicIds = await findExpiredTopicIds(db, cleanDistrictId, limit, now);
 
-    const expiredTopicIds = await findExpiredTopicIds(this.db, cleanDistrictId, limit, now);
+  let topicsPurged = 0;
+  let evidencePurged = 0;
+  let projectionsPurged = 0;
+  let failedPurges = 0;
 
-    let topicsPurged = 0;
-    let evidencePurged = 0;
-    let projectionsPurged = 0;
-    let failedPurges = 0;
-
-    for (const topicId of expiredTopicIds) {
-      try {
-        const purgeResult = await this.purgeExpiredTopic(cleanDistrictId, topicId, now);
-        if (purgeResult.purged) {
-          topicsPurged++;
-          evidencePurged += purgeResult.evidenceCount;
-          projectionsPurged += purgeResult.projectionsCount;
-        } else if (purgeResult.reason === 'EXTENDED_BY_NEWER_EVIDENCE') {
-          console.log(
-            JSON.stringify({
-              event: 'TELEGRAM_TOPIC_RETENTION_ABORTED_ACTIVE',
-              districtId: cleanDistrictId,
-              topicId,
-              reason: purgeResult.reason,
-            }),
-          );
-        }
-      } catch (topicError) {
-        failedPurges++;
-        console.error(
+  for (const topicId of expiredTopicIds) {
+    try {
+      const purgeResult = await purgeExpiredTopic(pool, boss, db, cleanDistrictId, topicId, now);
+      if (purgeResult.purged) {
+        topicsPurged++;
+        evidencePurged += purgeResult.evidenceCount;
+        projectionsPurged += purgeResult.projectionsCount;
+      } else if (purgeResult.reason === 'EXTENDED_BY_NEWER_EVIDENCE') {
+        console.log(
           JSON.stringify({
-            event: 'TELEGRAM_TOPIC_RETENTION_TOPIC_PURGE_ERROR',
+            event: 'TELEGRAM_TOPIC_RETENTION_ABORTED_ACTIVE',
             districtId: cleanDistrictId,
             topicId,
-            error: topicError instanceof Error ? topicError.message : String(topicError),
+            reason: purgeResult.reason,
           }),
         );
       }
-    }
-
-    const durationMs = Math.round(performance.now() - startTime);
-
-    if (topicsPurged > 0) {
-      console.log(
+    } catch (topicError) {
+      failedPurges++;
+      console.error(
         JSON.stringify({
-          event: 'TELEGRAM_TOPIC_RETENTION_PURGED',
+          event: 'TELEGRAM_TOPIC_RETENTION_TOPIC_PURGE_ERROR',
           districtId: cleanDistrictId,
-          topicsEvaluated: expiredTopicIds.length,
-          topicsPurgedCount: topicsPurged,
-          evidencePurgedCount: evidencePurged,
-          projectionsPurgedCount: projectionsPurged,
-          durationMs,
+          topicId,
+          error: topicError instanceof Error ? topicError.message : String(topicError),
         }),
       );
     }
-
-    return {
-      districtId: cleanDistrictId,
-      topicsEvaluated: expiredTopicIds.length,
-      topicsPurged,
-      evidencePurged,
-      projectionsPurged,
-      failedPurges,
-      durationMs,
-    };
   }
+
+  const durationMs = Math.round(performance.now() - startTime);
+
+  if (topicsPurged > 0) {
+    console.log(
+      JSON.stringify({
+        event: 'TELEGRAM_TOPIC_RETENTION_PURGED',
+        districtId: cleanDistrictId,
+        topicsEvaluated: expiredTopicIds.length,
+        topicsPurgedCount: topicsPurged,
+        evidencePurgedCount: evidencePurged,
+        projectionsPurgedCount: projectionsPurged,
+        durationMs,
+      }),
+    );
+  }
+
+  return {
+    districtId: cleanDistrictId,
+    topicsEvaluated: expiredTopicIds.length,
+    topicsPurged,
+    evidencePurged,
+    projectionsPurged,
+    failedPurges,
+    durationMs,
+  };
 }

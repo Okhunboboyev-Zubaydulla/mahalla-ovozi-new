@@ -116,14 +116,13 @@ export class SignalAlreadyAcceptedError extends Error {
   }
 }
 
-export class TopicEvidenceManagementService {
-  /**
-   * List all signals (both accepted evidence and excluded candidate messages) with filtering and keyset pagination.
-   */
-  async listSignals(
-    db: DbClient,
-    query: ListSignalsQuery,
-  ): Promise<ListSignalsResponse> {
+/**
+ * List all signals (both accepted evidence and excluded candidate messages) with filtering and keyset pagination.
+ */
+export async function listSignals(
+  db: DbClient,
+  query: ListSignalsQuery,
+): Promise<ListSignalsResponse> {
     const limit = query.limit || 50;
 
     let queryBuilder = db
@@ -390,7 +389,7 @@ export class TopicEvidenceManagementService {
   /**
    * Get single signal detail by ID (either intakeId or evidenceId).
    */
-  async getSignalDetail(db: DbClient, id: string): Promise<SignalDetailDto> {
+  export async function getSignalDetail(db: DbClient, id: string): Promise<SignalDetailDto> {
     const [row] = await db
       .select({
         intakeId: telegramIntakeRecords.id,
@@ -569,7 +568,7 @@ export class TopicEvidenceManagementService {
   /**
    * Promote an ignored/excluded message to Accepted Evidence and trigger Topic Assignment.
    */
-  async promoteSignal(
+  export async function promoteSignal(
     pool: pg.Pool,
     boss: PgBoss,
     db: DbClient,
@@ -714,7 +713,7 @@ export class TopicEvidenceManagementService {
   /**
    * Reclassify evidence lane, moving it to matching topic or creating new topic and triggering projection.
    */
-  async reclassifyEvidence(
+  export async function reclassifyEvidence(
     pool: pg.Pool,
     boss: PgBoss,
     db: DbClient,
@@ -890,7 +889,7 @@ export class TopicEvidenceManagementService {
   /**
    * Update verbatim text of an existing evidence record.
    */
-  async updateEvidenceText(
+  export async function updateEvidenceText(
     pool: pg.Pool,
     boss: PgBoss,
     db: DbClient,
@@ -968,7 +967,7 @@ export class TopicEvidenceManagementService {
   /**
    * Delete an evidence record and trigger topic cascade/projection.
    */
-  async deleteEvidence(
+  export async function deleteEvidence(
     pool: pg.Pool,
     boss: PgBoss,
     db: DbClient,
@@ -1113,7 +1112,7 @@ export class TopicEvidenceManagementService {
   /**
    * Create a manual civic signal (intake + topic assignment).
    */
-  async createManualSignal(
+  export async function createManualSignal(
     pool: pg.Pool,
     boss: PgBoss,
     _db: DbClient,
@@ -1231,7 +1230,7 @@ export class TopicEvidenceManagementService {
   /**
    * Batch delete multiple signals (evidence items or intake records).
    */
-  async batchDeleteSignals(
+  export async function batchDeleteSignals(
     pool: pg.Pool,
     boss: PgBoss,
     db: DbClient,
@@ -1262,7 +1261,7 @@ export class TopicEvidenceManagementService {
         .limit(1);
 
       if (evidence) {
-        const result = await this.deleteEvidence(pool, boss, db, {
+        const result = await deleteEvidence(pool, boss, db, {
           evidenceId: evidence.id,
           changeReason: params.changeReason,
           actorId: params.actorId,
@@ -1338,7 +1337,3 @@ export class TopicEvidenceManagementService {
       topicsDeleted: topicsDeletedCount,
     };
   }
-}
-
-export const topicEvidenceManagementService = new TopicEvidenceManagementService();
-export const signalManagementService = topicEvidenceManagementService;

@@ -31,7 +31,7 @@ import { formatDistrictDeletionRecord } from '../subscriptions/district-deletion
 import { recordAuditEvent } from '../audit/audit-service.js';
 import type { ExternalTombstoneStore } from '../subscriptions/ports/external-tombstone-store.port.js';
 import { FileExternalTombstoneStore } from '../../adapters/storage/external-tombstone-store.js';
-import { TopicRetentionService } from './topic-retention-service.js';
+import { purgeDistrictExpiredTopicsBatch } from './topic-retention-service.js';
 
 export interface DisasterRestoreReconciliationOptions {
   now?: Date;
@@ -53,7 +53,7 @@ export async function reconcileRestoredRetention(
   boss: PgBoss,
   db: DbClient,
   districtId?: string,
-  now: Date = new Date(),
+  nowInput?: Date,
 ): Promise<{
   districtsReconciled: number;
   districtsEvaluated: number;
@@ -66,7 +66,7 @@ export async function reconcileRestoredRetention(
   durationMs: number;
 }> {
   const startTime = performance.now();
-  const retentionService = new TopicRetentionService(pool, boss, db);
+  const now = nowInput ?? new Date();
 
   let targetDistrictIds: string[] = [];
   const cleanDistrictId = typeof districtId === 'string' ? districtId.trim() : '';
@@ -95,7 +95,10 @@ export async function reconcileRestoredRetention(
 
       while (hasMore && iterations < MAX_ITERATIONS) {
         iterations++;
-        const batchResult = await retentionService.purgeDistrictExpiredTopicsBatch(
+        const batchResult = await purgeDistrictExpiredTopicsBatch(
+          pool,
+          boss,
+          db,
           currentDistrictId,
           { limit: BATCH_SIZE },
           now,

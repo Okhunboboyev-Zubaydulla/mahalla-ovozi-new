@@ -10,7 +10,7 @@ import { eq } from 'drizzle-orm';
 import { hashPassword } from '../src/adapters/crypto/argon2.js';
 import { COOKIE_NAME } from '../src/modules/auth/session-manager.js';
 import { getTashkentCalendarDay } from '../src/modules/telegram-intake/timezone-util.js';
-import { escapeLikePattern } from '../src/modules/topics/hokim-topic-service.js';
+import { escapeLikePattern } from '../src/modules/topics/topic-query-engine.js';
 
 const SAME_ORIGIN_HEADERS = {
   'sec-fetch-site': 'same-origin',

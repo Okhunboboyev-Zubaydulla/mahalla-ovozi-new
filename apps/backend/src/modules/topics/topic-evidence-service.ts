@@ -181,189 +181,182 @@ interface RawEvidenceRow extends Record<string, unknown> {
   telegramChatUsername: string | null;
 }
 
-export class TopicEvidenceService {
-  private readonly db: DbClient;
-
-  constructor(db: DbClient) {
-    this.db = db;
+/**
+ * Retrieves complete retained Accepted Evidence for a specific Topic (AC 1-6).
+ * Validates fixed-district tenant boundary and provides keyset-paginated results.
+ */
+export async function getTopicEvidence(
+  db: DbClient,
+  actorContext: { id: string; districtId: string; role: string },
+  topicId: string,
+  query: TopicEvidenceQueryOutput,
+): Promise<TopicEvidenceResponse> {
+  if (!actorContext.districtId) {
+    throw new Error('Ҳоким ҳисоби туманга бириктирилмаган.');
   }
 
-  /**
-   * Retrieves complete retained Accepted Evidence for a specific Topic (AC 1-6).
-   * Validates fixed-district tenant boundary and provides keyset-paginated results.
-   */
-  async getTopicEvidence(
-    actorContext: { id: string; districtId: string; role: string },
-    topicId: string,
-    query: TopicEvidenceQueryOutput,
-  ): Promise<TopicEvidenceResponse> {
-    if (!actorContext.districtId) {
-      throw new Error('Ҳоким ҳисоби туманга бириктирилмаган.');
+  // 1. Build Keyset Cursor Predicate (Bidirectional: ASC or DESC)
+  const order = query.order ?? 'ASC';
+  let cursorPredicate = sql``;
+  if (query.cursor) {
+    const decoded = decodeEvidenceKeysetCursor(query.cursor);
+    if (!decoded) {
+      throw new Error('Курсор нотўғри ёки муддати ўтган.');
     }
-
-    // 1. Build Keyset Cursor Predicate (Bidirectional: ASC or DESC)
-    const order = query.order ?? 'ASC';
-    let cursorPredicate = sql``;
-    if (query.cursor) {
-      const decoded = decodeEvidenceKeysetCursor(query.cursor);
-      if (!decoded) {
-        throw new Error('Курсор нотўғри ёки муддати ўтган.');
-      }
-      const cursorDate = new Date(decoded.t);
-      if (order === 'DESC') {
-        cursorPredicate = sql`AND (
-          ae.original_timestamp < ${cursorDate}
-          OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id < ${decoded.msgId})
-          OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id = ${decoded.msgId} AND ae.id < ${decoded.id})
-        )`;
-      } else {
-        cursorPredicate = sql`AND (
-          ae.original_timestamp > ${cursorDate}
-          OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id > ${decoded.msgId})
-          OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id = ${decoded.msgId} AND ae.id > ${decoded.id})
-        )`;
-      }
+    const cursorDate = new Date(decoded.t);
+    if (order === 'DESC') {
+      cursorPredicate = sql`AND (
+        ae.original_timestamp < ${cursorDate}
+        OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id < ${decoded.msgId})
+        OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id = ${decoded.msgId} AND ae.id < ${decoded.id})
+      )`;
+    } else {
+      cursorPredicate = sql`AND (
+        ae.original_timestamp > ${cursorDate}
+        OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id > ${decoded.msgId})
+        OR (ae.original_timestamp = ${cursorDate} AND ae.telegram_message_id = ${decoded.msgId} AND ae.id > ${decoded.id})
+      )`;
     }
+  }
 
-    const orderByClause =
-      order === 'DESC'
-        ? sql`ORDER BY ae.original_timestamp DESC, ae.telegram_message_id DESC, ae.id DESC`
-        : sql`ORDER BY ae.original_timestamp ASC, ae.telegram_message_id ASC, ae.id ASC`;
+  const orderByClause =
+    order === 'DESC'
+      ? sql`ORDER BY ae.original_timestamp DESC, ae.telegram_message_id DESC, ae.id DESC`
+      : sql`ORDER BY ae.original_timestamp ASC, ae.telegram_message_id ASC, ae.id ASC`;
 
-    const limit = query.limit ?? 50;
+  const limit = query.limit ?? 50;
 
-    // 2. Parallelize all queries: topic validation, projection, count, evidence rows, and settings (P3)
-    const [topicRow, projectionRow, countResult, rawEvidenceRows, activeDistrictSettings] =
-      await Promise.all([
-        this.db.query.topics.findFirst({
-          where: and(
-            eq(topics.id, topicId),
-            eq(topics.districtId, actorContext.districtId),
-            eq(topics.status, 'ACTIVE'),
-            gt(topics.retentionExpiresAt, new Date()),
+  // 2. Parallelize all queries: topic validation, projection, count, evidence rows, and settings (P3)
+  const [topicRow, projectionRow, countResult, rawEvidenceRows, activeDistrictSettings] =
+    await Promise.all([
+      db.query.topics.findFirst({
+        where: and(
+          eq(topics.id, topicId),
+          eq(topics.districtId, actorContext.districtId),
+          eq(topics.status, 'ACTIVE'),
+          gt(topics.retentionExpiresAt, new Date()),
+        ),
+      }),
+      db.query.topicProjections.findFirst({
+        where: eq(topicProjections.topicId, topicId),
+      }),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(acceptedEvidence)
+        .where(
+          and(
+            eq(acceptedEvidence.topicId, topicId),
+            eq(acceptedEvidence.districtId, actorContext.districtId),
           ),
-        }),
-        this.db.query.topicProjections.findFirst({
-          where: eq(topicProjections.topicId, topicId),
-        }),
-        this.db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(acceptedEvidence)
-          .where(
-            and(
-              eq(acceptedEvidence.topicId, topicId),
-              eq(acceptedEvidence.districtId, actorContext.districtId),
-            ),
-          ),
-        this.db.execute<RawEvidenceRow>(sql`
-          SELECT 
-            ae.id,
-            ae.topic_id AS "topicId",
-            ae.verbatim_text AS "verbatimText",
-            ae.content_type AS "contentType",
-            ae.original_timestamp AS "originalTimestamp",
-            ae.telegram_chat_id AS "telegramChatId",
-            ae.telegram_message_id AS "telegramMessageId",
-            ae.user_metadata AS "userMetadata",
-            dtg.telegram_chat_username AS "telegramChatUsername"
-          FROM accepted_evidence ae
-          LEFT JOIN district_telegram_groups dtg 
-            ON dtg.district_id = ae.district_id AND dtg.telegram_chat_id = ae.telegram_chat_id
-          WHERE ae.topic_id = ${topicId}
-            AND ae.district_id = ${actorContext.districtId}
-            ${cursorPredicate}
-          ${orderByClause}
-          LIMIT ${limit + 1};
-        `),
-        districtAnalysisSettingsRepository.getActiveConfiguration(this.db, actorContext.districtId),
-      ]);
+        ),
+      db.execute<RawEvidenceRow>(sql`
+        SELECT 
+          ae.id,
+          ae.topic_id AS "topicId",
+          ae.verbatim_text AS "verbatimText",
+          ae.content_type AS "contentType",
+          ae.original_timestamp AS "originalTimestamp",
+          ae.telegram_chat_id AS "telegramChatId",
+          ae.telegram_message_id AS "telegramMessageId",
+          ae.user_metadata AS "userMetadata",
+          dtg.telegram_chat_username AS "telegramChatUsername"
+        FROM accepted_evidence ae
+        LEFT JOIN district_telegram_groups dtg 
+          ON dtg.district_id = ae.district_id AND dtg.telegram_chat_id = ae.telegram_chat_id
+        WHERE ae.topic_id = ${topicId}
+          AND ae.district_id = ${actorContext.districtId}
+          ${cursorPredicate}
+        ${orderByClause}
+        LIMIT ${limit + 1};
+      `),
+      districtAnalysisSettingsRepository.getActiveConfiguration(db, actorContext.districtId),
+    ]);
 
-    if (!topicRow) {
-      throw new TopicNotFoundError('Мавзу топилмади ёки сақлаш муддати тугаган.');
-    }
+  if (!topicRow) {
+    throw new TopicNotFoundError('Мавзу топилмади ёки сақлаш муддати тугаган.');
+  }
 
-    const totalCount = countResult[0]?.count ?? 0;
+  const totalCount = countResult[0]?.count ?? 0;
 
-    const recognitionTerms: readonly string[] =
-      activeDistrictSettings?.hokimRecognitionTerms && activeDistrictSettings.hokimRecognitionTerms.length > 0
-        ? activeDistrictSettings.hokimRecognitionTerms
-        : DEFAULT_HOKIM_RECOGNITION_TERMS;
-    const hokimMatcher = buildHokimTermsRegex(recognitionTerms);
+  const recognitionTerms: readonly string[] =
+    activeDistrictSettings?.hokimRecognitionTerms && activeDistrictSettings.hokimRecognitionTerms.length > 0
+      ? activeDistrictSettings.hokimRecognitionTerms
+      : DEFAULT_HOKIM_RECOGNITION_TERMS;
+  const hokimMatcher = buildHokimTermsRegex(recognitionTerms);
 
-    // 4. Build TopicCardItem
-    const topicCard: TopicCardItem = {
-      id: topicRow.id,
-      districtId: topicRow.districtId,
-      mahallaName: topicRow.mahallaName,
-      calendarDay: topicRow.calendarDay,
-      summary: projectionRow?.summary ?? 'Мавзу хулосаси тайёрланмоқда...',
-      latestUpdate: projectionRow?.latestUpdate ?? null,
-      primaryLane: (topicRow.primaryLane as QualifyingLane) || 'HOKIM_RELATED',
-      lanes: (projectionRow?.lanes as QualifyingLane[]) || [
-        topicRow.primaryLane as QualifyingLane,
-      ],
-      additionalLanes: ((projectionRow?.lanes as QualifyingLane[]) || []).filter(
-        (l) => l !== topicRow.primaryLane,
-      ),
-      evidenceCount: totalCount,
-      latestMeaningfulActivityTimestamp:
-        projectionRow?.latestMeaningfulActivityTimestamp?.toISOString() ||
-        topicRow.latestRelevantEvidenceTimestamp.toISOString(),
-      isNew: false,
-      isUpdated: false,
-      createdAt: topicRow.createdAt.toISOString(),
-      updatedAt: topicRow.updatedAt.toISOString(),
-    };
+  // 4. Build TopicCardItem
+  const topicCard: TopicCardItem = {
+    id: topicRow.id,
+    districtId: topicRow.districtId,
+    mahallaName: topicRow.mahallaName,
+    calendarDay: topicRow.calendarDay,
+    summary: projectionRow?.summary ?? 'Мавзу хулосаси тайёрланмоқда...',
+    latestUpdate: projectionRow?.latestUpdate ?? null,
+    primaryLane: (topicRow.primaryLane as QualifyingLane) || 'HOKIM_RELATED',
+    lanes: (projectionRow?.lanes as QualifyingLane[]) || [
+      topicRow.primaryLane as QualifyingLane,
+    ],
+    additionalLanes: ((projectionRow?.lanes as QualifyingLane[]) || []).filter(
+      (l) => l !== topicRow.primaryLane,
+    ),
+    evidenceCount: totalCount,
+    latestMeaningfulActivityTimestamp:
+      projectionRow?.latestMeaningfulActivityTimestamp?.toISOString() ||
+      topicRow.latestRelevantEvidenceTimestamp.toISOString(),
+    isNew: false,
+    isUpdated: false,
+    createdAt: topicRow.createdAt.toISOString(),
+    updatedAt: topicRow.updatedAt.toISOString(),
+  };
 
-    const rows = (rawEvidenceRows.rows || rawEvidenceRows) as unknown as RawEvidenceRow[];
+  const rows = (rawEvidenceRows.rows || rawEvidenceRows) as unknown as RawEvidenceRow[];
 
-    const hasNextPage = rows.length > limit;
-    const pageRows = hasNextPage ? rows.slice(0, limit) : rows;
+  const hasNextPage = rows.length > limit;
+  const pageRows = hasNextPage ? rows.slice(0, limit) : rows;
 
-    const evidenceList: TopicEvidenceItem[] = pageRows.map((row) => {
-      const { authorUsername, authorName } = sanitizeSenderAttribution(row.userMetadata);
-      const deepLink = resolveTelegramDeepLink(
-        row.telegramChatUsername,
-        row.telegramChatId,
-        row.telegramMessageId,
-      );
-      const isAnchor = Boolean(projectionRow && row.id === projectionRow.anchorEvidenceId);
-      const originalDate = new Date(row.originalTimestamp);
-      const isHokimRelated = hokimMatcher.test(row.verbatimText);
-
-      return {
-        id: row.id,
-        topicId: row.topicId,
-        verbatimText: row.verbatimText,
-        contentType: row.contentType,
-        originalTimestamp: originalDate.toISOString(),
-        formattedTime: formatTashkentDateTime(originalDate),
-        authorName,
-        authorUsername,
-        isAnchor,
-        isHokimRelated,
-        telegramDeepLink: deepLink,
-      };
-    });
-
-    const lastRow = pageRows.length > 0 ? pageRows[pageRows.length - 1] : null;
-    const nextCursor =
-      hasNextPage && lastRow
-        ? encodeEvidenceKeysetCursor(
-            new Date(lastRow.originalTimestamp).toISOString(),
-            lastRow.telegramMessageId,
-            lastRow.id,
-          )
-        : null;
+  const evidenceList: TopicEvidenceItem[] = pageRows.map((row) => {
+    const { authorUsername, authorName } = sanitizeSenderAttribution(row.userMetadata);
+    const deepLink = resolveTelegramDeepLink(
+      row.telegramChatUsername,
+      row.telegramChatId,
+      row.telegramMessageId,
+    );
+    const isAnchor = Boolean(projectionRow && row.id === projectionRow.anchorEvidenceId);
+    const originalDate = new Date(row.originalTimestamp);
+    const isHokimRelated = hokimMatcher.test(row.verbatimText);
 
     return {
-      topic: topicCard,
-      anchorQuote: projectionRow?.anchorQuote ?? '',
-      anchorEvidenceId: projectionRow?.anchorEvidenceId ?? '',
-      evidence: evidenceList,
-      totalCount,
-      nextCursor,
-      hasNextPage,
+      id: row.id,
+      topicId: row.topicId,
+      verbatimText: row.verbatimText,
+      contentType: row.contentType,
+      originalTimestamp: originalDate.toISOString(),
+      formattedTime: formatTashkentDateTime(originalDate),
+      authorName,
+      authorUsername,
+      isAnchor,
+      isHokimRelated,
+      telegramDeepLink: deepLink,
     };
-  }
+  });
+
+  const lastRow = pageRows.length > 0 ? pageRows[pageRows.length - 1] : null;
+  const nextCursor =
+    hasNextPage && lastRow
+      ? encodeEvidenceKeysetCursor(
+          new Date(lastRow.originalTimestamp).toISOString(),
+          lastRow.telegramMessageId,
+          lastRow.id,
+        )
+      : null;
+
+  return {
+    topic: topicCard,
+    anchorQuote: projectionRow?.anchorQuote ?? '',
+    anchorEvidenceId: projectionRow?.anchorEvidenceId ?? '',
+    evidence: evidenceList,
+    totalCount,
+    nextCursor,
+    hasNextPage,
+  };
 }

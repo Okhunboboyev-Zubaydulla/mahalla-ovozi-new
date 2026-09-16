@@ -21,9 +21,15 @@ import {
 } from '../src/adapters/jobs/boss-client.js';
 import { startWorker, stopWorker } from '../src/entrypoints/worker.js';
 import {
-  TopicRetentionService,
+  purgeExpiredTopic,
+  purgeDistrictExpiredTopicsBatch,
   calculateRetentionDeadline,
 } from '../src/modules/retention/topic-retention-service.js';
+import type {
+  RetentionPurgeResult,
+  RetentionBatchResult,
+  RetentionScanOptions,
+} from '../src/modules/retention/topic-retention-types.js';
 import { reconcileRestoredRetention } from '../src/modules/retention/restore-reconciliation.js';
 import { getMahallaDailySnapshot } from '../src/modules/ai/context-snapshot.js';
 
@@ -31,7 +37,10 @@ describe('Story 2.6: Worker Topic Retention & Accepted Evidence Source of Truth 
   let pool: pg.Pool;
   let db: DbClient;
   let boss: PgBoss;
-  let retentionService: TopicRetentionService;
+  let retentionService: {
+    purgeExpiredTopic: (districtId: string, topicId: string, now?: Date) => Promise<RetentionPurgeResult>;
+    purgeDistrictExpiredTopicsBatch: (districtId: string, options?: RetentionScanOptions, now?: Date) => Promise<RetentionBatchResult>;
+  };
   let testDistrictId: string;
   let testChatId: string;
 
@@ -44,7 +53,12 @@ describe('Story 2.6: Worker Topic Retention & Accepted Evidence Source of Truth 
     await boss.start();
     await initBossQueues(boss);
 
-    retentionService = new TopicRetentionService(pool, boss, db);
+    retentionService = {
+      purgeExpiredTopic: (districtId: string, topicId: string, now?: Date) =>
+        purgeExpiredTopic(pool, boss, db, districtId, topicId, now),
+      purgeDistrictExpiredTopicsBatch: (districtId: string, options?: RetentionScanOptions, now?: Date) =>
+        purgeDistrictExpiredTopicsBatch(pool, boss, db, districtId, options, now),
+    };
 
     // Clean up stale jobs in test schema
     await pool.query('DELETE FROM pgboss_topic_retention.job');
@@ -886,7 +900,8 @@ describe('Story 2.6: Worker Topic Retention & Accepted Evidence Source of Truth 
 
   // Matrix #28: Story boundary check: confirms retention runs without dashboard API or UI components (AC 17)
   it('Matrix #28: Confirms Story 2.6 calculates, extends, and enforces retention without dashboard endpoints or UI (AC 17)', () => {
-    expect(typeof TopicRetentionService).toBe('function');
+    expect(typeof purgeExpiredTopic).toBe('function');
+    expect(typeof purgeDistrictExpiredTopicsBatch).toBe('function');
     expect(typeof reconcileRestoredRetention).toBe('function');
     expect(typeof calculateRetentionDeadline).toBe('function');
 

@@ -5,7 +5,7 @@ import {
   validateDistrictScope,
 } from '../src/modules/retention/topic-retention-service.js';
 
-describe('TopicRetentionService Unit Tests', () => {
+describe('Topic Retention Functions Unit Tests', () => {
   describe('calculateRetentionDeadline (Exact 90-Day Millisecond Arithmetic)', () => {
     it('calculates exactly 90 calendar days from the given evidence timestamp', () => {
       const baseDate = new Date('2026-08-22T10:00:00.000Z');
