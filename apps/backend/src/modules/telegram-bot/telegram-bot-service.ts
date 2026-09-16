@@ -9,7 +9,16 @@ import {
 import { cryptoService } from '../../adapters/crypto/index.js';
 import { validateTelegramBot } from '../../adapters/telegram/telegram-client.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
-import { DistrictNotFoundError, DistrictAlreadyActiveError } from '../districts/districts-service.js';
+import { DistrictNotFoundError } from '../districts/districts-service.js';
+
+export class DistrictCancelledError extends Error {
+  readonly code = 'DISTRICT_CANCELLED' as const;
+  readonly statusCode = 409;
+  constructor(districtId: string) {
+    super(`Ушбу туман бекор қилинган (District ID: ${districtId}).`);
+    this.name = 'DistrictCancelledError';
+  }
+}
 
 export class BotAlreadyAssignedError extends Error {
   readonly code = 'BOT_ALREADY_ASSIGNED' as const;
@@ -113,8 +122,8 @@ export async function connectDistrictTelegramBot(
     throw new DistrictNotFoundError(districtId);
   }
 
-  if (district.status !== 'SETUP_INCOMPLETE') {
-    throw new DistrictAlreadyActiveError(districtId);
+  if (district.status === 'CANCELLED') {
+    throw new DistrictCancelledError(districtId);
   }
 
   // Pure HTTP execution outside DB transaction (AD-6)
@@ -141,8 +150,8 @@ export async function connectDistrictTelegramBot(
         throw new DistrictNotFoundError(districtId);
       }
 
-      if (districtInTx.status !== 'SETUP_INCOMPLETE') {
-        throw new DistrictAlreadyActiveError(districtId);
+      if (districtInTx.status === 'CANCELLED') {
+        throw new DistrictCancelledError(districtId);
       }
 
       const [existingForDistrict] = await tx
@@ -227,7 +236,7 @@ export async function connectDistrictTelegramBot(
   } catch (err: unknown) {
     if (
       err instanceof DistrictNotFoundError ||
-      err instanceof DistrictAlreadyActiveError ||
+      err instanceof DistrictCancelledError ||
       err instanceof BotAlreadyAssignedError
     ) {
       throw err;
@@ -254,7 +263,7 @@ export async function connectDistrictTelegramBot(
 
 /**
  * Disconnects and deletes a Telegram Bot credential from a District.
- * 1. Verifies District existence & SETUP_INCOMPLETE status.
+ * 1. Verifies District existence & active/incomplete status.
  * 2. Deletes bot record & records privacy-safe audit event.
  */
 export async function disconnectDistrictTelegramBot(
@@ -273,8 +282,8 @@ export async function disconnectDistrictTelegramBot(
     throw new DistrictNotFoundError(districtId);
   }
 
-  if (district.status !== 'SETUP_INCOMPLETE') {
-    throw new DistrictAlreadyActiveError(districtId);
+  if (district.status === 'CANCELLED') {
+    throw new DistrictCancelledError(districtId);
   }
 
   const [existingBot] = await db
@@ -298,8 +307,8 @@ export async function disconnectDistrictTelegramBot(
       throw new DistrictNotFoundError(districtId);
     }
 
-    if (districtInTx.status !== 'SETUP_INCOMPLETE') {
-      throw new DistrictAlreadyActiveError(districtId);
+    if (districtInTx.status === 'CANCELLED') {
+      throw new DistrictCancelledError(districtId);
     }
 
     const [deleted] = await tx

@@ -511,43 +511,97 @@ describe('Telegram Bot Domain Module & Integration Tests', () => {
     });
   });
 
-  describe('District Status Guard (ACTIVE District Mutation Protection)', () => {
+  describe('District Status Guard (ACTIVE District Mutation & CANCELLED Protection)', () => {
     let activeDistrictId: string;
+    let cancelledDistrictId: string;
+    const activeBotId = (600000000 + Math.floor(Math.random() * 100000)).toString();
+    const activeToken = `${activeBotId}:ABCdefGHIjklMNOpqrSTUvwxYZ_ActiveAllowed`;
 
     beforeAll(async () => {
       activeDistrictId = `dist_${crypto.randomUUID()}`;
-      await db.insert(districts).values({
-        id: activeDistrictId,
-        name: `ActiveDistrict_${crypto.randomUUID().slice(0, 6)}`,
-        status: 'ACTIVE',
-      });
+      cancelledDistrictId = `dist_${crypto.randomUUID()}`;
+
+      await db.insert(districts).values([
+        {
+          id: activeDistrictId,
+          name: `ActiveDistrict_${crypto.randomUUID().slice(0, 6)}`,
+          status: 'ACTIVE',
+        },
+        {
+          id: cancelledDistrictId,
+          name: `CancelledDistrict_${crypto.randomUUID().slice(0, 6)}`,
+          status: 'CANCELLED',
+        },
+      ]);
     });
 
     afterAll(async () => {
       await db.delete(districts).where(eq(districts.id, activeDistrictId));
+      await db.delete(districts).where(eq(districts.id, cancelledDistrictId));
     });
 
-    it('rejects POST /telegram-bot with 409 DISTRICT_ALREADY_ACTIVE when district is ACTIVE', async () => {
+    it('allows POST /telegram-bot to connect or replace bot when district is ACTIVE', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: true,
+          result: {
+            id: Number(activeBotId),
+            is_bot: true,
+            first_name: 'Sharof Rashidov Open Budjet',
+            username: 'sharof_rashidov_bot',
+          },
+        }),
+      } as Response);
+
       const res = await server.inject({
         method: 'POST',
         url: `/api/v1/districts/${activeDistrictId}/telegram-bot`,
         headers: { cookie: authCookie, ...SAME_ORIGIN_HEADERS },
-        payload: { token: '123456789:ABCdefGHIjklMNOpqrSTUvwxYZ_Active' },
+        payload: { token: activeToken },
       });
 
-      expect(res.statusCode).toBe(409);
-      expect(res.json().error.code).toBe('DISTRICT_ALREADY_ACTIVE');
+      expect(res.statusCode).toBe(200);
+      const data = res.json();
+      expect(data.bot).toBeDefined();
+      expect(data.bot.botId).toBe(activeBotId);
+      expect(data.bot.botUsername).toBe('sharof_rashidov_bot');
     });
 
-    it('rejects DELETE /telegram-bot with 409 DISTRICT_ALREADY_ACTIVE when district is ACTIVE', async () => {
+    it('allows DELETE /telegram-bot to disconnect bot when district is ACTIVE', async () => {
       const res = await server.inject({
         method: 'DELETE',
         url: `/api/v1/districts/${activeDistrictId}/telegram-bot`,
         headers: { cookie: authCookie, ...SAME_ORIGIN_HEADERS },
       });
 
+      expect(res.statusCode).toBe(200);
+      expect(res.json().success).toBe(true);
+      expect(res.json().disconnectedBotId).toBe(activeBotId);
+    });
+
+    it('rejects POST /telegram-bot with 409 DISTRICT_CANCELLED when district is CANCELLED', async () => {
+      const res = await server.inject({
+        method: 'POST',
+        url: `/api/v1/districts/${cancelledDistrictId}/telegram-bot`,
+        headers: { cookie: authCookie, ...SAME_ORIGIN_HEADERS },
+        payload: { token: '123456789:ABCdefGHIjklMNOpqrSTUvwxYZ_Cancelled' },
+      });
+
       expect(res.statusCode).toBe(409);
-      expect(res.json().error.code).toBe('DISTRICT_ALREADY_ACTIVE');
+      expect(res.json().error.code).toBe('DISTRICT_CANCELLED');
+    });
+
+    it('rejects DELETE /telegram-bot with 409 DISTRICT_CANCELLED when district is CANCELLED', async () => {
+      const res = await server.inject({
+        method: 'DELETE',
+        url: `/api/v1/districts/${cancelledDistrictId}/telegram-bot`,
+        headers: { cookie: authCookie, ...SAME_ORIGIN_HEADERS },
+      });
+
+      expect(res.statusCode).toBe(409);
+      expect(res.json().error.code).toBe('DISTRICT_CANCELLED');
     });
   });
 });

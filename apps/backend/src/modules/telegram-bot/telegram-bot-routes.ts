@@ -10,6 +10,7 @@ import {
   disconnectDistrictTelegramBot,
   BotAlreadyAssignedError,
   TelegramBotNotFoundError,
+  DistrictCancelledError,
 } from './telegram-bot-service.js';
 import {
   DistrictNotFoundError,
@@ -103,6 +104,12 @@ function handleTelegramBotError(err: unknown, reply: FastifyReply) {
   if (err instanceof DistrictAlreadyActiveError) {
     return reply.status(409).send({
       error: { code: 'DISTRICT_ALREADY_ACTIVE', message: err.message },
+    });
+  }
+
+  if (err instanceof DistrictCancelledError) {
+    return reply.status(409).send({
+      error: { code: 'DISTRICT_CANCELLED', message: err.message },
     });
   }
 
