@@ -23,10 +23,10 @@ import {
   decodeKeysetCursor,
   KeysetCursorPayload,
 } from '@mahalla-ovozi/api-contracts';
-import { getTashkentCalendarDay, resolveDateBoundary } from '../telegram-intake/timezone-util.js';
+import { getTashkentCalendarDay, resolveDateBoundary, InvalidDateRangeError } from '../telegram-intake/timezone-util.js';
 import { escapeLikePattern, buildTopicSearchPredicate } from './topic-query-helpers.js';
 
-export { resolveDateBoundary, escapeLikePattern };
+export { resolveDateBoundary, escapeLikePattern, InvalidDateRangeError };
 
 export const CANONICAL_LANES: readonly QualifyingLane[] = [
   'HOKIM_RELATED',

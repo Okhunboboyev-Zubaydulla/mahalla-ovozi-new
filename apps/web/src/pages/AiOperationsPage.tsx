@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Tabs,
   Typography,
@@ -7,6 +7,7 @@ import {
   Alert,
   theme,
   Space,
+  Button,
 } from 'antd';
 import {
   ApartmentOutlined,
@@ -45,112 +46,125 @@ export const AiOperationsPage: React.FC = () => {
     });
   };
 
-  const tabItems = [
-    {
-      key: 'monitoring',
-      label: (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <DashboardOutlined />
-          Операциялар мониторинги
-        </span>
-      ),
-      children: <SignalMonitoringTable initialDistrictId={activeDistrictId} />,
-    },
-    {
-      key: 'district',
-      label: (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <ApartmentOutlined />
-          Туман созламалари
-        </span>
-      ),
-      children: (
-        <div>
-          {!activeDistrictId ? (
-            <Card
-              variant="outlined"
-              style={{
-                borderRadius: token.borderRadiusLG,
-                background: token.colorBgContainer,
-                textAlign: 'center',
-                padding: '32px 16px',
-              }}
-            >
-              <Space direction="vertical" size="middle" style={{ maxWidth: 500 }}>
-                <EnvironmentOutlined
-                  style={{ fontSize: 48, color: token.colorPrimary }}
-                />
-                <Title level={4} style={{ margin: 0 }}>
-                  Туман созламаларини кўриш ва таҳрирлаш учун аввал туманни танланг
-                </Title>
-                <Paragraph type="secondary">
-                  Ҳокимни таниш атамалари ва маҳаллий луғат ҳар бир туман учун алоҳида сақланади ва бошқарилади.
-                </Paragraph>
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <DistrictSelector />
-                </div>
-              </Space>
-            </Card>
-          ) : (
-            <div>
-              {isDistrictLoading && (
-                <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                  <Spin size="large" tip="Туман созламалари юкланмоқда..." />
-                </div>
-              )}
-
-              {isDistrictError && (
-                <Alert
-                  message="Туман созламаларини юклашда хатолик"
-                  description={
-                    districtError instanceof Error
-                      ? districtError.message
-                      : 'Маълумотларни сервердан олишнинг имкони бўлмади.'
-                  }
-                  type="error"
-                  showIcon
-                  action={
-                    <a
-                      onClick={() => refetchDistrict()}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <ReloadOutlined /> Қайта уриниш
-                    </a>
-                  }
-                  style={{ marginBottom: 16 }}
-                />
-              )}
-
-              {districtSettingsData && (
-                <div>
-                  <ActiveDistrictSettingsCard
-                    districtName={districtSettingsData.districtName}
-                    settings={districtSettingsData.activeConfiguration}
+  const tabItems = useMemo(
+    () => [
+      {
+        key: 'monitoring',
+        label: (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <DashboardOutlined />
+            Операциялар мониторинги
+          </span>
+        ),
+        children: <SignalMonitoringTable initialDistrictId={activeDistrictId} />,
+      },
+      {
+        key: 'district',
+        label: (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <ApartmentOutlined />
+            Туман созламалари
+          </span>
+        ),
+        children: (
+          <div>
+            {!activeDistrictId ? (
+              <Card
+                variant="outlined"
+                style={{
+                  borderRadius: token.borderRadiusLG,
+                  background: token.colorBgContainer,
+                  textAlign: 'center',
+                  padding: '32px 16px',
+                }}
+              >
+                <Space direction="vertical" size="middle" style={{ maxWidth: 500 }}>
+                  <EnvironmentOutlined
+                    style={{ fontSize: 48, color: token.colorPrimary }}
                   />
-                  <DistrictSettingsDraftForm
-                    districtId={activeDistrictId}
-                    districtName={districtSettingsData.districtName}
-                    activeSettings={districtSettingsData.activeConfiguration}
-                    draft={districtSettingsData.draft}
+                  <Title level={4} style={{ margin: 0 }}>
+                    Туман созламаларини кўриш ва таҳрирлаш учун аввал туманни танланг
+                  </Title>
+                  <Paragraph type="secondary">
+                    Ҳокимни таниш атамалари ва маҳаллий луғат ҳар бир туман учун алоҳида сақланади ва бошқарилади.
+                  </Paragraph>
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <DistrictSelector />
+                  </div>
+                </Space>
+              </Card>
+            ) : (
+              <div>
+                {isDistrictLoading && (
+                  <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                    <Spin size="large" tip="Туман созламалари юкланмоқда..." />
+                  </div>
+                )}
+
+                {isDistrictError && (
+                  <Alert
+                    message="Туман созламаларини юклашда хатолик"
+                    description={
+                      districtError instanceof Error
+                        ? districtError.message
+                        : 'Маълумотларни сервердан олишнинг имкони бўлмади.'
+                    }
+                    type="error"
+                    showIcon
+                    action={
+                      <Button
+                        type="link"
+                        icon={<ReloadOutlined />}
+                        onClick={() => void refetchDistrict()}
+                        style={{ padding: 0 }}
+                      >
+                        Қайта уриниш
+                      </Button>
+                    }
+                    style={{ marginBottom: 16 }}
                   />
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'history',
-      label: (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <HistoryOutlined />
-          Созламалар тарихи
-        </span>
-      ),
-      children: <AnalysisSettingsHistoryPanel />,
-    },
-  ];
+                )}
+
+                {districtSettingsData && (
+                  <div>
+                    <ActiveDistrictSettingsCard
+                      districtName={districtSettingsData.districtName}
+                      settings={districtSettingsData.activeConfiguration}
+                    />
+                    <DistrictSettingsDraftForm
+                      districtId={activeDistrictId}
+                      districtName={districtSettingsData.districtName}
+                      activeSettings={districtSettingsData.activeConfiguration}
+                      draft={districtSettingsData.draft}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: 'history',
+        label: (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <HistoryOutlined />
+            Созламалар тарихи
+          </span>
+        ),
+        children: <AnalysisSettingsHistoryPanel />,
+      },
+    ],
+    [
+      activeDistrictId,
+      token,
+      isDistrictLoading,
+      isDistrictError,
+      districtError,
+      refetchDistrict,
+      districtSettingsData,
+    ]
+  );
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto' }}>

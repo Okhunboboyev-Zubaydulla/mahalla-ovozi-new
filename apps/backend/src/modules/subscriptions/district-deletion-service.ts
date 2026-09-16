@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { eq, and, asc, inArray, sql } from 'drizzle-orm';
 import type PgBoss from 'pg-boss';
 import { DbClient } from '../../adapters/db/client.js';
+import { logger } from '../../utils/logger.js';
 import {
   DISTRICT_BACKUP_EXPIRY_QUEUE,
   JobSingletonKeys,
@@ -337,12 +338,13 @@ export async function executeDistrictLiveDeletion(
     try {
       await store.saveTombstone(formattedRecord);
     } catch (syncErr) {
-      console.error(
-        JSON.stringify({
+      logger.error(
+        {
           event: 'SYNC_EXTERNAL_TOMBSTONE_FAILED',
           districtId,
-          error: (syncErr as Error).message,
-        }),
+          err: (syncErr as Error).message,
+        },
+        'Failed to sync external tombstone',
       );
       const now = new Date();
       await db
@@ -383,12 +385,13 @@ export async function executeDistrictLiveDeletion(
           },
         })
         .catch((issueErr) => {
-          console.error(
-            JSON.stringify({
+          logger.error(
+            {
               event: 'CREATE_DEL_SYNC_FAIL_ISSUE_FAILED',
               districtId,
-              error: (issueErr as Error).message,
-            }),
+              err: (issueErr as Error).message,
+            },
+            'Failed to record deletion sync failure issue',
           );
         });
     }
@@ -409,12 +412,13 @@ export async function executeDistrictLiveDeletion(
         },
       );
     } catch (jobErr) {
-      console.error(
-        JSON.stringify({
+      logger.error(
+        {
           event: 'ENQUEUE_BACKUP_EXPIRY_JOB_FAILED',
           districtId,
-          error: (jobErr as Error).message,
-        }),
+          err: (jobErr as Error).message,
+        },
+        'Failed to enqueue backup expiry job',
       );
     }
   }
@@ -731,12 +735,13 @@ export async function processOverdueBackupExpiries(
     } catch (err) {
       const errorMsg = (err as Error).message;
       errors.push({ districtId: item.districtId, error: errorMsg });
-      console.error(
-        JSON.stringify({
+      logger.error(
+        {
           event: 'OVERDUE_BACKUP_EXPIRY_VERIFICATION_FAILED',
           districtId: item.districtId,
-          error: errorMsg,
-        }),
+          err: errorMsg,
+        },
+        'Overdue backup expiry verification failed',
       );
     }
   }
@@ -773,12 +778,13 @@ export async function processOverdueCancelledDistricts(
     } catch (err) {
       const errorMsg = (err as Error).message;
       errors.push({ districtId: item.districtId, error: errorMsg });
-      console.error(
-        JSON.stringify({
+      logger.error(
+        {
           event: 'OVERDUE_CANCELLED_DISTRICT_LIVE_DELETION_FAILED',
           districtId: item.districtId,
-          error: errorMsg,
-        }),
+          err: errorMsg,
+        },
+        'Overdue cancelled district live deletion failed',
       );
     }
   }

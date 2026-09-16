@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+/**
+ * Keyset cursor pagination query schema.
+ *
+ * ARCHITECTURAL NOTE ON SCHEMA DEFAULTS:
+ * Project engineering standards strictly forbid default parameter values in TypeScript function signatures.
+ * However, Zod schemas used for HTTP query string parsing (such as CursorPaginationQuerySchema)
+ * are an intentional and sanctioned exception to this rule: incoming HTTP query parameters
+ * are omitted when optional, and query schemas legitimately need default fallback values
+ * (e.g., default limit, default direction) during request validation and coercion at the API boundary.
+ */
 export const CursorPaginationQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   cursor: z.string().min(1).optional(),

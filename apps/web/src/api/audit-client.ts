@@ -9,45 +9,47 @@ import {
 import { request } from '../lib/api-client.js';
 
 export async function fetchAuditEvents(
-  query: Partial<AuditHistoryQuery> = {},
+  query?: Partial<AuditHistoryQuery>,
 ): Promise<AuditHistoryPage> {
   const searchParams = new URLSearchParams();
 
-  if (query.limit) {
-    searchParams.set('limit', String(query.limit));
-  }
-  if (query.cursor) {
-    searchParams.set('cursor', query.cursor);
-  }
-  if (query.direction) {
-    searchParams.set('direction', query.direction);
-  }
-  if (query.recordType) {
-    searchParams.set('recordType', query.recordType);
-  }
-  if (query.districtId) {
-    searchParams.set('districtId', query.districtId);
-  }
-  if (query.startDate) {
-    searchParams.set('startDate', query.startDate);
-  }
-  if (query.endDate) {
-    searchParams.set('endDate', query.endDate);
-  }
-  if (query.category) {
-    searchParams.set('category', query.category);
-  }
-  if (query.actorRole) {
-    searchParams.set('actorRole', query.actorRole);
-  }
-  if (query.outcome) {
-    searchParams.set('outcome', query.outcome);
-  }
-  if (query.action) {
-    searchParams.set('action', query.action);
-  }
-  if (query.search && query.search.trim().length > 0) {
-    searchParams.set('search', query.search.trim());
+  if (query) {
+    if (query.limit) {
+      searchParams.set('limit', String(query.limit));
+    }
+    if (query.cursor) {
+      searchParams.set('cursor', query.cursor);
+    }
+    if (query.direction) {
+      searchParams.set('direction', query.direction);
+    }
+    if (query.recordType) {
+      searchParams.set('recordType', query.recordType);
+    }
+    if (query.districtId) {
+      searchParams.set('districtId', query.districtId);
+    }
+    if (query.startDate) {
+      searchParams.set('startDate', query.startDate);
+    }
+    if (query.endDate) {
+      searchParams.set('endDate', query.endDate);
+    }
+    if (query.category) {
+      searchParams.set('category', query.category);
+    }
+    if (query.actorRole) {
+      searchParams.set('actorRole', query.actorRole);
+    }
+    if (query.outcome) {
+      searchParams.set('outcome', query.outcome);
+    }
+    if (query.action) {
+      searchParams.set('action', query.action);
+    }
+    if (query.search && query.search.trim().length > 0) {
+      searchParams.set('search', query.search.trim());
+    }
   }
 
   const queryString = searchParams.toString();

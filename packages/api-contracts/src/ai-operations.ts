@@ -4,7 +4,7 @@ import {
   type KeysetPage,
   type KeysetCursorPayload,
 } from './pagination.js';
-import { IsoDateStringSchema } from './common.js';
+import { IsoDateStringSchema, DistrictIdSchema } from './common.js';
 
 export const AiOperationErrorCodeSchema = z.enum([
   'RATE_LIMIT_EXCEEDED',
@@ -87,15 +87,15 @@ export type AiProfileSummaryDto = z.infer<typeof AiProfileSummarySchema>;
 
 export const AiOperationListItemSchema = z.object({
   id: z.string().min(1),
-  districtId: z.string().min(1),
+  districtId: DistrictIdSchema,
   mahallaName: z.string().min(1),
   calendarDay: IsoDateStringSchema,
-  operationType: z.string().min(1),
+  operationType: AiOperationTypeSchema,
   targetId: z.string().min(1),
   pinnedProfileId: z.string().min(1),
   contextRevision: z.number().int().min(0),
   snapshotFingerprint: z.string().min(1),
-  finalStatus: z.string().min(1),
+  finalStatus: AiOperationStatusSchema,
   attemptCount: z.number().int().min(0),
   totalCostUsd: z.number().min(0),
   createdAt: z.string().datetime(),
@@ -106,15 +106,15 @@ export type AiOperationListItemDto = z.infer<typeof AiOperationListItemSchema>;
 export const AiOperationDetailSchema = z.object({
   operation: z.object({
     id: z.string().min(1),
-    districtId: z.string().min(1),
+    districtId: DistrictIdSchema,
     mahallaName: z.string().min(1),
     calendarDay: IsoDateStringSchema,
-    operationType: z.string().min(1),
+    operationType: AiOperationTypeSchema,
     targetId: z.string().min(1),
     pinnedProfileId: z.string().min(1),
     contextRevision: z.number().int().min(0),
     snapshotFingerprint: z.string().min(1),
-    finalStatus: z.string().min(1),
+    finalStatus: AiOperationStatusSchema,
     resultPayload: z.record(z.unknown()).nullable().optional(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),

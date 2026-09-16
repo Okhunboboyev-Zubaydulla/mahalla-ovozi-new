@@ -210,9 +210,19 @@ export function registerIssueRoutes(
           });
         }
 
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Аутентификация талаб қилинади.',
+              statusCode: 401,
+            },
+          });
+        }
+
         const actor = {
-          id: req.actor?.id || 'system:product-owner',
-          role: req.actor?.role || 'PRODUCT_OWNER',
+          id: req.actor.id,
+          role: req.actor.role,
         };
 
         const boss = deps.boss || createBossClient();
@@ -282,9 +292,19 @@ export function registerIssueRoutes(
           });
         }
 
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Аутентификация талаб қилинади.',
+              statusCode: 401,
+            },
+          });
+        }
+
         const actor = {
-          id: req.actor?.id || 'system:product-owner',
-          role: req.actor?.role || 'PRODUCT_OWNER',
+          id: req.actor.id,
+          role: req.actor.role,
         };
 
         const boss = deps.boss || createBossClient();

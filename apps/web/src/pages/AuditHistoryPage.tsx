@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import {
   Card,
   Typography,
@@ -33,6 +33,31 @@ import { AuditEventDetailDrawer } from '../components/audit/AuditEventDetailDraw
 import { formatTashkentDate, getActionDisplayNameUz } from '../lib/formatters.js';
 
 const { Title, Paragraph, Text } = Typography;
+
+const getActorRoleTag = (role: AuditActorRole | null | undefined) => {
+  switch (role) {
+    case 'PRODUCT_OWNER':
+      return (
+        <Tag color="blue" icon={<SafetyCertificateOutlined />}>
+          Маҳсулот эгаси
+        </Tag>
+      );
+    case 'DISTRICT_HOKIM':
+      return (
+        <Tag color="green" icon={<UserOutlined />}>
+          Туман ҳокими
+        </Tag>
+      );
+    case 'SYSTEM':
+      return (
+        <Tag color="purple" icon={<GlobalOutlined />}>
+          Тизим
+        </Tag>
+      );
+    default:
+      return <Tag color="default">{role || 'Номаълум'}</Tag>;
+  }
+};
 
 export const AuditHistoryPage: React.FC = () => {
   const { token } = theme.useToken();
@@ -120,48 +145,23 @@ export const AuditHistoryPage: React.FC = () => {
     });
   };
 
-  // Open detail drawer with focus save
-  const handleOpenDetail = (event: AuditHistoryItem, e: React.MouseEvent<HTMLElement>) => {
+  // Open detail drawer with focus save (FE4)
+  const handleOpenDetail = useCallback((event: AuditHistoryItem, e: React.MouseEvent<HTMLElement>) => {
     lastActiveElementRef.current = e.currentTarget;
     setSelectedEvent(event);
     setDrawerOpen(true);
-  };
+  }, []);
 
-  // Close detail drawer with focus restoration
-  const handleCloseDetail = () => {
+  // Close detail drawer with focus restoration (FE4)
+  const handleCloseDetail = useCallback(() => {
     setDrawerOpen(false);
     setSelectedEvent(null);
     if (lastActiveElementRef.current) {
       lastActiveElementRef.current.focus();
     }
-  };
+  }, []);
 
-  const getActorRoleTag = (role: AuditActorRole | null | undefined) => {
-    switch (role) {
-      case 'PRODUCT_OWNER':
-        return (
-          <Tag color="blue" icon={<SafetyCertificateOutlined />}>
-            Маҳсулот эгаси
-          </Tag>
-        );
-      case 'DISTRICT_HOKIM':
-        return (
-          <Tag color="green" icon={<UserOutlined />}>
-            Туман ҳокими
-          </Tag>
-        );
-      case 'SYSTEM':
-        return (
-          <Tag color="purple" icon={<GlobalOutlined />}>
-            Тизим
-          </Tag>
-        );
-      default:
-        return <Tag color="default">{role || 'Номаълум'}</Tag>;
-    }
-  };
-
-  const columns = [
+  const columns = useMemo(() => [
     {
       title: 'Сана ва вақт',
       dataIndex: 'createdAt',
@@ -300,7 +300,7 @@ export const AuditHistoryPage: React.FC = () => {
         </Button>
       ),
     },
-  ];
+  ], [handleOpenDetail]);
 
   return (
     <Card

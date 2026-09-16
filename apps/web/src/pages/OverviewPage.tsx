@@ -153,6 +153,7 @@ export const OverviewPage: React.FC = () => {
 
             <Space direction="horizontal" size="middle" wrap align="center">
               <Segmented<'checklist' | 'portfolio'>
+                aria-label="Кўриниш режими"
                 value={activeViewMode}
                 onChange={(val) => setActiveViewMode(val)}
                 options={[

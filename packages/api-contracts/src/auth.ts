@@ -35,11 +35,14 @@ export const SignInResponseSchema = z.object({
 });
 export type SignInResponse = z.infer<typeof SignInResponseSchema>;
 
-export const SessionResponseSchema = z.object({
-  actor: ActorContextSchema,
-  session: SessionInfoSchema,
-});
-export type SessionResponse = z.infer<typeof SessionResponseSchema>;
+/**
+ * Session verification response contract.
+ * Both sign-in and session verification return identical actor context and session info.
+ * SessionResponseSchema aliases SignInResponseSchema to maintain semantic distinction
+ * for endpoint consumers without duplicating schema definitions.
+ */
+export const SessionResponseSchema = SignInResponseSchema;
+export type SessionResponse = SignInResponse;
 
 export const SignOutResponseSchema = z.object({
   success: z.literal(true),

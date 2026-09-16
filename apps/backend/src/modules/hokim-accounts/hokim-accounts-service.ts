@@ -44,6 +44,15 @@ export class HokimAccountDisabledError extends Error {
   }
 }
 
+export class HokimAccountCreationError extends Error {
+  statusCode = 500;
+  code = 'HOKIM_ACCOUNT_CREATION_FAILED';
+  constructor(message = 'Ҳоким аккаунтини яратишда хатолик юз берди.') {
+    super(message);
+    this.name = 'HokimAccountCreationError';
+  }
+}
+
 export interface ClientContext {
   ipAddress?: string | null;
   userAgent?: string | null;
@@ -193,7 +202,7 @@ export async function createDistrictHokimAccount(
         .returning();
 
       if (!inserted) {
-        throw new Error('Failed to create Hokim account');
+        throw new HokimAccountCreationError('Failed to create Hokim account');
       }
 
       await recordAuditEvent(tx, {
@@ -489,7 +498,7 @@ export async function replaceDistrictHokimAccount(
         .returning();
 
       if (!inserted) {
-        throw new Error('Failed to insert replacement Hokim account');
+        throw new HokimAccountCreationError('Failed to insert replacement Hokim account');
       }
 
       await recordAuditEvent(tx, {

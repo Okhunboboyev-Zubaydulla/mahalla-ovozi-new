@@ -1,6 +1,7 @@
 import { eq, and, asc, sql } from 'drizzle-orm';
 import type PgBoss from 'pg-boss';
 import { DbClient, DbOrTx } from '../../adapters/db/client.js';
+import { logger } from '../../utils/logger.js';
 import {
   districts,
   districtSubscriptions,
@@ -508,12 +509,13 @@ export async function startDistrictGrace(
       );
     } catch (jobErr) {
       // Non-fatal if pg-boss enqueue encounters network issue, since recurring cron sweep acts as fallback
-      console.error(
-        JSON.stringify({
+      logger.error(
+        {
           event: 'SUBSCRIPTION_EXPIRY_JOB_ENQUEUE_FAILED',
           districtId,
-          error: (jobErr as Error).message,
-        }),
+          err: (jobErr as Error).message,
+        },
+        'Failed to enqueue subscription expiry job',
       );
     }
   }
@@ -825,12 +827,13 @@ export async function processOverdueGraceSubscriptions(db: DbClient): Promise<nu
         processedCount++;
       }
     } catch (err) {
-      console.error(
-        JSON.stringify({
+      logger.error(
+        {
           event: 'OVERDUE_GRACE_EXPIRY_SWEEP_FAILED',
           districtId: item.districtId,
-          error: (err as Error).message,
-        }),
+          err: (err as Error).message,
+        },
+        'Overdue grace expiry sweep failed',
       );
     }
   }
@@ -1005,12 +1008,13 @@ export async function cancelDistrict(
         },
       );
     } catch (err) {
-      console.error(
-        JSON.stringify({
+      logger.error(
+        {
           event: 'CANCEL_DISTRICT_ENQUEUE_LIVE_DELETION_FAILED',
           districtId,
-          error: (err as Error).message,
-        }),
+          err: (err as Error).message,
+        },
+        'Failed to enqueue live deletion job on district cancellation',
       );
     }
   }

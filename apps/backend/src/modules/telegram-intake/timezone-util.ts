@@ -30,6 +30,15 @@ export function getTashkentDayBounds(calendarDay: string): { startUtc: Date; end
   return { startUtc, endUtc };
 }
 
+export class InvalidDateRangeError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'INVALID_DATE_RANGE';
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidDateRangeError';
+  }
+}
+
 /**
  * Resolves DateFilterScope and calendar day inputs into SQL predicates and resolved day strings.
  */
@@ -59,16 +68,16 @@ export function resolveDateBoundary(params: {
   if (scope === 'custom') {
     const { dateFrom, dateTo } = params;
     if (!dateFrom || !dateTo) {
-      throw new Error('Бошланиш ва тугаш саналари киритилиши шарт.');
+      throw new InvalidDateRangeError('Бошланиш ва тугаш саналари киритилиши шарт.');
     }
     if (dateFrom > dateTo) {
-      throw new Error('Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.');
+      throw new InvalidDateRangeError('Бошланиш санаси тугаш санасидан катта бўлиши мумкин эмас.');
     }
     if (dateFrom < retentionLowerBound) {
-      throw new Error('Сана 90 кунлик сақлаш муддатидан эски бўлиши мумкин эмас.');
+      throw new InvalidDateRangeError('Сана 90 кунлик сақлаш муддатидан эски бўлиши мумкин эмас.');
     }
     if (dateTo > today) {
-      throw new Error('Сана бугунги кундан кейин бўлиши мумкин эмас.');
+      throw new InvalidDateRangeError('Сана бугунги кундан кейин бўлиши мумкин эмас.');
     }
 
     return {
@@ -79,10 +88,10 @@ export function resolveDateBoundary(params: {
 
   if (params.calendarDay) {
     if (params.calendarDay < retentionLowerBound) {
-      throw new Error('Сана 90 кунлик сақлаш муддатидан эски бўлиши мумкин эмас.');
+      throw new InvalidDateRangeError('Сана 90 кунлик сақлаш муддатидан эски бўлиши мумкин эмас.');
     }
     if (params.calendarDay > today) {
-      throw new Error('Сана бугунги кундан кейин бўлиши мумкин эмас.');
+      throw new InvalidDateRangeError('Сана бугунги кундан кейин бўлиши мумкин эмас.');
     }
     return {
       datePredicate: sql`t.calendar_day = ${params.calendarDay}`,

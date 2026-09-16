@@ -49,6 +49,16 @@ export type IssueCategory = z.infer<typeof IssueCategoryEnumSchema>;
 
 /**
  * Query schema for filtering operational issues list.
+ *
+ * ARCHITECTURAL NOTE ON PAGINATION:
+ * While time-series and event feeds (audit, AI operations, topics, signals) use
+ * keyset/cursor-based pagination for high-volume append-mostly datasets, operational issues
+ * use offset-based pagination (limit/offset) by design.
+ * Operational issues represent a strictly bounded, low-cardinality state list
+ * (typically < 100 active issues per district/global scope), frequently sorted
+ * and filtered by multiple mutable dimensions (status, severity, category, component).
+ * Offset pagination provides straightforward page jumping and direct offset access
+ * for dashboard operational views without the cursor coordination overhead required by keyset pagination.
  */
 export const OperationalIssuesQuerySchema = z.object({
   districtId: z.string().optional(),

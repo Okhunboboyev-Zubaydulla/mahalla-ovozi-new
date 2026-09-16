@@ -22,6 +22,7 @@ import {
 import { DbClient, createDbPool } from '../../adapters/db/client.js';
 import { verifyStateChangingOrigin } from '../auth/origin-guard.js';
 import { createRequireProductOwner } from '../auth/require-product-owner.js';
+import { getClientInfo } from '../auth/client-info.js';
 import { DistrictNotFoundError } from '../districts/districts-service.js';
 import { DistrictNotReadyForActivationError } from '../districts/district-onboarding-engine.js';
 import {
@@ -126,10 +127,7 @@ export function registerSubscriptionRoutes(
             districtId,
             parseResult.data,
             req.actor,
-            {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            },
+            getClientInfo(req),
           );
 
           const response: UpdateDistrictSubscriptionResponse = {
@@ -177,10 +175,7 @@ export function registerSubscriptionRoutes(
             districtId,
             parseResult.data,
             req.actor,
-            {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            },
+            getClientInfo(req),
           );
 
           const response: StartGraceResponse = {
@@ -238,10 +233,7 @@ export function registerSubscriptionRoutes(
             districtId,
             parseResult.data,
             req.actor,
-            {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            },
+            getClientInfo(req),
           );
 
           const response: RestoreActiveResponse = {
@@ -310,10 +302,7 @@ export function registerSubscriptionRoutes(
             districtId,
             parseResult.data,
             req.actor,
-            {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            },
+            getClientInfo(req),
           );
 
           const response: CancelDistrictResponse = {
@@ -379,10 +368,7 @@ export function registerSubscriptionRoutes(
             districtId,
             parseResult.data,
             req.actor,
-            {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            },
+            getClientInfo(req),
           );
 
           const response: StartRecoveryResponse = {
@@ -430,10 +416,7 @@ export function registerSubscriptionRoutes(
             bypassDeadlineCheck: false,
             boss,
             actor: req.actor ? { id: req.actor.id, role: req.actor.role } : undefined,
-            context: {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            },
+            context: getClientInfo(req),
           });
 
           if (!deletionRecord) {
@@ -511,10 +494,7 @@ export function registerSubscriptionRoutes(
         try {
           const result = await verifyDistrictBackupExpiry(db, verifier, districtId, {
             actor: req.actor ? { id: req.actor.id, role: req.actor.role } : undefined,
-            context: {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            },
+            context: getClientInfo(req),
           });
 
           const response: VerifyBackupExpiryResponse = {
@@ -586,10 +566,7 @@ export function registerSubscriptionRoutes(
             dryRun: parseResult.data.dryRun,
             tombstoneStore: store,
             actor: req.actor ? { id: req.actor.id, role: req.actor.role } : undefined,
-            context: {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            },
+            context: getClientInfo(req),
           });
 
           const response: ReconcileDisasterRestoreResponse = {

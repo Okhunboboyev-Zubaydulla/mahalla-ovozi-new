@@ -279,7 +279,9 @@ export async function getOnboardingReadiness(
   };
 }
 
-// Backward-compatible alias
+/**
+ * @deprecated Legacy alias for getOnboardingReadiness. Use `getOnboardingReadiness` directly.
+ */
 export const evaluateDistrictReadiness = getOnboardingReadiness;
 
 /* ── Public Operation 2: Confirm Standing Disclosure ── */
@@ -359,7 +361,9 @@ export async function confirmStandingDisclosure(
   };
 }
 
-// Backward-compatible alias
+/**
+ * @deprecated Legacy alias for confirmStandingDisclosure. Use `confirmStandingDisclosure` directly.
+ */
 export const confirmDistrictDisclosure = confirmStandingDisclosure;
 
 /* ── Public Operation 3: Activate District State Machine ── */

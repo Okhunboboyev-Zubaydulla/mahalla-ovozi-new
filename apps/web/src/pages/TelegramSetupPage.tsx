@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Card,
   Typography,
@@ -38,7 +38,11 @@ const { Title, Text } = Typography;
 
 const BOT_TOKEN_REGEX = /^\d{6,16}:[a-zA-Z0-9_-]{20,50}$/;
 
-export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) {
+export interface TelegramSetupPageProps {
+  districtId?: string;
+}
+
+export function TelegramSetupPage({ districtId }: TelegramSetupPageProps) {
   const { activeDistrictId: contextDistrictId } = useDistrict();
   const effectiveDistrictId = districtId ?? contextDistrictId;
 
@@ -69,42 +73,51 @@ export function TelegramSetupPage({ districtId }: { districtId?: string } = {}) 
 
   const [connectForm] = Form.useForm();
 
-  const handleOpenReplaceModal = () => {
+  const handleOpenReplaceModal = useCallback(() => {
     resetConnectError();
     setIsReplaceModalOpen(true);
-  };
+  }, [resetConnectError]);
 
-  const handleOpenDisconnectModal = () => {
+  const handleOpenDisconnectModal = useCallback(() => {
     resetDisconnectError();
     setIsDisconnectModalOpen(true);
-  };
+  }, [resetDisconnectError]);
 
-  const handleConnectSubmit = async (values: { token: string }) => {
-    try {
-      await connectBot({ token: values.token.trim() });
-      connectForm.resetFields();
-    } catch {
-      // Error handled by mutation state
-    }
-  };
+  const handleConnectSubmit = useCallback(
+    (values: { token: string }) => {
+      connectBot(
+        { token: values.token.trim() },
+        {
+          onSuccess: () => {
+            connectForm.resetFields();
+          },
+        },
+      );
+    },
+    [connectBot, connectForm],
+  );
 
-  const handleReplaceSubmit = async (values: { token: string }) => {
-    try {
-      await connectBot({ token: values.token.trim() });
-      setIsReplaceModalOpen(false);
-    } catch {
-      // Error handled by mutation state
-    }
-  };
+  const handleReplaceSubmit = useCallback(
+    (values: { token: string }) => {
+      connectBot(
+        { token: values.token.trim() },
+        {
+          onSuccess: () => {
+            setIsReplaceModalOpen(false);
+          },
+        },
+      );
+    },
+    [connectBot],
+  );
 
-  const handleDisconnectConfirm = async () => {
-    try {
-      await disconnectBot();
-      setIsDisconnectModalOpen(false);
-    } catch {
-      // Error handled by mutation state
-    }
-  };
+  const handleDisconnectConfirm = useCallback(() => {
+    disconnectBot(undefined, {
+      onSuccess: () => {
+        setIsDisconnectModalOpen(false);
+      },
+    });
+  }, [disconnectBot]);
 
   if (!activeDistrict) {
     return (

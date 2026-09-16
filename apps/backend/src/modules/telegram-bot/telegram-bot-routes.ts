@@ -3,6 +3,7 @@ import { ConnectTelegramBotRequestSchema } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import { verifyStateChangingOrigin } from '../auth/origin-guard.js';
 import { createRequireProductOwner } from '../auth/require-product-owner.js';
+import { getClientInfo } from '../auth/client-info.js';
 import {
   getDistrictTelegramBot,
   connectDistrictTelegramBot,
@@ -59,10 +60,7 @@ export function registerTelegramBotRoutes(fastify: FastifyInstance, db: DbClient
             districtId,
             parseResult.data.token,
             req.actor,
-            {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            },
+            getClientInfo(req),
           );
           return reply.status(200).send({ bot });
         } catch (err: unknown) {
@@ -77,10 +75,12 @@ export function registerTelegramBotRoutes(fastify: FastifyInstance, db: DbClient
       async (req: FastifyRequest<{ Params: { districtId: string } }>, reply: FastifyReply) => {
         const { districtId } = req.params;
         try {
-          const result = await disconnectDistrictTelegramBot(db, districtId, req.actor, {
-            ipAddress: req.ip || null,
-            userAgent: (req.headers['user-agent'] as string) || null,
-          });
+          const result = await disconnectDistrictTelegramBot(
+            db,
+            districtId,
+            req.actor,
+            getClientInfo(req),
+          );
           return reply.status(200).send({
             success: true,
             disconnectedBotId: result.disconnectedBotId,

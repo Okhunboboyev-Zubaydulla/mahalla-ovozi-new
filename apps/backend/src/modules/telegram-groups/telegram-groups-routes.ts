@@ -7,6 +7,7 @@ import {
 import { DbClient } from '../../adapters/db/client.js';
 import { verifyStateChangingOrigin } from '../auth/origin-guard.js';
 import { createRequireProductOwner } from '../auth/require-product-owner.js';
+import { getClientInfo } from '../auth/client-info.js';
 import {
   listDistrictTelegramGroups,
   getDistrictTelegramGroup,
@@ -195,10 +196,7 @@ export function registerTelegramGroupRoutes(fastify: FastifyInstance, db: DbClie
             districtId,
             parseResult.data,
             req.actor,
-            {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            },
+            getClientInfo(req),
           );
           return reply.status(201).send({ group });
         } catch (err: unknown) {
@@ -232,10 +230,7 @@ export function registerTelegramGroupRoutes(fastify: FastifyInstance, db: DbClie
             groupId,
             parseResult.data,
             req.actor,
-            {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            },
+            getClientInfo(req),
           );
           return reply.status(200).send({ group });
         } catch (err: unknown) {
@@ -258,10 +253,7 @@ export function registerTelegramGroupRoutes(fastify: FastifyInstance, db: DbClie
             districtId,
             groupId,
             req.actor,
-            {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            },
+            getClientInfo(req),
           );
           return reply.status(200).send(result);
         } catch (err: unknown) {
@@ -296,10 +288,13 @@ export function registerTelegramGroupRoutes(fastify: FastifyInstance, db: DbClie
       ) => {
         const { districtId, groupId } = req.params;
         try {
-          const result = await getGroupTestStatus(db, districtId, groupId, req.actor, {
-            ipAddress: req.ip || null,
-            userAgent: (req.headers['user-agent'] as string) || null,
-          });
+          const result = await getGroupTestStatus(
+            db,
+            districtId,
+            groupId,
+            req.actor,
+            getClientInfo(req),
+          );
           return reply.status(200).send(result);
         } catch (err: unknown) {
           return handleGroupRouteError(err, reply);
@@ -341,10 +336,7 @@ export function registerTelegramGroupRoutes(fastify: FastifyInstance, db: DbClie
             groupId,
             parseResult.data.message,
             req.actor,
-            {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            },
+            getClientInfo(req),
           );
           return reply.status(200).send(result);
         } catch (err: unknown) {

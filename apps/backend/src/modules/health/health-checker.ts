@@ -23,6 +23,7 @@ import {
   STALE_CHECK_THRESHOLD_MS,
   INTAKE_DELAY_THRESHOLD_MS,
 } from './health-evaluator.js';
+import { logger } from '../../utils/logger.js';
 
 export interface HealthConfig {
   staleCheckThresholdMs?: number;
@@ -174,7 +175,9 @@ export async function checkDatabaseHealth(
       latencyMs: probe.latencyMs,
       diagnostics: { waitingConnectionCount: waitingCount },
     });
-  } catch (_err) {
+  } catch (err: unknown) {
+    logger.error({ err, component: 'database' }, 'Database health probe failed');
+    const errorDetail = err instanceof Error ? `: ${err.message}` : '';
     return createObservation({
       component: 'database',
       scope: 'GLOBAL',
@@ -184,7 +187,7 @@ export async function checkDatabaseHealth(
       checkedAt,
       outcome: 'failure',
       errorCode: 'DATABASE_PROBE_ERROR',
-      errorMessage: 'Маълумотлар базаси текширувида кутилмаган хатолик.',
+      errorMessage: `Маълумотлар базаси текширувида кутилмаган хатолик${errorDetail}`,
       latencyMs: null,
       diagnostics: { waitingConnectionCount: pool.waitingCount || 0 },
     });
@@ -316,8 +319,10 @@ export async function checkProcessingQueueHealth(
       latencyMs,
       diagnostics,
     });
-  } catch (_err) {
+  } catch (err: unknown) {
+    logger.error({ err, component: 'processing_queue' }, 'Processing queue health probe failed');
     const latencyMs = Math.round(performance.now() - startTime);
+    const errorDetail = err instanceof Error ? `: ${err.message}` : '';
     return createObservation({
       component: 'processing_queue',
       scope: 'GLOBAL',
@@ -327,7 +332,7 @@ export async function checkProcessingQueueHealth(
       checkedAt,
       outcome: 'failure',
       errorCode: 'QUEUE_CONNECTION_ERROR',
-      errorMessage: 'Навбат тизими билан алоқа ўрнатиб бўлмади.',
+      errorMessage: `Навбат тизими билан алоқа ўрнатиб бўлмади${errorDetail}`,
       latencyMs,
     });
   }
@@ -364,8 +369,10 @@ export async function checkStorageHealth(
         storageStatus: 'ok',
       },
     });
-  } catch (_err) {
+  } catch (err: unknown) {
+    logger.error({ err, component: 'storage' }, 'Storage health probe failed');
     const latencyMs = Math.round(performance.now() - startTime);
+    const errorDetail = err instanceof Error ? `: ${err.message}` : '';
     return createObservation({
       component: 'storage',
       scope: 'GLOBAL',
@@ -375,7 +382,7 @@ export async function checkStorageHealth(
       checkedAt,
       outcome: 'failure',
       errorCode: 'STORAGE_ACCESS_ERROR',
-      errorMessage: 'Сақлаш тизимига киришда хатолик юз берди.',
+      errorMessage: `Сақлаш тизимига киришда хатолик юз берди${errorDetail}`,
       latencyMs,
       diagnostics: {
         storageLatencyMs: latencyMs,
@@ -433,7 +440,9 @@ export async function checkRetentionJobHealth(
       outcome: 'success',
       latencyMs: 5,
     });
-  } catch (_err) {
+  } catch (err: unknown) {
+    logger.error({ err, component: 'retention_jobs' }, 'Retention jobs health probe failed');
+    const errorDetail = err instanceof Error ? `: ${err.message}` : '';
     return createObservation({
       component: 'retention_jobs',
       scope: 'GLOBAL',
@@ -443,7 +452,7 @@ export async function checkRetentionJobHealth(
       checkedAt,
       outcome: 'failure',
       errorCode: 'RETENTION_CHECK_FAILED',
-      errorMessage: 'Маълумотларни сақлаш муддати текширувида хатолик юз берди.',
+      errorMessage: `Маълумотларни сақлаш муддати текширувида хатолик юз берди${errorDetail}`,
       latencyMs: null,
     });
   }
@@ -514,8 +523,10 @@ export async function checkScheduledDeletionHealth(
       outcome: 'success',
       latencyMs,
     });
-  } catch (_err) {
+  } catch (err: unknown) {
+    logger.error({ err, component: 'scheduled_deletion' }, 'Scheduled deletion health probe failed');
     const latencyMs = Math.round(performance.now() - startTime);
+    const errorDetail = err instanceof Error ? `: ${err.message}` : '';
     return createObservation({
       component: 'scheduled_deletion',
       scope: 'GLOBAL',
@@ -525,7 +536,7 @@ export async function checkScheduledDeletionHealth(
       checkedAt,
       outcome: 'failure',
       errorCode: 'SCHEDULED_DELETION_PROBE_ERROR',
-      errorMessage: 'Режалаштирилган ўчириш тизими текширувида хатолик юз берди.',
+      errorMessage: `Режалаштирилган ўчириш тизими текширувида хатолик юз берди${errorDetail}`,
       latencyMs,
     });
   }

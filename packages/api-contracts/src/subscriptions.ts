@@ -1,19 +1,24 @@
 import { z } from 'zod';
 import { applySecretCheck } from './analysis-settings.js';
-import { PrerequisiteItemSchema } from './districts.js';
+import {
+  PrerequisiteItemSchema,
+  DistrictStatusSchema,
+  type DistrictStatus,
+  DistrictActivationBlockedErrorEnvelopeSchema,
+  type DistrictActivationBlockedErrorEnvelope,
+} from './districts.js';
+import { DistrictIdSchema } from './common.js';
 
-export const SubscriptionStatusSchema = z.enum([
-  'SETUP_INCOMPLETE',
-  'ACTIVE',
-  'GRACE',
-  'SUSPENDED',
-  'CANCELLED',
-]);
-export type SubscriptionStatus = z.infer<typeof SubscriptionStatusSchema>;
+/**
+ * Canonical subscription lifecycle status.
+ * Reuses DistrictStatusSchema directly as the single source of truth for district lifecycle states.
+ */
+export const SubscriptionStatusSchema = DistrictStatusSchema;
+export type SubscriptionStatus = DistrictStatus;
 
 export const DistrictSubscriptionSchema = z.object({
   id: z.string().min(1),
-  districtId: z.string().min(1),
+  districtId: DistrictIdSchema,
   districtName: z.string().min(1),
   region: z.string().nullable().optional(),
   status: SubscriptionStatusSchema,
@@ -107,12 +112,24 @@ export const RestoreActiveResponseSchema = z.object({
 });
 export type RestoreActiveResponse = z.infer<typeof RestoreActiveResponseSchema>;
 
+/**
+ * Inner domain error payload for a district not ready for activation.
+ * The transport layer wraps this in an ApiErrorEnvelope ({ error: DistrictNotReadyError }).
+ * For the strongly-typed HTTP envelope schema, see DistrictNotReadyErrorEnvelopeSchema.
+ */
 export const DistrictNotReadyErrorSchema = z.object({
   code: z.literal('DISTRICT_NOT_READY'),
   message: z.string(),
   blockers: z.array(PrerequisiteItemSchema),
 });
 export type DistrictNotReadyError = z.infer<typeof DistrictNotReadyErrorSchema>;
+
+/**
+ * Full error envelope schema for DISTRICT_NOT_READY responses.
+ * Aliases DistrictActivationBlockedErrorEnvelopeSchema from districts.ts for contract alignment.
+ */
+export const DistrictNotReadyErrorEnvelopeSchema = DistrictActivationBlockedErrorEnvelopeSchema;
+export type DistrictNotReadyErrorEnvelope = DistrictActivationBlockedErrorEnvelope;
 
 export const CancelDistrictRequestSchema = z
   .object({
@@ -157,6 +174,15 @@ export const StartRecoveryResponseSchema = z.object({
 });
 export type StartRecoveryResponse = z.infer<typeof StartRecoveryResponseSchema>;
 
+/**
+ * ARCHITECTURAL NOTE ON DOMAIN ERROR SCHEMAS:
+ * Domain error schemas (DistrictConfirmationMismatchErrorSchema, RecoveryWindowExpiredErrorSchema,
+ * DistrictAlreadyDeletedErrorSchema, DistrictNotEligibleForDeletionErrorSchema,
+ * DisasterRestoreReconciliationRequiredErrorSchema) define the inner typed error payload.
+ * The HTTP transport layer (Fastify routes) encapsulates all domain errors within the standard
+ * ApiErrorEnvelopeSchema ({ error: { code, message, ... } }) before sending over the wire.
+ */
+
 export const DistrictConfirmationMismatchErrorSchema = z.object({
   code: z.literal('DISTRICT_CONFIRMATION_MISMATCH'),
   message: z.string(),
@@ -169,22 +195,39 @@ export const RecoveryWindowExpiredErrorSchema = z.object({
 });
 export type RecoveryWindowExpiredError = z.infer<typeof RecoveryWindowExpiredErrorSchema>;
 
-export const DistrictDeletionRecordSchema = z.object({
-  id: z.string().min(1),
-  districtId: z.string().min(1),
-  districtName: z.string().min(1),
+export const LiveDeletionStatusEnumSchema = z.enum(['COMPLETED', 'FAILED']);
+export type LiveDeletionStatus = z.infer<typeof LiveDeletionStatusEnumSchema>;
+
+export const BackupExpiryStatusEnumSchema = z.enum(['PENDING', 'VERIFIED', 'FAILED']);
+export type BackupExpiryStatus = z.infer<typeof BackupExpiryStatusEnumSchema>;
+
+export const RestoreReconciliationStatusEnumSchema = z.enum(['PENDING', 'RECONCILED', 'FAILED']);
+export type RestoreReconciliationStatus = z.infer<typeof RestoreReconciliationStatusEnumSchema>;
+
+/**
+ * Shared base schema for district deletion records and permanent deletion proofs.
+ * Centralizes lifecycle fields (Story 4.4 & Story 4.5) to prevent schema drift.
+ */
+export const DistrictDeletionBaseFieldsSchema = z.object({
+  districtId: DistrictIdSchema,
+  districtName: z.string(),
   cancelledAt: z.string().datetime().nullable().optional(),
   cancelledById: z.string().nullable().optional(),
   cancellationReason: z.string().nullable().optional(),
   scheduledLiveDeletionAt: z.string().datetime(),
   actualLiveDeletionAt: z.string().datetime(),
-  liveDeletionStatus: z.enum(['COMPLETED', 'FAILED']),
+  liveDeletionStatus: LiveDeletionStatusEnumSchema,
   protectedBackupExpiryDeadline: z.string().datetime(),
-  backupExpiryStatus: z.enum(['PENDING', 'VERIFIED', 'FAILED']),
+  backupExpiryStatus: BackupExpiryStatusEnumSchema,
   backupExpiryVerifiedAt: z.string().datetime().nullable().optional(),
-  restoreReconciliationStatus: z.enum(['PENDING', 'RECONCILED', 'FAILED']).nullable().optional(),
+  restoreReconciliationStatus: RestoreReconciliationStatusEnumSchema.nullable().optional(),
   restoreReconciliationVerifiedAt: z.string().datetime().nullable().optional(),
   createdAt: z.string().datetime(),
+});
+export type DistrictDeletionBaseFields = z.infer<typeof DistrictDeletionBaseFieldsSchema>;
+
+export const DistrictDeletionRecordSchema = DistrictDeletionBaseFieldsSchema.extend({
+  id: z.string().min(1),
   updatedAt: z.string().datetime(),
 });
 export type DistrictDeletionRecord = z.infer<typeof DistrictDeletionRecordSchema>;

@@ -142,14 +142,24 @@ export function registerAdminSignalsRoutes(
           });
         }
 
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Аутентификация талаб қилинади.',
+              statusCode: 401,
+            },
+          });
+        }
+
         try {
-          const actor = (req as any).actor;
+          const actor = req.actor;
           const result = await topicEvidenceManagementService.promoteSignal(pool, boss, db, {
             intakeId: id.trim(),
             lanes: parseResult.data.lanes,
             changeReason: parseResult.data.changeReason,
-            actorId: actor?.id,
-            actorRole: actor?.role,
+            actorId: actor.id,
+            actorRole: actor.role,
           });
 
           return reply.status(200).send(result);
@@ -189,14 +199,24 @@ export function registerAdminSignalsRoutes(
           });
         }
 
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Аутентификация талаб қилинади.',
+              statusCode: 401,
+            },
+          });
+        }
+
         try {
-          const actor = (req as any).actor;
+          const actor = req.actor;
           const result = await topicEvidenceManagementService.reclassifyEvidence(pool, boss, db, {
             evidenceId: id.trim(),
             lanes: parseResult.data.lanes,
             changeReason: parseResult.data.changeReason,
-            actorId: actor?.id,
-            actorRole: actor?.role,
+            actorId: actor.id,
+            actorRole: actor.role,
           });
 
           return reply.status(200).send(result);
@@ -236,14 +256,24 @@ export function registerAdminSignalsRoutes(
           });
         }
 
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Аутентификация талаб қилинади.',
+              statusCode: 401,
+            },
+          });
+        }
+
         try {
-          const actor = (req as any).actor;
+          const actor = req.actor;
           const result = await topicEvidenceManagementService.updateEvidenceText(pool, boss, db, {
             evidenceId: id.trim(),
             verbatimText: parseResult.data.verbatimText,
             changeReason: parseResult.data.changeReason,
-            actorId: actor?.id,
-            actorRole: actor?.role,
+            actorId: actor.id,
+            actorRole: actor.role,
           });
 
           return reply.status(200).send(result);
@@ -283,13 +313,23 @@ export function registerAdminSignalsRoutes(
           });
         }
 
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Аутентификация талаб қилинади.',
+              statusCode: 401,
+            },
+          });
+        }
+
         try {
-          const actor = (req as any).actor;
+          const actor = req.actor;
           const result = await topicEvidenceManagementService.deleteEvidence(pool, boss, db, {
             evidenceId: id.trim(),
             changeReason: parseResult.data.changeReason,
-            actorId: actor?.id,
-            actorRole: actor?.role,
+            actorId: actor.id,
+            actorRole: actor.role,
           });
 
           return reply.status(200).send(result);
@@ -327,12 +367,22 @@ export function registerAdminSignalsRoutes(
           });
         }
 
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Аутентификация талаб қилинади.',
+              statusCode: 401,
+            },
+          });
+        }
+
         try {
-          const actor = (req as any).actor;
+          const actor = req.actor;
           const result = await topicEvidenceManagementService.createManualSignal(pool, boss, db, {
             ...parseResult.data,
-            actorId: actor?.id,
-            actorRole: actor?.role,
+            actorId: actor.id,
+            actorRole: actor.role,
           });
 
           return reply.status(201).send(result);
@@ -370,13 +420,23 @@ export function registerAdminSignalsRoutes(
           });
         }
 
+        if (!req.actor) {
+          return reply.status(401).send({
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Аутентификация талаб қилинади.',
+              statusCode: 401,
+            },
+          });
+        }
+
         try {
-          const actor = (req as any).actor;
+          const actor = req.actor;
           const result = await topicEvidenceManagementService.batchDeleteSignals(pool, boss, db, {
             ids: parseResult.data.ids,
             changeReason: parseResult.data.changeReason,
-            actorId: actor?.id,
-            actorRole: actor?.role,
+            actorId: actor.id,
+            actorRole: actor.role,
           });
 
           return reply.status(200).send(result);

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Typography, Alert, Button, Skeleton, Space } from 'antd';
 import { RedoOutlined, WifiOutlined } from '@ant-design/icons';
 import {
@@ -9,6 +9,7 @@ import {
 import { useDistrict } from '../district/district-context.js';
 import { useSystemHealth } from '../health/useSystemHealth.js';
 import { useOperationalIssues } from '../issues/useOperationalIssues.js';
+import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { OverallHealthCard } from '../components/health/OverallHealthCard.js';
 import { ActiveIssuesList } from '../components/issues/ActiveIssuesList.js';
 import { IssueDetailDrawer } from '../components/issues/IssueDetailDrawer.js';
@@ -35,22 +36,7 @@ export const SystemHealthPage: React.FC = () => {
     isFetching: isIssuesFetching,
   } = useOperationalIssues();
 
-  const [isOnline, setIsOnline] = useState<boolean>(
-    typeof navigator !== 'undefined' ? navigator.onLine : true,
-  );
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  const isOffline = useOnlineStatus();
 
   const [selectedIssue, setSelectedIssue] = useState<OperationalIssue | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
@@ -92,7 +78,7 @@ export const SystemHealthPage: React.FC = () => {
       </div>
 
       {/* Offline Alert */}
-      {!isOnline && (
+      {isOffline && (
         <Alert
           message="Интернет алоқаси мавжуд эмас"
           description="Браузер офлайн ҳолатда. Кўрсатилаётган маълумотлар сўнгги муваффақиятли сақланган нусхадан олинган."

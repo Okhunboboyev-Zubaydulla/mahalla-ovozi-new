@@ -16,6 +16,7 @@ import {
   HokimAccountNotFoundError,
   UsernameAlreadyTakenError,
   HokimAccountDisabledError,
+  HokimAccountCreationError,
 } from './hokim-accounts-service.js';
 import { DistrictNotFoundError } from '../districts/districts-service.js';
 
@@ -162,7 +163,8 @@ function handleHokimAccountError(err: unknown, reply: FastifyReply) {
     err instanceof DistrictHokimAlreadyExistsError ||
     err instanceof HokimAccountNotFoundError ||
     err instanceof UsernameAlreadyTakenError ||
-    err instanceof HokimAccountDisabledError
+    err instanceof HokimAccountDisabledError ||
+    err instanceof HokimAccountCreationError
   ) {
     return reply.status(err.statusCode).send({
       error: {

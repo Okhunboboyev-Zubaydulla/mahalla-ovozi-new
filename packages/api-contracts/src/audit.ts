@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { createKeysetPageSchema, KeysetPage, KeysetCursorPayload } from './pagination.js';
 import { IsoDateStringSchema, DistrictIdSchema } from './common.js';
+import { DistrictDeletionBaseFieldsSchema } from './subscriptions.js';
 
 export const AuditActionCategoryEnumSchema = z.enum([
   'AUTH_SECURITY',
@@ -21,27 +22,14 @@ export const AuditActorRoleEnumSchema = z.enum([
 ]);
 export type AuditActorRole = z.infer<typeof AuditActorRoleEnumSchema>;
 
-export const PermanentDeletionProofSchema = z.object({
+/**
+ * Permanent deletion proof schema for irreversible district deletion audit trail.
+ * Extends shared DistrictDeletionBaseFieldsSchema to ensure consistent deletion fields.
+ */
+export const PermanentDeletionProofSchema = DistrictDeletionBaseFieldsSchema.extend({
   id: z.string(),
   recordType: z.literal('PERMANENT_DELETION_PROOF').default('PERMANENT_DELETION_PROOF'),
-  districtId: DistrictIdSchema,
-  districtName: z.string(),
-  cancelledAt: z.string().datetime().nullable().optional(),
-  cancelledById: z.string().nullable().optional(),
-  cancellationReason: z.string().nullable().optional(),
-  scheduledLiveDeletionAt: z.string().datetime(),
-  actualLiveDeletionAt: z.string().datetime(),
-  liveDeletionStatus: z.enum(['COMPLETED', 'FAILED']),
-  protectedBackupExpiryDeadline: z.string().datetime(),
-  backupExpiryStatus: z.enum(['PENDING', 'VERIFIED', 'FAILED']),
-  backupExpiryVerifiedAt: z.string().datetime().nullable().optional(),
-  restoreReconciliationStatus: z
-    .enum(['PENDING', 'RECONCILED', 'FAILED'])
-    .nullable()
-    .optional(),
-  restoreReconciliationVerifiedAt: z.string().datetime().nullable().optional(),
   lifecycleComplete: z.boolean(),
-  createdAt: z.string().datetime(),
 });
 export type PermanentDeletionProof = z.infer<typeof PermanentDeletionProofSchema>;
 
@@ -71,6 +59,13 @@ export const AuditHistoryItemSchema = z.discriminatedUnion('recordType', [
 ]);
 export type AuditHistoryItem = z.infer<typeof AuditHistoryItemSchema>;
 
+/**
+ * AuditEventDetailSchema represents the response contract for single audit item lookups
+ * (e.g. GET /api/v1/audit/:id) consumed by UI detail drawers and panels.
+ * Because audit records are polymorphic (regular AUDIT_EVENT or PERMANENT_DELETION_PROOF),
+ * this aliases AuditHistoryItemSchema to provide a dedicated semantic entry point
+ * for detail views while reusing the discriminated union definition.
+ */
 export const AuditEventDetailSchema = AuditHistoryItemSchema;
 export type AuditEventDetail = z.infer<typeof AuditEventDetailSchema>;
 

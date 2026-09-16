@@ -22,6 +22,7 @@ import {
   isIssueRetryEligible,
   deriveRetryJobSpec,
 } from './retry-evaluator.js';
+import { logger } from '../../utils/logger.js';
 
 export class OperationalIssueNotFoundError extends Error {
   statusCode = 404;
@@ -362,7 +363,7 @@ export async function clearPendingRetryFlag(
       })
       .where(eq(operationalIssues.id, issueId));
   } catch (err) {
-    console.error('[worker] Error clearing pendingRetry flag:', err);
+    logger.error({ err, issueId }, 'Error clearing pendingRetry flag');
   }
 }
 

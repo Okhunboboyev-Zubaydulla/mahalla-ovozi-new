@@ -1,11 +1,12 @@
 import { z } from 'zod';
+import { DistrictIdSchema } from './common.js';
 
 export const TelegramBotStatusSchema = z.enum(['VALID', 'INVALID']);
 export type TelegramBotStatus = z.infer<typeof TelegramBotStatusSchema>;
 
 export const TelegramBotInfoSchema = z.object({
   id: z.string().min(1),
-  districtId: z.string().min(1),
+  districtId: DistrictIdSchema,
   botId: z.string().min(1),
   botUsername: z.string().nullable(),
   botFirstName: z.string().min(1),

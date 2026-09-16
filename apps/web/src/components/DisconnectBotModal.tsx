@@ -9,7 +9,7 @@ interface DisconnectBotModalProps {
   isDisconnecting: boolean;
   disconnectError: Error | null;
   districtName: string;
-  onConfirm: () => Promise<void>;
+  onConfirm: () => void | Promise<void>;
   onClose: () => void;
 }
 

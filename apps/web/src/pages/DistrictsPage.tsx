@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Card,
   Typography,
@@ -32,33 +32,33 @@ export const DistrictsPage: React.FC = () => {
   const navigate = useNavigate();
   const { activeDistrictId, switchDistrict, attemptTransition } = useDistrict();
 
-  const [drawerOpen, setDrawerOpen] = useState(searchParams.get('action') === 'create');
   const [editingDistrict, setEditingDistrict] = useState<District | null>(null);
 
-  // Sync drawer state with URL search param
-  useEffect(() => {
-    if (searchParams.get('action') === 'create') {
-      setDrawerOpen(true);
-    } else {
-      setDrawerOpen(false);
-    }
-  }, [searchParams]);
+  // Derive drawer open state directly from URL query param (FE2)
+  const isCreateDrawerOpen = searchParams.get('action') === 'create';
 
-  const handleCloseDrawer = () => {
-    setDrawerOpen(false);
-    if (searchParams.get('action') === 'create') {
-      const nextParams = new URLSearchParams(searchParams);
+  const handleOpenCreateDrawer = useCallback(() => {
+    setSearchParams((prev) => {
+      const nextParams = new URLSearchParams(prev);
+      nextParams.set('action', 'create');
+      return nextParams;
+    });
+  }, [setSearchParams]);
+
+  const handleCloseCreateDrawer = useCallback(() => {
+    setSearchParams((prev) => {
+      const nextParams = new URLSearchParams(prev);
       nextParams.delete('action');
-      setSearchParams(nextParams, { replace: true });
-    }
-  };
+      return nextParams;
+    });
+  }, [setSearchParams]);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['districts', 'list'],
     queryFn: districtClient.listDistricts,
   });
 
-  const districts = data?.districts || [];
+  const districts = useMemo(() => data?.districts ?? [], [data]);
 
   const activeTab = searchParams.get('tab') === 'topics' ? 'topics' : 'list';
 
@@ -218,7 +218,7 @@ export const DistrictsPage: React.FC = () => {
                   id="create-district-button"
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => setDrawerOpen(true)}
+                  onClick={handleOpenCreateDrawer}
                 >
                   Туман қўшиш
                 </Button>
@@ -257,7 +257,7 @@ export const DistrictsPage: React.FC = () => {
                   id="empty-create-district-button"
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => setDrawerOpen(true)}
+                  onClick={handleOpenCreateDrawer}
                 >
                   Туман қўшиш
                 </Button>
@@ -319,8 +319,8 @@ export const DistrictsPage: React.FC = () => {
 
       {/* P5-D: Create District Drawer */}
       <CreateDistrictDrawer
-        open={drawerOpen}
-        onClose={handleCloseDrawer}
+        open={isCreateDrawerOpen}
+        onClose={handleCloseCreateDrawer}
       />
 
       {/* Edit District Drawer */}

@@ -15,6 +15,7 @@ import {
   DistrictNotFoundError,
   DistrictRequiredError,
   InvalidCursorError,
+  InvalidDateRangeError,
   TopicKeysetCursorPayload,
   encodeTopicKeysetCursor,
   decodeTopicKeysetCursor,
@@ -31,6 +32,7 @@ export {
   DistrictNotFoundError,
   DistrictRequiredError,
   InvalidCursorError,
+  InvalidDateRangeError,
   encodeTopicKeysetCursor,
   decodeTopicKeysetCursor,
 };

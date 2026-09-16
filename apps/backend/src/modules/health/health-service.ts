@@ -12,6 +12,7 @@ import {
 import { DbClient } from '../../adapters/db/client.js';
 import { districts } from '../../adapters/db/schema/index.js';
 import { mapConcurrent } from '../../utils/concurrency.js';
+import { logger } from '../../utils/logger.js';
 import {
   aggregateComponentStatuses,
   aggregateOverallSystemHealth,
@@ -52,7 +53,7 @@ function handleSettledObservation(
     return res.value;
   }
   const scopeLabel = fallbackDistrictId ? `${fallbackScope}:${fallbackDistrictId}` : fallbackScope;
-  console.error(`[health] Component probe error for ${fallbackComponent} (${scopeLabel}):`, res.reason);
+  logger.error({ component: fallbackComponent, scope: scopeLabel, err: res.reason }, 'Component probe error');
   return {
     component: fallbackComponent,
     scope: fallbackScope,

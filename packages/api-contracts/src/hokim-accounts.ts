@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DistrictIdSchema } from './common.js';
 
 export const HokimAccountStatusSchema = z.enum(['ACTIVE', 'DISABLED']);
 export type HokimAccountStatus = z.infer<typeof HokimAccountStatusSchema>;
@@ -11,7 +12,7 @@ export const DistrictHokimAccountSchema = z.object({
   username: z.string().min(1),
   role: z.literal('DISTRICT_HOKIM'),
   status: HokimAccountStatusSchema,
-  districtId: z.string().min(1),
+  districtId: DistrictIdSchema,
   credentialVersion: z.number().int().positive(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

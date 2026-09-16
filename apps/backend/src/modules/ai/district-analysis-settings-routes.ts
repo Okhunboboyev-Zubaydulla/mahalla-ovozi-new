@@ -17,6 +17,31 @@ interface DistrictSettingsRouteParams {
   districtId: string;
 }
 
+async function findDistrictOr404(
+  db: DbClient,
+  districtId: string,
+  reply: FastifyReply,
+): Promise<{ id: string; name: string } | null> {
+  const [district] = await db
+    .select({ id: districts.id, name: districts.name })
+    .from(districts)
+    .where(eq(districts.id, districtId))
+    .limit(1);
+
+  if (!district) {
+    reply.status(404).send({
+      error: {
+        code: 'DISTRICT_NOT_FOUND',
+        message: 'Туман топилмади.',
+        statusCode: 404,
+      },
+    });
+    return null;
+  }
+
+  return district;
+}
+
 export function registerDistrictAnalysisSettingsRoutes(
   server: FastifyInstance,
   db: DbClient,
@@ -37,22 +62,8 @@ export function registerDistrictAnalysisSettingsRoutes(
       ) => {
         const { districtId } = req.params;
 
-        // Validate district exists
-        const [district] = await db
-          .select({ id: districts.id, name: districts.name })
-          .from(districts)
-          .where(eq(districts.id, districtId))
-          .limit(1);
-
-        if (!district) {
-          return reply.status(404).send({
-            error: {
-              code: 'DISTRICT_NOT_FOUND',
-              message: 'Туман топилмади.',
-              statusCode: 404,
-            },
-          });
-        }
+        const district = await findDistrictOr404(db, districtId, reply);
+        if (!district) return;
 
         const [activeConfiguration, draft] = await Promise.all([
           districtAnalysisSettingsService.getActiveConfiguration(db, districtId),
@@ -83,22 +94,8 @@ export function registerDistrictAnalysisSettingsRoutes(
       ) => {
         const { districtId } = req.params;
 
-        // Validate district exists
-        const [district] = await db
-          .select({ id: districts.id, name: districts.name })
-          .from(districts)
-          .where(eq(districts.id, districtId))
-          .limit(1);
-
-        if (!district) {
-          return reply.status(404).send({
-            error: {
-              code: 'DISTRICT_NOT_FOUND',
-              message: 'Туман топилмади.',
-              statusCode: 404,
-            },
-          });
-        }
+        const district = await findDistrictOr404(db, districtId, reply);
+        if (!district) return;
 
         const parseResult = SaveDistrictAnalysisSettingsDraftSchema.safeParse(
           req.body,
@@ -171,22 +168,8 @@ export function registerDistrictAnalysisSettingsRoutes(
       ) => {
         const { districtId } = req.params;
 
-        // Validate district exists
-        const [district] = await db
-          .select({ id: districts.id, name: districts.name })
-          .from(districts)
-          .where(eq(districts.id, districtId))
-          .limit(1);
-
-        if (!district) {
-          return reply.status(404).send({
-            error: {
-              code: 'DISTRICT_NOT_FOUND',
-              message: 'Туман топилмади.',
-              statusCode: 404,
-            },
-          });
-        }
+        const district = await findDistrictOr404(db, districtId, reply);
+        if (!district) return;
 
         const parseResult =
           ActivateDistrictAnalysisSettingsRequestSchema.safeParse(req.body);
@@ -280,22 +263,8 @@ export function registerDistrictAnalysisSettingsRoutes(
         }
 
         try {
-          // Validate district exists
-          const [district] = await db
-            .select({ id: districts.id, name: districts.name })
-            .from(districts)
-            .where(eq(districts.id, districtId))
-            .limit(1);
-
-          if (!district) {
-            return reply.status(404).send({
-              error: {
-                code: 'DISTRICT_NOT_FOUND',
-                message: 'Туман топилмади.',
-                statusCode: 404,
-              },
-            });
-          }
+          const district = await findDistrictOr404(db, districtId, reply);
+          if (!district) return;
 
           const history =
             await districtAnalysisSettingsService.getHistory(db, districtId);
@@ -332,22 +301,8 @@ export function registerDistrictAnalysisSettingsRoutes(
       ) => {
         const { districtId } = req.params;
 
-        // Validate district exists
-        const [district] = await db
-          .select({ id: districts.id, name: districts.name })
-          .from(districts)
-          .where(eq(districts.id, districtId))
-          .limit(1);
-
-        if (!district) {
-          return reply.status(404).send({
-            error: {
-              code: 'DISTRICT_NOT_FOUND',
-              message: 'Туман топилмади.',
-              statusCode: 404,
-            },
-          });
-        }
+        const district = await findDistrictOr404(db, districtId, reply);
+        if (!district) return;
 
         const parseResult =
           RollbackDistrictAnalysisSettingsRequestSchema.safeParse(req.body);

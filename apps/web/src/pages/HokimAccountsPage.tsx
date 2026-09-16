@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Card,
   Typography,
@@ -26,7 +26,11 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 
 const { Title, Text, Paragraph } = Typography;
 
-export function HokimAccountsPage({ districtId }: { districtId?: string } = {}) {
+export interface HokimAccountsPageProps {
+  districtId?: string;
+}
+
+export function HokimAccountsPage({ districtId }: HokimAccountsPageProps) {
   const { activeDistrictId: contextDistrictId } = useDistrict();
   const effectiveDistrictId = districtId ?? contextDistrictId;
 
@@ -74,33 +78,54 @@ export function HokimAccountsPage({ districtId }: { districtId?: string } = {}) 
     title: string;
   } | null>(null);
 
-  const handleOpenCreate = () => { resetCreateError(); setIsCreateModalOpen(true); };
-  const handleOpenReset = () => { resetPasswordResetError(); setIsResetModalOpen(true); };
-  const handleOpenReplace = () => { resetReplaceError(); setIsReplaceModalOpen(true); };
-  const handleOpenDisable = () => { resetDisableError(); setIsDisableModalOpen(true); };
+  const handleOpenCreate = useCallback(() => {
+    resetCreateError();
+    setIsCreateModalOpen(true);
+  }, [resetCreateError]);
 
-  const handleCreateSubmit = async (values: { username: string }) => {
+  const handleOpenReset = useCallback(() => {
+    resetPasswordResetError();
+    setIsResetModalOpen(true);
+  }, [resetPasswordResetError]);
+
+  const handleOpenReplace = useCallback(() => {
+    resetReplaceError();
+    setIsReplaceModalOpen(true);
+  }, [resetReplaceError]);
+
+  const handleOpenDisable = useCallback(() => {
+    resetDisableError();
+    setIsDisableModalOpen(true);
+  }, [resetDisableError]);
+
+  const handleCloseCreate = useCallback(() => setIsCreateModalOpen(false), []);
+  const handleCloseReset = useCallback(() => setIsResetModalOpen(false), []);
+  const handleCloseReplace = useCallback(() => setIsReplaceModalOpen(false), []);
+  const handleCloseDisable = useCallback(() => setIsDisableModalOpen(false), []);
+  const handleCloseOneTime = useCallback(() => setOneTimeCredential(null), []);
+
+  const handleCreateSubmit = useCallback(async (values: { username: string }) => {
     const res = await createHokimAccount(values);
     setIsCreateModalOpen(false);
     setOneTimeCredential({ username: res.account.username, temporaryPassword: res.temporaryPassword, title: 'Ҳоким аккаунти муваффақиятли яратилди' });
-  };
+  }, [createHokimAccount]);
 
-  const handleResetConfirm = async () => {
+  const handleResetConfirm = useCallback(async () => {
     const res = await resetPassword();
     setIsResetModalOpen(false);
     setOneTimeCredential({ username: res.account.username, temporaryPassword: res.temporaryPassword, title: 'Парол муваффақиятли янгиланди' });
-  };
+  }, [resetPassword]);
 
-  const handleReplaceSubmit = async (values: { newUsername: string }) => {
+  const handleReplaceSubmit = useCallback(async (values: { newUsername: string }) => {
     const res = await replaceHokimAccount(values);
     setIsReplaceModalOpen(false);
     setOneTimeCredential({ username: res.account.username, temporaryPassword: res.temporaryPassword, title: 'Ҳоким аккаунти муваффақиятли алмаштирилди' });
-  };
+  }, [replaceHokimAccount]);
 
-  const handleDisableConfirm = async () => {
+  const handleDisableConfirm = useCallback(async () => {
     await disableHokimAccount();
     setIsDisableModalOpen(false);
-  };
+  }, [disableHokimAccount]);
 
   if (!effectiveDistrictId) {
     return (
@@ -197,14 +222,14 @@ export function HokimAccountsPage({ districtId }: { districtId?: string } = {}) 
 
       <CreateHokimModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={handleCloseCreate}
         onSubmit={handleCreateSubmit}
         isLoading={isCreating}
         error={createError}
       />
       <ResetHokimModal
         isOpen={isResetModalOpen}
-        onClose={() => setIsResetModalOpen(false)}
+        onClose={handleCloseReset}
         onConfirm={handleResetConfirm}
         username={account?.username ?? ''}
         isLoading={isResetting}
@@ -212,7 +237,7 @@ export function HokimAccountsPage({ districtId }: { districtId?: string } = {}) 
       />
       <ReplaceHokimModal
         isOpen={isReplaceModalOpen}
-        onClose={() => setIsReplaceModalOpen(false)}
+        onClose={handleCloseReplace}
         onSubmit={handleReplaceSubmit}
         currentUsername={account?.username ?? ''}
         isLoading={isReplacing}
@@ -220,7 +245,7 @@ export function HokimAccountsPage({ districtId }: { districtId?: string } = {}) 
       />
       <DisableHokimModal
         isOpen={isDisableModalOpen}
-        onClose={() => setIsDisableModalOpen(false)}
+        onClose={handleCloseDisable}
         onConfirm={handleDisableConfirm}
         username={account?.username ?? ''}
         isLoading={isDisabling}
@@ -228,7 +253,7 @@ export function HokimAccountsPage({ districtId }: { districtId?: string } = {}) 
       />
       <OneTimeCredentialModal
         isOpen={Boolean(oneTimeCredential)}
-        onClose={() => setOneTimeCredential(null)}
+        onClose={handleCloseOneTime}
         username={oneTimeCredential?.username ?? ''}
         temporaryPassword={oneTimeCredential?.temporaryPassword ?? null}
         title={oneTimeCredential?.title}

@@ -6,6 +6,7 @@ import {
 import { DbClient } from '../../adapters/db/client.js';
 import { verifyStateChangingOrigin } from '../auth/origin-guard.js';
 import { createRequireProductOwner } from '../auth/require-product-owner.js';
+import { getClientInfo } from '../auth/client-info.js';
 import {
   listDistricts,
   getDistrictById,
@@ -55,10 +56,7 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
             db,
             parseResult.data,
             req.actor,
-            {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            }
+            getClientInfo(req)
           );
           // P3-G: Returns HTTP 201 Created on success
           return reply.status(201).send({ district });
@@ -98,10 +96,7 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
             districtId,
             parseResult.data,
             req.actor,
-            {
-              ipAddress: req.ip || null,
-              userAgent: (req.headers['user-agent'] as string) || null,
-            }
+            getClientInfo(req)
           );
           return reply.status(200).send({ district });
         } catch (err: unknown) {
@@ -172,7 +167,7 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
             db,
             districtId,
             req.actor,
-            { ipAddress: req.ip || null, userAgent: (req.headers['user-agent'] as string) || null }
+            getClientInfo(req)
           );
           return reply.status(200).send(result);
         } catch (err: unknown) {
@@ -203,7 +198,7 @@ export function registerDistrictRoutes(fastify: FastifyInstance, db: DbClient): 
             db,
             districtId,
             req.actor,
-            { ipAddress: req.ip || null, userAgent: (req.headers['user-agent'] as string) || null }
+            getClientInfo(req)
           );
           return reply.status(200).send(result);
         } catch (err: unknown) {

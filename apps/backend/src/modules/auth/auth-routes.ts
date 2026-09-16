@@ -32,10 +32,19 @@ export function registerAuthRoutes(fastify: FastifyInstance, db: DbClient) {
     }
 
     try {
+      let ip = req.ip;
+      if (!ip) {
+        req.log.warn(
+          { url: req.url, method: req.method },
+          'Missing req.ip in signIn request, falling back to 127.0.0.1',
+        );
+        ip = '127.0.0.1';
+      }
+
       const result = await signIn(db, {
         username: parseResult.data.username,
         password: parseResult.data.password,
-        ip: req.ip || '127.0.0.1',
+        ip,
         userAgent: req.headers['user-agent'],
       });
 

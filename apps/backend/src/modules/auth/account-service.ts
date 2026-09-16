@@ -12,18 +12,27 @@ export interface ManageProductOwnerResult {
   credentialVersion: number;
 }
 
+export class ProductOwnerProvisioningError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'PO_PROVISIONING_ERROR';
+  constructor(message: string) {
+    super(message);
+    this.name = 'ProductOwnerProvisioningError';
+  }
+}
+
 export async function createOrResetProductOwner(
   db: DbClient,
   input: { username: string; password: string }
 ): Promise<ManageProductOwnerResult> {
   const username = input.username.trim();
   if (!username || username.length < 3 || username.length > 64) {
-    throw new Error('Фойдаланувчи номи 3 дан 64 белгигача бўлиши керак.');
+    throw new ProductOwnerProvisioningError('Фойдаланувчи номи 3 дан 64 белгигача бўлиши керак.');
   }
 
   const validation = cryptoService.passwords.validate(input.password);
   if (!validation.isValid) {
-    throw new Error(validation.message || 'Парол талабга жавоб бермайди.');
+    throw new ProductOwnerProvisioningError(validation.message || 'Парол талабга жавоб бермайди.');
   }
 
   const hashedPassword = await cryptoService.passwords.hash(input.password);

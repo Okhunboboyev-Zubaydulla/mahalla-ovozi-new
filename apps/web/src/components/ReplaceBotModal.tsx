@@ -10,7 +10,7 @@ interface ReplaceBotModalProps {
   isOpen: boolean;
   isConnecting: boolean;
   connectError: Error | null;
-  onSubmit: (values: { token: string }) => Promise<void>;
+  onSubmit: (values: { token: string }) => void | Promise<void>;
   onClose: () => void;
 }
 

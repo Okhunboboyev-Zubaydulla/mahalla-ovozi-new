@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Typography, Alert, Space, Spin, Button, theme, App } from 'antd';
 import { ReloadOutlined, WifiOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -31,11 +31,11 @@ export const SubscriptionsPage: React.FC = () => {
   const [editingSubscription, setEditingSubscription] = useState<DistrictSubscription | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  // Lifecycle Modals State
-  const [startGraceTarget, setStartGraceTarget] = useState<DistrictSubscription | null>(null);
-  const [restoreActiveTarget, setRestoreActiveTarget] = useState<DistrictSubscription | null>(null);
-  const [cancelDistrictTarget, setCancelDistrictTarget] = useState<DistrictSubscription | null>(null);
-  const [startRecoveryTarget, setStartRecoveryTarget] = useState<DistrictSubscription | null>(null);
+  // Lifecycle Modals State - store target district ID (FE3)
+  const [startGraceTargetId, setStartGraceTargetId] = useState<string | null>(null);
+  const [restoreActiveTargetId, setRestoreActiveTargetId] = useState<string | null>(null);
+  const [cancelDistrictTargetId, setCancelDistrictTargetId] = useState<string | null>(null);
+  const [startRecoveryTargetId, setStartRecoveryTargetId] = useState<string | null>(null);
 
   // Synchronize when global DistrictSelector switches district
   useEffect(() => {
@@ -45,10 +45,10 @@ export const SubscriptionsPage: React.FC = () => {
     // Close drawer and modals on district context switch
     setIsDrawerOpen(false);
     setEditingSubscription(null);
-    setStartGraceTarget(null);
-    setRestoreActiveTarget(null);
-    setCancelDistrictTarget(null);
-    setStartRecoveryTarget(null);
+    setStartGraceTargetId(null);
+    setRestoreActiveTargetId(null);
+    setCancelDistrictTargetId(null);
+    setStartRecoveryTargetId(null);
   }, [activeDistrictId]);
 
   // Effective district ID for detail view
@@ -66,12 +66,31 @@ export const SubscriptionsPage: React.FC = () => {
     queryFn: subscriptionClient.listDistrictSubscriptions,
   });
 
-  const subscriptions = listData?.subscriptions || [];
+  const subscriptions = useMemo(() => listData?.subscriptions || [], [listData]);
 
-  // Effective district ID for detail view
-  const currentSubscription = currentDistrictId
-    ? subscriptions.find((s) => s.districtId === currentDistrictId) || null
-    : null;
+  // Effective district ID for detail view (FE8)
+  const currentSubscription = useMemo(
+    () => (currentDistrictId ? subscriptions.find((s) => s.districtId === currentDistrictId) || null : null),
+    [subscriptions, currentDistrictId]
+  );
+
+  // Derived live modal targets preventing stale snapshot display (FE3)
+  const startGraceTarget = useMemo(
+    () => (startGraceTargetId ? subscriptions.find((s) => s.districtId === startGraceTargetId) || null : null),
+    [subscriptions, startGraceTargetId]
+  );
+  const restoreActiveTarget = useMemo(
+    () => (restoreActiveTargetId ? subscriptions.find((s) => s.districtId === restoreActiveTargetId) || null : null),
+    [subscriptions, restoreActiveTargetId]
+  );
+  const cancelDistrictTarget = useMemo(
+    () => (cancelDistrictTargetId ? subscriptions.find((s) => s.districtId === cancelDistrictTargetId) || null : null),
+    [subscriptions, cancelDistrictTargetId]
+  );
+  const startRecoveryTarget = useMemo(
+    () => (startRecoveryTargetId ? subscriptions.find((s) => s.districtId === startRecoveryTargetId) || null : null),
+    [subscriptions, startRecoveryTargetId]
+  );
 
   // Fetch deletion record tombstone if selected district is deleted (Story 6.5 AC 8)
   const {
@@ -143,7 +162,7 @@ export const SubscriptionsPage: React.FC = () => {
     },
     onSuccess: async (_data, variables) => {
       message.success('Туман учун 7 кунлик имтиёзли давр (Grace) муваффақиятли бошланди.');
-      setStartGraceTarget(null);
+      setStartGraceTargetId(null);
       await invalidateSubscriptionQueries(variables.districtId);
     },
     onError: (err: Error) => {
@@ -158,7 +177,7 @@ export const SubscriptionsPage: React.FC = () => {
     },
     onSuccess: async (_data, variables) => {
       message.success('Туман фаолияти (Active) муваффақиятли тикланди.');
-      setRestoreActiveTarget(null);
+      setRestoreActiveTargetId(null);
       await invalidateSubscriptionQueries(variables.districtId);
     },
     onError: (err: Error) => {
@@ -194,7 +213,7 @@ export const SubscriptionsPage: React.FC = () => {
     },
     onSuccess: async (_data, variables) => {
       message.success('Туман муваффақиятли бекор қилинди (Cancelled).');
-      setCancelDistrictTarget(null);
+      setCancelDistrictTargetId(null);
       await invalidateSubscriptionQueries(variables.districtId);
     },
     onError: (err: Error) => {
@@ -209,7 +228,7 @@ export const SubscriptionsPage: React.FC = () => {
     },
     onSuccess: async (_data, variables) => {
       message.success('Туманни қайта тиклаш жараёни бошланди (Setup Incomplete).');
-      setStartRecoveryTarget(null);
+      setStartRecoveryTargetId(null);
       await invalidateSubscriptionQueries(variables.districtId);
     },
     onError: (err: Error) => {
@@ -245,19 +264,19 @@ export const SubscriptionsPage: React.FC = () => {
   };
 
   const handleOpenStartGrace = (subscription: DistrictSubscription) => {
-    setStartGraceTarget(subscription);
+    setStartGraceTargetId(subscription.districtId);
   };
 
   const handleOpenRestoreActive = (subscription: DistrictSubscription) => {
-    setRestoreActiveTarget(subscription);
+    setRestoreActiveTargetId(subscription.districtId);
   };
 
   const handleOpenCancelDistrict = (subscription: DistrictSubscription) => {
-    setCancelDistrictTarget(subscription);
+    setCancelDistrictTargetId(subscription.districtId);
   };
 
   const handleOpenStartRecovery = (subscription: DistrictSubscription) => {
-    setStartRecoveryTarget(subscription);
+    setStartRecoveryTargetId(subscription.districtId);
   };
 
   return (
@@ -384,7 +403,7 @@ export const SubscriptionsPage: React.FC = () => {
               reason: payload.reason,
             });
           }}
-          onClose={() => setStartGraceTarget(null)}
+          onClose={() => setStartGraceTargetId(null)}
         />
       )}
 
@@ -402,7 +421,7 @@ export const SubscriptionsPage: React.FC = () => {
               reason: payload.reason,
             });
           }}
-          onClose={() => setRestoreActiveTarget(null)}
+          onClose={() => setRestoreActiveTargetId(null)}
         />
       )}
 
@@ -421,7 +440,7 @@ export const SubscriptionsPage: React.FC = () => {
               confirmationDistrictName: payload.confirmationDistrictName,
             });
           }}
-          onClose={() => setCancelDistrictTarget(null)}
+          onClose={() => setCancelDistrictTargetId(null)}
         />
       )}
 
@@ -438,7 +457,7 @@ export const SubscriptionsPage: React.FC = () => {
               reason: payload.reason,
             });
           }}
-          onClose={() => setStartRecoveryTarget(null)}
+          onClose={() => setStartRecoveryTargetId(null)}
         />
       )}
     </div>

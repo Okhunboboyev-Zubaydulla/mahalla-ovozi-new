@@ -348,7 +348,7 @@ describe('Story 4.1: Health Evaluator Pure Engine Tests', () => {
       expect(obs.component).toBe('scheduled_deletion');
       expect(obs.status).toBe('Unavailable');
       expect(obs.errorCode).toBe('SCHEDULED_DELETION_PROBE_ERROR');
-      expect(obs.errorMessage).toBe('Режалаштирилган ўчириш тизими текширувида хатолик юз берди.');
+      expect(obs.errorMessage).toBe('Режалаштирилган ўчириш тизими текширувида хатолик юз берди: Connection refused to scheduler backend');
     });
   });
 });

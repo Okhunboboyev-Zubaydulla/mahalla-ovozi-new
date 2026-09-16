@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DistrictIdSchema } from './common.js';
 
 /**
  * Six canonical health states defined in Story 4.1 (FR-25, FR-28, AD-11).
@@ -83,7 +84,7 @@ export type TechnicalOutcome = z.infer<typeof TechnicalOutcomeSchema>;
 export const ComponentHealthObservationSchema = z.object({
   component: ComponentTypeEnumSchema,
   scope: ComponentScopeEnumSchema,
-  districtId: z.string().min(1).nullable(),
+  districtId: DistrictIdSchema.nullable(),
   status: HealthStatusEnumSchema,
   lastCheckAt: z.string().datetime(),
   checkedAt: z.string().datetime(),
@@ -134,7 +135,7 @@ export type PublicHealthSummaryResponse = z.infer<typeof PublicHealthSummaryResp
  * Per-district summary item in overall health aggregation.
  */
 export const DistrictHealthSummarySchema = z.object({
-  districtId: z.string().min(1),
+  districtId: DistrictIdSchema,
   districtName: z.string(),
   status: HealthStatusEnumSchema,
   lastCheckAt: z.string().datetime(),
@@ -161,7 +162,7 @@ export type OverallSystemHealthResponse = z.infer<typeof OverallSystemHealthResp
  * District-scoped health API response (`/api/v1/districts/:districtId/health`).
  */
 export const DistrictHealthResponseSchema = z.object({
-  districtId: z.string().min(1),
+  districtId: DistrictIdSchema,
   districtName: z.string(),
   status: HealthStatusEnumSchema,
   lastCheckAt: z.string().datetime(),
