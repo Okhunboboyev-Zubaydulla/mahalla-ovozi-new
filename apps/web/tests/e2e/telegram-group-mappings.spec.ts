@@ -151,24 +151,15 @@ test.describe('Story 1.5: Telegram Group-to-Mahalla Mappings E2E Journeys', () =
 
     // 5. Click "Янги гуруҳ қўшиш"
     await page.getByRole('button', { name: 'Янги гуруҳ қўшиш' }).click();
-    await expect(page.locator('.ant-drawer-title:has-text("Маҳалла Telegram гуруҳини бириктириш")')).toBeVisible();
+    await expect(page.getByTestId('telegram-group-drawer')).toBeVisible();
 
     // 6. Fill Mahalla Name and Chat ID
     await page.fill('input[placeholder="Масалан: Навбаҳор"]', 'Навбаҳор');
     await page.fill('input[placeholder="Масалан: -1001234567890"]', testChatId);
-    await page.getByRole('button', { name: 'Текшириш ва кейинги босқичга ўтиш' }).click();
+    await page.getByRole('button', { name: 'Текшириш ва бириктириш' }).click();
 
-    // 7. Verify Drawer transitions to live test-message countdown step
-    await expect(page.locator('text=Хабар синови режими (60 сония)')).toBeVisible();
-    await expect(page.locator('text=Тест хабарини кутиш вақти')).toBeVisible();
-
-    // 8. Simulate test message receipt
-    await page.getByRole('button', { name: 'Синов хабарини симуляция қилиш (Тест режими)' }).click();
-
-    // 9. Verify Success alert in Drawer and close drawer
-    await expect(page.locator('text=Синов муваффақиятли якунланди!')).toBeVisible();
-    await page.getByRole('button', { name: 'Якунлаш' }).click();
-    await expect(page.locator('.ant-drawer-title:has-text("Маҳалла Telegram гуруҳини бириктириш")')).not.toBeVisible();
+    // 7. Verify drawer automatically closes upon successful Telegram validation without countdown or simulation
+    await expect(page.getByTestId('telegram-group-drawer')).not.toBeVisible();
 
     // 10. Verify Mappings Table has the valid Mahalla mapping
     await expect(page.getByText('Навбаҳор', { exact: true })).toBeVisible();

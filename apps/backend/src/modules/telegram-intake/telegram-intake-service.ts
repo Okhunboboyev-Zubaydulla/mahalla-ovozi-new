@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type pg from 'pg';
 import type PgBoss from 'pg-boss';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import type { DbClient } from '../../adapters/db/client.js';
 import { createDbClient } from '../../adapters/db/client.js';
 import {
@@ -37,6 +37,7 @@ export type AuthorizationResult =
       districtId: string;
       mahallaName: string;
       botId: string;
+      groupId: string;
     }
   | {
       authorized: false;
@@ -149,6 +150,7 @@ export async function resolveDistrictBotAndGroup(
     districtId: record.districtId,
     mahallaName: record.mahallaName,
     botId: record.botId,
+    groupId: record.groupId,
   };
 }
 
@@ -337,6 +339,20 @@ export async function processTelegramWebhookUpdate(
         messageId,
       };
     }
+
+    // Passively record first evidence timestamp on group if not yet set (Spec Line 24 & 61)
+    await tx
+      .update(districtTelegramGroups)
+      .set({
+        testMessageReceivedAt: originalTimestamp,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(districtTelegramGroups.id, auth.groupId),
+          isNull(districtTelegramGroups.testMessageReceivedAt),
+        ),
+      );
 
     // Structural pre-check for debouncing vs direct exclusion
     const qualResult = qualifyTelegramContent({

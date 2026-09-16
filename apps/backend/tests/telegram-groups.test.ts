@@ -109,76 +109,184 @@ describe('Telegram Groups Management & Validation Integration Tests', () => {
     expect(body.groups).toEqual([]);
   });
 
-  it('successfully creates a valid group mapping and logs audit event (AC 1, 2, 4, 5, 13)', async () => {
-    const chatId = `-100${crypto.randomUUID().replace(/\D/g, '').slice(0, 10)}`;
-
+  function mockTelegramApi(botId: string, chatId: string, chatTitle: string): () => void {
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn().mockImplementation((url: string, init?: any) => {
-      const urlStr = String(url);
+    globalThis.fetch = vi.fn().mockImplementation((...args: Parameters<typeof fetch>) => {
+      const urlStr = String(args[0]);
       if (urlStr.includes('/getChatMember')) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: async () => ({
-            ok: true,
-            result: { status: 'member', user: { id: testBotId, is_bot: true, first_name: 'Bot' } },
-          }),
-        });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              result: { status: 'member', user: { id: botId, is_bot: true, first_name: 'Bot' } },
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        );
       }
       if (urlStr.includes('/getChat')) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: async () => ({
-            ok: true,
-            result: { id: Number(chatId) || -100123, title: 'Navbahor Guruhi', type: 'supergroup' },
-          }),
-        });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              result: { id: Number(chatId) || -100123, title: chatTitle, type: 'supergroup' },
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        );
       }
       if (urlStr.includes('/getMe')) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: async () => ({
-            ok: true,
-            result: { id: testBotId, is_bot: true, can_read_all_group_messages: true },
-          }),
-        });
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              result: { id: botId, is_bot: true, can_read_all_group_messages: true },
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        );
       }
-      return originalFetch(url, init);
-    }) as any;
-
-    const res = await server.inject({
-      method: 'POST',
-      url: `/api/v1/districts/${testDistrictId}/groups`,
-      headers: {
-        ...SAME_ORIGIN_HEADERS,
-        cookie: poCookie,
-        'content-type': 'application/json',
-      },
-      payload: {
-        mahallaName: 'Navbahor',
-        telegramChatId: chatId,
-      },
+      return originalFetch(...args);
     });
 
-    globalThis.fetch = originalFetch;
+    return () => {
+      globalThis.fetch = originalFetch;
+    };
+  }
 
-    expect(res.statusCode).toBe(201);
-    const body = res.json();
-    expect(body.group).toBeDefined();
-    expect(body.group.mahallaName).toBe('Navbahor');
-    expect(body.group.telegramChatId).toBe(chatId);
-    expect(body.group.telegramChatTitle).toBe('Navbahor Guruhi');
-    expect(body.group.status).toBe('PENDING');
-    expect(body.group.privacyModeDisabled).toBe(true);
+  it('successfully creates a valid group mapping, logs audit event, and verifies webhook intake seam (AC 1, 2, 4, 5, 13, Spec Seam 2)', async () => {
+    const chatId = `-100${crypto.randomUUID().replace(/\D/g, '').slice(0, 10)}`;
+    const restoreFetch = mockTelegramApi(testBotId, chatId, 'Navbahor Guruhi');
 
-    // Verify audit log
-    const auditRows = await db
-      .select()
-      .from(auditEvents)
-      .where(eq(auditEvents.action, 'DISTRICT_GROUP_MAPPED'));
-    expect(auditRows.length).toBeGreaterThan(0);
+    try {
+      const res = await server.inject({
+        method: 'POST',
+        url: `/api/v1/districts/${testDistrictId}/groups`,
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: poCookie,
+          'content-type': 'application/json',
+        },
+        payload: {
+          mahallaName: 'Navbahor',
+          telegramChatId: chatId,
+        },
+      });
+
+      expect(res.statusCode).toBe(201);
+      const body = res.json();
+      expect(body.group).toBeDefined();
+      expect(body.group.mahallaName).toBe('Navbahor');
+      expect(body.group.telegramChatId).toBe(chatId);
+      expect(body.group.telegramChatTitle).toBe('Navbahor Guruhi');
+      expect(body.group.status).toBe('VALID');
+      expect(body.group.lastValidatedAt).toBeDefined();
+      expect(body.group.privacyModeDisabled).toBe(true);
+
+      // Verify audit log
+      const auditRows = await db
+        .select()
+        .from(auditEvents)
+        .where(eq(auditEvents.action, 'DISTRICT_GROUP_MAPPED'));
+      expect(auditRows.length).toBeGreaterThan(0);
+
+      // Webhook Ingestion Seam (Spec lines 92–95):
+      // Activate district to simulate live ingestion, inject simulated update; assert accepted and testMessageReceivedAt updated
+      await db
+        .update(districts)
+        .set({ status: 'ACTIVE', accessEligible: true })
+        .where(eq(districts.id, testDistrictId));
+
+      const webhookSecret = deriveWebhookSecret(testBotId);
+      const updateRes = await server.inject({
+        method: 'POST',
+        url: `/api/v1/webhooks/telegram/${testBotId}`,
+        headers: {
+          'x-telegram-bot-api-secret-token': webhookSecret,
+          'content-type': 'application/json',
+        },
+        payload: {
+          update_id: 10001,
+          message: {
+            message_id: 1,
+            date: Math.floor(Date.now() / 1000),
+            chat: {
+              id: Number(chatId) || -1001234567,
+              title: 'Navbahor Guruhi',
+              type: 'supergroup',
+            },
+            from: {
+              id: 999111,
+              is_bot: false,
+              first_name: 'Resident',
+            },
+            text: 'Ichimlik suvi bosimi pasayib ketdi.',
+          },
+        },
+      });
+      expect(updateRes.statusCode).toBe(200);
+      expect(updateRes.json().status).toBe('ACCEPTED');
+
+      const [dbGroup] = await db
+        .select()
+        .from(districtTelegramGroups)
+        .where(eq(districtTelegramGroups.telegramChatId, chatId));
+      expect(dbGroup?.testMessageReceivedAt).toBeDefined();
+    } finally {
+      restoreFetch();
+    }
+  });
+
+  it('updates group chat ID, validates with Telegram, and sets status to VALID', async () => {
+    const originalChatId = `-100${crypto.randomUUID().replace(/\D/g, '').slice(0, 10)}`;
+    const newChatId = `-100${crypto.randomUUID().replace(/\D/g, '').slice(0, 10)}`;
+    const groupId = `dtg_${crypto.randomUUID()}`;
+
+    await db.insert(districtTelegramGroups).values({
+      id: groupId,
+      districtId: testDistrictId,
+      mahallaName: 'Yangiobod',
+      telegramChatId: originalChatId,
+      telegramChatTitle: 'Yangiobod Chat Eski',
+      status: 'VALID',
+      lastValidatedAt: new Date(Date.now() - 100000),
+    });
+
+    const restoreFetch = mockTelegramApi(testBotId, newChatId, 'Yangiobod Yangi Chat');
+
+    try {
+      const res = await server.inject({
+        method: 'PUT',
+        url: `/api/v1/districts/${testDistrictId}/groups/${groupId}`,
+        headers: {
+          ...SAME_ORIGIN_HEADERS,
+          cookie: poCookie,
+          'content-type': 'application/json',
+        },
+        payload: {
+          telegramChatId: newChatId,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.group.status).toBe('VALID');
+      expect(body.group.telegramChatId).toBe(newChatId);
+      expect(body.group.telegramChatTitle).toBe('Yangiobod Yangi Chat');
+      expect(body.group.lastValidatedAt).toBeDefined();
+
+      // Verify DB
+      const [dbGroup] = await db
+        .select()
+        .from(districtTelegramGroups)
+        .where(eq(districtTelegramGroups.id, groupId));
+      expect(dbGroup).toBeDefined();
+      expect(dbGroup!.status).toBe('VALID');
+      expect(dbGroup!.telegramChatId).toBe(newChatId);
+      expect(dbGroup!.lastValidatedAt).toBeDefined();
+    } finally {
+      restoreFetch();
+    }
   });
 
   it('rejects duplicate Mahalla name within the same district case-insensitively (AC 2)', async () => {

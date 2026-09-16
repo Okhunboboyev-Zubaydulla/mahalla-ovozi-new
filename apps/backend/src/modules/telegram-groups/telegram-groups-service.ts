@@ -268,9 +268,10 @@ export async function createDistrictTelegramGroup(
           telegramChatId: trimmedChatId,
           telegramChatTitle: chatTitle,
           telegramChatUsername: chatUsername,
-          status: 'PENDING',
+          status: 'VALID',
           botMembershipStatus: 'member',
           privacyModeDisabled: isPrivacyDisabled,
+          lastValidatedAt: now,
           createdAt: now,
           updatedAt: now,
         })
@@ -325,7 +326,7 @@ export async function updateDistrictTelegramGroup(
   input: UpdateTelegramGroupRequest,
   actor?: Actor,
   clientInfo?: ClientInfo,
-  options: GroupServiceOptions = {},
+  _options: GroupServiceOptions = {},
 ): Promise<TelegramGroupMapping> {
   const [group] = await db
     .select()
@@ -380,12 +381,6 @@ export async function updateDistrictTelegramGroup(
       chatTitle: validated.chatTitle,
       chatUsername: validated.chatUsername,
     };
-
-    (options.sessionManager ?? globalTestSessionManager).resolveSessionFailure(
-      districtId,
-      groupId,
-      'Гуруҳ Chat ID ўзгартирилди',
-    );
   }
 
   const now = new Date();
@@ -432,11 +427,11 @@ export async function updateDistrictTelegramGroup(
         telegramChatId: newChatId,
         telegramChatTitle: chatInfo.chatTitle,
         telegramChatUsername: chatInfo.chatUsername,
-        status: isChatChanged ? 'PENDING' : group.status,
+        status: isChatChanged ? 'VALID' : group.status,
         botMembershipStatus: isChatChanged ? 'member' : group.botMembershipStatus,
         privacyModeDisabled: isPrivacyDisabled,
         testMessageReceivedAt: isChatChanged ? null : group.testMessageReceivedAt,
-        lastValidatedAt: isChatChanged ? null : group.lastValidatedAt,
+        lastValidatedAt: isChatChanged ? now : group.lastValidatedAt,
         lastError: null,
         updatedAt: now,
       })

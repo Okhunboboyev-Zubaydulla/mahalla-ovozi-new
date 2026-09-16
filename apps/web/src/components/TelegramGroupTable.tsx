@@ -16,7 +16,6 @@ import {
 import {
   SearchOutlined,
   PlusOutlined,
-  PlayCircleOutlined,
   DeleteOutlined,
   EditOutlined,
   CheckCircleOutlined,
@@ -48,7 +47,6 @@ export function TelegramGroupTable({ districtId, isOffline: isOfflineProp }: Tel
 
   const [searchText, setSearchText] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [drawerStep, setDrawerStep] = useState<number>(0);
   const [selectedGroup, setSelectedGroup] = useState<TelegramGroupMapping | null>(null);
   const [groupToDelete, setGroupToDelete] = useState<TelegramGroupMapping | null>(null);
 
@@ -65,19 +63,11 @@ export function TelegramGroupTable({ districtId, isOffline: isOfflineProp }: Tel
 
   const handleOpenAddDrawer = () => {
     setSelectedGroup(null);
-    setDrawerStep(0);
     setIsDrawerOpen(true);
   };
 
   const handleOpenEditDrawer = (group: TelegramGroupMapping) => {
     setSelectedGroup(group);
-    setDrawerStep(0);
-    setIsDrawerOpen(true);
-  };
-
-  const handleOpenTestDrawer = (group: TelegramGroupMapping) => {
-    setSelectedGroup(group);
-    setDrawerStep(1);
     setIsDrawerOpen(true);
   };
 
@@ -191,18 +181,6 @@ export function TelegramGroupTable({ districtId, isOffline: isOfflineProp }: Tel
       align: 'right' as const,
       render: (_: unknown, record: TelegramGroupMapping) => (
         <Space size={4} wrap={false} style={{ justifyContent: 'flex-end' }}>
-          {record.status !== 'VALID' && (
-            <Button
-              type="primary"
-              size="small"
-              icon={<PlayCircleOutlined />}
-              onClick={() => handleOpenTestDrawer(record)}
-              disabled={isOffline}
-              style={{ display: 'inline-flex', alignItems: 'center' }}
-            >
-              Синов
-            </Button>
-          )}
           <Button
             type="default"
             size="small"
@@ -347,18 +325,6 @@ export function TelegramGroupTable({ districtId, isOffline: isOfflineProp }: Tel
                     >
                       Таҳрирлаш
                     </Button>
-                    {group.status !== 'VALID' && (
-                      <Button
-                        type="primary"
-                        size="large"
-                        icon={<PlayCircleOutlined />}
-                        onClick={() => handleOpenTestDrawer(group)}
-                        disabled={isOffline}
-                        style={{ minHeight: '44px' }}
-                      >
-                        Синов
-                      </Button>
-                    )}
                     <Button
                       danger
                       type="default"
@@ -378,7 +344,7 @@ export function TelegramGroupTable({ districtId, isOffline: isOfflineProp }: Tel
         )}
       </Space>
 
-      {/* Group Create/Edit/Test Drawer */}
+      {/* Group Create/Edit Drawer */}
       <TelegramGroupDrawer
         open={isDrawerOpen}
         onClose={() => {
@@ -390,7 +356,6 @@ export function TelegramGroupTable({ districtId, isOffline: isOfflineProp }: Tel
           refetch();
         }}
         initialGroup={selectedGroup}
-        initialStep={drawerStep}
       />
 
       {/* Delete Group Confirmation Modal */}
