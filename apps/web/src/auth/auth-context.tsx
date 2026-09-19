@@ -64,6 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (data) => {
       queryClient.setQueryData(['auth', 'session'], data);
     },
+    onError: (error) => {
+      console.error('Auth mutation failed:', error);
+    },
   });
 
   const signOutMutation = useMutation({
@@ -71,6 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => {
       queryClient.setQueryData(['auth', 'session'], null);
       queryClient.removeQueries({ queryKey: ['auth', 'session'] });
+    },
+    onError: (error) => {
+      console.error('Auth mutation failed:', error);
     },
   });
 
@@ -89,6 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       );
       queryClient.invalidateQueries({ queryKey: ['auth', 'session'] });
+    },
+    onError: (error) => {
+      console.error('Auth mutation failed:', error);
     },
   });
 

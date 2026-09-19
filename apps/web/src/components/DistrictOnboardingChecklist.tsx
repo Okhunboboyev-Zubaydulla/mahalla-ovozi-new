@@ -21,6 +21,7 @@ import {
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { districtClient } from '../district/district-client.js';
+import { districtQueryKeys } from '../district/query-keys.js';
 import { useDistrictReadiness } from '../district/useDistrictReadiness.js';
 import { DisclosureConfirmationModal } from './DisclosureConfirmationModal.js';
 import { DistrictActivationModal } from './DistrictActivationModal.js';
@@ -45,7 +46,7 @@ export const DistrictOnboardingChecklist: React.FC<DistrictOnboardingChecklistPr
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
 
   const { data: districtData } = useQuery({
-    queryKey: ['district', districtId],
+    queryKey: districtQueryKeys.district(districtId),
     queryFn: () => districtClient.getDistrict(districtId),
     enabled: !!districtId,
   });

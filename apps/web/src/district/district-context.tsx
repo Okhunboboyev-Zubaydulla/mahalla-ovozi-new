@@ -11,6 +11,7 @@ import {
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useInRouterContext, useSearchParams } from 'react-router-dom';
 import { districtClient } from './district-client.js';
+import { districtQueryKeys } from './query-keys.js';
 
 export const DISTRICT_STORAGE_KEY = 'mahalla_active_district_id';
 
@@ -155,13 +156,13 @@ export function DistrictProvider({ children }: { children: ReactNode }) {
 
       if (prevId && prevId !== nextId) {
         // 2. Signal abort to in-flight prior-district queries (async — await settlement)
-        await queryClient.cancelQueries({ queryKey: ['district', prevId] });
+        await queryClient.cancelQueries({ queryKey: districtQueryKeys.district(prevId) });
         await queryClient.cancelQueries({
           predicate: (query) =>
             query.queryKey.some((part) => typeof part === 'string' && part === prevId),
         });
         // 3. Purge prior-district cache (sync — must fire AFTER cancelQueries resolves)
-        queryClient.removeQueries({ queryKey: ['district', prevId] });
+        queryClient.removeQueries({ queryKey: districtQueryKeys.district(prevId) });
         queryClient.removeQueries({
           predicate: (query) =>
             query.queryKey.some((part) => typeof part === 'string' && part === prevId),

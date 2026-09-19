@@ -27,6 +27,7 @@ import {
 import { useDistrict } from '../district/district-context.js';
 import { useTelegramBot } from '../district/useTelegramBot.js';
 import { districtClient } from '../district/district-client.js';
+import { districtQueryKeys } from '../district/query-keys.js';
 import { useQuery } from '@tanstack/react-query';
 import { TelegramGroupTable } from '../components/TelegramGroupTable.js';
 import { ReplaceBotModal } from '../components/ReplaceBotModal.js';
@@ -47,7 +48,7 @@ export function TelegramSetupPage({ districtId }: TelegramSetupPageProps) {
   const effectiveDistrictId = districtId ?? contextDistrictId;
 
   const { data: districtResponse } = useQuery({
-    queryKey: ['district', effectiveDistrictId],
+    queryKey: districtQueryKeys.district(effectiveDistrictId),
     queryFn: () => (effectiveDistrictId ? districtClient.getDistrict(effectiveDistrictId) : null),
     enabled: !!effectiveDistrictId,
   });

@@ -219,8 +219,8 @@ describe('useDistrictWorkspace Hook Tests', () => {
 
     expect(districtClient.activateDistrict).toHaveBeenCalledWith('dist_test_1');
     expect(setQueryDataSpy).toHaveBeenCalledWith(
-      districtQueryKeys.details('dist_test_1'),
-      activeDistrict
+      districtQueryKeys.district('dist_test_1'),
+      { district: activeDistrict }
     );
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: districtQueryKeys.readiness('dist_test_1'),
@@ -290,7 +290,7 @@ describe('useDistrictWorkspace Hook Tests', () => {
       await result.current.invalidateWorkspace();
     });
 
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: districtQueryKeys.details('dist_test_1') });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: districtQueryKeys.district('dist_test_1') });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: districtQueryKeys.readiness('dist_test_1') });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: districtQueryKeys.bot('dist_test_1') });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: districtQueryKeys.groups('dist_test_1') });

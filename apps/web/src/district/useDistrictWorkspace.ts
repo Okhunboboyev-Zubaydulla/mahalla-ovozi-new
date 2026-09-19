@@ -129,12 +129,12 @@ export function useDistrictWorkspace(
   /* ── 1. Sub-Resource Queries ── */
 
   const detailsQuery = useQuery({
-    queryKey: districtQueryKeys.details(districtId),
+    queryKey: districtQueryKeys.district(districtId),
     queryFn: async () => {
       if (!districtId) throw new Error('Туман танланмаган.');
-      const res = await districtClient.getDistrict(districtId);
-      return res.district;
+      return districtClient.getDistrict(districtId);
     },
+    select: (res) => res.district,
     enabled: isEnabled && includeDetails,
   });
 
@@ -189,7 +189,7 @@ export function useDistrictWorkspace(
   const invalidateWorkspace = useCallback(async () => {
     if (!districtId) return;
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: districtQueryKeys.details(districtId) }),
+      queryClient.invalidateQueries({ queryKey: districtQueryKeys.district(districtId) }),
       queryClient.invalidateQueries({ queryKey: districtQueryKeys.readiness(districtId) }),
       queryClient.invalidateQueries({ queryKey: districtQueryKeys.bot(districtId) }),
       queryClient.invalidateQueries({ queryKey: districtQueryKeys.groups(districtId) }),
@@ -207,6 +207,9 @@ export function useDistrictWorkspace(
     onSuccess: async () => {
       await invalidateReadiness();
     },
+    onError: (err) => {
+      console.error('Confirm disclosure failed:', err);
+    },
   });
 
   const activateDistrictMutation = useMutation({
@@ -216,7 +219,6 @@ export function useDistrictWorkspace(
     },
     onSuccess: async (data) => {
       if (districtId) {
-        queryClient.setQueryData(districtQueryKeys.details(districtId), data.district);
         queryClient.setQueryData(districtQueryKeys.district(districtId), { district: data.district });
         await Promise.all([
           invalidateReadiness(),
@@ -248,6 +250,10 @@ export function useDistrictWorkspace(
         ]);
       }
     },
+    onError: (err) => {
+      console.error('Connect bot failed:', err);
+      if (districtId) queryClient.invalidateQueries({ queryKey: districtQueryKeys.bot(districtId) });
+    },
   });
 
   const disconnectBotMutation = useMutation({
@@ -262,6 +268,10 @@ export function useDistrictWorkspace(
           invalidateReadiness(),
         ]);
       }
+    },
+    onError: (err) => {
+      console.error('Disconnect bot failed:', err);
+      if (districtId) queryClient.invalidateQueries({ queryKey: districtQueryKeys.bot(districtId) });
     },
   });
 
@@ -278,6 +288,10 @@ export function useDistrictWorkspace(
         ]);
       }
     },
+    onError: (err) => {
+      console.error('Group mutation failed:', err);
+      if (districtId) queryClient.invalidateQueries({ queryKey: districtQueryKeys.groups(districtId) });
+    },
   });
 
   const updateGroupMutation = useMutation({
@@ -292,6 +306,10 @@ export function useDistrictWorkspace(
           invalidateReadiness(),
         ]);
       }
+    },
+    onError: (err) => {
+      console.error('Group mutation failed:', err);
+      if (districtId) queryClient.invalidateQueries({ queryKey: districtQueryKeys.groups(districtId) });
     },
   });
 
@@ -308,6 +326,10 @@ export function useDistrictWorkspace(
         ]);
       }
     },
+    onError: (err) => {
+      console.error('Group mutation failed:', err);
+      if (districtId) queryClient.invalidateQueries({ queryKey: districtQueryKeys.groups(districtId) });
+    },
   });
 
   const startGroupTestMutation = useMutation({
@@ -319,6 +341,10 @@ export function useDistrictWorkspace(
       if (districtId) {
         await queryClient.invalidateQueries({ queryKey: districtQueryKeys.groups(districtId) });
       }
+    },
+    onError: (err) => {
+      console.error('Group mutation failed:', err);
+      if (districtId) queryClient.invalidateQueries({ queryKey: districtQueryKeys.groups(districtId) });
     },
   });
 
@@ -335,6 +361,10 @@ export function useDistrictWorkspace(
         ]);
       }
     },
+    onError: (err) => {
+      console.error('Group mutation failed:', err);
+      if (districtId) queryClient.invalidateQueries({ queryKey: districtQueryKeys.groups(districtId) });
+    },
   });
 
   const createHokimMutation = useMutation({
@@ -349,6 +379,10 @@ export function useDistrictWorkspace(
           invalidateReadiness(),
         ]);
       }
+    },
+    onError: (err) => {
+      console.error('Hokim mutation failed:', err);
+      if (districtId) queryClient.invalidateQueries({ queryKey: districtQueryKeys.hokim(districtId) });
     },
   });
 
@@ -365,6 +399,10 @@ export function useDistrictWorkspace(
         ]);
       }
     },
+    onError: (err) => {
+      console.error('Hokim mutation failed:', err);
+      if (districtId) queryClient.invalidateQueries({ queryKey: districtQueryKeys.hokim(districtId) });
+    },
   });
 
   const disableHokimMutation = useMutation({
@@ -380,6 +418,10 @@ export function useDistrictWorkspace(
         ]);
       }
     },
+    onError: (err) => {
+      console.error('Hokim mutation failed:', err);
+      if (districtId) queryClient.invalidateQueries({ queryKey: districtQueryKeys.hokim(districtId) });
+    },
   });
 
   const replaceHokimMutation = useMutation({
@@ -394,6 +436,10 @@ export function useDistrictWorkspace(
           invalidateReadiness(),
         ]);
       }
+    },
+    onError: (err) => {
+      console.error('Hokim mutation failed:', err);
+      if (districtId) queryClient.invalidateQueries({ queryKey: districtQueryKeys.hokim(districtId) });
     },
   });
 

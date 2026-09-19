@@ -42,6 +42,7 @@ export function useSignalMessages(
   return useQuery<ListSignalsResponse>({
     queryKey: signalQueryKeys.list(filters),
     queryFn: () => listSignals(filters),
+    networkMode: 'online',
     staleTime: 10_000,
     placeholderData: keepPreviousData,
     refetchInterval: options?.refetchInterval ?? false,
@@ -66,8 +67,12 @@ export function usePromoteSignal() {
     mutationFn: ({ id, payload }) => promoteSignal(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: signalQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['topics'] });
-      queryClient.invalidateQueries({ queryKey: ['ai-operations'] });
+      queryClient.invalidateQueries({ queryKey: ['district-topics'] });
+      queryClient.invalidateQueries({ queryKey: ['hokim-board'] });
+      queryClient.invalidateQueries({ queryKey: ['hokim-statistics'] });
+    },
+    onError: (error) => {
+      console.error('Signal mutation failed:', error);
     },
   });
 }
@@ -82,8 +87,14 @@ export function useReclassifyEvidence() {
     mutationFn: ({ id, payload }) => reclassifyEvidence(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: signalQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['topics'] });
-      queryClient.invalidateQueries({ queryKey: ['ai-operations'] });
+      queryClient.invalidateQueries({ queryKey: ['district-topics'] });
+      queryClient.invalidateQueries({ queryKey: ['district-topic-evidence'] });
+      queryClient.invalidateQueries({ queryKey: ['topic-evidence'] });
+      queryClient.invalidateQueries({ queryKey: ['hokim-board'] });
+      queryClient.invalidateQueries({ queryKey: ['hokim-statistics'] });
+    },
+    onError: (error) => {
+      console.error('Signal mutation failed:', error);
     },
   });
 }
@@ -94,8 +105,11 @@ export function useUpdateEvidenceText() {
     mutationFn: ({ id, payload }) => updateEvidenceText(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: signalQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['topics'] });
-      queryClient.invalidateQueries({ queryKey: ['ai-operations'] });
+      queryClient.invalidateQueries({ queryKey: ['district-topic-evidence'] });
+      queryClient.invalidateQueries({ queryKey: ['topic-evidence'] });
+    },
+    onError: (error) => {
+      console.error('Signal mutation failed:', error);
     },
   });
 }
@@ -110,8 +124,14 @@ export function useDeleteEvidence() {
     mutationFn: ({ id, payload }) => deleteEvidence(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: signalQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['topics'] });
-      queryClient.invalidateQueries({ queryKey: ['ai-operations'] });
+      queryClient.invalidateQueries({ queryKey: ['district-topics'] });
+      queryClient.invalidateQueries({ queryKey: ['district-topic-evidence'] });
+      queryClient.invalidateQueries({ queryKey: ['topic-evidence'] });
+      queryClient.invalidateQueries({ queryKey: ['hokim-board'] });
+      queryClient.invalidateQueries({ queryKey: ['hokim-statistics'] });
+    },
+    onError: (error) => {
+      console.error('Signal mutation failed:', error);
     },
   });
 }
@@ -122,8 +142,9 @@ export function useCreateManualSignal() {
     mutationFn: (payload) => createManualSignal(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: signalQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['topics'] });
-      queryClient.invalidateQueries({ queryKey: ['ai-operations'] });
+    },
+    onError: (error) => {
+      console.error('Signal mutation failed:', error);
     },
   });
 }
@@ -139,9 +160,10 @@ export function useBatchDeleteSignals() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: signalQueryKeys.all }),
-        queryClient.invalidateQueries({ queryKey: ['topics'] }),
-        queryClient.invalidateQueries({ queryKey: ['ai-operations'] }),
       ]);
+    },
+    onError: (error) => {
+      console.error('Signal mutation failed:', error);
     },
   });
 }

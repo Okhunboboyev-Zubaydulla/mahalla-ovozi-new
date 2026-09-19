@@ -9,6 +9,7 @@ import {
 } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { districtClient } from '../district/district-client.js';
+import { districtQueryKeys } from '../district/query-keys.js';
 import { useDistrict } from '../district/district-context.js';
 import { useDirtyState } from '../district/useDirtyState.js';
 import {
@@ -72,7 +73,7 @@ export const EditDistrictDrawer: React.FC<EditDistrictDrawerProps> = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['districts'] });
       if (district?.id) {
-        queryClient.invalidateQueries({ queryKey: ['district', district.id] });
+        queryClient.invalidateQueries({ queryKey: districtQueryKeys.district(district.id) });
       }
       form.resetFields();
       setFieldErrors({});
