@@ -2,6 +2,8 @@ import { sql } from 'drizzle-orm';
 import { pgTable, text, timestamp, jsonb, uniqueIndex, index, check } from 'drizzle-orm/pg-core';
 import { districts } from './districts.js';
 
+export type TelegramIntakeSource = 'BOT_API' | 'USERBOT';
+
 export const telegramIntakeRecords = pgTable(
   'telegram_intake_records',
   {
@@ -10,7 +12,14 @@ export const telegramIntakeRecords = pgTable(
       .notNull()
       .references(() => districts.id, { onDelete: 'cascade' }),
     mahallaName: text('mahalla_name').notNull(),
-    telegramBotId: text('telegram_bot_id').notNull(),
+    source: text('source').$type<TelegramIntakeSource>().notNull().default('BOT_API'),
+    /**
+     * Bot identity attribution (BOT_API-only).
+     * Strictly required (NOT NULL) when source = 'BOT_API'; strictly null when source = 'USERBOT'.
+     * Enforced at the database level by telegram_intakes_bot_id_source_consistency_check.
+     * Historical BOT_API records preserve this attribution.
+     */
+    telegramBotId: text('telegram_bot_id'),
     telegramChatId: text('telegram_chat_id').notNull(),
     telegramMessageId: text('telegram_message_id').notNull(),
     updateId: text('update_id'),
@@ -25,6 +34,16 @@ export const telegramIntakeRecords = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    // Source check constraint: explicit source discriminator
+    check(
+      'telegram_intakes_source_check',
+      sql`${table.source} IN ('BOT_API', 'USERBOT')`,
+    ),
+    // Bot ID consistency constraint: BOT_API requires bot identity, USERBOT must not have bot identity
+    check(
+      'telegram_intakes_bot_id_source_consistency_check',
+      sql`(${table.source} = 'BOT_API' AND ${table.telegramBotId} IS NOT NULL) OR (${table.source} = 'USERBOT' AND ${table.telegramBotId} IS NULL)`,
+    ),
     // Status check constraint: explicit finite states
     check(
       'telegram_intakes_status_check',

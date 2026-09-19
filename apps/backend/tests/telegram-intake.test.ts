@@ -213,6 +213,7 @@ describe('Story 2.1: Telegram Webhook Ingress & Durability Integration Tests', (
     expect(record).toBeDefined();
     expect(record?.mahallaName).toBe('Navbahor');
     expect(record?.telegramBotId).toBe(activeBotId);
+    expect(record?.source).toBe('BOT_API');
     expect(record?.calendarDay).toBe('2026-08-21');
     expect(record?.telegramUserId).toBe('888123');
     expect(record?.updateId).toBe('5001');
@@ -749,5 +750,174 @@ describe('Story 2.1: Telegram Webhook Ingress & Durability Integration Tests', (
     const citizenBody = resCitizen.json();
     expect(citizenBody.ok).toBe(true);
     expect(citizenBody.status).toBe('ACCEPTED');
+  });
+
+  // Test 13 (Ticket 03): Source discriminator defaults to BOT_API, supports USERBOT
+  it('Test 13: Intake records persist source, support USERBOT, and enforce bot-id consistency', async () => {
+    const intakeIdDefault = `intk_src_def_${crypto.randomUUID()}`;
+    const intakeIdUserbot = `intk_src_ub_${crypto.randomUUID()}`;
+    const now = new Date();
+
+    // 1. Insert with BOT_API source and non-null telegramBotId
+    await db.insert(telegramIntakeRecords).values({
+      id: intakeIdDefault,
+      districtId: activeDistrictId,
+      mahallaName: 'Navbahor',
+      source: 'BOT_API',
+      telegramBotId: 'test_bot_13',
+      telegramChatId: validChatId,
+      telegramMessageId: `msg_${Date.now()}_1`,
+      originalTimestamp: now,
+      calendarDay: '2026-08-21',
+      rawPayload: { text: 'Default source test' },
+    });
+
+    const [defaultRec] = await db
+      .select()
+      .from(telegramIntakeRecords)
+      .where(eq(telegramIntakeRecords.id, intakeIdDefault));
+
+    expect(defaultRec).toBeDefined();
+    expect(defaultRec?.source).toBe('BOT_API');
+    expect(defaultRec?.telegramBotId).toBe('test_bot_13');
+
+    // 2. Insert with explicit USERBOT source and null telegramBotId
+    await db.insert(telegramIntakeRecords).values({
+      id: intakeIdUserbot,
+      districtId: activeDistrictId,
+      mahallaName: 'Navbahor',
+      source: 'USERBOT',
+      telegramBotId: null,
+      telegramChatId: validChatId,
+      telegramMessageId: `msg_${Date.now()}_2`,
+      originalTimestamp: now,
+      calendarDay: '2026-08-21',
+      rawPayload: { text: 'Userbot source test' },
+    });
+
+    const [userbotRec] = await db
+      .select()
+      .from(telegramIntakeRecords)
+      .where(eq(telegramIntakeRecords.id, intakeIdUserbot));
+
+    expect(userbotRec).toBeDefined();
+    expect(userbotRec?.source).toBe('USERBOT');
+    expect(userbotRec?.telegramBotId).toBeNull();
+
+    // 3. Invalid source is rejected by check constraint
+    await expect(
+      db.insert(telegramIntakeRecords).values({
+        id: `intk_src_inv_${crypto.randomUUID()}`,
+        districtId: activeDistrictId,
+        mahallaName: 'Navbahor',
+        source: 'INVALID_SOURCE' as any,
+        telegramChatId: validChatId,
+        telegramMessageId: `msg_${Date.now()}_3`,
+        originalTimestamp: now,
+        calendarDay: '2026-08-21',
+        rawPayload: { text: 'Invalid source test' },
+      }),
+    ).rejects.toThrow();
+
+    // Clean up
+    await db.delete(telegramIntakeRecords).where(eq(telegramIntakeRecords.id, intakeIdDefault));
+    await db.delete(telegramIntakeRecords).where(eq(telegramIntakeRecords.id, intakeIdUserbot));
+  });
+
+  // Test 14 (Ticket 10): Bot-id source consistency check constraint enforcement
+  it('Test 14: Enforces telegram_intakes_bot_id_source_consistency_check constraint on BOT_API and USERBOT', async () => {
+    const intakeIdBotValid = `intk_t14_bv_${crypto.randomUUID()}`;
+    const intakeIdBotInvalid = `intk_t14_bi_${crypto.randomUUID()}`;
+    const intakeIdUserbotValid = `intk_t14_uv_${crypto.randomUUID()}`;
+    const intakeIdUserbotInvalid = `intk_t14_ui_${crypto.randomUUID()}`;
+    const now = new Date();
+
+    // 1. Valid BOT_API record with non-null telegramBotId succeeds
+    await db.insert(telegramIntakeRecords).values({
+      id: intakeIdBotValid,
+      districtId: activeDistrictId,
+      mahallaName: 'Navbahor',
+      source: 'BOT_API',
+      telegramBotId: 'bot_valid_14',
+      telegramChatId: validChatId,
+      telegramMessageId: `msg_${Date.now()}_14_1`,
+      originalTimestamp: now,
+      calendarDay: '2026-08-21',
+      rawPayload: { text: 'Valid BOT_API record' },
+    });
+
+    const [botRecord] = await db
+      .select()
+      .from(telegramIntakeRecords)
+      .where(eq(telegramIntakeRecords.id, intakeIdBotValid));
+    expect(botRecord?.telegramBotId).toBe('bot_valid_14');
+    expect(botRecord?.source).toBe('BOT_API');
+
+    // 2. Invalid BOT_API record with null telegramBotId fails with constraint violation
+    let botNullErr: any;
+    try {
+      await db.insert(telegramIntakeRecords).values({
+        id: intakeIdBotInvalid,
+        districtId: activeDistrictId,
+        mahallaName: 'Navbahor',
+        source: 'BOT_API',
+        telegramBotId: null,
+        telegramChatId: validChatId,
+        telegramMessageId: `msg_${Date.now()}_14_2`,
+        originalTimestamp: now,
+        calendarDay: '2026-08-21',
+        rawPayload: { text: 'Invalid BOT_API record' },
+      });
+    } catch (e) {
+      botNullErr = e;
+    }
+    expect(botNullErr).toBeDefined();
+    expect(botNullErr?.cause?.constraint).toBe('telegram_intakes_bot_id_source_consistency_check');
+
+    // 3. Valid USERBOT record with null telegramBotId succeeds
+    await db.insert(telegramIntakeRecords).values({
+      id: intakeIdUserbotValid,
+      districtId: activeDistrictId,
+      mahallaName: 'Navbahor',
+      source: 'USERBOT',
+      telegramBotId: null,
+      telegramChatId: validChatId,
+      telegramMessageId: `msg_${Date.now()}_14_3`,
+      originalTimestamp: now,
+      calendarDay: '2026-08-21',
+      rawPayload: { text: 'Valid USERBOT record' },
+    });
+
+    const [userbotRecord] = await db
+      .select()
+      .from(telegramIntakeRecords)
+      .where(eq(telegramIntakeRecords.id, intakeIdUserbotValid));
+    expect(userbotRecord?.telegramBotId).toBeNull();
+    expect(userbotRecord?.source).toBe('USERBOT');
+
+    // 4. Invalid USERBOT record with non-null telegramBotId fails with constraint violation
+    let userbotNonEmptyErr: any;
+    try {
+      await db.insert(telegramIntakeRecords).values({
+        id: intakeIdUserbotInvalid,
+        districtId: activeDistrictId,
+        mahallaName: 'Navbahor',
+        source: 'USERBOT',
+        telegramBotId: 'illegal_bot_id',
+        telegramChatId: validChatId,
+        telegramMessageId: `msg_${Date.now()}_14_4`,
+        originalTimestamp: now,
+        calendarDay: '2026-08-21',
+        rawPayload: { text: 'Invalid USERBOT record' },
+      });
+    } catch (e) {
+      userbotNonEmptyErr = e;
+    }
+    expect(userbotNonEmptyErr).toBeDefined();
+    expect(userbotNonEmptyErr?.cause?.constraint).toBe('telegram_intakes_bot_id_source_consistency_check');
+
+    // Clean up
+    await db.delete(telegramIntakeRecords).where(eq(telegramIntakeRecords.id, intakeIdBotValid));
+    await db.delete(telegramIntakeRecords).where(eq(telegramIntakeRecords.id, intakeIdUserbotValid));
   });
 });

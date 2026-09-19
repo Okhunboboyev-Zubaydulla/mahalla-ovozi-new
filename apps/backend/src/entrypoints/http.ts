@@ -28,6 +28,7 @@ import { registerDistrictTopicsRoutes } from '../modules/topics/district-topics-
 import { registerAdminSignalsRoutes } from '../modules/topics/admin-signals-routes.js';
 import { registerDistrictAnalysisSettingsRoutes } from '../modules/ai/district-analysis-settings-routes.js';
 import { registerSubscriptionRoutes } from '../modules/subscriptions/subscriptions-routes.js';
+import { registerUserbotSessionRoutes } from '../modules/userbot-session/userbot-session-routes.js';
 import type { BackupRetentionVerifier } from '../modules/subscriptions/ports/backup-retention-verifier.js';
 import type { ExternalTombstoneStore } from '../adapters/storage/external-tombstone-store.js';
 import { createBossClient, initBossQueues } from '../adapters/jobs/boss-client.js';
@@ -82,6 +83,7 @@ export function registerAllDomainRoutes(
     backupVerifier: ctx.backupVerifier,
     tombstoneStore: ctx.tombstoneStore,
   });
+  registerUserbotSessionRoutes(server, ctx.db);
 }
 
 export async function buildHttpServer(options?: {

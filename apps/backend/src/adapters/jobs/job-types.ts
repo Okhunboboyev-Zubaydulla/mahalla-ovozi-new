@@ -9,8 +9,9 @@
  * in BossQueueMap without a circular import.
  */
 import type { QualifyingLane, TelegramReplyMetadata } from '@mahalla-ovozi/api-contracts';
+import type { TelegramIntakeSource } from '../db/schema/telegram-intakes.js';
 
-export type { TelegramReplyMetadata };
+export type { TelegramReplyMetadata, TelegramIntakeSource };
 
 // ---------------------------------------------------------------------------
 // Queue name constants
@@ -108,7 +109,8 @@ export interface TelegramBurstDebounceJobData {
   calendarDay: string;
   telegramChatId: string;
   telegramUserId?: string | null;
-  telegramBotId: string;
+  source: TelegramIntakeSource;
+  telegramBotId?: string | null;
   firstMessageTimestamp: string;
   issueId?: string;
 }

@@ -20,11 +20,11 @@ export type {
   TelegramIncomingMessage,
 } from '../../adapters/telegram/telegram-types.js';
 
-// Only import what the module body actually references.
 import type {
   TelegramMessage,
   TelegramIncomingMessage,
 } from '../../adapters/telegram/telegram-types.js';
+import type { TelegramIntakeSource } from '../../adapters/db/schema/telegram-intakes.js';
 
 export type StructuralExclusionReason =
   | 'FORWARDED_MESSAGE'
@@ -69,7 +69,8 @@ export interface TelegramIntakeRecordInput {
   districtId: string;
   mahallaName: string;
   calendarDay: string;
-  telegramBotId: string;
+  source: TelegramIntakeSource;
+  telegramBotId?: string | null;
   telegramChatId: string;
   telegramMessageId: string;
   updateId?: string | null;

@@ -62,6 +62,7 @@ describe('TelegramGroupDrawer Component Tests', () => {
         status: 'VALID',
         botMembershipStatus: 'member',
         privacyModeDisabled: true,
+        transport: 'BOT_API',
         testMessageReceivedAt: null,
         lastValidatedAt: '2026-08-18T10:00:00.000Z',
         lastError: null,
@@ -93,9 +94,107 @@ describe('TelegramGroupDrawer Component Tests', () => {
       expect(createGroupSpy).toHaveBeenCalledWith('dist_test_1', {
         mahallaName: 'Янгиобод',
         telegramChatId: '-1001112223334',
+        transport: 'BOT_API',
       });
       expect(onGroupSavedMock).toHaveBeenCalledTimes(1);
       expect(onCloseMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('allows selecting USERBOT transport and submits with transport: USERBOT', async () => {
+    const onGroupSavedMock = vi.fn();
+    const onCloseMock = vi.fn();
+
+    const createGroupSpy = vi.spyOn(telegramGroupClient, 'createGroup').mockResolvedValue({
+      group: {
+        id: 'grp_new_userbot',
+        districtId: 'dist_test_1',
+        mahallaName: 'Userbot Mahalla',
+        telegramChatId: '-1001112223334',
+        telegramChatTitle: 'Userbot Mahalla Chat',
+        telegramChatUsername: null,
+        status: 'VALID',
+        botMembershipStatus: null,
+        privacyModeDisabled: false,
+        transport: 'USERBOT',
+        testMessageReceivedAt: null,
+        lastValidatedAt: null,
+        lastError: null,
+        createdAt: '2026-08-18T10:00:00.000Z',
+        updatedAt: '2026-08-18T10:00:00.000Z',
+      },
+    });
+
+    render(
+      <ConfigProvider theme={mahallaTheme}>
+        <TelegramGroupDrawer
+          open={true}
+          onClose={onCloseMock}
+          districtId="dist_test_1"
+          onGroupSaved={onGroupSavedMock}
+        />
+      </ConfigProvider>,
+    );
+
+    const mahallaInput = screen.getByPlaceholderText('Масалан: Навбаҳор');
+    const chatIdInput = screen.getByPlaceholderText('Масалан: -1001234567890');
+
+    fireEvent.change(mahallaInput, { target: { value: 'Userbot Mahalla' } });
+    fireEvent.change(chatIdInput, { target: { value: '-1001112223334' } });
+
+    const combobox = screen.getByRole('combobox');
+    fireEvent.mouseDown(combobox);
+    const userbotOption = await screen.findByText('Userbot');
+    fireEvent.click(userbotOption);
+
+    fireEvent.click(screen.getByText('Текшириш ва бириктириш'));
+
+    await waitFor(() => {
+      expect(createGroupSpy).toHaveBeenCalledWith('dist_test_1', {
+        mahallaName: 'Userbot Mahalla',
+        telegramChatId: '-1001112223334',
+        transport: 'USERBOT',
+      });
+      expect(onGroupSavedMock).toHaveBeenCalledTimes(1);
+      expect(onCloseMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('surfaces USERBOT_SESSION_NOT_ACTIVE refusal message to the operator when backend rejects USERBOT', async () => {
+    const onCloseMock = vi.fn();
+    const refusalReason = 'Туманда Userbot сессияси мавжуд эмас (District ID: dist_test_1).';
+
+    vi.spyOn(telegramGroupClient, 'createGroup').mockRejectedValue(
+      new Error(refusalReason),
+    );
+
+    render(
+      <ConfigProvider theme={mahallaTheme}>
+        <TelegramGroupDrawer
+          open={true}
+          onClose={onCloseMock}
+          districtId="dist_test_1"
+        />
+      </ConfigProvider>,
+    );
+
+    const mahallaInput = screen.getByPlaceholderText('Масалан: Навбаҳор');
+    const chatIdInput = screen.getByPlaceholderText('Масалан: -1001234567890');
+
+    fireEvent.change(mahallaInput, { target: { value: 'Refused Mahalla' } });
+    fireEvent.change(chatIdInput, { target: { value: '-1009998887776' } });
+
+    const combobox = screen.getByRole('combobox');
+    fireEvent.mouseDown(combobox);
+    const userbotOption = await screen.findByText('Userbot');
+    fireEvent.click(userbotOption);
+
+    fireEvent.click(screen.getByText('Текшириш ва бириктириш'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Бириктиришда хатолик')).toBeDefined();
+      expect(screen.getByText(refusalReason)).toBeDefined();
+      expect(onCloseMock).not.toHaveBeenCalled();
     });
   });
 
@@ -114,6 +213,7 @@ describe('TelegramGroupDrawer Component Tests', () => {
         status: 'VALID',
         botMembershipStatus: 'member',
         privacyModeDisabled: true,
+        transport: 'BOT_API',
         testMessageReceivedAt: null,
         lastValidatedAt: '2026-08-18T10:00:00.000Z',
         lastError: null,
@@ -139,6 +239,7 @@ describe('TelegramGroupDrawer Component Tests', () => {
             status: 'VALID',
             botMembershipStatus: 'member',
             privacyModeDisabled: true,
+            transport: 'BOT_API',
             testMessageReceivedAt: null,
             lastValidatedAt: null,
             lastError: null,
@@ -162,6 +263,7 @@ describe('TelegramGroupDrawer Component Tests', () => {
       expect(updateGroupSpy).toHaveBeenCalledWith('dist_test_1', 'grp_edit', {
         mahallaName: 'Гулистон Янги',
         telegramChatId: '-1005556667778',
+        transport: 'BOT_API',
       });
       expect(onGroupSavedMock).toHaveBeenCalledTimes(1);
       expect(onCloseMock).toHaveBeenCalledTimes(1);

@@ -617,7 +617,10 @@ describe('Story 6.6: Reconcile Disaster Restores Before Re-Enabling Service Inte
       .where(eq(auditEvents.action, 'DISTRICT_RESTORE_RECONCILED'));
 
     expect(auditLogs.length).toBeGreaterThanOrEqual(1);
-    const lastAudit = auditLogs[auditLogs.length - 1];
+    const lastAudit =
+      auditLogs.find((a) =>
+        (a.metadata as any)?.resurrectedDistrictsPurged?.includes(districtId),
+      ) || auditLogs[auditLogs.length - 1];
     expect(lastAudit).toBeDefined();
     expect(lastAudit!.districtId).toBeNull();
     expect(lastAudit!.actorRole).toBe('PRODUCT_OWNER');

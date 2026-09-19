@@ -19,6 +19,7 @@ import {
   GroupAlreadyMappedError,
   GroupAlreadyAssignedError,
   BotNotConnectedError,
+  UserbotSessionNotActiveError,
 } from './telegram-groups-service.js';
 import {
   startGroupTestSession,
@@ -381,6 +382,12 @@ function handleGroupRouteError(err: unknown, reply: FastifyReply) {
   if (err instanceof BotNotConnectedError) {
     return reply.status(400).send({
       error: { code: 'TELEGRAM_BOT_NOT_FOUND', message: err.message },
+    });
+  }
+
+  if (err instanceof UserbotSessionNotActiveError) {
+    return reply.status(400).send({
+      error: { code: 'USERBOT_SESSION_NOT_ACTIVE', message: err.message },
     });
   }
 

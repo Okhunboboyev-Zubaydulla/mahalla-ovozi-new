@@ -38,6 +38,7 @@ const mockGroups: TelegramGroupMapping[] = [
     status: 'VALID',
     botMembershipStatus: 'member',
     privacyModeDisabled: true,
+    transport: 'BOT_API',
     testMessageReceivedAt: '2026-08-18T10:00:00.000Z',
     lastValidatedAt: '2026-08-18T10:00:00.000Z',
     lastError: null,
@@ -54,6 +55,7 @@ const mockGroups: TelegramGroupMapping[] = [
     status: 'PENDING',
     botMembershipStatus: 'member',
     privacyModeDisabled: true,
+    transport: 'BOT_API',
     testMessageReceivedAt: null,
     lastValidatedAt: null,
     lastError: null,
@@ -129,6 +131,26 @@ describe('TelegramGroupTable Component Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Маҳалла Telegram гуруҳини бириктириш')).toBeDefined();
+    });
+  });
+
+  it('renders transport tags for BOT_API and USERBOT in the table', async () => {
+    const mixedGroups: TelegramGroupMapping[] = [
+      {
+        ...mockGroups[0]!,
+        transport: 'BOT_API',
+      },
+      {
+        ...mockGroups[1]!,
+        transport: 'USERBOT',
+      },
+    ];
+
+    renderTable(mixedGroups);
+
+    await waitFor(() => {
+      expect(screen.getByText('BOT_API')).toBeDefined();
+      expect(screen.getByText('USERBOT')).toBeDefined();
     });
   });
 });

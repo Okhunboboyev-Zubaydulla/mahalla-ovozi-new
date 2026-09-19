@@ -82,6 +82,31 @@ services:
     networks:
       - mahalla-net
 
+  userbot:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: runner
+    container_name: mahalla-userbot
+    restart: unless-stopped
+    command: ["pnpm", "--filter", "@mahalla-ovozi/backend", "exec", "node", "--import", "tsx/esm", "src/entrypoints/userbot.ts"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: "--dns-result-order=ipv4first"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mahalla_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mahalla_ovozi}
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    networks:
+      - mahalla-net
+
   caddy:
     build:
       context: ../..

@@ -152,6 +152,18 @@ export function TelegramGroupTable({ districtId, isOffline: isOfflineProp }: Tel
       ),
     },
     {
+      title: 'Транспорт',
+      dataIndex: 'transport',
+      key: 'transport',
+      width: '12%',
+      render: (transport: TelegramGroupMapping['transport']) =>
+        transport === 'USERBOT' ? (
+          <Tag color="purple">USERBOT</Tag>
+        ) : (
+          <Tag color="blue">BOT_API</Tag>
+        ),
+    },
+    {
       title: 'Махфийлик режими',
       dataIndex: 'privacyModeDisabled',
       key: 'privacyModeDisabled',
@@ -303,7 +315,12 @@ export function TelegramGroupTable({ districtId, isOffline: isOfflineProp }: Tel
                     <Text strong style={{ fontSize: '16px' }}>
                       {group.mahallaName}
                     </Text>
-                    {renderStatusTag(group.status)}
+                    <Space>
+                      <Tag color={group.transport === 'USERBOT' ? 'purple' : 'blue'}>
+                        {group.transport ?? 'BOT_API'}
+                      </Tag>
+                      {renderStatusTag(group.status)}
+                    </Space>
                   </div>
                   <div>
                     <Text type="secondary">Гуруҳ: </Text>

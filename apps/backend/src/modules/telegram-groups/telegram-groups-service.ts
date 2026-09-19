@@ -5,7 +5,9 @@ import {
   districts,
   districtTelegramBots,
   districtTelegramGroups,
+  districtTelegramUserbotSessions,
   DistrictTelegramGroup,
+  GroupTransport,
 } from '../../adapters/db/schema/index.js';
 import {
   TelegramGroupMapping,
@@ -64,6 +66,18 @@ export class BotNotConnectedError extends Error {
   }
 }
 
+export class UserbotSessionNotActiveError extends Error {
+  readonly code = 'USERBOT_SESSION_NOT_ACTIVE' as const;
+  constructor(districtId: string, status?: string) {
+    super(
+      status
+        ? `Туманда Userbot сессияси фаол эмас (District ID: ${districtId}, ҳолати: ${status}).`
+        : `Туманда Userbot сессияси мавжуд эмас (District ID: ${districtId}).`,
+    );
+    this.name = 'UserbotSessionNotActiveError';
+  }
+}
+
 export interface Actor {
   id: string;
   role: string;
@@ -115,6 +129,7 @@ export function formatTelegramGroup(row: DistrictTelegramGroup): TelegramGroupMa
     telegramChatTitle: row.telegramChatTitle,
     telegramChatUsername: row.telegramChatUsername || null,
     status: TelegramGroupStatusSchema.parse(row.status),
+    transport: row.transport,
     botMembershipStatus: row.botMembershipStatus || null,
     privacyModeDisabled: row.privacyModeDisabled,
     testMessageReceivedAt: row.testMessageReceivedAt ? row.testMessageReceivedAt.toISOString() : null,
@@ -198,30 +213,52 @@ export async function createDistrictTelegramGroup(
     throw new DistrictNotFoundError(districtId);
   }
 
-  const [botRow] = await db
-    .select()
-    .from(districtTelegramBots)
-    .where(eq(districtTelegramBots.districtId, districtId))
-    .limit(1);
-
-  if (!botRow || botRow.status !== 'VALID') {
-    throw new BotNotConnectedError(districtId);
-  }
-
-  const token = decryptToken({
-    encryptedToken: botRow.encryptedToken,
-    tokenIv: botRow.tokenIv,
-    tokenTag: botRow.tokenTag,
-  });
-
   const trimmedChatId = input.telegramChatId.trim();
   const trimmedMahalla = input.mahallaName.trim();
+  const transport: GroupTransport = input.transport ?? 'BOT_API';
 
-  const { chatTitle, chatUsername, isPrivacyDisabled } = await validateGroupChatWithTelegram(
-    token,
-    trimmedChatId,
-    botRow.botId,
-  );
+  let chatTitle = trimmedMahalla;
+  let chatUsername: string | null = null;
+  let isPrivacyDisabled = false;
+  let botMembershipStatus: string | null = null;
+
+  if (transport === 'USERBOT') {
+    const [session] = await db
+      .select({ id: districtTelegramUserbotSessions.id, status: districtTelegramUserbotSessions.status })
+      .from(districtTelegramUserbotSessions)
+      .where(eq(districtTelegramUserbotSessions.districtId, districtId))
+      .limit(1);
+
+    if (!session || session.status !== 'ACTIVE') {
+      throw new UserbotSessionNotActiveError(districtId, session?.status);
+    }
+  } else {
+    const [botRow] = await db
+      .select()
+      .from(districtTelegramBots)
+      .where(eq(districtTelegramBots.districtId, districtId))
+      .limit(1);
+
+    if (!botRow || botRow.status !== 'VALID') {
+      throw new BotNotConnectedError(districtId);
+    }
+
+    const token = decryptToken({
+      encryptedToken: botRow.encryptedToken,
+      tokenIv: botRow.tokenIv,
+      tokenTag: botRow.tokenTag,
+    });
+
+    const validated = await validateGroupChatWithTelegram(
+      token,
+      trimmedChatId,
+      botRow.botId,
+    );
+    chatTitle = validated.chatTitle;
+    chatUsername = validated.chatUsername;
+    isPrivacyDisabled = validated.isPrivacyDisabled;
+    botMembershipStatus = 'member';
+  }
 
   const groupId = `dtg_${crypto.randomUUID()}`;
   const now = new Date();
@@ -269,7 +306,8 @@ export async function createDistrictTelegramGroup(
           telegramChatTitle: chatTitle,
           telegramChatUsername: chatUsername,
           status: 'VALID',
-          botMembershipStatus: 'member',
+          transport,
+          botMembershipStatus,
           privacyModeDisabled: isPrivacyDisabled,
           lastValidatedAt: now,
           createdAt: now,
@@ -280,6 +318,7 @@ export async function createDistrictTelegramGroup(
       savedRow = inserted;
 
       await recordAuditEvent(tx, {
+        districtId,
         actorId: actor?.id || null,
         actorRole: actor?.role || null,
         action: 'DISTRICT_GROUP_MAPPED',
@@ -289,6 +328,7 @@ export async function createDistrictTelegramGroup(
           mahallaName: trimmedMahalla,
           telegramChatId: trimmedChatId,
           telegramChatTitle: chatTitle,
+          transport,
         },
         ipAddress: clientInfo?.ipAddress || null,
         userAgent: clientInfo?.userAgent || null,
@@ -343,23 +383,47 @@ export async function updateDistrictTelegramGroup(
     throw new TelegramGroupNotFoundError(groupId);
   }
 
+  const newMahallaName = input.mahallaName ? input.mahallaName.trim() : group.mahallaName;
+  const newChatId = input.telegramChatId ? input.telegramChatId.trim() : group.telegramChatId;
+  const newTransport = input.transport !== undefined ? input.transport : group.transport;
+  const isChatChanged = newChatId !== group.telegramChatId;
+  const isMahallaChanged = newMahallaName.toLowerCase() !== group.mahallaName.toLowerCase();
+  const isTransportChanged = newTransport !== group.transport;
+
+  if (
+    !isChatChanged &&
+    !isMahallaChanged &&
+    !isTransportChanged &&
+    input.mahallaName === undefined &&
+    input.telegramChatId === undefined &&
+    input.transport === undefined
+  ) {
+    return formatTelegramGroup(group);
+  }
+
+  // When setting/switching transport to 'USERBOT', verify that the District has an active userbot session
+  if ((isTransportChanged || input.transport === 'USERBOT') && newTransport === 'USERBOT') {
+    const [session] = await db
+      .select({ id: districtTelegramUserbotSessions.id, status: districtTelegramUserbotSessions.status })
+      .from(districtTelegramUserbotSessions)
+      .where(eq(districtTelegramUserbotSessions.districtId, districtId))
+      .limit(1);
+
+    if (!session || session.status !== 'ACTIVE') {
+      throw new UserbotSessionNotActiveError(districtId, session?.status);
+    }
+  }
+
   const [botRow] = await db
     .select()
     .from(districtTelegramBots)
     .where(eq(districtTelegramBots.districtId, districtId))
     .limit(1);
 
-  if (!botRow || botRow.status !== 'VALID') {
-    throw new BotNotConnectedError(districtId);
-  }
-
-  const newMahallaName = input.mahallaName ? input.mahallaName.trim() : group.mahallaName;
-  const newChatId = input.telegramChatId ? input.telegramChatId.trim() : group.telegramChatId;
-  const isChatChanged = newChatId !== group.telegramChatId;
-  const isMahallaChanged = newMahallaName.toLowerCase() !== group.mahallaName.toLowerCase();
-
-  if (!isChatChanged && !isMahallaChanged && input.mahallaName === undefined && input.telegramChatId === undefined) {
-    return formatTelegramGroup(group);
+  if ((isChatChanged && newTransport === 'BOT_API') || (isTransportChanged && newTransport === 'BOT_API')) {
+    if (!botRow || botRow.status !== 'VALID') {
+      throw new BotNotConnectedError(districtId);
+    }
   }
 
   let chatInfo = {
@@ -367,20 +431,39 @@ export async function updateDistrictTelegramGroup(
     chatUsername: group.telegramChatUsername,
   };
   let isPrivacyDisabled = group.privacyModeDisabled;
+  let botMembershipStatus = group.botMembershipStatus;
 
   if (isChatChanged) {
-    const token = decryptToken({
-      encryptedToken: botRow.encryptedToken,
-      tokenIv: botRow.tokenIv,
-      tokenTag: botRow.tokenTag,
-    });
+    if (newTransport === 'BOT_API') {
+      if (!botRow || botRow.status !== 'VALID') {
+        throw new BotNotConnectedError(districtId);
+      }
+      const token = decryptToken({
+        encryptedToken: botRow.encryptedToken,
+        tokenIv: botRow.tokenIv,
+        tokenTag: botRow.tokenTag,
+      });
 
-    const validated = await validateGroupChatWithTelegram(token, newChatId, botRow.botId);
-    isPrivacyDisabled = validated.isPrivacyDisabled;
-    chatInfo = {
-      chatTitle: validated.chatTitle,
-      chatUsername: validated.chatUsername,
-    };
+      const validated = await validateGroupChatWithTelegram(token, newChatId, botRow.botId);
+      isPrivacyDisabled = validated.isPrivacyDisabled;
+      chatInfo = {
+        chatTitle: validated.chatTitle,
+        chatUsername: validated.chatUsername,
+      };
+      botMembershipStatus = 'member';
+    } else {
+      chatInfo = {
+        chatTitle: newMahallaName,
+        chatUsername: null,
+      };
+      isPrivacyDisabled = false;
+      botMembershipStatus = null;
+    }
+  } else if (isTransportChanged) {
+    if (newTransport === 'USERBOT') {
+      botMembershipStatus = null;
+      isPrivacyDisabled = false;
+    }
   }
 
   const now = new Date();
@@ -427,8 +510,9 @@ export async function updateDistrictTelegramGroup(
         telegramChatId: newChatId,
         telegramChatTitle: chatInfo.chatTitle,
         telegramChatUsername: chatInfo.chatUsername,
+        transport: newTransport,
         status: isChatChanged ? 'VALID' : group.status,
-        botMembershipStatus: isChatChanged ? 'member' : group.botMembershipStatus,
+        botMembershipStatus: isChatChanged || isTransportChanged ? botMembershipStatus : group.botMembershipStatus,
         privacyModeDisabled: isPrivacyDisabled,
         testMessageReceivedAt: isChatChanged ? null : group.testMessageReceivedAt,
         lastValidatedAt: isChatChanged ? now : group.lastValidatedAt,
@@ -440,20 +524,41 @@ export async function updateDistrictTelegramGroup(
 
     updatedRow = updated;
 
-    await recordAuditEvent(tx, {
-      actorId: actor?.id || null,
-      actorRole: actor?.role || null,
-      action: 'DISTRICT_GROUP_REMAPPED',
-      metadata: {
+    if (isChatChanged || isMahallaChanged) {
+      await recordAuditEvent(tx, {
         districtId,
-        groupId,
-        mahallaName: newMahallaName,
-        telegramChatId: newChatId,
-        isChatChanged,
-      },
-      ipAddress: clientInfo?.ipAddress || null,
-      userAgent: clientInfo?.userAgent || null,
-    });
+        actorId: actor?.id || null,
+        actorRole: actor?.role || null,
+        action: 'DISTRICT_GROUP_REMAPPED',
+        metadata: {
+          districtId,
+          groupId,
+          mahallaName: newMahallaName,
+          telegramChatId: newChatId,
+          isChatChanged,
+        },
+        ipAddress: clientInfo?.ipAddress || null,
+        userAgent: clientInfo?.userAgent || null,
+      });
+    }
+
+    if (isTransportChanged) {
+      await recordAuditEvent(tx, {
+        districtId,
+        actorId: actor?.id || null,
+        actorRole: actor?.role || null,
+        action: 'GROUP_TRANSPORT_CHANGED',
+        metadata: {
+          districtId,
+          groupId,
+          mahallaName: newMahallaName,
+          previousTransport: group.transport,
+          newTransport,
+        },
+        ipAddress: clientInfo?.ipAddress || null,
+        userAgent: clientInfo?.userAgent || null,
+      });
+    }
   });
 
   if (!updatedRow) {
@@ -461,6 +566,24 @@ export async function updateDistrictTelegramGroup(
   }
 
   return formatTelegramGroup(updatedRow);
+}
+
+export async function switchDistrictTelegramGroupTransport(
+  db: DbClient,
+  districtId: string,
+  groupId: string,
+  transport: GroupTransport,
+  actor?: Actor,
+  clientInfo?: ClientInfo,
+): Promise<TelegramGroupMapping> {
+  return updateDistrictTelegramGroup(
+    db,
+    districtId,
+    groupId,
+    { transport },
+    actor,
+    clientInfo,
+  );
 }
 
 export async function deleteDistrictTelegramGroup(

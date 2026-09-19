@@ -4,6 +4,9 @@ import { DistrictIdSchema } from './common.js';
 export const TelegramGroupStatusSchema = z.enum(['PENDING', 'TESTING', 'VALID', 'FAILED']);
 export type TelegramGroupStatus = z.infer<typeof TelegramGroupStatusSchema>;
 
+export const GroupTransportSchema = z.enum(['BOT_API', 'USERBOT']);
+export type GroupTransport = z.infer<typeof GroupTransportSchema>;
+
 export const TelegramGroupMappingSchema = z.object({
   id: z.string().min(1),
   districtId: DistrictIdSchema,
@@ -12,6 +15,7 @@ export const TelegramGroupMappingSchema = z.object({
   telegramChatTitle: z.string().min(1),
   telegramChatUsername: z.string().nullable(),
   status: TelegramGroupStatusSchema,
+  transport: GroupTransportSchema.default('BOT_API'),
   botMembershipStatus: z.string().nullable(),
   privacyModeDisabled: z.boolean(),
   testMessageReceivedAt: z.string().datetime().nullable(),
@@ -50,8 +54,9 @@ export const CreateTelegramGroupRequestSchema = z.object({
       TELEGRAM_GROUP_CHAT_ID_REGEX,
       'Telegram гуруҳ Chat ID манфий рақамли форматда бўлиши шарт (масалан: -1001234567890 ёки -123456789).',
     ),
+  transport: GroupTransportSchema.optional().default('BOT_API'),
 });
-export type CreateTelegramGroupRequest = z.infer<typeof CreateTelegramGroupRequestSchema>;
+export type CreateTelegramGroupRequest = z.input<typeof CreateTelegramGroupRequestSchema>;
 
 export const CreateTelegramGroupResponseSchema = z.object({
   group: TelegramGroupMappingSchema,
@@ -80,11 +85,18 @@ export const UpdateTelegramGroupRequestSchema = z
         'Telegram гуруҳ Chat ID манфий рақамли форматда бўлиши шарт (масалан: -1001234567890 ёки -123456789).',
       )
       .optional(),
+    transport: GroupTransportSchema.optional(),
   })
-  .refine((data) => data.mahallaName !== undefined || data.telegramChatId !== undefined, {
-    message: 'Камида битта майдон киритилиши керак.',
-    path: ['mahallaName'],
-  });
+  .refine(
+    (data) =>
+      data.mahallaName !== undefined ||
+      data.telegramChatId !== undefined ||
+      data.transport !== undefined,
+    {
+      message: 'Камида битта майдон киритилиши керак.',
+      path: ['mahallaName'],
+    },
+  );
 export type UpdateTelegramGroupRequest = z.infer<typeof UpdateTelegramGroupRequestSchema>;
 
 export const UpdateTelegramGroupResponseSchema = z.object({

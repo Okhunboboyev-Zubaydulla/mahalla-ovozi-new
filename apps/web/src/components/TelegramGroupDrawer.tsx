@@ -8,6 +8,7 @@ import {
   Alert,
   Typography,
   Grid,
+  Select,
   message,
 } from 'antd';
 import {
@@ -16,7 +17,7 @@ import {
   ExclamationCircleOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
-import { TelegramGroupMapping } from '@mahalla-ovozi/api-contracts';
+import { TelegramGroupMapping, GroupTransport } from '@mahalla-ovozi/api-contracts';
 import { telegramGroupClient } from '../district/telegram-group-client.js';
 import { themeColors } from '../theme/antd-theme.js';
 
@@ -52,28 +53,40 @@ export function TelegramGroupDrawer({
         form.setFieldsValue({
           mahallaName: initialGroup.mahallaName,
           telegramChatId: initialGroup.telegramChatId,
+          transport: initialGroup.transport ?? 'BOT_API',
+        });
+      } else {
+        form.setFieldsValue({
+          transport: 'BOT_API',
         });
       }
     }
   }, [open, initialGroup, form]);
 
-  const handleFormSubmit = async (values: { mahallaName: string; telegramChatId: string }) => {
+  const handleFormSubmit = async (values: {
+    mahallaName: string;
+    telegramChatId: string;
+    transport?: GroupTransport;
+  }) => {
     setIsSubmitting(true);
     setSubmitError(null);
 
     const trimmedMahalla = values.mahallaName.trim();
     const trimmedChatId = values.telegramChatId.trim();
+    const transport: GroupTransport = values.transport ?? 'BOT_API';
 
     try {
       if (initialGroup) {
         await telegramGroupClient.updateGroup(districtId, initialGroup.id, {
           mahallaName: trimmedMahalla,
           telegramChatId: trimmedChatId,
+          transport,
         });
       } else {
         await telegramGroupClient.createGroup(districtId, {
           mahallaName: trimmedMahalla,
           telegramChatId: trimmedChatId,
+          transport,
         });
       }
 
@@ -175,6 +188,20 @@ export function TelegramGroupDrawer({
             size="large"
             style={{ minHeight: '44px' }}
             disabled={isSubmitting}
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="transport"
+          label={<Text strong>Транспорт тури</Text>}
+          initialValue="BOT_API"
+        >
+          <Select
+            disabled={isSubmitting}
+            options={[
+              { label: 'Bot API', value: 'BOT_API' },
+              { label: 'Userbot', value: 'USERBOT' },
+            ]}
           />
         </Form.Item>
 

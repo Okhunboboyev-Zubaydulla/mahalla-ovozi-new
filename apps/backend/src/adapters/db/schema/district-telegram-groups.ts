@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { pgTable, text, boolean, timestamp, uniqueIndex, index, check } from 'drizzle-orm/pg-core';
+import type { GroupTransport } from '@mahalla-ovozi/api-contracts';
 import { districts } from './districts.js';
 
 export const districtTelegramGroups = pgTable(
@@ -14,6 +15,7 @@ export const districtTelegramGroups = pgTable(
     telegramChatTitle: text('telegram_chat_title').notNull(),
     telegramChatUsername: text('telegram_chat_username'),
     status: text('status').notNull().default('PENDING'),
+    transport: text('transport').$type<GroupTransport>().notNull().default('BOT_API'),
     botMembershipStatus: text('bot_membership_status'),
     privacyModeDisabled: boolean('privacy_mode_disabled').notNull().default(false),
     testMessageReceivedAt: timestamp('test_message_received_at', { withTimezone: true }),
@@ -28,6 +30,11 @@ export const districtTelegramGroups = pgTable(
       'district_telegram_groups_status_check',
       sql`${table.status} IN ('PENDING', 'TESTING', 'VALID', 'FAILED')`,
     ),
+    // Transport check constraint
+    check(
+      'district_telegram_groups_transport_check',
+      sql`${table.transport} IN ('BOT_API', 'USERBOT')`,
+    ),
     // Enforces global Telegram chat identity uniqueness across all districts (AC 3)
     uniqueIndex('district_telegram_groups_chat_id_idx').on(table.telegramChatId),
     // Enforces case-insensitive uniqueness on mahallaName within a district (AC 2)
@@ -40,5 +47,6 @@ export const districtTelegramGroups = pgTable(
   ],
 );
 
+export type { GroupTransport };
 export type DistrictTelegramGroup = typeof districtTelegramGroups.$inferSelect;
 export type NewDistrictTelegramGroup = typeof districtTelegramGroups.$inferInsert;

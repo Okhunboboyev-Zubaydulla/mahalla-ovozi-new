@@ -176,6 +176,34 @@
       "when": 1788790000000,
       "tag": "0024_topics_status_check",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1789748156550,
+      "tag": "0025_sloppy_the_watchers",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1789748550248,
+      "tag": "0026_sweet_turbo",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1789750890612,
+      "tag": "0027_broken_molecule_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1789800582989,
+      "tag": "0028_elite_black_bird",
+      "breakpoints": true
     }
   ]
 }

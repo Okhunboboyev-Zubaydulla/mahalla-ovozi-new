@@ -87,7 +87,8 @@ export function classifyAuditActionCategory(action: string): AuditActionCategory
 
   if (
     action.startsWith('DISTRICT_TELEGRAM_BOT_') ||
-    action.startsWith('DISTRICT_GROUP_')
+    action.startsWith('DISTRICT_GROUP_') ||
+    action.startsWith('USERBOT_SESSION_')
   ) {
     return 'TELEGRAM_INTEGRATION';
   }

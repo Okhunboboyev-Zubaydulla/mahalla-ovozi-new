@@ -20,6 +20,7 @@ describe('Story 2.2: Telegram Content Qualification Engine Unit Tests', () => {
     districtId: 'dist_act_123',
     mahallaName: 'Navbahor',
     calendarDay: '2026-08-21',
+    source: 'BOT_API',
     telegramBotId: 'bot_act_123',
     telegramChatId: '-1001234567890',
     telegramMessageId: '9988',

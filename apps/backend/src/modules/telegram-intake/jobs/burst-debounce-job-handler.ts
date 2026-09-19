@@ -16,7 +16,7 @@ import {
   type TelegramSemanticRelevanceJobData,
   type BurstMessageItem,
 } from '../../../adapters/jobs/boss-client.js';
-import { qualifyTelegramContent } from '../telegram-content-qualification.js';
+import { qualifyTelegramContent, type TelegramReplyMetadata } from '../telegram-content-qualification.js';
 import {
   defaultBurstBufferRepository,
   type BurstBufferRepository,
@@ -193,6 +193,7 @@ export async function processBurstDebounceJobs(
             calendarDay: remainingRecords[0]!.calendarDay,
             telegramChatId,
             telegramUserId,
+            source: remainingRecords[0]!.source,
             telegramBotId: remainingRecords[0]!.telegramBotId,
             firstMessageTimestamp: nextFirstTimestamp,
           },
@@ -206,7 +207,7 @@ export async function processBurstDebounceJobs(
       // Qualify eligible messages in current contiguous burst
       const supportedItems: BurstMessageItem[] = [];
       const excludedIds: string[] = [];
-      let latestReplyMetadata: any = null;
+      let latestReplyMetadata: TelegramReplyMetadata | null = null;
 
       for (const rec of currentBurstRecords) {
         const qual = qualifyTelegramContent({
@@ -214,6 +215,7 @@ export async function processBurstDebounceJobs(
           districtId: rec.districtId,
           mahallaName: rec.mahallaName,
           calendarDay: rec.calendarDay,
+          source: rec.source,
           telegramBotId: rec.telegramBotId,
           telegramChatId: rec.telegramChatId,
           telegramMessageId: rec.telegramMessageId,
