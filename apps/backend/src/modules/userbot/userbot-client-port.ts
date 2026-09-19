@@ -42,11 +42,9 @@ type ForbiddenWriteMethodNames =
   | 'deleteMessages'
   | 'editMessage';
 
-type AssertNoWriteMethods<T> = {
-  [K in keyof T]: K extends ForbiddenWriteMethodNames ? never : T[K];
-};
+type ValidateNoWriteMethods<T> = keyof T & ForbiddenWriteMethodNames extends never ? true : never;
 
-export type _AssertPassiveOnlyPort = AssertNoWriteMethods<UserbotClientPort>;
+export type _AssertPassiveOnlyPort = ValidateNoWriteMethods<UserbotClientPort>;
 
 export type UserbotClientFactory = (params: {
   districtId: string;
