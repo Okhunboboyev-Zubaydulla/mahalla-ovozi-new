@@ -51,5 +51,9 @@ Selective Staging Invariant: When instructed to commit or push, stage ONLY files
 
 ## MODULE: DOCUMENTATION & VERIFICATION
 Documentation: Code is primary docs (clear naming, strict types, concise docstrings). Separate doc files only when a concept cannot be expressed in code. Store knowledge as current state, not changelog.
-Forced Verification on Modifications: Internal file-write success ≠ compiling. Before declaring a task complete, the Implementor Subagent must run project type-checks and linters on modified files and fix all resulting errors.
+Risk-Proportional Verification on Modifications:
+- Trivial / Cosmetic Changes (copy, docs, comments, styling/CSS tweaks, minor <3 line non-logic fixes): Zero automated test runs or linter cycles. Inspection of file contents is sufficient proof.
+- Scoped Logic / Bug Fixes: Execute ONLY the single directly affected test file (e.g., `pnpm vitest run path/to/spec.test.ts`). Never run global test suites (`pnpm test`).
+- High-Risk / Core Architectural Changes: Run targeted test files plus fast scoped type-checks on modified modules.
+- Strict Ban on Full-Repo Test Suites: Never run repository-wide test suites or slow E2E tests during routine tasks unless explicitly instructed by the user.
 Anti-Redundancy Adherence: Strictly observe the global Anti-Redundancy & Prior State Trust rule. Never re-run test suites or type-checks on stable, unchanged parts of the codebase at session start or after unrelated modifications unless explicitly requested by the user.

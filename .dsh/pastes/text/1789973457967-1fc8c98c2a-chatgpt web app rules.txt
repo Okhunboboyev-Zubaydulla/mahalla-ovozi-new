@@ -1,0 +1,161 @@
+Invoked subagent
+
+I have delegated the investigation into the `"The current model does not support images: switch to a model that does"` error to a specialized research subagent.
+
+The subagent is currently:
+1. Tracing the origin of that warning in the DSH web client composer.
+2. Checking how `@anionex/dsh-vision-toolkit` exposes image-input variants and why the UI blocked image submission.
+3. Reviewing the official documentation and source of `dsh-vision-toolkit` to determine the exact configuration or model selection needed in the Web UI.
+
+I will provide a detailed report as soon as the subagent completes its findings.
+
+Viewed index.js:755-775
+Searched for "WEB_MODELS"
+Viewed index.js:260-280
+Searched for "function listAllModels"
+Viewed providers.js:508-545
+Searched for "hidden"
+Viewed client.js:1260-1300
+Searched for "registerAdapter"
+Searched for "providerId"
+Viewed cordis.patch.yml:1-6
+Searched for "provider: 'deepseek'"
+Viewed index.js:1870-1910
+Ran command: `dsh --profile web --dump-config`
+Viewed index.ts:1-60
+Searched for "registerAdapter(['deepseek'"
+Viewed c:\tools\deepseek-harness-master\packages\bundle\base\cordis.yml
+Searched for files: *cordis*
+Viewed cordis.patch.yml:1-513
+Viewed index.js:130-150
+Ran command: `node -e "import('@deepseek-ai/cordis').then(async cordis => { const { Context } = cordis; console.log('testing...'); });"`
+Searched for "listModels"
+Viewed adapter.ts:140-180
+Viewed c:\tools\deepseek-harness-master\packages\llm\llm-deepseek\src\protocols\chat-completions\catalog.ts:2-61
+Searched for "catalogModelInfo"
+Viewed model-info.ts:30-60
+Viewed defaults.ts:1-25
+Viewed index.js:60-125
+Viewed image-input-variants.js:850-970
+Ran command: `node -e "
+import('@deepseek-ai/cordis').then(async ({ Context }) => {
+  import('C:/tools/dsh-web-bridge-main/package/dsh-webcode-bridge/lib/index.js').then(async bridge => {
+    console.log('webcode bridge loaded');
+  });
+});
+"`
+Ran command: `node -e "
+import('file:///C:/Users/Zubaydulla/.dsh/profiles/web/node_modules/dsh-webcode-bridge/lib/index.js').then(async bridge => {
+  console.log('bridge loaded successfully');
+  const dummyCtx = {
+    llm: {
+      registerAdapter: (ids, adapter) => {
+        console.log('Registered adapter IDs:', ids);
+        adapter.listModels(ids[0]).then(models => {
+          console.log('First 3 models from listModels:', models.slice(0, 3));
+        });
+      }
+    },
+    settings: { register: () => ({ get: () => ({}) }) },
+    on: () => {},
+    effect: () => () => {},
+    logger: console,
+  };
+  bridge.apply(dummyCtx);
+});
+"`
+Ran command: `node -e "
+import('file:///C:/Users/Zubaydulla/.dsh/profiles/web/node_modules/@anionex/dsh-vision-toolkit/lib/image-input-variants.js').then(v => {
+  const modelWithModalities = {
+    provider: 'webcode',
+    id: 'deepseek:deepseek',
+    name: 'deepseek/deepseek',
+    inputModalities: ['text'],
+  };
+  console.log('shouldWrapModel with inputModalities:', v.shouldWrapModel(modelWithModalities));
+});
+"`
+Searched for "listModels"
+
+### Root Cause Analysis: "The current model does not support images: switch to a model that does"
+
+---
+
+### 1. Where Does This Error Come From?
+
+When you submit a message with an attached image, DeepSeek Harness performs a backend admission check in `session-controller`:
+```typescript
+if (hasImage) {
+  const model = await this.ctx.llm.resolveModelInfo(current.provider, current.model);
+  if (model.inputModalities !== undefined && !model.inputModalities.includes('image')) {
+    throw new RemoteError('session/attachment-invalid', 'Model does not support image input', {
+      reason: 'MODEL_DOES_NOT_SUPPORT_IMAGES'
+    });
+  }
+}
+```
+When `session-controller` rejects the turn with `MODEL_DOES_NOT_SUPPORT_IMAGES`, the web UI frontend catches it and displays the toast:
+> *"The current model does not support images: switch to a model that does"*
+
+---
+
+### 2. Why Did Vision Toolkit Fail to Intercept?
+
+In our previous step, we set `acceptsImages: false` in `providers.js` so that DeepSeek would correctly resolve as text-only (`inputModalities: ['text']`). 
+
+However, `@anionex/dsh-vision-toolkit` did not create the image-handling variant wrapper because of a bug in `dsh-webcode-bridge`:
+
+1. **`listModels()` Omitted `inputModalities`**:
+   In `C:\Users\Zubaydulla\.dsh\profiles\web\node_modules\dsh-webcode-bridge\lib\index.js` (line 762):
+   ```javascript
+   async listModels(provider) {
+     return WEB_MODELS.filter((m) => !MODEL_ALIAS_IDS.has(m.id)).map((m) => ({
+       provider,
+       id: m.id,
+       name: m.name
+       // ❌ inputModalities is missing!
+     }));
+   }
+   ```
+2. **Vision Toolkit's Eligibility Check Failed**:
+   `dsh-vision-toolkit` scans all provider models using `llm.listModels()` and checks:
+   ```typescript
+   export function shouldWrapModel(info) {
+     return Array.isArray(info.inputModalities) && !info.inputModalities.includes('image');
+   }
+   ```
+   Because `inputModalities` was `undefined` in `listModels()`, `shouldWrapModel` evaluated to `false`.
+3. **The Vision Wrapper Was Never Registered**:
+   `dsh-vision-toolkit` assumed `dsh-webcode-bridge` had unknown modalities and skipped registering `vision-toolkit-webcode`. As a result:
+   - No image-capable variant was created.
+   - The UI was left bound to the raw text-only model.
+   - Submitting an image was immediately blocked by the `session-controller` guard.
+
+---
+
+### 3. Proposed Fix
+
+We need to update `listModels(provider)` in `dsh-webcode-bridge/lib/index.js` (both in `C:\tools\dsh-web-bridge-main` and the active profile's `node_modules`) to include `inputModalities`:
+
+```javascript
+async listModels(provider) {
+  return WEB_MODELS.filter((m) => !MODEL_ALIAS_IDS.has(m.id)).map((m) => ({
+    provider,
+    id: m.id,
+    name: m.name,
+    inputModalities: m.acceptsImages === true ? ['text', 'image'] : ['text'],
+  }));
+}
+```
+
+#### What this accomplishes:
+1. `listModels()` will correctly announce that DeepSeek is text-only (`inputModalities: ['text']`).
+2. `dsh-vision-toolkit` will detect this and automatically register the `vision-toolkit-webcode` variant wrapper (`inputModalities: ['text', 'image']`).
+3. The Web UI will route image attachments through the Vision Toolkit pipeline:
+   - The backend `session-controller` check passes without throwing errors.
+   - Attached images are transcribed into detailed visual descriptions via `vision_glance` / OCR.
+   - Clean descriptive text is submitted to DeepSeek Web, completely bypassing `chat.deepseek.com` DOM upload hangs and eliminating `WEB_NO_PROGRESS`.
+
+---
+
+Shall I delegate this fix to the implementor subagent and verify the variant registration? - issue uchun mana shu recommended solution to'g'rimi? eng optimalmi? pluginlar bilan hal qilsa bo'lmaydimi?
