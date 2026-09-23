@@ -86,24 +86,45 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
       ).toThrow();
     });
 
-    it('fails when is_hokim_related is false but HOKIM_RELATED is present in lanes', () => {
-      expect(() =>
-        TopicProjectionResultSchema.parse({
-          ...validBase,
-          lanes: ['WATER', 'HOKIM_RELATED'],
-          is_hokim_related: false,
-        }),
-      ).toThrow('is_hokim_related must be true if and only if HOKIM_RELATED is present in lanes');
+    // L3-P05-02: ai-gateway.ts used to overwrite is_hokim_related from lanes BEFORE
+    // safeParse, which made the refine below unreachable in production. The schema now
+    // owns that derivation, so the model's disagreement is coerced here instead.
+    it('derives is_hokim_related = true when HOKIM_RELATED is present but the model said false', () => {
+      const parsed = TopicProjectionResultSchema.parse({
+        ...validBase,
+        lanes: ['WATER', 'HOKIM_RELATED'],
+        is_hokim_related: false,
+      });
+      expect(parsed.is_hokim_related).toBe(true);
     });
 
-    it('fails when is_hokim_related is true but HOKIM_RELATED is missing from lanes', () => {
+    it('derives is_hokim_related = false when HOKIM_RELATED is absent but the model said true', () => {
+      const parsed = TopicProjectionResultSchema.parse({
+        ...validBase,
+        lanes: ['WATER'],
+        is_hokim_related: true,
+      });
+      expect(parsed.is_hokim_related).toBe(false);
+    });
+
+    it('derives is_hokim_related from deduplicated lanes', () => {
+      const parsed = TopicProjectionResultSchema.parse({
+        ...validBase,
+        lanes: ['HOKIM_RELATED', 'HOKIM_RELATED'],
+        is_hokim_related: false,
+      });
+      expect(parsed.lanes).toEqual(['HOKIM_RELATED']);
+      expect(parsed.is_hokim_related).toBe(true);
+    });
+
+    it('still rejects an empty lanes array after coercion', () => {
       expect(() =>
         TopicProjectionResultSchema.parse({
           ...validBase,
-          lanes: ['WATER'],
+          lanes: [],
           is_hokim_related: true,
         }),
-      ).toThrow('is_hokim_related must be true if and only if HOKIM_RELATED is present in lanes');
+      ).toThrow();
     });
 
     it('fails when timestamp is not valid ISO-8601 datetime', () => {
@@ -311,6 +332,58 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
       expect(evaluation.latestMeaningfulActivityTimestamp).toBe('2026-08-22T08:30:00.000Z');
       expect(evaluation.isHokimRelated).toBe(false);
       expect(evaluation.generation).toBe(1);
+    });
+
+    it('resolves anchor_evidence_index against the SAME capped list the prompt labels', async () => {
+      // 20 target evidence items. buildUserPrompt caps the prompt to the LAST 15
+      // and labels those survivors "Evidence #1".."Evidence #15", so the item the
+      // model sees as "Evidence #1" is evi_target_6 (index 5 of the full list),
+      // NOT evi_target_1 (index 0).
+      const targetItems = Array.from({ length: 20 }, (_, i) => ({
+        id: `evi_target_${i + 1}`,
+        topicId: 'top_elec_1',
+        telegramMessageId: `${100 + i}`,
+        telegramUserId: 'user_1',
+        originalTimestamp: `2026-08-22T08:${String(i).padStart(2, '0')}:00.000Z`,
+        verbatimText: `message ${i + 1}`,
+        lane: 'ELECTRICITY' as const,
+      }));
+
+      const largeSnapshot: MahallaDailySnapshot = {
+        districtId: 'dist_1',
+        mahallaName: 'Navbahor',
+        calendarDay: '2026-08-22',
+        contextRevision: 20,
+        snapshotFingerprint: 'fp_20_items',
+        evidence: targetItems,
+      };
+
+      const evaluator = new TopicProjectionEvaluator(
+        createMockAiGateway({
+          summary: 'Маҳаллада электр таъминотида узилишлар кузатилмоқда.',
+          lanes: ['ELECTRICITY'],
+          // The model cites BOTH forms, as the schema asks it to. It correctly points
+          // at the item the prompt labelled "Evidence #1" and echoes that item's id.
+          anchor_evidence_id: 'evi_target_6',
+          anchor_evidence_index: 1,
+          anchor_quote: 'message 6',
+          latest_meaningful_activity_timestamp: '2026-08-22T08:19:00.000Z',
+          attribution: 'Маҳалла аҳолиси хабарига кўра',
+          is_hokim_related: false,
+        }),
+      );
+
+      const evaluation = await evaluator.evaluateTopicProjection({
+        topicId: 'top_elec_1',
+        primaryLane: 'ELECTRICITY',
+        generation: 1,
+        snapshot: largeSnapshot,
+      });
+
+      // The resolved anchor must be the evidence the prompt presented as
+      // "Evidence #1" — the first item of the capped slice — not the first item
+      // of the untruncated list.
+      expect(evaluation.anchorEvidenceId).toBe('evi_target_6');
     });
 
     it('rejects when anchor_evidence_id belongs to another topic', async () => {

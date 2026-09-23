@@ -71,16 +71,20 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
       expect(result.success).toBe(false);
     });
 
-    it('rejects MATCH_EXISTING_TOPIC if primary_lane is provided', () => {
-      const invalid = {
+    // L3-P05-02: the decision-driven coercion these three arms depend on used to live in
+    // ai-gateway.ts and ran BEFORE safeParse, which made the refine below unreachable in
+    // production. The schema now owns it, so it is observable from here.
+    it('coerces MATCH_EXISTING_TOPIC primary_lane to null when the model provides one', () => {
+      const coerced = {
         decision: 'MATCH_EXISTING_TOPIC',
         matched_topic_id: 'top_123',
         primary_lane: 'ELECTRICITY',
         reasoning: 'Cannot override topic lane on match',
       };
 
-      const result = TopicMatchingResultSchema.safeParse(invalid);
-      expect(result.success).toBe(false);
+      const result = TopicMatchingResultSchema.safeParse(coerced);
+      expect(result.success).toBe(true);
+      expect(result.success && result.data.primary_lane).toBeNull();
     });
 
     it('rejects NEW_TOPIC if primary_lane is null', () => {
@@ -95,34 +99,66 @@ describe('Story 2.4: Topic Matching Evaluator & Contracts Unit Tests', () => {
       expect(result.success).toBe(false);
     });
 
-    it('rejects NEW_TOPIC if matched_topic_id is provided', () => {
-      const invalid = {
+    it('coerces NEW_TOPIC matched_topic_id to null when the model references a topic', () => {
+      const coerced = {
         decision: 'NEW_TOPIC',
         matched_topic_id: 'top_123',
         primary_lane: 'GAS',
         reasoning: 'New topic cannot reference existing topic',
       };
 
-      const result = TopicMatchingResultSchema.safeParse(invalid);
-      expect(result.success).toBe(false);
+      const result = TopicMatchingResultSchema.safeParse(coerced);
+      expect(result.success).toBe(true);
+      expect(result.success && result.data.matched_topic_id).toBeNull();
+      expect(result.success && result.data.primary_lane).toBe('GAS');
     });
 
-    it('rejects UNASSIGNABLE_VAGUE if either matched_topic_id or primary_lane is non-null', () => {
-      const invalidWithTopic = {
+    it('coerces UNASSIGNABLE_VAGUE matched_topic_id and primary_lane to null when populated', () => {
+      const coercedWithTopic = {
         decision: 'UNASSIGNABLE_VAGUE',
         matched_topic_id: 'top_123',
         primary_lane: null,
         reasoning: 'Contradictory vague with topic',
       };
-      expect(TopicMatchingResultSchema.safeParse(invalidWithTopic).success).toBe(false);
+      const withTopic = TopicMatchingResultSchema.safeParse(coercedWithTopic);
+      expect(withTopic.success).toBe(true);
+      expect(withTopic.success && withTopic.data.matched_topic_id).toBeNull();
 
-      const invalidWithLane = {
+      const coercedWithLane = {
         decision: 'UNASSIGNABLE_VAGUE',
         matched_topic_id: null,
         primary_lane: 'WASTE',
         reasoning: 'Contradictory vague with lane',
       };
-      expect(TopicMatchingResultSchema.safeParse(invalidWithLane).success).toBe(false);
+      const withLane = TopicMatchingResultSchema.safeParse(coercedWithLane);
+      expect(withLane.success).toBe(true);
+      expect(withLane.success && withLane.data.primary_lane).toBeNull();
+    });
+
+    // Guards against over-coercion: the decision branches above must not paper over a
+    // genuinely unsatisfiable MATCH_EXISTING_TOPIC. No branch can invent an id or index.
+    it('L3-P05-02: MATCH_EXISTING_TOPIC with neither id nor index is still rejected', () => {
+      const result = TopicMatchingResultSchema.safeParse({
+        decision: 'MATCH_EXISTING_TOPIC',
+        matched_topic_id: null,
+        matched_topic_index: null,
+        primary_lane: null,
+        reasoning: 'Claimed a match without identifying any topic',
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('L3-P05-02: NEW_TOPIC with a null primary_lane is still rejected', () => {
+      const result = TopicMatchingResultSchema.safeParse({
+        decision: 'NEW_TOPIC',
+        matched_topic_id: null,
+        matched_topic_index: null,
+        primary_lane: null,
+        reasoning: 'New topic must name a lane',
+      });
+
+      expect(result.success).toBe(false);
     });
   });
 

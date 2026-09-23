@@ -26,32 +26,56 @@ export const ExclusionReasonEnum = z.enum([
 ]);
 export type ExclusionReason = z.infer<typeof ExclusionReasonEnum>;
 
-export const SemanticRelevanceResultSchema = z
-  .object({
-    is_relevant: z.boolean().describe('Whether the message reports a genuine, active citizen issue or Hokim concern'),
-    relevant_lanes: z.array(QualifyingLaneEnum).describe('Municipal service or leadership lanes applicable to the issue'),
-    exclusion_reason: ExclusionReasonEnum.nullable().describe('Specific exclusion reason if is_relevant is false, otherwise null'),
-    accepted_message_ids: z
-      .array(z.string())
-      .default([])
-      .describe(
-        'Telegram message IDs from the evaluated candidate/burst that directly report or provide spatial/temporal evidence for the civic issue. Exclude unrelated chatter or private remarks.',
-      ),
-    reasoning: z.string().max(300).describe('Brief 1-sentence explanation of the decision'),
-  })
-  .refine(
-    (data) => {
-      if (data.is_relevant) {
-        return data.relevant_lanes.length > 0 && data.exclusion_reason === null;
-      } else {
-        return data.relevant_lanes.length === 0 && data.exclusion_reason !== null;
-      }
-    },
-    {
-      message:
-        'Inconsistent semantic relevance output: is_relevant=true requires at least one lane and null exclusion_reason; is_relevant=false requires empty lanes and non-null exclusion_reason',
-    },
-  );
+export const SemanticRelevanceResultSchema = z.preprocess(
+  (val: any) => {
+    if (!val || typeof val !== 'object') return val;
+    const copy = { ...val };
+
+    // Tolerate model quirks before validation. This coercion previously lived in
+    // ai-gateway.ts, ahead of safeParse, which made the refine below unreachable in
+    // production; it belongs next to the schema that declares these fields.
+    if (typeof copy.reasoning === 'string' && copy.reasoning.length > 300) {
+      copy.reasoning = copy.reasoning.slice(0, 300);
+    }
+    if (copy.is_relevant === true && copy.exclusion_reason !== null) {
+      copy.exclusion_reason = null;
+    } else if (
+      copy.is_relevant === false &&
+      Array.isArray(copy.relevant_lanes) &&
+      copy.relevant_lanes.length > 0
+    ) {
+      copy.relevant_lanes = [];
+    }
+
+    return copy;
+  },
+  z
+    .object({
+      is_relevant: z.boolean().describe('Whether the message reports a genuine, active citizen issue or Hokim concern'),
+      relevant_lanes: z.array(QualifyingLaneEnum).describe('Municipal service or leadership lanes applicable to the issue'),
+      exclusion_reason: ExclusionReasonEnum.nullable().describe('Specific exclusion reason if is_relevant is false, otherwise null'),
+      accepted_message_ids: z
+        .array(z.string())
+        .default([])
+        .describe(
+          'Telegram message IDs from the evaluated candidate/burst that directly report or provide spatial/temporal evidence for the civic issue. Exclude unrelated chatter or private remarks.',
+        ),
+      reasoning: z.string().max(300).describe('Brief 1-sentence explanation of the decision'),
+    })
+    .refine(
+      (data) => {
+        if (data.is_relevant) {
+          return data.relevant_lanes.length > 0 && data.exclusion_reason === null;
+        } else {
+          return data.relevant_lanes.length === 0 && data.exclusion_reason !== null;
+        }
+      },
+      {
+        message:
+          'Inconsistent semantic relevance output: is_relevant=true requires at least one lane and null exclusion_reason; is_relevant=false requires empty lanes and non-null exclusion_reason',
+      },
+    ),
+);
 
 export type SemanticRelevanceResult = z.infer<typeof SemanticRelevanceResultSchema>;
 

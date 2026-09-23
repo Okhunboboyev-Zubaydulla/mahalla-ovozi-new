@@ -16,6 +16,29 @@ export const QualifyingLaneEnum = QualifyingLaneSchema;
 export { type QualifyingLane };
 
 /**
+ * Maximum number of target-Topic evidence items presented in the projection prompt.
+ * Only the most recent items are kept (see `capTargetEvidenceForPrompt`).
+ */
+export const MAX_TARGET_EVIDENCE_IN_PROMPT = 15;
+
+/**
+ * Caps the target-Topic evidence list to what the prompt will actually present.
+ *
+ * This exists because the prompt labels the survivors "Evidence #1..#N" by their
+ * position in the CAPPED list, while `anchor_evidence_index` is resolved by the
+ * post-generation guardrail. If the two use different arrays, every index the model
+ * returns is off by `targetEvidence.length - MAX_TARGET_EVIDENCE_IN_PROMPT`.
+ * The prompt builder and the guardrail must therefore share this one function.
+ */
+export function capTargetEvidenceForPrompt(
+  targetEvidence: AcceptedEvidenceItem[],
+): AcceptedEvidenceItem[] {
+  return targetEvidence.length > MAX_TARGET_EVIDENCE_IN_PROMPT
+    ? targetEvidence.slice(-MAX_TARGET_EVIDENCE_IN_PROMPT)
+    : targetEvidence;
+}
+
+/**
  * Validates if the given text contains authentic Uzbek Cyrillic characters.
  * Matches standard Cyrillic characters plus Uzbek specific Cyrillic letters: қ, ғ, ҳ, ў.
  * Requires Cyrillic characters to constitute at least 70% of all alphabetic characters.
@@ -30,8 +53,23 @@ export function isUzbekCyrillic(text: string): boolean {
   return cyrillicMatches.length / alphabeticMatches.length >= 0.7;
 }
 
-export const TopicProjectionResultSchema = z
-  .object({
+export const TopicProjectionResultSchema = z.preprocess(
+  (val: any) => {
+    if (!val || typeof val !== 'object') return val;
+    const copy = { ...val };
+
+    // Derive is_hokim_related from the lanes the model returned rather than trusting the
+    // field it echoed. This coercion previously lived in ai-gateway.ts, ahead of safeParse,
+    // which left the refine at the bottom of this schema unreachable in production.
+    if (Array.isArray(copy.lanes)) {
+      copy.lanes = Array.from(new Set(copy.lanes));
+      copy.is_hokim_related = copy.lanes.includes('HOKIM_RELATED');
+    }
+
+    return copy;
+  },
+  z
+    .object({
       summary: z
         .string()
         .min(1)
@@ -106,7 +144,8 @@ export const TopicProjectionResultSchema = z
           'is_hokim_related must be true if and only if HOKIM_RELATED is present in lanes',
         path: ['is_hokim_related'],
       },
-    );
+    ),
+);
 
 export type TopicProjectionResult = z.infer<typeof TopicProjectionResultSchema>;
 
@@ -282,6 +321,11 @@ export class TopicProjectionEvaluator {
   public buildUserPrompt(input: TopicProjectionInput): string {
     const sections: string[] = [];
 
+    // Single source of truth for the evidence list the prompt presents to the model.
+    // The guardrail that resolves `anchor_evidence_index` MUST use this same list,
+    // otherwise 1-based indices refer to a different array than the prompt labelled.
+    // (See resolveTargetEvidenceForPrompt and its use in evaluateTopicProjection.)
+
     // 1. Target Topic Demarcation
     sections.push(`### TARGET TOPIC TO RECALCULATE
 - Topic ID: ${input.topicId}
@@ -313,10 +357,7 @@ export class TopicProjectionEvaluator {
 
     // 2. Target Topic Evidence Items
     if (targetEvidence.length > 0) {
-      const cappedTargetEvidence =
-        targetEvidence.length > 15
-          ? targetEvidence.slice(-15)
-          : targetEvidence;
+      const cappedTargetEvidence = capTargetEvidenceForPrompt(targetEvidence);
 
       const authorMap = new Map<string, number>();
       let nextCitizenIndex = 1;
@@ -444,13 +485,16 @@ ${otherSections.join('\n\n')}`);
 
     let resolvedAnchorEvidence: AcceptedEvidenceItem | undefined = undefined;
 
-    // 1a. Surrogate 1-based index resolution
+    // 1a. Surrogate 1-based index resolution.
+    // MUST resolve against the capped list the prompt actually presented (and
+    // labelled "Evidence #1..#N"), never against the full `targetEvidence` array.
+    const promptTargetEvidence = capTargetEvidenceForPrompt(targetEvidence);
     if (
       typeof data.anchor_evidence_index === 'number' &&
       data.anchor_evidence_index >= 1 &&
-      data.anchor_evidence_index <= targetEvidence.length
+      data.anchor_evidence_index <= promptTargetEvidence.length
     ) {
-      resolvedAnchorEvidence = targetEvidence[data.anchor_evidence_index - 1];
+      resolvedAnchorEvidence = promptTargetEvidence[data.anchor_evidence_index - 1];
     }
 
     // 1b. Exact DB evidence ID match

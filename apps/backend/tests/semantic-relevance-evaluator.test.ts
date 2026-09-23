@@ -55,52 +55,80 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
       expect(result.success).toBe(true);
     });
 
-    it('rejects is_relevant: true when exclusion_reason is not null', () => {
-      const invalid = {
+    // L3-P05-02: ai-gateway.ts used to repair these contradictions BEFORE safeParse, which
+    // made the refine below unreachable in production. The schema now owns the repair, so
+    // it is observable from here.
+    it('coerces exclusion_reason to null when is_relevant is true', () => {
+      const result = SemanticRelevanceResultSchema.safeParse({
         is_relevant: true,
         relevant_lanes: ['WATER'],
         exclusion_reason: 'GENERAL_CHATTER',
-        reasoning: 'Contradictory output',
-      };
+        reasoning: 'Model volunteered a reason despite marking it relevant',
+      });
 
-      const result = SemanticRelevanceResultSchema.safeParse(invalid);
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
+      expect(result.success && result.data.exclusion_reason).toBeNull();
     });
 
-    it('rejects is_relevant: true when relevant_lanes is empty', () => {
-      const invalid = {
+    it('coerces relevant_lanes to an empty array when is_relevant is false', () => {
+      const result = SemanticRelevanceResultSchema.safeParse({
+        is_relevant: false,
+        relevant_lanes: ['ELECTRICITY'],
+        exclusion_reason: 'ADVERTISEMENT_OR_SPAM',
+        reasoning: 'Excluded message with leftover lanes',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.success && result.data.relevant_lanes).toEqual([]);
+    });
+
+    it('truncates reasoning longer than 300 characters', () => {
+      const result = SemanticRelevanceResultSchema.safeParse({
+        is_relevant: true,
+        relevant_lanes: ['WATER'],
+        exclusion_reason: null,
+        reasoning: 'x'.repeat(450),
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.success && result.data.reasoning).toHaveLength(300);
+    });
+
+    // Guards against over-coercion: repair must not manufacture a satisfiable payload.
+    it('still rejects is_relevant: true when relevant_lanes is empty', () => {
+      const result = SemanticRelevanceResultSchema.safeParse({
         is_relevant: true,
         relevant_lanes: [],
         exclusion_reason: null,
-        reasoning: 'No lanes specified',
-      };
+        reasoning: 'Relevant but no lane named',
+      });
 
-      const result = SemanticRelevanceResultSchema.safeParse(invalid);
       expect(result.success).toBe(false);
     });
 
-    it('rejects is_relevant: false when relevant_lanes has entries', () => {
-      const invalid = {
+    it('still rejects is_relevant: false when exclusion_reason is null', () => {
+      const result = SemanticRelevanceResultSchema.safeParse({
+        is_relevant: false,
+        relevant_lanes: [],
+        exclusion_reason: null,
+        reasoning: 'Excluded without stating why',
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('coerces relevant_lanes to an empty array when is_relevant is false', () => {
+      const coerced = {
         is_relevant: false,
         relevant_lanes: ['ELECTRICITY'],
         exclusion_reason: 'ADVERTISEMENT_OR_SPAM',
         reasoning: 'Contradictory output',
       };
 
-      const result = SemanticRelevanceResultSchema.safeParse(invalid);
-      expect(result.success).toBe(false);
-    });
-
-    it('rejects is_relevant: false when exclusion_reason is null', () => {
-      const invalid = {
-        is_relevant: false,
-        relevant_lanes: [],
-        exclusion_reason: null,
-        reasoning: 'Missing exclusion reason',
-      };
-
-      const result = SemanticRelevanceResultSchema.safeParse(invalid);
-      expect(result.success).toBe(false);
+      const result = SemanticRelevanceResultSchema.safeParse(coerced);
+      expect(result.success).toBe(true);
+      expect(result.success && result.data.relevant_lanes).toEqual([]);
+      expect(result.success && result.data.exclusion_reason).toBe('ADVERTISEMENT_OR_SPAM');
     });
   });
 

@@ -299,6 +299,75 @@ describe('AI Gateway & Portable Schema Compiler Unit Tests', () => {
 
       expect(mockAdapter.getCalls()).toHaveLength(1);
     });
+
+    // L3-P05-02: the gateway used to rewrite caller-owned fields (decision,
+    // matched_topic_id, primary_lane, lanes, is_hokim_related, is_relevant,
+    // exclusion_reason, relevant_lanes, reasoning) BEFORE safeParse. It no longer does:
+    // a schema that wants model quirks tolerated must declare that tolerance itself.
+    it('L3-P05-02: does not repair caller-owned payload fields before safeParse', async () => {
+      // The caller's schema owns its consistency rule. Before L3-P05-02 the gateway
+      // pre-nulled primary_lane for MATCH_EXISTING_TOPIC, so this refine could never
+      // fire in production. It must now.
+      const CallerOwnedSchema = z
+        .object({
+          decision: z.enum(['MATCH_EXISTING_TOPIC', 'NEW_TOPIC']),
+          matched_topic_id: z.string().nullable(),
+          primary_lane: z.string().nullable(),
+        })
+        .refine(
+          (data) =>
+            data.decision !== 'MATCH_EXISTING_TOPIC' || data.primary_lane === null,
+          { message: 'MATCH_EXISTING_TOPIC requires a null primary_lane' },
+        );
+
+      const inconsistent = {
+        decision: 'MATCH_EXISTING_TOPIC',
+        matched_topic_id: 'top_1',
+        primary_lane: 'WATER',
+      };
+      mockAdapter.setNextResponse(inconsistent);
+      mockAdapter.setNextResponse(inconsistent);
+      mockAdapter.setNextResponse(inconsistent);
+
+      await expect(
+        gateway.generateStructured({
+          operationType: 'TOPIC_MATCHING',
+          profileId: 'prof_test_v1',
+          systemPrompt: 'System',
+          userPrompt: 'User',
+          schema: CallerOwnedSchema,
+          schemaName: 'caller_owned_schema',
+        }),
+      ).rejects.toMatchObject({ code: 'INVALID_OUTPUT_SEMANTICS' });
+
+      expect(mockAdapter.getCalls()).toHaveLength(3);
+    });
+
+    it('L3-P05-02: still strips markdown code block fences (provider-generic cleanup)', async () => {
+      const CallerOwnedSchema = z.object({
+        decision: z.enum(['MATCH_EXISTING_TOPIC', 'NEW_TOPIC']),
+        matched_topic_id: z.string().nullable(),
+        primary_lane: z.string().nullable(),
+      });
+
+      mockAdapter.setNextResponse({
+        decision: 'NEW_TOPIC',
+        matched_topic_id: null,
+        primary_lane: 'WATER',
+      });
+
+      const result = await gateway.generateStructured({
+        operationType: 'TOPIC_MATCHING',
+        profileId: 'prof_test_v1',
+        systemPrompt: 'System',
+        userPrompt: 'User',
+        schema: CallerOwnedSchema,
+        schemaName: 'caller_owned_schema',
+      });
+
+      expect(result.data.decision).toBe('NEW_TOPIC');
+      expect(result.data.primary_lane).toBe('WATER');
+    });
   });
 
   describe('HttpProviderAdapter - Ollama Provider', () => {

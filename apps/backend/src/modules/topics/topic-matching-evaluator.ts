@@ -63,6 +63,19 @@ export const TopicMatchingResultSchema = z.preprocess(
       }
     }
 
+    // Enforce the decision-implied shape of the payload before the refine checks it.
+    // The model routinely echoes fields the chosen decision does not admit; the refine
+    // below is the contract, so the coercion that keeps it satisfiable belongs here,
+    // next to the schema that owns it, rather than in the provider-neutral gateway.
+    if (copy.decision === 'MATCH_EXISTING_TOPIC') {
+      copy.primary_lane = null;
+    } else if (copy.decision === 'NEW_TOPIC') {
+      copy.matched_topic_id = null;
+    } else if (copy.decision === 'UNASSIGNABLE_VAGUE') {
+      copy.matched_topic_id = null;
+      copy.primary_lane = null;
+    }
+
     return copy;
   },
   z

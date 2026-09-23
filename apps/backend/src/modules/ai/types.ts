@@ -48,6 +48,20 @@ export class AiGatewayError extends Error {
   }
 }
 
+/**
+ * Options for a structured generation call.
+ *
+ * Contract: the gateway validates exactly what the model returned. It does NOT rewrite
+ * caller-owned fields before `schema.safeParse` — a schema that needs to tolerate model
+ * quirks (echoed fields, over-long strings, sentinel values) must declare that tolerance
+ * itself, via its own `z.preprocess`. Provider-generic cleanup (stripping markdown code
+ * fences) is the only rewriting the gateway performs.
+ *
+ * This matters because `schema` is the caller's contract. If the gateway silently coerced
+ * a caller's fields, that caller's own refinements would be pre-empted and unreachable in
+ * production, and a reader of the schema alone could not tell what a successful parse
+ * actually guarantees.
+ */
 export interface GenerateStructuredOptions<T> {
   operationType: 'SEMANTIC_RELEVANCE' | 'TOPIC_MATCHING' | 'TOPIC_DERIVED_PROJECTION';
   profileId?: string;
