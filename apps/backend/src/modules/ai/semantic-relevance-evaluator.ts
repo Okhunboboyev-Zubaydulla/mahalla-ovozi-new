@@ -90,12 +90,6 @@ export interface PrecedingMessageContext {
 export interface ChatContinuityContext {
   interveningCount: number;
   precedingRelevantMessage?: PrecedingMessageContext | null;
-  truePrecedingMessage?: {
-    telegramMessageId: string;
-    telegramUserId?: string | null;
-    originalTimestamp: string;
-    verbatimText: string;
-  } | null;
 }
 
 export interface ParentReplyContext {

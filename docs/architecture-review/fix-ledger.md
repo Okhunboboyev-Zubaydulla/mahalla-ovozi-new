@@ -502,6 +502,34 @@ All runs against **`mahalla_ovozi_test` on port 5433**. The four-file run was ex
 4. **No test covers the `:414` (`prevText`) continuity branch end-to-end.** Matrix #27 proves the *parent-reply* path (`:178`) feeds the shared resolver; the preceding-message continuity path is covered only by the existing Matrix #14 prompt assertion (`"Svet o'chdi 14-domda"`), which was green before and after.
 5. **No visual/browser sign-off.** Not applicable to this change (no UI surface), stated for completeness.
 
+### Follow-up pass — the residual list, worked through (same session)
+
+The user asked for the honest gaps to be addressed if reasonable. Three of the four were **not defects** and are recorded as such rather than "fixed"; one exposed a **new finding**; one was a real coverage hole and is now closed.
+
+**Gap 3 exposed a dead subsystem — new finding `L3-P04R-06` (FIXED).**
+
+The `:475` coercion was filed as a gap ("still coerces `null → ''`"). Investigating it established that `truePrecedingMessage` was **written in two places and read in ZERO**. The evaluator's only consumer of continuity is `semantic-relevance-evaluator.ts:200`:
+
+```
+continuity?.precedingRelevantMessage ?? input.immediatePrecedingMessage ?? null
+```
+
+`truePrecedingMessage` was never referenced in any prompt-building branch. Repo-wide, the symbol appeared only as: the interface declaration, two assignments, and two test fixtures. Consequences:
+
+- The 40-line query block at `semantic-relevance-job-handler.ts:434-473` (a second, redundant `ORDER BY … LIMIT 1` preceding-message lookup, guarded by `interveningCount > 0`) existed to populate a field nobody read. It ran a database query on every candidate that had a recent relevant message, inside the AI path.
+- The `?? ''` coercion was preserving a value with **no consumer** — so the "honest gap" was really "dead code carrying a type constraint".
+
+**Fix:** deleted the field from `ChatContinuityContext` (`semantic-relevance-evaluator.ts`), deleted the query block and both `truePrecedingMessage:` assignments (`semantic-relevance-job-handler.ts`), and removed the two stale fixtures (`semantic-relevance-evaluator.test.ts`). This is **pure deletion** — no behaviour change is claimed and no red test exists, because there was no behaviour to falsify. The evidence is the compiler: removing the field made all three test-config type errors visible (`tsc --noEmit -p tsconfig.test.json` → TS2353 ×2), and **`tsc --noEmit` alone did NOT catch them** — it excludes `tests/`. Both configs now exit 0.
+
+**Gap 4 closed with a real test.** Matrix #28 covers the `:405` continuity branch (the `prevText` site), which the parent-reply tests never reached: same conflicting payload shape as #27 but on the *preceding relevant message*. **Falsified** — restoring the outlier's precedence makes it fail (`expected … to contain 'CONTINUITY_CANONICAL_TEXT'`).
+
+**Gaps 1 and 2 were re-examined and are NOT defects.** Recorded so they are not re-opened:
+
+1. The `->>'text'` root arm is a **widening only in theory**. The resolver has always read root-level `text`; the arm makes search cover exactly what the resolver covers. Removing it would re-open a (currently unproduced) half-gap for no benefit. Kept deliberately.
+2. `getTopicEvidence` renders `ae.verbatim_text` itself. That is **correct**: it reads a column of Accepted Evidence, where the column is non-null by construction. Routing a column read through a payload resolver would be the wrong seam. `fix-backlog.md` already records "do not collapse the query modules" as an explicit non-recommendation.
+
+**Lesson worth carrying.** Two of the four "gaps" were the same failure mode in miniature: a value being carefully preserved because its type demanded it, with nobody asking whether anything consumed it. The compiler found the answer in one command (`-p tsconfig.test.json`) that the standard `tsc --noEmit` cannot run.
+
 
 
 

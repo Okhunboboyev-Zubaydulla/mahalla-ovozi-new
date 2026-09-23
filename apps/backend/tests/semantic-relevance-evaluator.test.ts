@@ -2682,11 +2682,6 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
                 verbatimText: 'musor moshina kemadi',
                 lane: 'WASTE',
               },
-              truePrecedingMessage: {
-                telegramMessageId: '66310',
-                originalTimestamp: '2026-09-12T14:00:00.000Z',
-                verbatimText: 'salom hammaga',
-              },
             },
             parentReplyContext: {
               parentMessageId: '66307',
@@ -2740,7 +2735,6 @@ describe('Semantic Relevance Domain Evaluator & Contracts Unit Tests', () => {
                 verbatimText: "Svet o'chdi",
                 lane: 'ELECTRICITY',
               },
-              truePrecedingMessage: null,
             },
           });
 

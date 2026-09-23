@@ -348,6 +348,38 @@ Three more places select a Telegram message envelope out of a payload. **Deliber
 
 **Why they are still worth filing.** **Sites #4 and #5 disagree with each other on precedence** — #4 checks `channel_post` *before* `edited_message`, #5 checks `edited_message` before `channel_post`. For an update carrying both (an edited message in a channel), the two produce different message objects. Site #6 recognises only four of the six shapes the ingest path accepts. This is the same defect class as `L3-P04R-05` (independently-written readers of one payload shape) and should be settled by one owner before it produces a second `L3-P04R-05`-style silent divergence.
 
+### L3-P04R-06 — `truePrecedingMessage` was computed in full and read by nobody
+
+| Field | Value |
+|---|---|
+| Category | `dead-code` · `untestable-interface` |
+| Severity | **medium** |
+| Strength | `strong` |
+| Confidence | high |
+| Verification | **observed** — repo-wide symbol grep, then compiler-enforced removal |
+| Location | `apps/backend/src/modules/ai/jobs/semantic-relevance-job-handler.ts:434-473`, `apps/backend/src/modules/ai/semantic-relevance-evaluator.ts:93-98` |
+| Status | **FIXED** (pure deletion) — see `fix-ledger.md` Phase 9 follow-up |
+
+**Description.** `ChatContinuityContext.truePrecedingMessage` was populated by a dedicated 40-line database query and consumed by nothing.
+
+The evaluator's only continuity reader is `semantic-relevance-evaluator.ts:200`:
+
+```
+continuity?.precedingRelevantMessage ?? input.immediatePrecedingMessage ?? null
+```
+
+`truePrecedingMessage` appears in **no** prompt-building branch. A repo-wide grep found exactly five references: the interface declaration, two assignments in the job handler (`:483`, `:489`), and two test fixtures that only *supplied* it.
+
+**Why it matters.** The redundant lookup ran on every candidate that had a recent relevant message in the same chat — a second `ORDER BY original_timestamp DESC LIMIT 1` over `telegram_intake_records`, inside the AI evaluation path, guarded by `interveningCount > 0`. It was pure cost. Worse, its existence implied a prompt section ("the true N-1 message, not the last relevant one") that the model never received, so a reader of the handler would reasonably believe the model was shown the immediately preceding message. It was not.
+
+**How it was found.** Not by the review — by asking why a `null → ''` coercion was worth preserving during the `L3-P04-01` fix. The coercion existed only because the field's type was `string` (required) while its source could be unresolvable. Removing the coercion's *reason* dissolved the field.
+
+**Deletion test.** Deleting it removes a query, a type member, two assignments, and two fixtures, and changes no prompt byte. Complexity does not reappear anywhere: no consumer existed to re-create. This is the rare case where the deletion test says "delete".
+
+**Fix.** Pure deletion across three files. No falsifying red test is claimed, because no behaviour changed — the evidence is the compiler: the stale fixtures surfaced as `TS2353` under `tsc --noEmit -p tsconfig.test.json`, and **the standard `tsc --noEmit` did not catch them** because it excludes `tests/`.
+
+**The generalisable lesson.** A field that is written and never read is invisible to both reviewers and type-checkers, because every write is well-typed. It is only visible by asking, of each preserved value, "who consumes this?" — and by running the test-config typecheck, which is where interface narrowing actually bites.
+
 ---
 
 ## Deferred to L6

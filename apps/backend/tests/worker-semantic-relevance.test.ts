@@ -1126,4 +1126,80 @@ describe('Story 2.3: Worker Semantic Relevance 25-Row Verification Matrix Integr
     expect(lastCall?.userPrompt).toContain(CANONICAL_RESOLVER_PICKS);
     expect(lastCall?.userPrompt).not.toContain(OUTLIER_WOULD_PICK);
   });
+
+  it('Matrix #28: preceding-message continuity resolves its text through the shared resolver', async () => {
+    // Covers the :405 site (the `prevText` continuity branch), which the parent-reply
+    // tests do not reach. Same conflicting payload shape as Matrix #27, but on the
+    // *preceding relevant message* rather than a reply target.
+    const OUTLIER_WOULD_PICK = 'CONTINUITY_OUTLIER_TEXT';
+    const CANONICAL_RESOLVER_PICKS = 'CONTINUITY_CANONICAL_TEXT';
+
+    const priorIntakeId = `intk_prior_${crypto.randomUUID()}`;
+    await db.insert(telegramIntakeRecords).values({
+      id: priorIntakeId,
+      districtId: testDistrictId,
+      mahallaName: 'Guliston',
+      telegramBotId: 'bot_test_123',
+      telegramChatId: testChatId,
+      telegramMessageId: '699',
+      // Within 15 minutes of the candidate (09:00) and with zero intervening messages,
+      // so the handler selects the IMMEDIATE PRECEDING branch that RENDERS the text.
+      originalTimestamp: new Date('2026-08-22T08:50:00.000Z'),
+      calendarDay: '2026-08-22',
+      rawPayload: {
+        update_id: 699001,
+        message: {
+          message_id: 699,
+          date: 1787388600,
+          chat: { id: Number(testChatId), type: 'supergroup' },
+          text: OUTLIER_WOULD_PICK,
+        },
+        verbatimText: CANONICAL_RESOLVER_PICKS,
+      },
+    });
+
+    // Make the prior message the most recent COMPLETED_RELEVANT op in this chat.
+    await db.insert(aiOperations).values({
+      id: `aiop_${crypto.randomUUID()}`,
+      districtId: testDistrictId,
+      mahallaName: 'Guliston',
+      calendarDay: '2026-08-22',
+      operationType: 'SEMANTIC_RELEVANCE',
+      targetId: priorIntakeId,
+      pinnedProfileId: 'prof_rel_2026_08_v1',
+      contextRevision: 0,
+      snapshotFingerprint: 'prior_fp',
+      finalStatus: 'COMPLETED_RELEVANT',
+      resultPayload: {
+        is_relevant: true,
+        relevant_lanes: ['WATER'],
+        exclusion_reason: null,
+        accepted_message_ids: ['699'],
+        reasoning: 'Earlier water complaint in this chat',
+      },
+    });
+
+    aiController.mockAdapter.setNextResponse({
+      is_relevant: true,
+      relevant_lanes: ['WATER'],
+      exclusion_reason: null,
+      reasoning: 'Continues the earlier water complaint',
+    });
+
+    const candidateText = "Mahallada suvsizlik davom etmoqda, 3 kundan beri suv yo'q";
+    const candidateIntakeId = await createTestIntake(candidateText, '700');
+    await processCandidateJob(candidateIntakeId, candidateText, '700');
+
+    const op = await waitForOperation(candidateIntakeId);
+    expect(op).toBeDefined();
+
+    const calls = aiController.mockAdapter.getCalls();
+    expect(calls.length).toBeGreaterThan(0);
+    const lastCall = calls[calls.length - 1];
+
+    // The continuity section must render the CANONICAL text, not the outlier's.
+    expect(lastCall?.userPrompt).toContain('### IMMEDIATE PRECEDING MESSAGE (N-1 IN CHAT)');
+    expect(lastCall?.userPrompt).toContain(CANONICAL_RESOLVER_PICKS);
+    expect(lastCall?.userPrompt).not.toContain(OUTLIER_WOULD_PICK);
+  });
 });

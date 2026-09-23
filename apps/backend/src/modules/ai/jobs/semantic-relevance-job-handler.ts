@@ -431,47 +431,6 @@ export async function processSemanticRelevanceJobs(
 
                 const interveningCount = interveningResult?.count ?? 0;
 
-                // 3. Query true immediately preceding message (regardless of relevance)
-                let truePrecedingMsg: {
-                  telegramMessageId: string;
-                  telegramUserId?: string | null;
-                  originalTimestamp: string;
-                  verbatimText: string;
-                } | null = null;
-
-                if (interveningCount > 0) {
-                  const [truePrecedingRecord] = await db
-                    .select({
-                      telegramMessageId: telegramIntakeRecords.telegramMessageId,
-                      telegramUserId: telegramIntakeRecords.telegramUserId,
-                      originalTimestamp: telegramIntakeRecords.originalTimestamp,
-                      rawPayload: telegramIntakeRecords.rawPayload,
-                    })
-                    .from(telegramIntakeRecords)
-                    .where(
-                      and(
-                        eq(telegramIntakeRecords.districtId, districtId),
-                        eq(telegramIntakeRecords.telegramChatId, telegramChatId),
-                        lt(telegramIntakeRecords.originalTimestamp, candidateTimestamp),
-                      ),
-                    )
-                    .orderBy(desc(telegramIntakeRecords.originalTimestamp))
-                    .limit(1);
-
-                  if (truePrecedingRecord) {
-                    truePrecedingMsg = {
-                      telegramMessageId: truePrecedingRecord.telegramMessageId,
-                      telegramUserId: truePrecedingRecord.telegramUserId,
-                      originalTimestamp: truePrecedingRecord.originalTimestamp.toISOString(),
-                      // truePrecedingMsg.verbatimText is a REQUIRED string in the evaluator's
-                      // context type, so an unresolvable payload keeps the previous "" here
-                      // instead of widening that shared contract.
-                      verbatimText:
-                        extractVerbatimDisplayText(null, truePrecedingRecord.rawPayload) ?? '',
-                    };
-                  }
-                }
-
                 const timeDiffMs = candidateTimeMs - recentRelevantOp.originalTimestamp.getTime();
                 const isWithin15Min = timeDiffMs <= 15 * 60 * 1000;
 
@@ -480,13 +439,11 @@ export async function processSemanticRelevanceJobs(
                   chatContinuity = {
                     interveningCount: 0,
                     precedingRelevantMessage: precedingCtx,
-                    truePrecedingMessage: null,
                   };
                 } else {
                   chatContinuity = {
                     interveningCount: Math.max(interveningCount, isWithin15Min ? 0 : 1),
                     precedingRelevantMessage: precedingCtx,
-                    truePrecedingMessage: truePrecedingMsg,
                   };
                 }
               }
