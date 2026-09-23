@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Architecture review for mahalla-ovozi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+    </script>
+    <style>
+      .seam { stroke-dasharray: 4 4; }
+      .leak { stroke: #dc2626; }
+      .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+      .lbl { font-size: 0.625rem; letter-spacing: 0.1em; text-transform: uppercase; }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans antialiased">
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-12">
+
+      <header class="border-b border-slate-200 pb-8">
+        <p class="lbl text-slate-400">Architecture review</p>
+        <h1 class="font-serif text-4xl mt-2">mahalla-ovozi-trial-2</h1>
+        <p class="text-sm text-slate-500 mt-2">Deepening opportunities &middot; scanned 2026-09-22 &middot; backend 160 files / 33,503 LOC, web 154 files / 26,949 LOC, api-contracts 18 files / 3,010 LOC</p>
+        <div class="flex flex-wrap gap-4 mt-6 text-xs text-slate-600">
+          <span class="flex items-center gap-2"><span class="inline-block w-6 h-3 border border-slate-700 bg-white"></span>module</span>
+          <span class="flex items-center gap-2"><svg width="26" height="8"><line x1="0" y1="4" x2="26" y2="4" stroke="#334155" stroke-width="1.5" stroke-dasharray="4 4"/></svg>seam</span>
+          <span class="flex items-center gap-2"><svg width="26" height="8"><line x1="0" y1="4" x2="26" y2="4" stroke="#dc2626" stroke-width="2"/></svg>leakage</span>
+          <span class="flex items-center gap-2"><span class="inline-block w-6 h-3 deep"></span>deep module</span>
+        </div>
+      </header>
+      <section id="candidates" class="space-y-16">
+
+        <article id="c1" class="scroll-mt-8">
+          <h2 class="font-serif text-2xl">1. Collapse the Signal reading surface into one deep module</h2>
+          <div class="flex gap-2 mt-3 flex-wrap">
+            <span class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-100 text-emerald-800">Strong</span>
+            <span class="px-2 py-0.5 text-xs rounded bg-slate-100 text-slate-600">local-substitutable</span>
+          </div>
+          <pre class="font-mono text-sm mt-4 text-slate-600 leading-relaxed">apps/backend/src/modules/topics/topic-evidence-management-service.ts  (1344 LOC, 4 exports)
+apps/backend/src/modules/ai/jobs/semantic-relevance-job-handler.ts:34   (extractVerbatimTextFromRawPayload)
+apps/backend/src/modules/topics/topic-evidence-service.ts               (9 exports, getTopicEvidence)</pre>
+
+          <div class="grid md:grid-cols-2 gap-4 mt-6">
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="lbl text-slate-400 mb-3">Before</p>
+              <pre class="mermaid">
+flowchart TB
+  R[hokim-topics-routes] --> LS[listSignals]
+  R --> GT[getTopicEvidence]
+  LS --> EX[extractSignalVerbatimText]
+  GT --> SL[sanitizeSenderAttribution]
+  EX -.duplicate.-> DUP[extractVerbatimTextFromRawPayload]
+  DUP --> JH[semantic-relevance-job-handler]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class EX,DUP leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="lbl text-slate-400 mb-3">After</p>
+              <div class="relative h-56">
+                <div class="absolute inset-x-6 top-4 deep rounded-lg text-white px-4 py-3">
+                  <p class="lbl text-slate-400">Accepted Evidence reading</p>
+                  <p class="text-sm mt-1">one interface: readAcceptedEvidence(query)</p>
+                </div>
+                <div class="absolute left-8 right-8 bottom-4 border border-dashed border-slate-400 rounded-lg bg-slate-50 p-3 text-[11px] text-slate-500 space-y-1">
+                  <p class="lbl text-slate-400">internal to the module</p>
+                  <p>verbatim text resolution &middot; sender attribution sanitising</p>
+                  <p>keyset cursor &middot; deep link resolution &middot; Signal listing</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p class="mt-5 text-sm"><span class="font-semibold">Problem:</span> Two modules resolve the same Accepted Evidence verbatim text by separate hand-written payload walkers, and the Signal reading surface is split across two modules.</p>
+          <p class="mt-2 text-sm"><span class="font-semibold">Solution:</span> Make one module own reading Accepted Evidence behind a single interface, absorbing the duplicated payload walker as an internal seam.</p>
+          <ul class="mt-4 space-y-1 text-sm text-slate-700 list-disc list-inside">
+            <li>locality: one payload walker</li>
+            <li>Delete the duplicated walker</li>
+            <li>Tests hit one interface</li>
+            <li>leverage: N callers, one shape</li>
+          </ul>
+        </article>
+
+        <article id="c2" class="scroll-mt-8">
+          <h2 class="font-serif text-2xl">2. Shrink the Topic query engine interface to what callers use</h2>
+          <div class="flex gap-2 mt-3 flex-wrap">
+            <span class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-100 text-emerald-800">Strong</span>
+            <span class="px-2 py-0.5 text-xs rounded bg-slate-100 text-slate-600">local-substitutable</span>
+          </div>
+          <pre class="font-mono text-sm mt-4 text-slate-600 leading-relaxed">apps/backend/src/modules/topics/topic-query-engine.ts  (1244 LOC, 26 export lines)
+apps/backend/src/modules/topics/topic-query-helpers.ts  (44 LOC)
+apps/backend/src/modules/topics/hokim-topics-routes.ts:23</pre>
+
+          <div class="grid md:grid-cols-2 gap-4 mt-6">
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="lbl text-slate-400 mb-3">Before &mdash; interface as wide as implementation</p>
+              <div class="flex items-end gap-6 h-56 justify-center">
+                <div class="w-24">
+                  <div class="bg-slate-300 h-40 rounded-t flex items-center justify-center text-xs text-slate-700 text-center px-1">26 export lines</div>
+                  <div class="bg-slate-800 h-48 rounded-b"></div>
+                </div>
+                <div class="text-xs text-slate-500 self-center leading-relaxed">
+                  <p>0 consumers:</p>
+                  <p class="font-mono">encodeTopicKeysetCursor</p>
+                  <p class="font-mono">queryTopics</p>
+                  <p class="font-mono">queryDistrictTopicsPage</p>
+                  <p class="font-mono">resolvePriorPeriodComparison</p>
+                  <p class="font-mono">encodeKeysetCursorAlias</p>
+                </div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="lbl text-slate-400 mb-3">After &mdash; deep</p>
+              <div class="flex items-end gap-6 h-56 justify-center">
+                <div class="w-24">
+                  <div class="bg-slate-300 h-8 rounded-t flex items-center justify-center text-xs text-slate-700">6 fns</div>
+                  <div class="bg-slate-800 h-48 rounded-b"></div>
+                </div>
+                <div class="text-xs text-slate-500 self-center leading-relaxed">
+                  <p>consumed:</p>
+                  <p class="font-mono">queryHokimBoard (3)</p>
+                  <p class="font-mono">queryHokimLaneBatch (3)</p>
+                  <p class="font-mono">queryHokimStatistics (3)</p>
+                  <p class="font-mono">checkProcessingDelay (1)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p class="mt-5 text-sm"><span class="font-semibold">Problem:</span> The module exports 26 interface items but nine of them have zero consumers outside the file, including a backward-compatibility alias triple.</p>
+          <p class="mt-2 text-sm"><span class="font-semibold">Solution:</span> Keep only the query functions the Hokim dashboard actually calls; delete the alias exports and the rows/types that exist solely for the engine's own internal use.</p>
+          <ul class="mt-4 space-y-1 text-sm text-slate-700 list-disc list-inside">
+            <li>interface shrinks by a third</li>
+            <li>Two adapters justify nothing</li>
+            <li>locality: cursor rules in one place</li>
+            <li>Fewer false callers to trace</li>
+          </ul>
+        </article>
+
+        <article id="c3" class="scroll-mt-8">
+          <h2 class="font-serif text-2xl">3. ADR-0001's ports are honoured only where the module also owns them</h2>
+          <div class="flex gap-2 mt-3 flex-wrap">
+            <span class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-100 text-emerald-800">Strong</span>
+            <span class="px-2 py-0.5 text-xs rounded bg-slate-100 text-slate-600">ports &amp; adapters</span>
+          </div>
+          <pre class="font-mono text-sm mt-4 text-slate-600 leading-relaxed">apps/backend/src/modules/**/*.ts            (180+ imports from ../../adapters/)
+apps/backend/src/adapters/db/schema/index.ts
+docs/adr/0001-hexagonal-modular-monolith.md
+Only 2 of 15 modules have a ports/ directory:</pre>
+
+          <div class="grid md:grid-cols-2 gap-4 mt-6">
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="lbl text-slate-400 mb-3">ADR-0001 as written</p>
+              <div class="h-56 flex flex-col justify-center gap-2">
+                <div class="border border-slate-700 rounded px-4 py-3 text-xs text-center">domain modules</div>
+                <svg height="28" class="w-full"><line x1="50%" y1="0" x2="50%" y2="28" stroke="#334155" stroke-width="1.5" stroke-dasharray="4 4"/></svg>
+                <div class="border border-slate-700 rounded px-4 py-3 text-xs text-center">ports defined in adapters/</div>
+                <svg height="28" class="w-full"><line x1="50%" y1="0" x2="50%" y2="28" stroke="#334155" stroke-width="1.5" stroke-dasharray="4 4"/></svg>
+                <div class="border border-slate-700 rounded px-4 py-3 text-xs text-center">external systems</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-4">
+              <p class="lbl text-slate-400 mb-3">What the code does</p>
+              <pre class="mermaid">
+flowchart TB
+  M[15 domain modules] -->|180+ direct imports| DB[adapters/db/schema]
+  M -->|direct| JB[adapters/jobs/boss-client]
+  M -->|direct| CR[adapters/crypto]
+  M -->|direct| TG[adapters/telegram]
+  A[adapters/*] -->|11 imports| M
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class M,DB,JB,TG leak
+              </pre>
+            </div>
+          </div>
+
+          <p class="mt-5 text-sm"><span class="font-semibold">Problem:</span> ADR-0001 is partially abandoned: modules import concrete adapters by path in 180+ places, and nine of the eleven adapters import domain modules back, so the seam is two-way and the dependency rule does not hold.</p>
+          <p class="mt-2 text-sm"><span class="font-semibold">Solution:</span> Either record the actual shape (adapters are a shared infrastructure tier, not a ports layer) or move the four real ports into a shared location and give the DB schema its own module both sides may import.</p>
+          <ul class="mt-4 space-y-1 text-sm text-slate-700 list-disc list-inside">
+            <li>One direction, not two</li>
+            <li>leverage: one schema module</li>
+            <li>Seam count becomes honest</li>
+          </ul>
+          <div class="mt-4 rounded border-l-4 border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Contradicts <span class="font-semibold">ADR-0001</span> (hexagonal modular monolith). Worth reopening because the ADR's own rule is already broken by 180 call sites &mdash; it documents an intent, not the built shape.
+          </div>
+        </article>
+
