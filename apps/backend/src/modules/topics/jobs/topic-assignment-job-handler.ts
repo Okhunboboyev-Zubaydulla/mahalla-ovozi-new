@@ -5,6 +5,7 @@ import {
 } from '../../../adapters/jobs/boss-client.js';
 import {
   assignEvidenceToTopic,
+  StaleSnapshotError,
   type TopicAssignmentDeps,
   type TopicAssignmentOutcome,
 } from '../topic-assignment-coordinator.js';
@@ -112,13 +113,18 @@ export async function processTopicAssignmentJobs(
           );
           break;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const durationMs = Math.round(performance.now() - startTime);
 
-      if (err?.message && String(err.message).startsWith('STALE_SNAPSHOT')) {
+      // Narrow on the declared type, not on a message prefix. The coordinator's
+      // stale mode is the one failure that is expected and retryable; everything
+      // else is a hard error. A string prefix cannot make that distinction — an
+      // unrelated error carrying the same text was misrouted here as benign.
+      if (err instanceof StaleSnapshotError) {
         console.warn(
           JSON.stringify({
             event: 'TELEGRAM_TOPIC_ASSIGNMENT_STALE_SNAPSHOT',
+            staleReason: err.reason,
             districtId,
             mahallaName,
             calendarDay,

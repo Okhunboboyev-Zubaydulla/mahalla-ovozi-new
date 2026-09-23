@@ -28,15 +28,38 @@ import {
   getMahallaDailySnapshot,
   groupSnapshotByTopic,
   verifySnapshotIntegrity,
-  assertSnapshotRevision,
   StaleSnapshotRevisionError,
   type AcceptedEvidenceItem,
 } from '../ai/context-snapshot.js';
 import { resolveTargetTopic } from './topic-matching-resolver.js';
 import { calculateRetentionDeadline } from '../retention/index.js';
 import { clearPendingRetryFlag } from '../issues/retry-service.js';
+import { extractPostgresError, isPostgresError } from '../../adapters/db/client.js';
 
-export { StaleSnapshotRevisionError };
+/**
+ * The coordinator's one retry-signalling error mode: the Mahalla snapshot, or the
+ * Topic generation, advanced underneath this assignment and it must be retried
+ * against fresh context.
+ *
+ * Declared as a type rather than a message prefix so callers can narrow it with
+ * `instanceof` — a prose contract is invisible to the compiler, and any unrelated
+ * error that happens to share the prefix text would be misrouted into the retry
+ * path. The `STALE_SNAPSHOT:` message prefix is preserved for operator-facing
+ * pg-boss output; it is no longer the detection mechanism.
+ */
+export type StaleSnapshotReason = 'SNAPSHOT_REVISION' | 'GENERATION_ADVANCED';
+
+export class StaleSnapshotError extends Error {
+  readonly code = 'STALE_SNAPSHOT' as const;
+  readonly status = 409;
+  readonly reason: StaleSnapshotReason;
+
+  constructor(reason: StaleSnapshotReason, message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'StaleSnapshotError';
+    this.reason = reason;
+  }
+}
 
 export interface TopicAssignmentDeps {
   db: DbClient;
@@ -302,36 +325,15 @@ export async function assignEvidenceToTopic(
       };
     }
 
-    // 6. CAS Optimistic Concurrency Check (AC 12 / AD-6 / Matrix #21)
-    if (!isDirectReply) {
-      const latestSnapshot = await getMahallaDailySnapshot(
-        db,
-        districtId,
-        mahallaName,
-        calendarDay,
-        deps.injectedEvidenceResolver
-          ? await deps.injectedEvidenceResolver(districtId, mahallaName, calendarDay)
-          : undefined,
-      );
-
-      verifySnapshotIntegrity(latestSnapshot);
-
-      try {
-        assertSnapshotRevision(latestSnapshot.contextRevision, initialRevision);
-        if (latestSnapshot.snapshotFingerprint !== initialFingerprint) {
-          throw new StaleSnapshotRevisionError(
-            latestSnapshot.contextRevision,
-            initialRevision,
-          );
-        }
-      } catch (casErr) {
-        throw new Error(
-          `STALE_SNAPSHOT: Mahalla context advanced from revision ${initialRevision} to ${latestSnapshot.contextRevision}. Retrying candidate topic assignment.`,
-        );
-      }
-    }
-
     // 7. Atomic PostgreSQL Commit Block (AC 6, 7, 8, 10, 16, 17)
+    //
+    // NOTE (L3-P05-10): the CAS verification deliberately lives INSIDE this transaction,
+    // not before it. `withTransactionalIntake` does `pool.connect()` and BEGINs on a
+    // dedicated connection, while `db` is the pool-backed client. A CAS check run on `db`
+    // therefore reads through a different session than the one that commits, so it can only
+    // catch a snapshot that had already advanced BEFORE the check — never the window it is
+    // advertised to catch. Running the re-read on `tx` puts the guard and the commit on one
+    // session, and the generation predicate on the UPDATE closes the remaining gap.
     const [intakeRec] = await db
       .select({ rawPayload: telegramIntakeRecords.rawPayload })
       .from(telegramIntakeRecords)
@@ -366,6 +368,39 @@ export async function assignEvidenceToTopic(
     let purgedIntakeIds: string[] = [];
 
     await withTransactionalIntake(pool, boss, async ({ tx, enqueueJob }) => {
+      // 6. CAS Optimistic Concurrency Check (AC 12 / AD-6 / Matrix #21) — ON THIS SESSION.
+      // Re-reads the Mahalla snapshot through `tx` so the verification and the commit that
+      // follows observe the same transaction. Throws to trigger the pg-boss retry path.
+      if (!isDirectReply) {
+        const latestSnapshot = await getMahallaDailySnapshot(
+          tx as unknown as DbClient,
+          districtId,
+          mahallaName,
+          calendarDay,
+          deps.injectedEvidenceResolver
+            ? await deps.injectedEvidenceResolver(districtId, mahallaName, calendarDay)
+            : undefined,
+        );
+
+        verifySnapshotIntegrity(latestSnapshot);
+
+        if (
+          latestSnapshot.contextRevision !== initialRevision ||
+          latestSnapshot.snapshotFingerprint !== initialFingerprint
+        ) {
+          throw new StaleSnapshotError(
+            'SNAPSHOT_REVISION',
+            `STALE_SNAPSHOT: Mahalla context advanced from revision ${initialRevision} to ${latestSnapshot.contextRevision}. Retrying candidate topic assignment.`,
+            {
+              cause: new StaleSnapshotRevisionError(
+                latestSnapshot.contextRevision,
+                initialRevision,
+              ),
+            },
+          );
+        }
+      }
+
       // Log AI operation and provider attempts if AI matching occurred
       if (topicMatchingOpId && matchingAiResult) {
         await tx.insert(aiOperations).values({
@@ -511,8 +546,12 @@ export async function assignEvidenceToTopic(
         isNewTopic = false;
         finalGeneration = nextGeneration;
 
-        // Update Topic
-        await tx
+        // Update Topic — guarded by the generation we read, so a concurrent assignment
+        // that already advanced it cannot be silently overwritten (lost update).
+        // Under READ COMMITTED the second writer blocks on the row lock, then re-evaluates
+        // this predicate against the committed value; it no longer matches, so zero rows
+        // are affected and we raise the same stale signal the CAS check raises.
+        const updatedTopics = await tx
           .update(topics)
           .set({
             latestRelevantEvidenceTimestamp: latestEvidenceTime,
@@ -520,7 +559,20 @@ export async function assignEvidenceToTopic(
             requiredDerivedGeneration: nextGeneration,
             updatedAt: new Date(),
           })
-          .where(eq(topics.id, targetTopicId));
+          .where(
+            and(
+              eq(topics.id, targetTopicId),
+              eq(topics.requiredDerivedGeneration, targetTopicRecord.requiredDerivedGeneration),
+            ),
+          )
+          .returning({ id: topics.id });
+
+        if (updatedTopics.length === 0) {
+          throw new StaleSnapshotError(
+            'GENERATION_ADVANCED',
+            `STALE_SNAPSHOT: Topic ${targetTopicId} generation advanced concurrently from ${targetTopicRecord.requiredDerivedGeneration}. Retrying candidate topic assignment.`,
+          );
+        }
 
         // Insert Accepted Evidence for each message in the burst
         for (const item of evidenceItems) {
@@ -700,12 +752,18 @@ export async function assignEvidenceToTopic(
       isDirectReply,
       aiOperationId: linkedAiOpId,
     };
-  } catch (err: any) {
-    // Handle unique violation gracefully for duplicate replays (AC 16 / Matrix #26)
+  } catch (err: unknown) {
+    // Handle unique violation gracefully for duplicate replays (AC 16 / Matrix #26).
+    // Detection goes through the shared adapter helper rather than raw `any` field
+    // reads: extractPostgresError unwraps Drizzle's Error.cause nesting, which a
+    // bare `err.code` read misses, and the match keys on the constraint NAME only.
+    // The previous `String(err?.detail).includes('already exists')` arm keyed on a
+    // localized, driver-generated message fragment — if the driver wording changed
+    // the arm silently stopped matching and a duplicate burned a retry.
+    const pgErr = extractPostgresError(err);
     if (
-      err?.code === '23505' &&
-      (String(err?.constraint).includes('accepted_evidence_district_chat_msg_idx') ||
-        String(err?.detail).includes('already exists'))
+      isPostgresError(err, '23505') &&
+      (pgErr?.constraint ?? '').includes('accepted_evidence_district_chat_msg_idx')
     ) {
       return {
         status: 'IGNORED_DUPLICATE_VIOLATION',

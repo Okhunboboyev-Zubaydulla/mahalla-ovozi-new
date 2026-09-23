@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import crypto from 'node:crypto';
 import pg from 'pg';
 import type PgBoss from 'pg-boss';
@@ -18,9 +18,18 @@ import {
   type TelegramTopicAssignmentJobData,
 } from '../src/adapters/jobs/boss-client.js';
 import { startWorker, stopWorker } from '../src/entrypoints/worker.js';
+import { processTopicAssignmentJobs } from '../src/modules/topics/jobs/topic-assignment-job-handler.js';
+import {
+  assignEvidenceToTopic,
+  StaleSnapshotError,
+} from '../src/modules/topics/topic-assignment-coordinator.js';
+import { TopicMatchingEvaluator } from '../src/modules/topics/topic-matching-evaluator.js';
 import { createMockAiGateway, type MockAiGatewayController } from './helpers/mock-ai-gateway.js';
 import { AiGatewayError } from '../src/modules/ai/types.js';
-import type { AcceptedEvidenceItem } from '../src/modules/ai/context-snapshot.js';
+import {
+  StaleSnapshotRevisionError,
+  type AcceptedEvidenceItem,
+} from '../src/modules/ai/context-snapshot.js';
 import type { TopicMatchingResult } from '../src/modules/topics/topic-matching-evaluator.js';
 
 describe('Story 2.4: Worker Topic Assignment 28-Row Verification Matrix Integration Tests', () => {
@@ -1509,6 +1518,146 @@ describe('Story 2.4: Worker Topic Assignment 28-Row Verification Matrix Integrat
     expect(JSON.stringify(rows[0]?.output)).toContain('STALE_SNAPSHOT');
   });
 
+  // L3-P05-10: the CAS re-read and the commit must share one session, and the UPDATE
+  // must be guarded by the generation it read. This test makes BOTH concurrent
+  // assignments pass the CAS check (identical injected snapshot, so identical revision
+  // and fingerprint) — which isolates the generation predicate on the UPDATE as the
+  // only thing that can stop a lost update.
+  it('L3-P05-10: two concurrent assignments against one Topic cannot both commit', async () => {
+    const topicId = `top_race_${crypto.randomUUID()}`;
+    const now = new Date('2026-08-22T12:00:00Z');
+    const mahallaName = 'Guliston';
+
+    // The Topic both assignments will resolve to, at generation 1.
+    await db.insert(topics).values({
+      id: topicId,
+      districtId: testDistrictId,
+      mahallaName,
+      calendarDay: '2026-08-22',
+      primaryLane: 'WATER',
+      status: 'ACTIVE',
+      latestRelevantEvidenceTimestamp: now,
+      retentionExpiresAt: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
+      requiredDerivedGeneration: 1,
+      appliedDerivedGeneration: 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // A FIXED injected snapshot. The resolver is consulted twice per assignment (initial
+    // snapshot, then the in-transaction CAS re-read), so both calls see an identical
+    // revision and fingerprint and the CAS check passes for BOTH.
+    const injectedEvidence: AcceptedEvidenceItem[] = [
+      {
+        id: `evi_seed_${crypto.randomUUID()}`,
+        topicId,
+        telegramMessageId: '9001',
+        originalTimestamp: now.toISOString(),
+        verbatimText: 'Suv bosimi past',
+        lane: 'WATER',
+      },
+    ];
+    customEvidenceStore.set(`${testDistrictId}:${mahallaName}:2026-08-22`, injectedEvidence);
+
+    // Both assignments match the existing Topic by EXACT id, and both spend the same
+    // mock latency so they arrive at the commit block together.
+    const matchResponse = {
+      decision: 'MATCH_EXISTING_TOPIC',
+      matched_topic_id: topicId,
+      primary_lane: 'WATER',
+      reasoning: 'Concurrent assignment race',
+    };
+    // Both calls must be IN FLIGHT at the same time. Two delayed behaviors — one each —
+    // keep them overlapping. An undelayed response would let the first assignment commit
+    // before the second even reached its CAS check, and the test would pass without
+    // exercising the predicate it exists to prove.
+    aiController.mockAdapter.enqueueBehavior({ response: matchResponse, delayMs: 50 });
+    aiController.mockAdapter.enqueueBehavior({ response: matchResponse, delayMs: 50 });
+
+    // Two DISTINCT messages. They must differ on telegramMessageId: the schema enforces
+    // uniqueness on (district_id, telegram_chat_id, telegram_message_id), and the
+    // coordinator's own idempotency stage keys on the same triple — identical ids would
+    // make the second call short-circuit as SKIPPED_DUPLICATE instead of racing.
+    const candidates = [
+      { intakeId: `intk_race_a_${crypto.randomUUID()}`, messageId: '9001' },
+      { intakeId: `intk_race_b_${crypto.randomUUID()}`, messageId: '9002' },
+    ];
+    for (const c of candidates) {
+      await seedIntakeRecord({
+        intakeId: c.intakeId,
+        messageId: c.messageId,
+        timestamp: now,
+        text: 'Suv bosimi past',
+      });
+    }
+
+    const evaluator = new TopicMatchingEvaluator(aiController.gateway);
+    const makeInput = (intakeId: string, telegramMessageId: string): TelegramTopicAssignmentJobData => ({
+      intakeId,
+      districtId: testDistrictId,
+      mahallaName,
+      calendarDay: '2026-08-22',
+      telegramChatId: testChatId,
+      telegramMessageId,
+      originalTimestamp: now.toISOString(),
+      contentType: 'TEXT',
+      verbatimText: 'Suv bosimi past',
+      replyMetadata: null,
+      aiOperationId: `aiop_${crypto.randomUUID()}`,
+      relevantLanes: ['WATER'],
+      reasoning: 'Outage',
+    });
+
+    const settled = await Promise.allSettled(
+      candidates.map((c) =>
+        assignEvidenceToTopic(
+          {
+            db,
+            pool,
+            boss,
+            topicMatchingEvaluator: evaluator,
+            injectedEvidenceResolver: async () => injectedEvidence,
+          },
+          makeInput(c.intakeId, c.messageId),
+        ),
+      ),
+    );
+
+    const rejected = settled.filter((s) => s.status === 'rejected');
+    const fulfilled = settled.filter((s) => s.status === 'fulfilled');
+
+    // The losing assignment must fail with the stale signal (so pg-boss retries it),
+    // not silently commit on top of the winner.
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(1);
+    const loserReason = (rejected[0] as PromiseRejectedResult).reason;
+    expect(String(loserReason?.message)).toContain('STALE_SNAPSHOT');
+
+    // And it must be the GENERATION arm, not the snapshot-revision arm. Both
+    // assignments read an identical injected snapshot, so the CAS check passes for
+    // both and the generation predicate is the only mechanism that can reject —
+    // which makes the discriminated reason a deterministic assertion rather than a
+    // timing-dependent one. This pins `GENERATION_ADVANCED`, the reason variant that
+    // only exists because this predicate added a second stale site.
+    expect(loserReason).toBeInstanceOf(StaleSnapshotError);
+    expect((loserReason as StaleSnapshotError).reason).toBe('GENERATION_ADVANCED');
+    expect((loserReason as StaleSnapshotError).cause).toBeUndefined();
+
+    // The generation must have advanced EXACTLY ONCE (1 -> 2), not twice, and not 1 -> 2
+    // twice over. Two commits would leave the Topic projected at a generation that does
+    // not account for the second item's evidence.
+    const [finalTopic] = await db.select().from(topics).where(eq(topics.id, topicId)).limit(1);
+    expect(finalTopic?.requiredDerivedGeneration).toBe(2);
+
+    // And only the winner's evidence may exist. Without the generation predicate both
+    // assignments would insert, adding evidence the projection would never pick up.
+    const evidenceRows = await db
+      .select()
+      .from(acceptedEvidence)
+      .where(eq(acceptedEvidence.topicId, topicId));
+    expect(evidenceRows.length).toBe(1);
+  });
+
   it('Matrix #22: Lifecycle Gate 1: Inactive District drops job cleanly before AI invocation (AC 13)', async () => {
     const inactiveDistrictId = `dist_inact_1_${crypto.randomUUID()}`;
     await db.insert(districts).values({
@@ -1975,5 +2124,289 @@ describe('Story 2.4: Worker Topic Assignment 28-Row Verification Matrix Integrat
       firstName: 'Zubaydulla',
       lastName: 'Okhunboboyev',
     });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // L3-P05-09 / L3-P05-15 — the coordinator's error contract must be typed
+  // ──────────────────────────────────────────────────────────────────────────
+
+  // DECISIVE falsification arm. The stale-snapshot branch in the handler is the
+  // retry-signalling path, and it currently selects that branch by matching a
+  // STRING PREFIX off the error message. Any unrelated error that happens to
+  // carry the same prefix text — a wrapped driver error, a different module's
+  // prose — is therefore misrouted into the stale path and logged as a benign
+  // retry instead of a hard failure. Only a typed narrowing can tell them apart.
+  it('L3-P05-09: handler must NOT route a non-StaleSnapshot error carrying the same message prefix into the stale path', async () => {
+    const candidateIntakeId = `intk_prefix_${crypto.randomUUID()}`;
+    const now = new Date('2026-08-22T20:00:00Z');
+
+    await seedIntakeRecord({
+      intakeId: candidateIntakeId,
+      messageId: '3101',
+      timestamp: now,
+      text: 'Svet o‘chdi',
+    });
+
+    // An unrelated failure whose message merely BEGINS with the same literal.
+    const decoy = new Error(
+      'STALE_SNAPSHOT: unrelated upstream failure in a different module',
+    );
+    const decoyEvaluator = {
+      evaluateTopicAssignment: async () => {
+        throw decoy;
+      },
+    } as unknown as TopicMatchingEvaluator;
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Read the recorded calls BEFORE restoring the spies: in Vitest mockRestore()
+    // also clears mock.calls, so reading afterwards would silently see empty arrays
+    // and make this test pass or fail for the wrong reason.
+    let warnedEvents: string[] = [];
+    let erroredEvents: string[] = [];
+
+    try {
+      await processTopicAssignmentJobs(
+        [
+          {
+            data: {
+              intakeId: candidateIntakeId,
+              districtId: testDistrictId,
+              mahallaName: 'Guliston',
+              calendarDay: '2026-08-22',
+              telegramChatId: testChatId,
+              telegramMessageId: '3101',
+              originalTimestamp: now.toISOString(),
+              contentType: 'TEXT',
+              verbatimText: 'Svet o‘chdi',
+              replyMetadata: null,
+              aiOperationId: `aiop_${crypto.randomUUID()}`,
+              relevantLanes: ['ELECTRICITY'],
+              reasoning: 'Outage',
+            },
+          } as any,
+        ],
+        {
+          db,
+          pool,
+          boss,
+          topicMatchingEvaluator: decoyEvaluator,
+        },
+      );
+    } catch {
+      // The handler rethrows to trigger the pg-boss retry policy; that is expected.
+    } finally {
+      warnedEvents = warnSpy.mock.calls.map((c) => String(c[0]));
+      erroredEvents = errorSpy.mock.calls.map((c) => String(c[0]));
+      warnSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+
+    // The decoy is NOT a stale-snapshot signal, so it must take the error branch.
+    expect(warnedEvents.some((e) => e.includes('STALE_SNAPSHOT'))).toBe(false);
+    expect(erroredEvents.some((e) => e.includes('TELEGRAM_TOPIC_ASSIGNMENT_ERROR'))).toBe(
+      true,
+    );
+  });
+
+  // Producer side of the same contract (AC 2). A caller must be able to tell the
+  // stale-snapshot path apart WITHOUT reading the coordinator's source, and the
+  // typed diagnostic must survive: the previous code threw a bare Error, discarding
+  // the StaleSnapshotRevisionError that carries the revision numbers.
+  it('L3-P05-09: a stale snapshot rejects with a typed StaleSnapshotError carrying the diagnostic cause', async () => {
+    const candidateIntakeId = `intk_typed_${crypto.randomUUID()}`;
+    const now = new Date('2026-08-22T21:00:00Z');
+
+    await seedIntakeRecord({
+      intakeId: candidateIntakeId,
+      messageId: '3201',
+      timestamp: now,
+      text: 'Svet o‘chdi',
+    });
+
+    aiController.mockAdapter.setNextResponse({
+      decision: 'NEW_TOPIC',
+      matched_topic_id: null,
+      primary_lane: 'ELECTRICITY',
+      reasoning: 'Outage',
+    });
+
+    // Initial snapshot (revision 0), then the in-transaction CAS re-read sees a
+    // revision that has advanced to 1 — the exact race this error mode reports.
+    let callCount = 0;
+    const racingResolver = async (): Promise<AcceptedEvidenceItem[] | undefined> => {
+      callCount++;
+      if (callCount === 1) {
+        return [];
+      }
+      return [
+        {
+          id: 'evi_concurrent_typed',
+          topicId: 'top_typed',
+          telegramMessageId: '9998',
+          originalTimestamp: now.toISOString(),
+          verbatimText: 'Boshqa xabar',
+          lane: 'ELECTRICITY',
+        },
+      ];
+    };
+
+    const evaluator = new TopicMatchingEvaluator(aiController.gateway);
+
+    const settled = await Promise.allSettled([
+      assignEvidenceToTopic(
+        {
+          db,
+          pool,
+          boss,
+          topicMatchingEvaluator: evaluator,
+          injectedEvidenceResolver: racingResolver,
+        },
+        {
+          intakeId: candidateIntakeId,
+          districtId: testDistrictId,
+          mahallaName: 'Guliston',
+          calendarDay: '2026-08-22',
+          telegramChatId: testChatId,
+          telegramMessageId: '3201',
+          originalTimestamp: now.toISOString(),
+          contentType: 'TEXT',
+          verbatimText: 'Svet o‘chdi',
+          replyMetadata: null,
+          aiOperationId: `aiop_${crypto.randomUUID()}`,
+          relevantLanes: ['ELECTRICITY'],
+          reasoning: 'Outage',
+        },
+      ),
+    ]);
+
+    expect(settled[0]!.status).toBe('rejected');
+    const thrown = (settled[0] as PromiseRejectedResult).reason;
+
+    // Narrowable by type — no message matching required of the caller.
+    expect(thrown).toBeInstanceOf(StaleSnapshotError);
+    expect((thrown as StaleSnapshotError).code).toBe('STALE_SNAPSHOT');
+    expect((thrown as StaleSnapshotError).reason).toBe('SNAPSHOT_REVISION');
+
+    // The typed diagnostic is preserved rather than discarded one frame later.
+    expect((thrown as StaleSnapshotError).cause).toBeInstanceOf(StaleSnapshotRevisionError);
+
+    // The operator-facing message text is unchanged, so pg-boss output still
+    // surfaces the literal STALE_SNAPSHOT marker operators and tests rely on.
+    expect((thrown as Error).message).toContain('STALE_SNAPSHOT');
+  });
+
+  // Companion to Matrix #26. That test replays the SAME telegramMessageId, so the
+  // coordinator's idempotency check short-circuits as SKIPPED_DUPLICATE before any
+  // insert — it never reaches the 23505 catch it is named for. This test forces a
+  // REAL unique violation on accepted_evidence_district_chat_msg_idx and asserts the
+  // catch absorbs it, proving the rewritten detection (isPostgresError + constraint
+  // name) fires and that PostgreSQL actually populates `constraint` on the driver
+  // error — which the old raw `err?.code` read could miss.
+  it('L3-P05-15: a genuine 23505 reaching the insert is absorbed as IGNORED_DUPLICATE_VIOLATION', async () => {
+    const candidateIntakeId = `intk_dup_${crypto.randomUUID()}`;
+    const now = new Date('2026-08-22T22:00:00Z');
+    const messageId = '3301';
+
+    await seedIntakeRecord({
+      intakeId: candidateIntakeId,
+      messageId,
+      timestamp: now,
+      text: 'Gaz sizib chiqmoqda',
+    });
+
+    // A separate Topic owns the row that will collide, so the collision lands on the
+    // unique index rather than on a Topic foreign key.
+    const collidingTopicId = `top_dup_${crypto.randomUUID()}`;
+    await db.insert(topics).values({
+      id: collidingTopicId,
+      districtId: testDistrictId,
+      mahallaName: 'Guliston',
+      calendarDay: '2026-08-22',
+      primaryLane: 'GAS',
+      status: 'ACTIVE',
+      latestRelevantEvidenceTimestamp: now,
+      retentionExpiresAt: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
+      requiredDerivedGeneration: 1,
+      appliedDerivedGeneration: 0,
+    });
+
+    aiController.mockAdapter.setNextResponse({
+      decision: 'NEW_TOPIC',
+      matched_topic_id: null,
+      primary_lane: 'GAS',
+      reasoning: 'Gas leak',
+    });
+
+    // The idempotency check runs BEFORE the insert, so a pre-seeded row would just
+    // short-circuit. The colliding row is injected mid-flight instead: on the
+    // in-transaction CAS re-read (the resolver's second call), which lands after the
+    // idempotency check and before the accepted_evidence insert. The snapshot is
+    // unchanged between the two calls, so the CAS check still passes and the test
+    // reaches the insert deterministically instead of by racing the scheduler.
+    let callCount = 0;
+    const collidingResolver = async (): Promise<AcceptedEvidenceItem[] | undefined> => {
+      callCount++;
+      if (callCount === 2) {
+        await db.insert(acceptedEvidence).values({
+          id: `evi_dup_${crypto.randomUUID()}`,
+          topicId: collidingTopicId,
+          districtId: testDistrictId,
+          mahallaName: 'Guliston',
+          calendarDay: '2026-08-22',
+          intakeRecordId: candidateIntakeId,
+          telegramChatId: testChatId,
+          telegramMessageId: messageId,
+          originalTimestamp: now,
+          verbatimText: 'Gaz sizib chiqmoqda',
+          contentType: 'TEXT',
+        });
+      }
+      return [];
+    };
+
+    const evaluator = new TopicMatchingEvaluator(aiController.gateway);
+
+    const outcome = await assignEvidenceToTopic(
+      {
+        db,
+        pool,
+        boss,
+        topicMatchingEvaluator: evaluator,
+        injectedEvidenceResolver: collidingResolver,
+      },
+      {
+        intakeId: candidateIntakeId,
+        districtId: testDistrictId,
+        mahallaName: 'Guliston',
+        calendarDay: '2026-08-22',
+        telegramChatId: testChatId,
+        telegramMessageId: messageId,
+        originalTimestamp: now.toISOString(),
+        contentType: 'TEXT',
+        verbatimText: 'Gaz sizib chiqmoqda',
+        replyMetadata: null,
+        aiOperationId: `aiop_${crypto.randomUUID()}`,
+        relevantLanes: ['GAS'],
+        reasoning: 'Gas leak',
+      },
+    );
+
+    // The unique violation was raised, reached the catch, and was absorbed rather
+    // than burning a pg-boss retry.
+    expect(outcome.status).toBe('IGNORED_DUPLICATE_VIOLATION');
+
+    // Exactly one evidence row exists — the loser's transaction rolled back.
+    const rows = await db
+      .select()
+      .from(acceptedEvidence)
+      .where(
+        and(
+          eq(acceptedEvidence.districtId, testDistrictId),
+          eq(acceptedEvidence.telegramMessageId, messageId),
+        ),
+      );
+    expect(rows.length).toBe(1);
   });
 });
