@@ -26,6 +26,13 @@ import { recordAuditEvent } from '../audit/audit-service.js';
 import { getTashkentCalendarDay } from '../telegram-intake/timezone-util.js';
 import { qualifyTelegramContent } from '../telegram-intake/telegram-content-qualification.js';
 import {
+  EXTRACTED_TEXT_FALLBACK,
+  TELEGRAM_MESSAGE_UPDATE_KEYS,
+  extractVerbatimDisplayText,
+} from '../telegram-intake/telegram-payload-text.js';
+
+export { EXTRACTED_TEXT_FALLBACK };
+import {
   encodeKeysetCursor,
   decodeKeysetCursor,
   type ListSignalsQuery,
@@ -36,72 +43,49 @@ import {
 } from '@mahalla-ovozi/api-contracts';
 
 /**
- * Terminal fallback returned when no message text can be resolved from any payload shape.
- * Exported so callers can distinguish "no text exists" from "text resolved to this label".
- */
-export const EXTRACTED_TEXT_FALLBACK = '(Матн мавжуд эмас)';
-
-/**
- * Resolves the display text for a signal message across database evidence and raw payload structures.
+ * Thin wrapper over the shared resolver, kept so existing callers and tests that import
+ * `extractSignalVerbatimText` keep working. The implementation lives in
+ * `telegram-intake/telegram-payload-text.ts` — the single owner of payload shape and
+ * verbatim precedence. Display callers apply EXTRACTED_TEXT_FALLBACK on a null result.
  */
 export function extractSignalVerbatimText(
   evidenceVerbatimText: string | null | undefined,
   intakeRawPayload: unknown,
 ): string {
-  if (typeof evidenceVerbatimText === 'string' && evidenceVerbatimText.trim().length > 0) {
-    return evidenceVerbatimText;
+  return (
+    extractVerbatimDisplayText(evidenceVerbatimText, intakeRawPayload) ?? EXTRACTED_TEXT_FALLBACK
+  );
+}
+
+/**
+ * Builds the ILIKE search predicate over every location the verbatim resolver reads.
+ *
+ * The nested arms are DERIVED from TELEGRAM_MESSAGE_UPDATE_KEYS, so adding an envelope to
+ * the resolver cannot leave search silently behind it (the drift that produced L3-P04R-02).
+ * SQL matching is order-insensitive, so this only has to cover the same SET of locations as
+ * `extractVerbatimDisplayText`, not the same order.
+ *
+ * The two root-level arms mirror the resolver's root-level reads. `verbatimText` is written
+ * by the semantic-relevance handler when it excludes a message
+ * (semantic-relevance-job-handler.ts, both the fast-fail and AI-exclusion paths), so it is
+ * live data, not a dead key — removing it would hide every non-expired AI-excluded signal
+ * from search.
+ */
+function buildVerbatimTextSearchCondition(searchPattern: string) {
+  const arms = [
+    sql`${acceptedEvidence.verbatimText} ILIKE ${searchPattern}`,
+    sql`${telegramIntakeRecords.rawPayload}->>'verbatimText' ILIKE ${searchPattern}`,
+    sql`${telegramIntakeRecords.rawPayload}->>'text' ILIKE ${searchPattern}`,
+  ];
+
+  for (const envelopeKey of TELEGRAM_MESSAGE_UPDATE_KEYS) {
+    arms.push(
+      sql`${telegramIntakeRecords.rawPayload}->${envelopeKey}::text->>'text' ILIKE ${searchPattern}`,
+      sql`${telegramIntakeRecords.rawPayload}->${envelopeKey}::text->>'caption' ILIKE ${searchPattern}`,
+    );
   }
 
-  const raw =
-    typeof intakeRawPayload === 'object' && intakeRawPayload !== null
-      ? (intakeRawPayload as Record<string, any>)
-      : {};
-
-  if (typeof raw.verbatimText === 'string' && raw.verbatimText.trim().length > 0) {
-    return raw.verbatimText;
-  }
-
-  if (typeof raw.text === 'string' && raw.text.trim().length > 0) {
-    return raw.text;
-  }
-
-  const message =
-    typeof raw.message === 'object' && raw.message !== null
-      ? (raw.message as Record<string, any>)
-      : typeof raw.edited_message === 'object' && raw.edited_message !== null
-        ? (raw.edited_message as Record<string, any>)
-        : typeof raw.channel_post === 'object' && raw.channel_post !== null
-          ? (raw.channel_post as Record<string, any>)
-          : typeof raw.edited_channel_post === 'object' && raw.edited_channel_post !== null
-            ? (raw.edited_channel_post as Record<string, any>)
-            : null;
-
-  if (message) {
-    if (typeof message.text === 'string' && message.text.trim().length > 0) {
-      return message.text;
-    }
-    if (typeof message.caption === 'string' && message.caption.trim().length > 0) {
-      return message.caption;
-    }
-    if (message.left_chat_participant || message.left_chat_member) {
-      const user = message.left_chat_participant || message.left_chat_member;
-      const name = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.username || '';
-      return name
-        ? `(Хизмат хабари: ${name} гуруҳни тарк этди)`
-        : `(Хизмат хабари: фойдаланувчи гуруҳни тарк этди)`;
-    }
-    if (message.new_chat_members || message.new_chat_participant) {
-      return `(Хизмат хабари: янги аъзо қўшилди)`;
-    }
-    if (message.pinned_message) return `(Хизмат хабари: хабар қотирилди)`;
-    if (message.photo) return `(Расм хабари)`;
-    if (message.voice) return `(Овозли хабар)`;
-    if (message.video) return `(Видео хабар)`;
-    if (message.document) return `(Ҳужжат)`;
-    if (message.sticker) return `(Стикер)`;
-  }
-
-  return EXTRACTED_TEXT_FALLBACK;
+  return sql`(${sql.join(arms, sql` OR `)})`;
 }
 
 export class SignalNotFoundError extends Error {
@@ -222,9 +206,7 @@ export async function listSignals(
     if (query.search && query.search.trim().length > 0) {
       const sanitizedSearch = query.search.trim().replace(/[%_\\]/g, '\\$&');
       const searchPattern = `%${sanitizedSearch}%`;
-      conditions.push(
-        sql`(${acceptedEvidence.verbatimText} ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->>'verbatimText' ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->'message'->>'text' ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->'message'->>'caption' ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->'edited_message'->>'text' ILIKE ${searchPattern} OR ${telegramIntakeRecords.rawPayload}->'edited_message'->>'caption' ILIKE ${searchPattern})`,
-      );
+      conditions.push(buildVerbatimTextSearchCondition(searchPattern));
     }
 
     if (query.startDate) {
@@ -615,11 +597,9 @@ export async function listSignals(
     // flat `verbatimText` key, while the structural qualification / burst-debounce
     // handlers keep the raw Telegram update and only add `status`/`exclusionReason`
     // (text at `raw_payload.message.text`). A root-level-only read fails the latter.
-    const resolvedText = extractSignalVerbatimText(null, intake.rawPayload);
-    const hasText =
-      resolvedText !== EXTRACTED_TEXT_FALLBACK && resolvedText.trim().length > 0;
+    const resolvedText = extractVerbatimDisplayText(null, intake.rawPayload);
 
-    if (!hasText) {
+    if (resolvedText === null) {
       throw new SignalNotFoundError(
         'Ушбу хабарнинг матни топилмади. Далил сифатида қабул қилиб бўлмайди.',
       );

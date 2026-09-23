@@ -29,17 +29,8 @@ import type {
   ExclusionReason,
 } from '../semantic-relevance-evaluator.js';
 import { hasSelfContainedCivicSignal } from '../../telegram-intake/telegram-content-qualification.js';
+import { extractVerbatimDisplayText } from '../../telegram-intake/telegram-payload-text.js';
 import { clearPendingRetryFlag } from '../../issues/retry-service.js';
-
-function extractVerbatimTextFromRawPayload(rawPayload: unknown): string {
-  if (typeof rawPayload !== 'object' || rawPayload === null) return '';
-  const record = rawPayload as Record<string, unknown>;
-  const msg = record.message as Record<string, unknown> | undefined;
-  if (typeof msg?.text === 'string') return msg.text;
-  if (typeof msg?.caption === 'string') return msg.caption;
-  if (typeof record.verbatimText === 'string') return record.verbatimText;
-  return '';
-}
 
 export interface SemanticRelevanceJobDeps {
   db: DbClient;
@@ -175,7 +166,7 @@ export async function processSemanticRelevanceJobs(
 
               if (parentIntake) {
                 const raw = parentIntake.rawPayload as Record<string, unknown> | null;
-                const parentVerbatimText = extractVerbatimTextFromRawPayload(raw);
+                const parentVerbatimText = extractVerbatimDisplayText(null, raw);
 
                 const isExcludedAtQualification = raw?.status === 'EXCLUDED';
                 const qualificationReason =
@@ -411,7 +402,7 @@ export async function processSemanticRelevanceJobs(
               .limit(1);
 
             if (recentRelevantOp) {
-              const prevText = extractVerbatimTextFromRawPayload(recentRelevantOp.rawPayload);
+              const prevText = extractVerbatimDisplayText(null, recentRelevantOp.rawPayload);
               const payload = recentRelevantOp.resultPayload as Record<string, unknown> | null;
               const lanes = payload?.relevant_lanes as string[] | undefined;
               const prevLane = lanes && lanes.length > 0 ? lanes[0] : null;
@@ -472,7 +463,11 @@ export async function processSemanticRelevanceJobs(
                       telegramMessageId: truePrecedingRecord.telegramMessageId,
                       telegramUserId: truePrecedingRecord.telegramUserId,
                       originalTimestamp: truePrecedingRecord.originalTimestamp.toISOString(),
-                      verbatimText: extractVerbatimTextFromRawPayload(truePrecedingRecord.rawPayload),
+                      // truePrecedingMsg.verbatimText is a REQUIRED string in the evaluator's
+                      // context type, so an unresolvable payload keeps the previous "" here
+                      // instead of widening that shared contract.
+                      verbatimText:
+                        extractVerbatimDisplayText(null, truePrecedingRecord.rawPayload) ?? '',
                     };
                   }
                 }

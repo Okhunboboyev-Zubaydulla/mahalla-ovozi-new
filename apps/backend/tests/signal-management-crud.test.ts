@@ -677,6 +677,50 @@ describe('Signal & Evidence Management Console & CRUD Verification', () => {
     expect(body.items[0].verbatimText).toContain('transformator');
   });
 
+  it('10b. GET /api/v1/admin/signals search finds a channel_post payload by its displayed text', async () => {
+    // L3-P04R-02: channel_post traffic IS ingested (telegram-intake-routes.ts:61-70,
+    // telegram-intake-service.ts:267-268), but the search predicate only read
+    // raw_payload.message.*, so these messages were DISPLAYED correctly yet UNFINDABLE
+    // by search. The predicate now derives its arms from TELEGRAM_MESSAGE_UPDATE_KEYS.
+    const channelIntakeId = `intake_chan_${crypto.randomUUID()}`;
+    await db.insert(telegramIntakeRecords).values({
+      id: channelIntakeId,
+      districtId: testDistrictId,
+      mahallaName,
+      telegramBotId: 'bot_test',
+      telegramChatId: '-1001234567',
+      telegramMessageId: '1007',
+      originalTimestamp: new Date('2026-09-01T12:15:00.000Z'),
+      calendarDay,
+      rawPayload: {
+        update_id: 991007,
+        channel_post: {
+          message_id: 1007,
+          date: 1756721700,
+          text: 'Kanal posti: mahallada ichimlik suvi muammosi',
+          chat: { id: -1001234567, type: 'channel' },
+        },
+      },
+    });
+
+    // The message must be findable by a word that exists ONLY in its channel_post text.
+    const res = await server.inject({
+      method: 'GET',
+      url: `/api/v1/admin/signals?districtId=${testDistrictId}&search=ichimlik`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.payload);
+    const found = body.items.find((item: any) => item.intakeId === channelIntakeId);
+
+    expect(found).toBeDefined();
+    expect(found.verbatimText).toContain('ichimlik suvi muammosi');
+  });
+
   it('11. POST /api/v1/admin/signals/:id/promote rejects promoting purged messages without verbatim text', async () => {
     const purgedIntakeId = `intake_purged_${crypto.randomUUID()}`;
     await db.insert(telegramIntakeRecords).values({

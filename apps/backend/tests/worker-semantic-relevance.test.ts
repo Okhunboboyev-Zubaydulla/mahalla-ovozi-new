@@ -1065,4 +1065,65 @@ describe('Story 2.3: Worker Semantic Relevance 25-Row Verification Matrix Integr
     expect(lastCall?.userPrompt).toContain("### AUTHOR'S PRIOR SAME-DAY CIVIC CONTEXT (SAME SENDER)");
     expect(lastCall?.userPrompt).toContain('"Musr kemadiku keca"');
   });
+
+  it('Matrix #27: job handler and read path resolve the SAME parent text for a conflicting payload', async () => {
+    // The deleted outlier `extractVerbatimTextFromRawPayload` read message.text BEFORE
+    // record.verbatimText, the REVERSE of the canonical resolver. For the exact input
+    // L3-P04-01's AC(3) names, the two disagreed: the read path showed 'B' while the
+    // prompt was fed 'A'. This test pins that they now agree, through the real prompt.
+    const OUTLIER_WOULD_PICK = 'OUTLIER_WOULD_PICK_THIS_TEXT';
+    const CANONICAL_RESOLVER_PICKS = 'CANONICAL_RESOLVER_PICKS_THIS_TEXT';
+
+    const parentIntakeId = `intk_parent_${crypto.randomUUID()}`;
+    await db.insert(telegramIntakeRecords).values({
+      id: parentIntakeId,
+      districtId: testDistrictId,
+      mahallaName: 'Guliston',
+      telegramBotId: 'bot_test_123',
+      telegramChatId: testChatId,
+      telegramMessageId: '888',
+      originalTimestamp: new Date('2026-08-22T08:55:00.000Z'),
+      calendarDay: '2026-08-22',
+      rawPayload: {
+        update_id: 888001,
+        message: {
+          message_id: 888,
+          date: 1787388900,
+          chat: { id: Number(testChatId), type: 'supergroup' },
+          text: OUTLIER_WOULD_PICK,
+        },
+        verbatimText: CANONICAL_RESOLVER_PICKS,
+        status: 'EXCLUDED',
+        exclusionReason: 'FORWARDED_POST',
+      },
+    });
+
+    aiController.mockAdapter.setNextResponse({
+      is_relevant: true,
+      relevant_lanes: ['WATER'],
+      exclusion_reason: null,
+      reasoning: 'Self-contained water complaint replying to an excluded parent',
+    });
+
+    // Compound civic term ('suvsizlik') keeps the candidate off the fast-fail path, so the
+    // parent context is actually rendered into the prompt.
+    const candidateText = "Mahallada suvsizlik davom etmoqda, 3 kundan beri suv yo'q";
+    const candidateIntakeId = await createTestIntake(candidateText, '901');
+    await processCandidateJob(candidateIntakeId, candidateText, '901', {
+      replyToMessageId: '888',
+      replyToIsForwarded: false,
+      replyToIsBot: false,
+    });
+
+    const op = await waitForOperation(candidateIntakeId);
+    expect(op).toBeDefined();
+
+    const calls = aiController.mockAdapter.getCalls();
+    expect(calls.length).toBeGreaterThan(0);
+    const lastCall = calls[calls.length - 1];
+
+    // The prompt must carry the CANONICAL resolution, not the outlier's.
+    expect(lastCall?.userPrompt).toContain(CANONICAL_RESOLVER_PICKS);
+    expect(lastCall?.userPrompt).not.toContain(OUTLIER_WOULD_PICK);
+  });
 });

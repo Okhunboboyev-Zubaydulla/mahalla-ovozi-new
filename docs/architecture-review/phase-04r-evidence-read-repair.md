@@ -151,11 +151,17 @@ I did not execute the promotion. The claim rests on: (a) the extractor reads two
 | Field | Value |
 |---|---|
 | Category | `duplication` · `low-locality` |
-| Severity | medium |
+| Severity | **high** *(corrected from medium — see the correction block below)* |
 | Strength | `strong` |
 | Confidence | high |
-| Verification | observed |
-| Location | `apps/backend/src/modules/topics/topic-evidence-management-service.ts:220`, `apps/backend/src/modules/topics/topic-evidence-management-service.ts:62-71` |
+| Verification | **observed, and the `channel_post` gap is CONFIRMED ACTIVE** |
+| Location | `apps/backend/src/modules/topics/topic-evidence-management-service.ts:226`, `apps/backend/src/modules/topics/topic-evidence-management-service.ts:62-77` |
+
+> **Correction (session 5 — the fix session).** Two claims in the original record were wrong, and the severity was understated. Both are corrected inline below; the finding itself held and was fixed.
+>
+> 1. **Severity medium → high.** The record filed the `channel_post` gap as residual uncertainty — "whether real districts ingest channel posts is unverified". It **is** verified, and it is not latent: `telegram-intake-routes.ts:61-70` explicitly accepts `channel_post`/`edited_channel_post`, `telegram-intake-service.ts:265-268` reads them, and `telegram-content-qualification.ts:322-329` handles them. A message whose text lives at `payload.channel_post.text` is **displayed correctly but unfindable by search**, today, in production.
+> 2. **`raw->>'verbatimText'` is NOT a dead key, and AC(2) was wrong to require its removal.** It has two live producers: `semantic-relevance-job-handler.ts:307-314` (fast-fail path) and `:729-736` (AI-exclusion path) both merge a flat root-level `verbatimText` into `raw_payload` via `COALESCE(raw_payload,'{}'::jsonb) || exclusionMeta::jsonb`. It persists until the retention purge, whose own predicate (`retention/debug-payload-retention.ts:35`) is `raw_payload->>'verbatimText' IS NOT NULL`. Removing the arm would have hidden every non-expired AI-excluded signal from search — the exact defect class this finding is about. **The arm was kept; the user explicitly approved overriding AC(2).** The `L3-P04R-01` finding made the same "dead root-level key" assumption about the *read* path and was also wrong in the same way.
+> 3. **The gap was wider than recorded.** The record lists only the missing `channel_post`/`edited_channel_post` shapes. The resolver also reads a root-level `text` (`topic-evidence-management-service.ts:64-66` at the time), which **no** SQL arm covered. One half of the gap was unreported.
 
 **Description.** This is the finding P4 suspected as "verbatim-resolution duplication". Its real shape is narrower and sharper than a duplicate helper.
 
@@ -174,8 +180,8 @@ Count the branches against the TypeScript extractor at `:62-71`. The SQL covers 
 
 So the two disagree in both directions:
 
-- **SQL searches for something no producer writes.** `rawPayload->>'verbatimText'` is the same dead root-level key as `L3-P04R-01`. It cannot match.
-- **SQL misses payload shapes the extractor handles.** A signal whose text lives at `payload.channel_post.text` is displayed correctly by `getSignalDetail` (the extractor finds it) but is **unfindable by search**. The operator sees the message in a list, searches for a phrase they can see on screen, and gets no result.
+- **SQL searched one root-level key the resolver also read, and missed another.** `rawPayload->>'verbatimText'` is a **live** key (corrected above — two producers write it). But the resolver also reads a root-level `rawPayload->>'text'`, which **no** SQL arm covered. The original record called the `verbatimText` arm dead and missed the `text` arm entirely — the disagreement was real, but it pointed the other way.
+- **SQL misses payload shapes the extractor handles.** A signal whose text lives at `payload.channel_post.text` is displayed correctly by `getSignalDetail` (the extractor finds it) but is **unfindable by search**. The operator sees the message in a list, searches for a phrase they can see on screen, and gets no result. **Confirmed active traffic, not a theoretical shape** (see the correction block).
 
 That is the concrete, user-visible consequence: a text field that renders but does not match. It is the same class of failure as `L3-P04-01`'s split ownership of verbatim resolution, now with a third implementation and a real behavioural divergence rather than a theoretical one.
 
@@ -204,7 +210,7 @@ That is the concrete, user-visible consequence: a text field that renders but do
 
 **Fix direction.** Make the SQL's payload arms derive from the same enumerated shape list as the extractor, or normalise the displayed text into a column at intake time so search and display read one source. At minimum, add the two missing shapes (`channel_post`, `edited_channel_post`) and drop the dead `verbatimText` arm, then comment that the set must stay in step with `extractSignalVerbatimText`. A test asserting "for each payload shape the extractor handles, a search for a phrase in it returns the row" is what actually pins this.
 
-**Acceptance criteria.** (1) The set of JSON paths searched equals the set the extractor reads. (2) No search arm references a root-level `verbatimText`. (3) A signal whose text is only in `payload.channel_post.text` is returned by a search for its own displayed text.
+**Acceptance criteria (as corrected).** (1) The set of JSON paths searched equals the set the resolver reads. (2) No search arm is *missing* a root-level key the resolver reads (`verbatimText` and `text` both retained). ~~No search arm references a root-level `verbatimText`~~ — **withdrawn; the key is live.** (3) A signal whose text is only in `payload.channel_post.text` is returned by a search for its own displayed text.
 
 ### L3-P04R-03 — The module's real export surface is invisible to ordinary search
 
@@ -295,6 +301,55 @@ export class SignalNotFoundError extends Error {
 
 **Acceptance criteria.** (1) Either every error thrown from `topic-evidence-management-service.ts` carries a `statusCode` the mapper reads, or none claims one. (2) The route mapper narrows on `code`/`instanceof`, not on message text. (3) A grep for `SIGNAL_NOT_FOUND` in `apps/backend/src` returns at least one non-declaration hit, or the constant is removed.
 
+## New finding filed by the fix session (session 5)
+
+### L3-P04R-05 — The fourth verbatim implementation was in no artifact, and it disagreed with the other three
+
+| Field | Value |
+|---|---|
+| Category | `duplication` · `low-locality` |
+| Severity | **high** |
+| Strength | `strong` |
+| Confidence | high |
+| Verification | **observed, executed, and falsified** |
+| Location (as found) | `apps/backend/src/modules/ai/jobs/semantic-relevance-job-handler.ts:34-42`, call sites `:178`, `:414`, `:475` |
+| Status | **FIXED** — see `fix-ledger.md` Phase 9 |
+
+**Description.** `extractVerbatimTextFromRawPayload` existed at `semantic-relevance-job-handler.ts:34-42`, in no review artifact, and read the payload in the **reverse** precedence of the canonical extractor:
+
+```
+message.text → message.caption → record.verbatimText     (the outlier)
+verbatimText → text → message/edited_message/channel_post/edited_channel_post text → caption   (canonical)
+```
+
+It also returned `''` rather than a fallback, and it recognised **one** envelope shape (`message`) where the canonical extractor recognised four.
+
+**Why this is the sharpest finding in the cluster.** It makes `L3-P04-01`'s own acceptance criterion (3) fail in production. For the input AC(3) names — `{ message: { text: 'A' }, verbatimText: 'B' }` — the canonical extractor returns `'B'` and this function returned `'A'`. "The same answer for every caller" was already false before any fix, and the disagreement was invisible because each caller answered privately.
+
+It also fed the AI prompt at `:475` (`truePrecedingMessage.verbatimText`), so the job handler and the read path disagreed about **what text the model was shown** — a correctness question about the audit trail, not only about display.
+
+**Why no artifact caught it.** `L3-P04R-01` and `L3-P04R-02` both live in `topic-evidence-management-service.ts`; the review scoped "payload-shape knowledge" to that module and never followed the *consumers* of `raw_payload` into `modules/ai/`. The artifact's own count — "the shape is expressed a third time" — was an undercount by one, because the survey was file-scoped rather than concept-scoped.
+
+**Lesson.** The correct unit of search for this class is the **concept** ("who reads `raw_payload` and turns it into text?"), not the file the finding happens to sit in. A grep across `apps/backend/src` for `verbatimText` returns every site in one call and would have surfaced all four.
+
+**Fix.** Deleted; all three call sites now use `extractVerbatimDisplayText`. See `fix-ledger.md` Phase 9 for the red/green/falsification evidence.
+
+### Filed, not fixed — envelope selection is a different concern (sites #4-#6)
+
+Three more places select a Telegram message envelope out of a payload. **Deliberately left alone** (user-confirmed):
+
+| # | Site | Envelope order |
+|---|---|---|
+| 4 | `telegram-content-qualification.ts:321-330` | `message → channel_post → edited_message → edited_channel_post → business_message → edited_business_message → payload` |
+| 5 | `adapters/jobs/job-types.ts:58-65` | `message → edited_message → channel_post → edited_channel_post → business_message → edited_business_message → payload` |
+| 6 | `telegram-intake-service.ts:265-268` | `message → edited_message → channel_post → edited_channel_post` (no business shapes, no payload fallback) |
+
+**Why they are out of scope.** These answer "which envelope is this update?", not "what is its display text". They return a **message object**, not a string; they have different consumers (qualification, user-metadata extraction, webhook routing) and site #4/#5 fall back to the payload itself, which the verbatim resolver deliberately does not do. Folding them into `telegram-payload-text.ts` would widen its interface beyond its one job.
+
+**Why they are still worth filing.** **Sites #4 and #5 disagree with each other on precedence** — #4 checks `channel_post` *before* `edited_message`, #5 checks `edited_message` before `channel_post`. For an update carrying both (an edited message in a channel), the two produce different message objects. Site #6 recognises only four of the six shapes the ingest path accepts. This is the same defect class as `L3-P04R-05` (independently-written readers of one payload shape) and should be settled by one owner before it produces a second `L3-P04R-05`-style silent divergence.
+
+---
+
 ## Deferred to L6
 
 - **ADR-0006 (tenant scoping).** `promoteSignal` scopes its intake lookup by `intakeId` alone (`:587-591`) and reads `districtId` off the returned row rather than filtering by an actor's District. Consistent with how the module's other statements read; whether a promotion path should require an actor District is an ADR-0006 question. Recording only; L6 owns ADR-0006.
@@ -305,7 +360,7 @@ export class SignalNotFoundError extends Error {
 
 - **`L3-P04R-01` is not executed.** The evidence is: the extractor's two key reads (read literally), all three producer writes (read literally, including the two spreads that preserve the original keys without adding root-level ones), and the intake module's own nested reader (read literally). The one step not taken is running the promotion, which this program prohibits. A direct confirmation is cheap if ever wanted: take any intake row with `raw_payload->>'status' = 'EXCLUDED'`, confirm `raw_payload->'message'->>'text'` is non-empty, and call the promotion path.
 - **`L3-P04R-01` — one path I did not fully close.** I traced three producers of `raw_payload`. I did not exhaustively grep every writer of `telegram_intake_records.rawPayload` across the whole backend, so I cannot rule out that some *other* writer (a test fixture, a seed, a CLI import, an admin edit path) writes a flat `{ verbatimText }` payload. If one does, `promoteSignal`'s inline extractor would work for records created by that writer and the finding is narrower than stated. The `(Матн мавжуд эмас)` grep found no such writer in `apps/backend/src`, and no test was run to check fixtures.
-- **`L3-P04R-02` — shape divergence verified, frequency not.** I read both the SQL predicate and the extractor and counted the shapes; the `channel_post` / `edited_channel_post` gap is textual and certain. Whether any real District's Telegram traffic arrives as `channel_post` rather than `message` depends on whether the source chats are groups or channels, which the intake transport decides and which I did not read. If channels are never ingested, the gap is latent rather than active — the finding stands as a divergence either way.
+- **`L3-P04R-02` — shape divergence verified, frequency CONFIRMED ACTIVE (corrected in session 5).** This entry originally said the `channel_post` gap might be latent "if channels are never ingested". It is not latent. `telegram-intake-routes.ts:61-70` explicitly accepts `channel_post`/`edited_channel_post`, `telegram-intake-service.ts:265-268` reads them, and `telegram-content-qualification.ts:322-329` handles them. The gap was active in production, and the severity was raised medium → high. The `raw->>'verbatimText'` arm was also **kept, not dropped**: two producers write it (`semantic-relevance-job-handler.ts:307-314`, `:729-736`), which this record had assumed dead.
 - **`L3-P04R-03` — not checked beyond this file.** I confirmed the pattern in `topic-evidence-management-service.ts` only. Whether the same stray indent appears in sibling modules is unverified and would change the finding from one file to a systemic formatting problem.
 - **`L3-P04R-04` is `inferred`** by construction: the consuming route mapper was P4's scope and I did not re-read it. This is the one finding in this pass that a single grep would settle.
 - **Not examined:** `admin-signals-routes.ts`, `hokim-topics-routes.ts`, `district-topics-routes.ts`, the search-query parser that builds `searchPattern`, and the retention purge that actually deletes payload text. The last of these matters for `L3-P04R-01`'s error-message claim — if a purge replaces the payload wholesale, then for *those* records the message is truthful and only the un-purged case is wrong. I did not read the purge.

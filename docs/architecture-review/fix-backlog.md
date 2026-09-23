@@ -8,9 +8,9 @@ Baseline: HEAD `bdf999a`. Program: 8 artifacts, **56 findings** (0 blocker · 12
 
 ---
 
-## Progress — ten of the twelve ranked items are FIXED
+## Progress — eleven of the twelve ranked items are FIXED
 
-All ten were executed test-first (failing test → confirmed failure for the recorded root cause → minimal fix → re-run green) and verified against `mahalla_ovozi_test` on port **5433**. The one partial exception is `L3-P03-01`'s web-side lane consolidation, which was driven by compiler errors rather than a red test — see `fix-ledger.md` Phase 8.
+All eleven were executed test-first (failing test → confirmed failure for the recorded root cause → minimal fix → re-run green) and verified against `mahalla_ovozi_test` on port **5433**. Two partial exceptions are recorded honestly: `L3-P03-01`'s web-side lane consolidation was driven by compiler errors rather than a red test (see `fix-ledger.md` Phase 8), and `L3-P04-01`'s `:475` call site preserves an explicit `null → ''` coercion rather than widening a shared evaluator contract (Phase 9).
 
 | Rank | Finding | Status | Notes |
 |---|---|---|---|
@@ -22,10 +22,11 @@ All ten were executed test-first (failing test → confirmed failure for the rec
 | 6 | `L3-P05-09` | **fixed** | finding confirmed *stronger* than recorded; bundled with `L3-P05-15` |
 | 7 | `L3-P05-02` | **fixed** | finding confirmed *stronger* than recorded; 3 artifact defects corrected |
 | 8 | `L3-P03-01` | **fixed** | interface narrowed 28 → 9 exports; two more artifact corrections (session 4) |
+| 9 | `L3-P04-01` | **fixed** | one owner for payload text; `L3-P04R-02` corrected medium → **high**; a **new** finding filed (`L3-P04R-05`, the fourth implementation, in no artifact) |
 
 `L3-P05-15` (low, unranked below) was fixed in the same pass as rank 6 — same file, same class, backlog Seam D. The unranked `is_hokim_related` tautology was fixed in session 3.
 
-**The highest-ranked remaining item is #9, `L3-P04-01`.** Ranks 9–12 remain open.
+**Ranks 10–12 are the highest-ranked remaining items.** Rank 9 was closed in session 5.
 
 Per-finding detail, red-green evidence, and residual uncertainty live in `docs/architecture-review/fix-ledger.md`. This file stays an index; it does not carry the fix records.
 
@@ -84,8 +85,10 @@ The 21 medium findings cluster here. Only those with the widest blast radius are
 
 The fix narrowed `topic-query-engine.ts` from 28 exported names to **9**, all consumed: 6 export lines deleted (the `:29` re-export, the local `CANONICAL_LANES`, the duplicate `TopicNotFoundError`, and the `:113-115` alias triple) and 11 `export` keywords dropped. `L3-P03-02` is closed; `L3-P03-03` is partially closed (the engine's duplicate class is gone, `topic-evidence-service.ts:75` remains the live one). The lane constants were consolidated into `packages/api-contracts` and **all five** web copies removed — the handoff recorded four, missing `useLaneOrderPreference.ts:4`. Full record: `fix-ledger.md` Phase 8, including the lane-order trap that made the obvious implementation wrong.
 
-**9. `L3-P04-01` — Accepted Evidence reading has no single owner** · high · strong · observed · `low-locality`
+**9. `L3-P04-01` — Accepted Evidence reading has no single owner** · high · strong · observed · `low-locality` · **[FIXED — session 5]**
 `topic-evidence-service.ts:188` vs `topic-evidence-management-service.ts:122`/`:394`. **P4R corrected this candidate's scope:** the *query* split is principled and should not be collapsed; the accidental part is verbatim-text resolution, which `L3-P04R-02` shows now exists in three copies with the SQL one already diverging from the TypeScript one. Fix the resolution, keep the query modules separate.
+
+**Session 5 correction — the finding was half wrong, and the real defect was sharper.** `getTopicEvidence` (`topic-evidence-service.ts:188`) does **not** resolve verbatim text; it reads the `ae.verbatim_text` column (`:256`, rendered `:331`) and never walks a payload. Only the intake-centric read resolves text. There was no two-module duplication of resolution. The live defect was entirely Seam B — plus a **fourth** implementation, `extractVerbatimTextFromRawPayload` at `semantic-relevance-job-handler.ts:34-42`, which was in **no artifact** and reversed the precedence, making the finding's own AC(3) input (`{ message: { text: 'A' }, verbatimText: 'B' }`) return `'A'` where the read path returned `'B'`. Filed as `L3-P04R-05`. All four resolutions were collapsed into one deep module (`telegram-intake/telegram-payload-text.ts`); the SQL search predicate now derives its arms from the same shape list, which also closed a previously-unreported half of the gap (a root-level `text` the resolver read and no arm covered). Full record: `fix-ledger.md` Phase 9. Sites #4–#6 (envelope selection) remain filed, not fixed.
 
 **10. `L1-P01-01` — `ActorContext` declared four times with divergent nullability** · high · strong · observed · `duplication` · `hidden-dependency`
 `packages/api-contracts/src/auth.ts:6-12` (`districtId` nullable/optional) vs `topic-query-engine.ts:181-185` (`districtId` required), plus `district-onboarding-engine.ts:62` and `hokim-accounts-service.ts:61`. *Blast radius:* cross-layer type safety at the contracts seam.
@@ -108,7 +111,7 @@ These are the `strong` architectural candidates — places where a deeper module
 
 **Seam A — AI provider boundary.** `L3-P05-02` (undeclared output normalizer in `ai-gateway.ts`). The gateway rewrites payloads that its callers' schemas claim to own. One owner for "what the model actually returned" would make both evaluators' schemas true again. `L3-P05-04` (`profileId` declared on both evaluator inputs, passed by neither production caller) belongs here as well.
 
-**Seam B — evidence text resolution.** `L3-P04-01` + `L3-P04R-01` + `L3-P04R-02`. Three implementations of "what is this message's text?" — a TypeScript extractor, an inline copy seventy lines below it in the same file, and a SQL predicate that has already drifted. One deep module owning payload shape and terminal fallbacks, called by all readers and the search predicate. **This is the tightest cluster in the program: three findings, one seam, one fix.**
+**Seam B — evidence text resolution.** `L3-P04-01` + `L3-P04R-01` + `L3-P04R-02` + `L3-P04R-05`. Four implementations of "what is this message's text?" — a TypeScript extractor, an inline copy seventy lines below it in the same file, a SQL predicate that had already drifted, and a fourth in `modules/ai/` that reversed the precedence and was in no artifact. **All four are now one deep module**, `apps/backend/src/modules/telegram-intake/telegram-payload-text.ts`, called by every reader and by the search predicate. **This seam is CLOSED** (session 5). The lesson generalises: the correct unit of search for this class is the concept ("who turns `raw_payload` into text?"), not the file the finding sits in — a file-scoped survey undercounted by one.
 
 **Seam C — generation/keyset identity.** `L3-P05-01` + `L3-P05-16`. Two independent instances of a producer and a consumer disagreeing about which index or generation a value refers to. The pattern recurs because each side is written separately and nothing type-checks the agreement.
 

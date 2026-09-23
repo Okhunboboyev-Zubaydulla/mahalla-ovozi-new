@@ -408,6 +408,100 @@ All test runs against **`mahalla_ovozi_test` on port 5433** (connectivity confir
 3. **No falsification test exists for the web-side changes.** The `readonly`→spread conversions at three mutable boundaries were driven by compiler errors, not by a red test. The contracts-level order test is falsified; the web consumers are covered only by `tsc` and the pre-existing 7-test file.
 4. **`CANONICAL_LANES` is now a cross-layer contract export.** It is a value, not just a type, in a browser-safe package. That is consistent with `CONTEXT.md`'s contracts invariant ("browser-safe Zod request/response schemas") but it does widen what `api-contracts` owns. Not a defect; a boundary the next reviewer should know moved.
 
+---
+
+## Phase 9 — `L3-P04-01`, payload text gets one owner (plus a NEW finding, and `L3-P04R-02` corrected)
+
+**Finding fixed:** `L3-P04-01` (rank 9). **Corrected:** `L3-P04R-02` medium → **high**. **Filed new:** the unnamed fourth implementation.
+
+### Re-derivation — the finding as scoped was half wrong, and the real defect was sharper
+
+Read at source before touching anything:
+
+- **`L3-P04-01`'s core claim was half wrong.** `getTopicEvidence` (`topic-evidence-service.ts:188`) does **not** resolve verbatim text — it selects `ae.verbatim_text AS "verbatimText"` (`:256`) and renders it (`:331`). It never walks a payload, because every row it reads is Accepted Evidence with a non-null column. Only `listSignals`/`getSignalDetail` resolve text from a payload. The "two modules both answer 'what is the display text', each privately" framing described a duplication that did not exist.
+- **The live defect is Seam B, and it was bigger than the artifact said.** `fix-backlog.md:111` scoped it correctly; the artifact's own fix direction was stale.
+- **A fourth implementation existed in no artifact.** `extractVerbatimTextFromRawPayload` at `semantic-relevance-job-handler.ts:34-42` read `message.text → message.caption → record.verbatimText` — the **reverse** of the canonical extractor — and returned `''` rather than a fallback.
+
+**The AC(3) input fails in production today.** For `{ message: { text: 'A' }, verbatimText: 'B' }` the canonical extractor returns `'B'` and the job handler returned `'A'`. "Same answer for every caller" was already false. It also fed the AI prompt at `:475`, so the job handler and the read path disagreed about what text the model was shown.
+
+### The correction that changed the plan
+
+**The SQL `raw->>'verbatimText'` arm is NOT dead — the handoff and `L3-P04R-02`'s AC(2) both said to drop it. Dropping it would have been a regression.**
+
+`semantic-relevance-job-handler.ts:307-314` (fast-fail) and `:729-736` (AI exclusion) both merge a **flat root-level `verbatimText`** into `raw_payload` via `COALESCE(raw_payload,'{}'::jsonb) || exclusionMeta::jsonb`. It survives until the retention purge — whose own predicate (`retention/debug-payload-retention.ts:35`) is `raw_payload->>'verbatimText' IS NOT NULL`, i.e. proof the key is expected to be present.
+
+So the arm matches live data, and removing it would have made every non-expired AI-excluded signal **unfindable by its own displayed text** — the exact defect class this phase exists to close. The user confirmed keeping it, overriding the handoff.
+
+### The design decision that drove the code
+
+The shared resolver returns **`string | null`** (null = unresolvable), **not** the `'(Матн мавжуд эмас)'` label. `semantic-relevance-job-handler.ts:419` guards with `if (prevText)` and `:414`/`:178` treat empty as absent; returning the label would have made that guard permanently truthy — a silent behaviour change on the retry/continuity path. Display callers wrap with `?? EXTRACTED_TEXT_FALLBACK`.
+
+### What changed
+
+| File | Change |
+|---|---|
+| `apps/backend/src/modules/telegram-intake/telegram-payload-text.ts` | **NEW.** The one owner of payload shape and verbatim resolution: `TELEGRAM_MESSAGE_UPDATE_KEYS`, `resolveTelegramMessageObject`, `extractVerbatimDisplayText`, `EXTRACTED_TEXT_FALLBACK` (moved here). |
+| `apps/backend/tests/telegram-payload-text.test.ts` | **NEW.** 33 tests, written test-first. |
+| `apps/backend/src/modules/topics/topic-evidence-management-service.ts` | `extractSignalVerbatimText` is now a thin re-export wrapper; the SQL predicate is built by `buildVerbatimTextSearchCondition` from the shared key list; `promoteSignal` uses null semantics. |
+| `apps/backend/src/modules/ai/jobs/semantic-relevance-job-handler.ts` | `extractVerbatimTextFromRawPayload` **deleted**; the three call sites use the shared resolver. |
+| `apps/backend/tests/signal-management-crud.test.ts` | New test 10b: a `channel_post` payload is findable by its own displayed text. |
+| `apps/backend/tests/worker-semantic-relevance.test.ts` | New Matrix #27: the job handler and the read path resolve the SAME parent text for the AC(3) conflict. |
+
+Dependency direction was verified before placing the module: `telegram-intake` imports nothing from `topics/` or `ai/`, while both already import from it — no cycle.
+
+### The search predicate now derives from one list
+
+`buildVerbatimTextSearchCondition` builds its nested arms by iterating `TELEGRAM_MESSAGE_UPDATE_KEYS`, so adding an envelope to the resolver cannot leave search silently behind it. It adds the **two** root-level arms the resolver reads: `->>'verbatimText'` (kept, with the reason recorded in a comment) and `->>'text'` (**newly added** — the resolver reads it, no SQL arm did, and this was a previously unreported half of the same gap).
+
+**This widens nothing beyond the resolver.** SQL matching is order-insensitive, so the predicate now covers the same **set** of locations as `extractVerbatimDisplayText`, not the same order.
+
+### Red → green, falsified
+
+| Step | Evidence |
+|---|---|
+| Phase 1 red | `Cannot find module '../src/modules/telegram-intake/telegram-payload-text.js'` |
+| Phase 1 green | 33/33 |
+| Phase 1 falsified | Reversing precedence to `message.text` first → **2 failures**, including the AC(3) case (`expected 'A' to be 'B'`) and "prefers a root-level text over a nested message text" (`expected 'Nested' to be 'Root'`) |
+| Phase 2 red | Restricting the SQL arms to `['message','edited_message']` → test 10b fails, `expected undefined to be defined` — the channel_post row is unfindable |
+| Phase 2 green | `signal-management-crud.test.ts` 20/20 |
+| Phase 3 red | Reversing precedence in the shared module → Matrix #27 fails, the prompt carries `OUTLIER_WOULD_PICK_THIS_TEXT` instead of the canonical text |
+| Phase 3 green | `worker-semantic-relevance.test.ts` 31/31 |
+
+**One honest note on the Phase 1 falsification.** The first attempt was ineffective: moving the `resolveTelegramMessageObject(raw)` *call* earlier changed nothing, because the root-level arms still executed first. A green test that cannot be made to fail proves nothing, so the attempt was redone properly by reordering the resolution arms themselves. The successful run above is that second attempt.
+
+### Acceptance criteria, measured not asserted
+
+| Criterion | Result |
+|---|---|
+| (1) Exactly one backend implementation maps payload + optional evidence text to display text; a grep for `(Матн мавжуд эмас)` returns exactly one **source** hit | **1** — `telegram-payload-text.ts:16` (was 2 source hits before) |
+| (2) `topic-evidence-management-service.ts:318` and `:502` call it, and the inline extraction in `promoteSignal` is removed | Both call it (the `promoteSignal` call was already added by `e3f02cf`; it now uses null semantics) |
+| (3) One unit test pins the precedence for `{ message: { text }, verbatimText }` and asserts the same answer for every caller | `telegram-payload-text.test.ts` pins it; `worker-semantic-relevance.test.ts` Matrix #27 proves the job handler agrees with the read path through the real prompt |
+| (4) The set of JSON paths searched equals the set the resolver reads | Derived from one constant + 2 root arms; test 10b covers the previously-missing shape |
+
+### Verification
+
+| Suite | Tests | Result |
+|---|---|---|
+| `apps/backend/tests/telegram-payload-text.test.ts` | 33 (new) | pass |
+| `apps/backend/tests/signal-management-crud.test.ts` | 20 (was 19; +1) | pass |
+| `apps/backend/tests/telegram-burst-debounce.test.ts` | 9 | pass |
+| `apps/backend/tests/worker-semantic-relevance.test.ts` | 31 (was 30; +1) | pass |
+| `tsc --noEmit` — backend | — | exit **0** (run after every phase) |
+
+All runs against **`mahalla_ovozi_test` on port 5433**. The four-file run was executed as a background job, not under a timeout — a force-killed integration run leaves district residue that makes the next run fail for an unrelated reason (`Phase 8` incident).
+
+### Scope decisions taken, and what they leave open
+
+- **Sites #4–#6 stay filed, not fixed** (user-confirmed): `telegram-content-qualification.ts:321-330`, `adapters/jobs/job-types.ts:58-65`, `telegram-intake-service.ts:265-268`. These are **envelope selection**, not verbatim resolution — a different concern with a different return type and different consumers. **#4 and #5 disagree with each other on precedence**: `telegram-content-qualification.ts:322-329` orders `message → channel_post → edited_message → … → payload`, while `job-types.ts:58-65` orders `message → edited_message → channel_post → … → payload`. Filed as a new finding with that mismatch as evidence.
+
+### Residual uncertainty — honest list
+
+1. **The `->>'text'` root arm is a widening, not a port.** The resolver has always read root-level `text`, but no producer was found writing it (unlike root `verbatimText`, which two producers write). Adding it makes search cover what the resolver covers, at the cost of one always-null arm in practice. Deliberate and recorded; not silently done.
+2. **`getTopicEvidence` still owns its own rendering** of `ae.verbatim_text` (`:256`/`:331`). That is correct — it reads a column, not a payload — and collapsing the two query modules was explicitly out of scope. The verbatim-resolution seam is now single-owner; the *query* split is untouched by design.
+3. **The job handler's `:475` site still coerces `null → ''`.** `truePrecedingMsg.verbatimText` is a **required** `string` on `ChatContinuityContext`, so the previous empty-string behaviour was preserved explicitly rather than widening a shared evaluator contract in a fix about payload text. The evaluator only renders it when the preceding context is selected, so no prompt content changed — but the coercion is still there.
+4. **No test covers the `:414` (`prevText`) continuity branch end-to-end.** Matrix #27 proves the *parent-reply* path (`:178`) feeds the shared resolver; the preceding-message continuity path is covered only by the existing Matrix #14 prompt assertion (`"Svet o'chdi 14-domda"`), which was green before and after.
+5. **No visual/browser sign-off.** Not applicable to this change (no UI surface), stated for completeness.
+
 
 
 
