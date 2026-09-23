@@ -93,7 +93,11 @@ A contract with no producer is a promise nothing keeps.
 **12. `L1-P02-01` — sentinel UI text and its predicate live in the contract package** · high · strong · observed · `leaky-seam`
 Presentation leaking into the browser-safe contract package.
 
-**New — no ID assigned yet. `is_hokim_related` is now validated by a tautology.** Found during the `L3-P05-02` fix, recorded in `fix-ledger.md` Phase 5, and left deliberately unfixed because it exceeds that finding's scope. Relocating the `is_hokim_related` derivation into `TopicProjectionResultSchema`'s `z.preprocess` means the refine in `apps/backend/src/modules/topics/topic-projection-evaluator.ts` (near `:140-147`) can no longer fail whenever `lanes` is an array — the preprocess sets exactly what the refine checks. It is retained because it still fires in the one path the preprocess declines to touch (`lanes` not an array). The honest fix is to drop `is_hokim_related` from the model-facing schema and derive it in the evaluator: the field is effectively derived, not validated. Small, well-understood, unranked.
+**~~New — no ID assigned yet. `is_hokim_related` is now validated by a tautology.~~** · **[FIXED — session 3]**
+
+Found during the `L3-P05-02` fix and initially left unfixed as out of scope. Relocating the `is_hokim_related` derivation into `TopicProjectionResultSchema`'s `z.preprocess` had made the schema's `.refine` a tautology — it could no longer fail whenever `lanes` was an array, because the preprocess set exactly what the refine checked.
+
+Fixed as recorded: the field was dropped from the model-facing schema (and from the prompt) and is now **derived** by the schema's `.transform`, so `TopicProjectionResult` still carries it for every downstream consumer. The rationale is that `is_hokim_related` is a pure function of `lanes` — a model echo of it could only ever disagree, never inform, and the disagreement was then coerced away anyway. Full record: `fix-ledger.md` Phase 7.
 
 ## Deepening candidates grouped by seam
 

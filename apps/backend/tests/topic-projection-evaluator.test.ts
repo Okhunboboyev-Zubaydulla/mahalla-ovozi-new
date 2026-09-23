@@ -127,6 +127,47 @@ describe('Story 2.5: Topic Projection Contracts & Evaluator Unit Tests', () => {
       ).toThrow();
     });
 
+    // Follow-up to L3-P05-02. `is_hokim_related` is a pure function of `lanes`, so it
+    // is no longer model-facing: the prompt does not request it and the schema derives
+    // it. These two payloads OMIT the field entirely and must still parse -- under the
+    // previous schema they FAILED, because the field was a required boolean and a
+    // `.refine` policed its agreement with `lanes`.
+    it('derives is_hokim_related = true from lanes when the model omits the field', () => {
+      const parsed = TopicProjectionResultSchema.parse({
+        summary: validBase.summary,
+        lanes: ['WATER', 'HOKIM_RELATED'],
+        anchor_evidence_id: validBase.anchor_evidence_id,
+        anchor_quote: validBase.anchor_quote,
+        latest_meaningful_activity_timestamp: validBase.latest_meaningful_activity_timestamp,
+        attribution: validBase.attribution,
+      });
+      expect(parsed.is_hokim_related).toBe(true);
+      expect(parsed.lanes).toEqual(['WATER', 'HOKIM_RELATED']);
+    });
+
+    it('derives is_hokim_related = false from lanes when the model omits the field', () => {
+      const parsed = TopicProjectionResultSchema.parse({
+        summary: validBase.summary,
+        lanes: ['WATER'],
+        anchor_evidence_id: validBase.anchor_evidence_id,
+        anchor_quote: validBase.anchor_quote,
+        latest_meaningful_activity_timestamp: validBase.latest_meaningful_activity_timestamp,
+        attribution: validBase.attribution,
+      });
+      expect(parsed.is_hokim_related).toBe(false);
+    });
+
+    // The field is not merely optional -- it is ignored. A model that echoes a stale or
+    // wrong value cannot influence the derived one, and cannot cause a rejection either.
+    it('ignores a model-supplied is_hokim_related rather than validating it', () => {
+      const parsed = TopicProjectionResultSchema.parse({
+        ...validBase,
+        lanes: ['WATER'],
+        is_hokim_related: true,
+      });
+      expect(parsed.is_hokim_related).toBe(false);
+    });
+
     it('fails when timestamp is not valid ISO-8601 datetime', () => {
       expect(() =>
         TopicProjectionResultSchema.parse({

@@ -276,3 +276,57 @@ Both were closed in the same session, each falsified before being trusted.
 - **`StaleSnapshotRevisionError` now has no production consumer at all** — only the new test imports it. It remains exported from `context-snapshot.ts` and is still the type attached as `cause`. Whether it should be deleted outright is a separate question this fix does not answer.
 - **The 23505 catch's remaining exposure is unchanged in kind:** the constraint-name match is now the only arm, so if the index is ever renamed the detection breaks silently. That is the intended trade — a rename is a code change visible in review, whereas the deleted prose arm could break from a driver locale change with no code change at all.
 
+## Phase 7 — `is_hokim_related` is now derived, not validated (the L3-P05-02 follow-up)
+
+Unranked finding, no ID, recorded in `fix-backlog.md` Tier 4 and in Phase 5's residual uncertainty. Authorised by the user in the same session as Phase 6.
+
+### The defect
+
+Moving the `is_hokim_related` derivation into `TopicProjectionResultSchema`'s `z.preprocess` during `L3-P05-02` left the schema's `.refine` a **tautology**: the preprocess set `copy.is_hokim_related = copy.lanes.includes('HOKIM_RELATED')`, and the refine then asserted exactly that equality. It could not fail whenever `lanes` was an array. It was retained only because it still fired on the one path the preprocess declined to touch (`lanes` not an array).
+
+### The fix, and why it is a contract correction rather than a test fix
+
+`is_hokim_related` is a **pure function of `lanes`**. Asking the model to echo it created a field that could only ever disagree, never inform — and then immediately coerced any disagreement away. So the field was removed from the model-facing contract entirely:
+
+- `topic-projection-evaluator.ts:134-138` — the `is_hokim_related: z.boolean()` field is gone from the object schema.
+- `:140-143` — the `.refine` is gone, replaced by `.transform((data) => ({ ...data, is_hokim_related: data.lanes.includes('HOKIM_RELATED') }))`. The field is **derived** on the way out, so the parsed type and every downstream consumer are unchanged.
+- `:249` — the prompt line *"`is_hokim_related` MUST be true if and only if HOKIM_RELATED is present in `lanes`"* was deleted, so the model is no longer asked for it.
+- The preprocess no longer touches the field.
+
+`apps/backend/src/modules/topics/topic-projection-job-handler.ts` is unchanged: it reads `evaluation.isHokimRelated` at five sites, and the type still carries it.
+
+**Why a `.transform` and not derivation at the consumption site.** The first attempt made `TopicProjectionResult` an interface intersecting the schema's output with `{ isHokimRelated: boolean }`, which broke roughly forty test fixtures across five files that construct `TopicProjectionResult` values. Using a `.transform` keeps `TopicProjectionResult = z.infer<...>` truthful — the derived field is genuinely part of the schema's output type — so **no test fixture needed changing**. That is the smaller delta and the more honest type.
+
+### Not verified by the gateway
+
+The gateway does **not** build a JSON schema from the Zod schema — `ai-gateway.ts:236` calls `options.schema.safeParse(parsedJson)` and nothing else, confirmed by grep for `zodToJsonSchema` / `jsonSchema` (no matches). So removing the field from the prompt plus the schema is the complete change; there is no provider-side schema document that also needed regenerating. **This was checked, not assumed.**
+
+### Tests, falsified
+
+Three tests added to `apps/backend/tests/topic-projection-evaluator.test.ts`:
+
+1. A payload **omitting** the field with `HOKIM_RELATED` present parses, and derives `true`.
+2. A payload **omitting** the field without `HOKIM_RELATED` parses, and derives `false`.
+3. A payload **supplying** `is_hokim_related: true` with `lanes: ['WATER']` derives `false` — the model's echo is ignored, not validated, and cannot cause a rejection.
+
+Falsified by temporarily restoring `is_hokim_related: z.boolean()` to the object schema: tests 1 and 2 failed with `"message": "Required"` — precisely the old contract, where an omitted field was a validation error. Probe reverted.
+
+### Verification
+
+| Suite | Tests | Result |
+|---|---|---|
+| `topic-projection-evaluator.test.ts` | **52** (was 49; +3) | pass |
+| `unit/topic-matching-resilience.test.ts` | 19 | pass |
+| `topic-projection-reconciliation.test.ts` | 7 | pass |
+| `worker-topic-projection.test.ts` | 28 | pass |
+| `ai-gateway.test.ts` | 17 | pass |
+| `worker-topic-assignment.test.ts` | 33 | pass |
+
+149 passed / 7 skipped across the six-file run. `tsc --noEmit` → exit **0**.
+
+### Incident: a killed test run left database residue
+
+A first attempt to run those six files together **timed out at 120 s and was force-killed mid-flight**, leaving one `districts` row (`dist_rec_46f7ec96`, name `'Reconciliation Test District'`, created `15:51:31Z`) plus its dependent rows behind, because `topic-projection-reconciliation.test.ts` creates that district in `beforeAll` and deletes it in `afterAll` — which a kill never reaches. The next run then failed with a genuine PostgreSQL `23505` on `districts_name_lower_idx`.
+
+This was **my process's residue, not a product defect**. Diagnosed by reading the orphan's `created_at` against the killed run's timing, then removed in FK order mirroring the test's own `cleanupTestData`, scoped strictly to the one proven orphan id. The suite returned to 7/7 immediately, confirming it as the sole cause. Recorded because a future reader hitting that constraint failure should know it can be residue rather than a real conflict. **Lesson: a force-killed integration run against a shared test DB can leave state that makes the next run fail for an unrelated reason.**
+

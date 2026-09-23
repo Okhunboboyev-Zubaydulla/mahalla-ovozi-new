@@ -58,12 +58,17 @@ export const TopicProjectionResultSchema = z.preprocess(
     if (!val || typeof val !== 'object') return val;
     const copy = { ...val };
 
-    // Derive is_hokim_related from the lanes the model returned rather than trusting the
-    // field it echoed. This coercion previously lived in ai-gateway.ts, ahead of safeParse,
-    // which left the refine at the bottom of this schema unreachable in production.
+    // Deduplicate lanes ahead of validation. NOTE: `lanes` also carries a
+    // `.transform` that deduplicates after `.min(1)`, so this is redundant for the
+    // parsed result. It predates the current work and is left alone deliberately.
+    //
+    // `is_hokim_related` is no longer derived here. It is a field the model cannot
+    // meaningfully validate -- it is a pure function of `lanes` -- so it is no longer
+    // model-facing at all and the evaluator derives it instead. Deriving it here while
+    // a `.refine` also checked it made that refine a tautology: the preprocess set
+    // exactly what the refine then verified.
     if (Array.isArray(copy.lanes)) {
       copy.lanes = Array.from(new Set(copy.lanes));
-      copy.is_hokim_related = copy.lanes.includes('HOKIM_RELATED');
     }
 
     return copy;
@@ -131,22 +136,22 @@ export const TopicProjectionResultSchema = z.preprocess(
         .describe(
           'Concise 1-sentence contextual Uzbek Cyrillic synthesis of what the latest accepted message conveys in context (New Detail, Resolution, or Confirmation). Strictly null if target topic has only 1 message.',
         ),
-      is_hokim_related: z
-        .boolean()
-        .describe(
-          'Must be true if and only if HOKIM_RELATED is present in the lanes array',
-        ),
     })
-    .refine(
-      (data) => data.is_hokim_related === data.lanes.includes('HOKIM_RELATED'),
-      {
-        message:
-          'is_hokim_related must be true if and only if HOKIM_RELATED is present in lanes',
-        path: ['is_hokim_related'],
-      },
-    ),
+    .transform((data) => ({
+      ...data,
+      is_hokim_related: data.lanes.includes('HOKIM_RELATED'),
+    })),
 );
 
+/**
+ * The evaluator's output contract. `is_hokim_related` is DERIVED from `lanes` by the
+ * schema's transform, not validated from model output -- it is a pure function of the
+ * lane set, so a model echo of it could only ever disagree, never inform. The
+ * projection prompt therefore no longer requests it.
+ *
+ * Previously a `.preprocess` set this field and a `.refine` then checked it, which made
+ * that refine a tautology: the preprocess wrote exactly what the refine verified.
+ */
 export type TopicProjectionResult = z.infer<typeof TopicProjectionResultSchema>;
 
 export interface TopicProjectionInput {
@@ -246,7 +251,6 @@ PART I: CORE PROJECTION PRINCIPLES & GUARDRAILS
   - Include HOKIM_RELATED if and only if at least one evidence item in the topic explicitly contains designated Hokim/Hokimiyat terms (including root terms "hokim", "hokimiyat", "hokimlik"; slang/typos/dialect "xokim", "hakim", "xakim", "hokimyat", "xokimyat", "hokimat", "xokimat", "hokim buva", "hokimbobo", "hokimimiz"; or apparatus officials "zamhokim", "hokim yordamchisi") OR is a direct contextual reply/burst continuation of such an appeal.
   - Road defects, mud, or unpaved street issues without explicit Hokim/Hokimiyat mentions must NEVER derive HOKIM_RELATED.
   - "mahalla raisi" or "oqsoqol" alone does NOT qualify for HOKIM_RELATED unless "hokim" or "hokimiyat" is explicitly named.
-- "is_hokim_related" MUST be true if and only if HOKIM_RELATED is present in "lanes".
 
 ### 4. ANCHOR SELECTION & AUTHORITATIVE QUOTE (FOUNDATIONAL GENESIS & SELF-CONTAINED PRINCIPLE)
 - The Anchor Evidence MUST be the foundational citizen report that established the Topic card, or the earliest self-contained report describing the disruption.
