@@ -428,6 +428,67 @@ describe('Signal & Evidence Management Console & CRUD Verification', () => {
     expect((audit!.metadata as any)?.changeReason).toBe('Manual PO test override for promotion');
   });
 
+  it('4b. POST /api/v1/admin/signals/:id/promote promotes a STRUCTURALLY excluded message (nested raw Telegram payload)', async () => {
+    // Structurally excluded intakes (qualification-job-handler / burst-debounce-job-handler)
+    // keep the raw Telegram update and add only status/exclusionReason at the root —
+    // there is NO flat `verbatimText` key. The message text lives at raw_payload.message.text.
+    // Promotion must still work for these, and must NOT claim retention purged the text.
+    const structuralIntakeId = `intake_struct_${crypto.randomUUID()}`;
+    await db.insert(telegramIntakeRecords).values({
+      id: structuralIntakeId,
+      districtId: testDistrictId,
+      mahallaName,
+      telegramBotId: 'bot_test',
+      telegramChatId: '-1001234567',
+      telegramMessageId: '1003',
+      originalTimestamp: new Date('2026-09-01T11:30:00.000Z'),
+      calendarDay,
+      rawPayload: {
+        update_id: 991001,
+        message: {
+          message_id: 1003,
+          date: 1756721400,
+          text: 'Quvur yorilgan, suv behuda ketmoqda',
+          chat: { id: -1001234567, type: 'supergroup' },
+          from: { id: 555001, first_name: 'Bekzod', username: 'bekzod_uz' },
+        },
+        status: 'EXCLUDED',
+        exclusionReason: 'FORWARDED_POST',
+      },
+    });
+
+    const res = await server.inject({
+      method: 'POST',
+      url: `/api/v1/admin/signals/${structuralIntakeId}/promote`,
+      headers: {
+        ...SAME_ORIGIN_HEADERS,
+        cookie: poCookie,
+      },
+      payload: {
+        lanes: ['WATER'],
+        changeReason: 'Structurally excluded but genuinely relevant',
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.payload);
+    expect(body.success).toBe(true);
+
+    // promoteSignal enqueues a topic-assignment job; Accepted Evidence is created by
+    // the worker, not synchronously here. What we must assert is that the enqueued
+    // job carries the text resolved from the NESTED payload — without the fix this
+    // path threw 404 and no job existed at all.
+    const { rows: jobs } = await pool.query(
+      `SELECT data FROM pgboss.job
+       WHERE name = 'telegram-topic-assignment'
+         AND data->>'intakeId' = $1`,
+      [structuralIntakeId],
+    );
+
+    expect(jobs.length).toBeGreaterThanOrEqual(1);
+    expect(String(jobs[0].data.verbatimText)).toContain('Quvur yorilgan');
+  });
+
   it('5. PATCH /api/v1/admin/signals/:id/evidence updates verbatim text and logs audit event', async () => {
     const newText = 'Suv o`chib qoldi, 3 kundan beri suv yo`q (tahrirlangan)';
     const res = await server.inject({

@@ -36,6 +36,12 @@ import {
 } from '@mahalla-ovozi/api-contracts';
 
 /**
+ * Terminal fallback returned when no message text can be resolved from any payload shape.
+ * Exported so callers can distinguish "no text exists" from "text resolved to this label".
+ */
+export const EXTRACTED_TEXT_FALLBACK = '(Матн мавжуд эмас)';
+
+/**
  * Resolves the display text for a signal message across database evidence and raw payload structures.
  */
 export function extractSignalVerbatimText(
@@ -95,7 +101,7 @@ export function extractSignalVerbatimText(
     if (message.sticker) return `(Стикер)`;
   }
 
-  return '(Матн мавжуд эмас)';
+  return EXTRACTED_TEXT_FALLBACK;
 }
 
 export class SignalNotFoundError extends Error {
@@ -604,20 +610,21 @@ export async function listSignals(
       throw new SignalAlreadyAcceptedError();
     }
 
-    const rawPayload = (intake.rawPayload as Record<string, unknown>) || {};
-    const textFromPayload =
-      typeof rawPayload.verbatimText === 'string' && rawPayload.verbatimText.trim()
-        ? rawPayload.verbatimText.trim()
-        : typeof rawPayload.text === 'string' && rawPayload.text.trim()
-          ? rawPayload.text.trim()
-          : null;
+    // Resolve the message text through the SAME extractor the read paths use.
+    // Excluded payloads come in two shapes: the semantic-relevance handler merges a
+    // flat `verbatimText` key, while the structural qualification / burst-debounce
+    // handlers keep the raw Telegram update and only add `status`/`exclusionReason`
+    // (text at `raw_payload.message.text`). A root-level-only read fails the latter.
+    const resolvedText = extractSignalVerbatimText(null, intake.rawPayload);
+    const hasText =
+      resolvedText !== EXTRACTED_TEXT_FALLBACK && resolvedText.trim().length > 0;
 
-    if (!textFromPayload) {
+    if (!hasText) {
       throw new SignalNotFoundError(
-        'Ушбу хабарнинг сақлаш муддати (14 кун) тугаган ва матни ўчирилган. Далил сифатида қабул қилиб бўлмайди.',
+        'Ушбу хабарнинг матни топилмади. Далил сифатида қабул қилиб бўлмайди.',
       );
     }
-    const verbatimText = textFromPayload;
+    const verbatimText = resolvedText;
 
     const aiOpId = `aiop_${crypto.randomUUID()}`;
 
