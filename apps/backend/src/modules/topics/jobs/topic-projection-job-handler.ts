@@ -26,6 +26,20 @@ import {
 import { clearPendingRetryFlag } from '../../issues/retry-service.js';
 import { reconcileUnprojectedTopics } from '../topic-reconciliation-service.js';
 
+/**
+ * The seeded AI profile that the gateway resolves for `TOPIC_DERIVED_PROJECTION`.
+ * Named rather than inlined because the failure telemetry row must carry SOME profile id
+ * (`ai_operations.pinned_profile_id` is NOT NULL with an FK to `ai_profiles`), and this is
+ * the profile the operation type deterministically maps to.
+ */
+const TOPIC_PROJECTION_PROFILE_ID = 'prof_proj_2026_08_v1';
+
+/**
+ * Marks an `ai_operations.snapshot_fingerprint` for a run that failed BEFORE a snapshot
+ * was assembled. Chosen to be visually non-fingerprint-like, unlike a plausible hex string.
+ */
+const SNAPSHOT_FINGERPRINT_UNAVAILABLE = 'unavailable';
+
 export interface TopicProjectionJobDeps {
   db: DbClient;
   pool: pg.Pool;
@@ -47,6 +61,13 @@ export async function processTopicProjectionJobs(
         for (const job of jobs) {
           const { topicId, districtId, mahallaName, calendarDay, generation } = job.data;
           const startTime = performance.now();
+
+          // Hoisted so the failure path records the SAME generation key the success path
+          // would have used, and the REAL snapshot provenance instead of invented values.
+          // (L3-P05-16: the reconciliation sweep matches on `topicId:targetGeneration`.)
+          let failureTargetId: string | null = null;
+          let failureSnapshotRevision: number | null = null;
+          let failureSnapshotFingerprint: string | null = null;
 
           try {
             // 1. Lifecycle Gate 1 (Pre-AI): Verify district is ACTIVE and accessEligible !== false (AC 1, 19 / AD-9)
@@ -148,6 +169,10 @@ export async function processTopicProjectionJobs(
 
             // In-flight coalescing: target topic's newest required generation at execution time (AC 4, Matrix #15)
             const targetGeneration = Math.max(generation, targetTopic.requiredDerivedGeneration);
+            // Capture the values the failure path must record if this run dies downstream.
+            failureTargetId = `${topicId}:${targetGeneration}`;
+            failureSnapshotRevision = snapshot.contextRevision;
+            failureSnapshotFingerprint = snapshot.snapshotFingerprint;
 
             // 5. AI Projection Evaluation executed outside DB transaction (AC 10 / AD-8)
             const evaluation = await topicProjectionEvaluator.evaluateTopicProjection({
@@ -393,7 +418,7 @@ export async function processTopicProjectionJobs(
               }),
             );
 
-            // Record failure in ai_operations for health check telemetry
+            // Record failure in ai_operations for health check telemetry.
             try {
               const failedOpId = `aiop_${crypto.randomUUID()}`;
               await db
@@ -404,10 +429,17 @@ export async function processTopicProjectionJobs(
                   mahallaName,
                   calendarDay,
                   operationType: 'TOPIC_DERIVED_PROJECTION',
-                  targetId: `${topicId}:${generation}`,
-                  pinnedProfileId: 'prof_proj_2026_08_v1',
-                  contextRevision: 0,
-                  snapshotFingerprint: 'error',
+                  // L3-P05-16: key on the COALESCED generation. The reconciliation sweep
+                  // matches `targetId === `${topicId}:${requiredDerivedGeneration}``, so
+                  // keying this on the job's own `generation` makes the row unmatchable
+                  // and silently suppresses the TOPIC_PROCESSING_DELAY alarm.
+                  targetId: failureTargetId ?? `${topicId}:${generation}`,
+                  pinnedProfileId: TOPIC_PROJECTION_PROFILE_ID,
+                  // Real provenance when the run reached the snapshot; explicit sentinels
+                  // otherwise, instead of fabricated revision 0 / fingerprint 'error'.
+                  contextRevision: failureSnapshotRevision ?? 0,
+                  snapshotFingerprint:
+                    failureSnapshotFingerprint ?? SNAPSHOT_FINGERPRINT_UNAVAILABLE,
                   finalStatus: 'FAILED',
                   resultPayload: {
                     error: err instanceof Error ? err.message : String(err),
@@ -415,6 +447,11 @@ export async function processTopicProjectionJobs(
                 })
                 .onConflictDoUpdate({
                   target: [aiOperations.districtId, aiOperations.operationType, aiOperations.targetId],
+                  // L3-P05-17: never downgrade a COMPLETED operation to FAILED. Without this
+                  // guard, a retry of the same (district, operation, target) overwrites the
+                  // audit record of a projection that actually committed, so the Console
+                  // reports a district degraded while its dashboard serves correct data.
+                  setWhere: sql`${aiOperations.finalStatus} <> 'COMPLETED'`,
                   set: {
                     finalStatus: 'FAILED',
                     resultPayload: {

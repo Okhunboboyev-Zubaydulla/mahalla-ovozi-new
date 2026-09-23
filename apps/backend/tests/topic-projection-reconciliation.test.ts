@@ -31,6 +31,7 @@ import {
 } from '../src/modules/topics/topic-reconciliation-service.js';
 import { processTopicProjectionJobs } from '../src/modules/topics/jobs/topic-projection-job-handler.js';
 import { TopicProjectionEvaluator } from '../src/modules/topics/topic-projection-evaluator.js';
+import { AiGatewayError } from '../src/modules/ai/types.js';
 import { createMockAiGateway } from './helpers/mock-ai-gateway.js';
 
 describe('Topic Projection Reconciliation & Recovery', () => {
@@ -356,6 +357,111 @@ describe('Topic Projection Reconciliation & Recovery', () => {
       districtId: testDistrictId,
       generation: 1,
     });
+  });
+
+  it('L3-P05-16: a failed projection records the COALESCED generation so the sweep can match it', async () => {
+    const topicId = `top_keygen_${crypto.randomUUID().slice(0, 8)}`;
+    const now = new Date();
+    const pastTime = new Date(now.getTime() - 10 * 60 * 1000);
+
+    // Topic has advanced to required generation 3 while applied is still 1.
+    await db.insert(topics).values({
+      id: topicId,
+      districtId: testDistrictId,
+      mahallaName: 'Keygen',
+      calendarDay: testCalendarDay,
+      primaryLane: 'WATER',
+      status: 'ACTIVE',
+      latestRelevantEvidenceTimestamp: pastTime,
+      retentionExpiresAt: new Date(now.getTime() + 86400000),
+      requiredDerivedGeneration: 3,
+      appliedDerivedGeneration: 1,
+      createdAt: pastTime,
+      updatedAt: pastTime,
+    });
+
+    const intakeId = `intake_${crypto.randomUUID().slice(0, 8)}`;
+    await db.insert(telegramIntakeRecords).values({
+      id: intakeId,
+      districtId: testDistrictId,
+      mahallaName: 'Keygen',
+      calendarDay: testCalendarDay,
+      telegramBotId: 'bot_123',
+      telegramChatId: '-10012345678',
+      telegramMessageId: '701',
+      originalTimestamp: pastTime,
+      rawPayload: { text: 'Suv bosimi past' },
+    });
+
+    const evidenceId = `evi_${crypto.randomUUID().slice(0, 8)}`;
+    await db.insert(acceptedEvidence).values({
+      id: evidenceId,
+      topicId,
+      districtId: testDistrictId,
+      mahallaName: 'Keygen',
+      calendarDay: testCalendarDay,
+      intakeRecordId: intakeId,
+      telegramChatId: '-10012345678',
+      telegramMessageId: '701',
+      originalTimestamp: pastTime,
+      contentType: 'TEXT',
+      verbatimText: 'Suv bosimi past',
+    });
+
+    // The job was enqueued for generation 2, now behind the topic's required 3.
+    const mockController = createMockAiGateway();
+    mockController.mockAdapter.setNextError(
+      new AiGatewayError('PROVIDER_TIMEOUT', 'AI gateway timed out', {
+        status: 504,
+        retryable: true,
+      }),
+    );
+    const evaluator = new TopicProjectionEvaluator(mockController.gateway);
+
+    const fakeJob: any = {
+      data: {
+        topicId,
+        districtId: testDistrictId,
+        mahallaName: 'Keygen',
+        calendarDay: testCalendarDay,
+        generation: 2,
+      },
+    };
+
+    await expect(
+      processTopicProjectionJobs([fakeJob], {
+        db,
+        pool,
+        boss,
+        topicProjectionEvaluator: evaluator,
+      }),
+    ).rejects.toThrow();
+
+    // The failure row MUST be keyed on the coalesced generation (3) — the value the
+    // reconciliation sweep searches for. Keying it on the job's generation (2) makes
+    // the row unmatchable and silently suppresses the TOPIC_PROCESSING_DELAY alarm.
+    const rows = await db
+      .select()
+      .from(aiOperations)
+      .where(
+        and(
+          eq(aiOperations.districtId, testDistrictId),
+          eq(aiOperations.operationType, 'TOPIC_DERIVED_PROJECTION'),
+          eq(aiOperations.finalStatus, 'FAILED'),
+        ),
+      );
+
+    const failureRow = rows.find((r) => r.targetId.startsWith(topicId));
+    expect(failureRow).toBeDefined();
+    expect(failureRow?.targetId).toBe(`${topicId}:3`);
+
+    // And the sweep must actually raise the alarm for it.
+    const summary = await reconcileUnprojectedTopics(db, boss, {
+      districtId: testDistrictId,
+      gracePeriodSeconds: 10,
+      stuckThresholdMinutes: 5,
+    });
+    expect(summary.issuesRaisedCount).toBeGreaterThanOrEqual(1);
   });
 
   it('auto-resolves TOPIC_PROCESSING_DELAY operational issue when projection commits successfully', async () => {
