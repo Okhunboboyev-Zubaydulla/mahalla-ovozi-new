@@ -1,18 +1,10 @@
 import React, { useState } from 'react';
 import { Button, Checkbox, Popover, Space, Typography, Tag, ConfigProvider } from 'antd';
 import { DownOutlined, AppstoreOutlined } from '@ant-design/icons';
-import { QualifyingLane } from '@mahalla-ovozi/api-contracts';
+import { QualifyingLane, CANONICAL_LANES } from '@mahalla-ovozi/api-contracts';
 import { LANE_LABELS, LANE_STYLES } from './TopicCard.js';
 
 const { Text } = Typography;
-
-export const CANONICAL_LANES: QualifyingLane[] = [
-  'HOKIM_RELATED',
-  'WATER',
-  'ELECTRICITY',
-  'GAS',
-  'WASTE',
-];
 
 export interface LaneMultiSelectProps {
   value: QualifyingLane[];
@@ -45,7 +37,7 @@ export const LaneMultiSelect: React.FC<LaneMultiSelectProps> = ({
   };
 
   const handleSelectAll = () => {
-    onChange(CANONICAL_LANES);
+    onChange([...CANONICAL_LANES]);
   };
 
   const content = (

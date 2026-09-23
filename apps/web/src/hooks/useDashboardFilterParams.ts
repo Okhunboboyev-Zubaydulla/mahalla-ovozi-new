@@ -1,14 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { QualifyingLane, DateFilterScope } from '@mahalla-ovozi/api-contracts';
-
-const CANONICAL_LANES: QualifyingLane[] = [
-  'HOKIM_RELATED',
-  'WATER',
-  'ELECTRICITY',
-  'GAS',
-  'WASTE',
-];
+import { QualifyingLane, DateFilterScope, CANONICAL_LANES } from '@mahalla-ovozi/api-contracts';
 
 const VALID_LANES_SET = new Set<string>(CANONICAL_LANES);
 
@@ -51,7 +43,7 @@ export function parseFiltersFromSearchParams(searchParams: URLSearchParams): Das
 
   // 4. Lanes Multi-Select
   const rawLanes = searchParams.get('lanes');
-  let lanes: QualifyingLane[] = CANONICAL_LANES;
+  let lanes: QualifyingLane[] = [...CANONICAL_LANES];
   if (rawLanes) {
     const parsedLanes = rawLanes
       .split(',')

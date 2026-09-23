@@ -14,11 +14,11 @@ import {
   DistrictNotFoundError,
   DistrictRequiredError,
   InvalidCursorError,
-  InvalidDateRangeError,
   decodeTopicKeysetCursor,
   queryDistrictMahallas,
   queryDistrictTopicsPage,
 } from './topic-query-engine.js';
+import { InvalidDateRangeError } from '../telegram-intake/timezone-util.js';
 import {
   getTopicEvidence,
   TopicNotFoundError,

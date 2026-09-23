@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { QualifyingLane, QualifyingLaneSchema } from '@mahalla-ovozi/api-contracts';
+import {
+  QualifyingLane,
+  QualifyingLaneSchema,
+  CANONICAL_LANES,
+} from '@mahalla-ovozi/api-contracts';
 
-export const CANONICAL_LANE_ORDER: readonly QualifyingLane[] = [
-  'HOKIM_RELATED',
-  'WATER',
-  'ELECTRICITY',
-  'GAS',
-  'WASTE',
-];
+/**
+ * The fallback lane order for a user with no saved preference.
+ * Aliases the shared contract constant; the name is kept because
+ * FiveLaneBoard and this module's test both import it.
+ */
+export const CANONICAL_LANE_ORDER: readonly QualifyingLane[] = CANONICAL_LANES;
 
 const STORAGE_PREFIX = 'mahalla_ovozi_lane_order_';
 

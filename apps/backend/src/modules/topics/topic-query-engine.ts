@@ -22,19 +22,10 @@ import {
   encodeKeysetCursor,
   decodeKeysetCursor,
   KeysetCursorPayload,
+  CANONICAL_LANES,
 } from '@mahalla-ovozi/api-contracts';
-import { getTashkentCalendarDay, resolveDateBoundary, InvalidDateRangeError } from '../telegram-intake/timezone-util.js';
+import { getTashkentCalendarDay, resolveDateBoundary } from '../telegram-intake/timezone-util.js';
 import { escapeLikePattern, buildTopicSearchPredicate } from './topic-query-helpers.js';
-
-export { resolveDateBoundary, escapeLikePattern, InvalidDateRangeError };
-
-export const CANONICAL_LANES: readonly QualifyingLane[] = [
-  'HOKIM_RELATED',
-  'WATER',
-  'ELECTRICITY',
-  'GAS',
-  'WASTE',
-];
 
 // --- Error Classes ---
 
@@ -65,23 +56,14 @@ export class InvalidCursorError extends Error {
   }
 }
 
-export class TopicNotFoundError extends Error {
-  readonly statusCode = 404;
-  readonly code = 'TOPIC_NOT_FOUND';
-  constructor(message = 'Мавзу топилмади.') {
-    super(message);
-    this.name = 'TopicNotFoundError';
-  }
-}
-
 // --- Keyset Cursor Encoding & Decoding ---
 
-export interface TopicKeysetCursorPayload extends KeysetCursorPayload {
+interface TopicKeysetCursorPayload extends KeysetCursorPayload {
   t: string; // ISO datetime string of latestMeaningfulActivityTimestamp
   id: string; // topic id
 }
 
-export function encodeTopicKeysetCursor(timestamp: string, id: string): string {
+function encodeTopicKeysetCursor(timestamp: string, id: string): string {
   return encodeKeysetCursor<TopicKeysetCursorPayload>({ t: timestamp, id });
 }
 
@@ -109,14 +91,9 @@ export function decodeTopicKeysetCursor(
   return null;
 }
 
-// Backward compatibility aliases
-export type KeysetCursorPayloadAlias = TopicKeysetCursorPayload;
-export const encodeKeysetCursorAlias = encodeTopicKeysetCursor;
-export const decodeKeysetCursorAlias = decodeTopicKeysetCursor;
-
 // --- Query Interface Types ---
 
-export interface RawTopicRow extends Record<string, unknown> {
+interface RawTopicRow extends Record<string, unknown> {
   id: string;
   districtId: string;
   mahallaName: string;
@@ -134,7 +111,7 @@ export interface RawTopicRow extends Record<string, unknown> {
   searchMatchBadge?: 'evidence' | 'author' | null;
 }
 
-export interface TopicQueryFilters {
+interface TopicQueryFilters {
   districtId: string;
   datePredicate: SQL;
   mahallaName?: string;
@@ -147,14 +124,14 @@ export interface TopicQueryFilters {
   includeCount?: boolean;
 }
 
-export interface TopicQueryResult {
+interface TopicQueryResult {
   topics: TopicCardItem[];
   nextCursor: string | null;
   hasNextPage: boolean;
   totalCount?: number;
 }
 
-export interface HokimTopicBoardFilterParams {
+interface HokimTopicBoardFilterParams {
   search?: string;
   dateScope?: DateFilterScope;
   dateFrom?: string;
@@ -165,7 +142,7 @@ export interface HokimTopicBoardFilterParams {
   baselineTimestamp?: string;
 }
 
-export interface HokimLaneQueryParams {
+interface HokimLaneQueryParams {
   lane: QualifyingLane;
   search?: string;
   dateScope?: DateFilterScope;
@@ -178,7 +155,7 @@ export interface HokimLaneQueryParams {
   baselineTimestamp?: string;
 }
 
-export interface ActorContext {
+interface ActorContext {
   id: string;
   districtId: string;
   role: string;
@@ -227,7 +204,7 @@ export async function queryDistrictMahallas(db: DbClient, districtId: string): P
  * Executes a unified, high-performance PostgreSQL query retrieving topics
  * with keyset cursor pagination, multi-field search predicate, and contextual match badges.
  */
-export async function queryTopics(db: DbClient, params: TopicQueryFilters): Promise<TopicQueryResult> {
+async function queryTopics(db: DbClient, params: TopicQueryFilters): Promise<TopicQueryResult> {
   const {
     districtId,
     datePredicate,
@@ -661,7 +638,7 @@ export async function queryHokimLaneBatch(
 /**
  * Checks if unprocessed intake records or active processing jobs older than 30s indicate a processing delay.
  */
-export async function checkProcessingDelay(
+async function checkProcessingDelay(
   db: DbClient,
   districtId: string,
   calendarDay: string,
@@ -765,7 +742,7 @@ export async function queryHokimStatistics(
   const selectedLanes: QualifyingLane[] =
     params.lanes && Array.isArray(params.lanes) && params.lanes.length > 0
       ? params.lanes
-      : (CANONICAL_LANES as QualifyingLane[]);
+      : [...CANONICAL_LANES];
 
   const laneClauses = selectedLanes.map((l) => {
     if (l === 'HOKIM_RELATED') {
@@ -1041,7 +1018,7 @@ export async function queryHokimStatistics(
 /**
  * Computes authoritative prior-period comparison for Card 1 (Total Unique Topics).
  */
-export async function resolvePriorPeriodComparison(
+async function resolvePriorPeriodComparison(
   db: DbClient,
   params: {
     districtId: string;

@@ -5,6 +5,7 @@ import {
   TopicCardItem,
   HokimLaneBoardData,
   HokimTopicBoardResponse,
+  CANONICAL_LANES,
 } from '@mahalla-ovozi/api-contracts';
 import { hokimTopicsClient } from './hokim-topics-client.js';
 import { useAuth } from '../auth/auth-context.js';
@@ -17,14 +18,6 @@ export interface LaneLocalState extends HokimLaneBoardData {
   isLoadingMore: boolean;
   loadMoreError: string | null;
 }
-
-const CANONICAL_LANES: QualifyingLane[] = [
-  'HOKIM_RELATED',
-  'WATER',
-  'ELECTRICITY',
-  'GAS',
-  'WASTE',
-];
 
 function buildInitialLanesState(
   incomingLanes?: Partial<Record<QualifyingLane, HokimLaneBoardData>>,
@@ -96,12 +89,12 @@ export function useHokimTopicBoard(
 
   const filterState: DashboardFilterState = useMemo(() => {
     if (typeof appliedFilters === 'string') {
-      return { dateScope: 'today', lanes: CANONICAL_LANES };
+      return { dateScope: 'today', lanes: [...CANONICAL_LANES] };
     }
     return (
       appliedFilters ?? {
         dateScope: 'today',
-        lanes: CANONICAL_LANES,
+        lanes: [...CANONICAL_LANES],
       }
     );
   }, [appliedFilters]);

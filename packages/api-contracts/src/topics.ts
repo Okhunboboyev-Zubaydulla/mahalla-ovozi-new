@@ -10,6 +10,22 @@ export const QualifyingLaneSchema = z.enum([
 ]);
 export type QualifyingLane = z.infer<typeof QualifyingLaneSchema>;
 
+/**
+ * The five dashboard lanes in their canonical user-visible display order.
+ *
+ * Deliberately an explicit literal, NOT derived from `QualifyingLaneSchema.options`:
+ * the enum is ordered WATER-first, but the dashboard board renders HOKIM_RELATED
+ * first, and `useLaneOrderPreference` uses this sequence as its fallback order.
+ * Deriving it from the enum would silently reorder the Hokim board.
+ */
+export const CANONICAL_LANES: readonly QualifyingLane[] = [
+  'HOKIM_RELATED',
+  'WATER',
+  'ELECTRICITY',
+  'GAS',
+  'WASTE',
+];
+
 export const TopicPrimaryLaneSchema = QualifyingLaneSchema;
 export type TopicPrimaryLane = QualifyingLane;
 

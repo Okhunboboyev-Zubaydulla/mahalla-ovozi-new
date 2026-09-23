@@ -8,9 +8,9 @@ Baseline: HEAD `bdf999a`. Program: 8 artifacts, **56 findings** (0 blocker · 12
 
 ---
 
-## Progress — seven of the twelve ranked items are FIXED
+## Progress — ten of the twelve ranked items are FIXED
 
-All seven were executed test-first (failing test → confirmed failure for the recorded root cause → minimal fix → re-run green) and verified against `mahalla_ovozi_test` on port **5433**.
+All ten were executed test-first (failing test → confirmed failure for the recorded root cause → minimal fix → re-run green) and verified against `mahalla_ovozi_test` on port **5433**. The one partial exception is `L3-P03-01`'s web-side lane consolidation, which was driven by compiler errors rather than a red test — see `fix-ledger.md` Phase 8.
 
 | Rank | Finding | Status | Notes |
 |---|---|---|---|
@@ -21,10 +21,11 @@ All seven were executed test-first (failing test → confirmed failure for the r
 | 5 | `L3-P05-16` | **fixed** | bundled with `L3-P05-17` (shared statement) |
 | 6 | `L3-P05-09` | **fixed** | finding confirmed *stronger* than recorded; bundled with `L3-P05-15` |
 | 7 | `L3-P05-02` | **fixed** | finding confirmed *stronger* than recorded; 3 artifact defects corrected |
+| 8 | `L3-P03-01` | **fixed** | interface narrowed 28 → 9 exports; two more artifact corrections (session 4) |
 
-`L3-P05-15` (low, unranked below) was fixed in the same pass as rank 6 — same file, same class, backlog Seam D.
+`L3-P05-15` (low, unranked below) was fixed in the same pass as rank 6 — same file, same class, backlog Seam D. The unranked `is_hokim_related` tautology was fixed in session 3.
 
-**The highest-ranked remaining item is #8, `L3-P03-01`.** Ranks 8–12 remain open, plus the unranked `is_hokim_related` tautology in Tier 4.
+**The highest-ranked remaining item is #9, `L3-P04-01`.** Ranks 9–12 remain open.
 
 Per-finding detail, red-green evidence, and residual uncertainty live in `docs/architecture-review/fix-ledger.md`. This file stays an index; it does not carry the fix records.
 
@@ -78,8 +79,10 @@ These are not wrong values but contracts callers cannot see, which is how the Ti
 
 The 21 medium findings cluster here. Only those with the widest blast radius are listed; the rest are in their artifacts.
 
-**8. `L3-P03-01` — 18 of 28 exported names have no consumer; interface ~3× wider than use** · high · strong · observed · `shallow-module`
+**8. `L3-P03-01` — 18 of 28 exported names have no consumer; interface ~3× wider than use** · high · strong · observed · `shallow-module` · **[FIXED — session 4]**
 `phase-03-topics-read-path.md`. Also the prior-art reconciliation's most-corrected item: the prior pass said "nine zero-consumer exports" and additionally misidentified `queryDistrictTopicsPage` as unconsumed when it is imported at `district-topics-routes.ts:20,87,128`.
+
+The fix narrowed `topic-query-engine.ts` from 28 exported names to **9**, all consumed: 6 export lines deleted (the `:29` re-export, the local `CANONICAL_LANES`, the duplicate `TopicNotFoundError`, and the `:113-115` alias triple) and 11 `export` keywords dropped. `L3-P03-02` is closed; `L3-P03-03` is partially closed (the engine's duplicate class is gone, `topic-evidence-service.ts:75` remains the live one). The lane constants were consolidated into `packages/api-contracts` and **all five** web copies removed — the handoff recorded four, missing `useLaneOrderPreference.ts:4`. Full record: `fix-ledger.md` Phase 8, including the lane-order trap that made the obvious implementation wrong.
 
 **9. `L3-P04-01` — Accepted Evidence reading has no single owner** · high · strong · observed · `low-locality`
 `topic-evidence-service.ts:188` vs `topic-evidence-management-service.ts:122`/`:394`. **P4R corrected this candidate's scope:** the *query* split is principled and should not be collapsed; the accidental part is verbatim-text resolution, which `L3-P04R-02` shows now exists in three copies with the SQL one already diverging from the TypeScript one. Fix the resolution, keep the query modules separate.

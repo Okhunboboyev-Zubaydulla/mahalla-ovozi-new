@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Typography, Space, Checkbox, Tag, Divider, Grid } from 'antd';
 import { FilterOutlined, CheckOutlined, ClearOutlined } from '@ant-design/icons';
-import { QualifyingLane } from '@mahalla-ovozi/api-contracts';
+import { QualifyingLane, CANONICAL_LANES } from '@mahalla-ovozi/api-contracts';
 import { DateScopeSelect } from './DateScopeSelect.js';
 import { MahallaSelect } from './MahallaSelect.js';
 import { DashboardSearchInput } from './DashboardSearchInput.js';
 import { DashboardFilterState } from '../../hooks/useDashboardFilterParams.js';
 import { LANE_LABELS, LANE_STYLES } from './TopicCard.js';
-import { CANONICAL_LANES } from './LaneMultiSelect.js';
 
 const { Title, Text } = Typography;
 
@@ -190,7 +189,7 @@ export const FilterModalSheet: React.FC<FilterModalSheetProps> = ({
               <Button
                 type="link"
                 size="small"
-                onClick={() => setPendingFilters((prev) => ({ ...prev, lanes: CANONICAL_LANES }))}
+                onClick={() => setPendingFilters((prev) => ({ ...prev, lanes: [...CANONICAL_LANES] }))}
                 style={{ padding: '4px 8px', fontSize: 12, height: 'auto', color: '#0284C7' }}
               >
                 Барчасини кўрсатиш

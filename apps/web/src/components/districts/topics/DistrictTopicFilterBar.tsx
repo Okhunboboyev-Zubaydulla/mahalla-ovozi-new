@@ -5,9 +5,10 @@ import {
   DateFilterScope,
   QualifyingLane,
   DistrictTopicsSearchBody,
+  CANONICAL_LANES,
 } from '@mahalla-ovozi/api-contracts';
 import { DateScopeSelect } from '../../topics/DateScopeSelect.js';
-import { LaneMultiSelect, CANONICAL_LANES } from '../../topics/LaneMultiSelect.js';
+import { LaneMultiSelect } from '../../topics/LaneMultiSelect.js';
 
 export interface DistrictTopicFilterBarProps {
   filter: DistrictTopicsSearchBody;
@@ -139,7 +140,7 @@ export const DistrictTopicFilterBar: React.FC<DistrictTopicFilterBarProps> = ({
 
         {/* Lanes Multi-Select */}
         <LaneMultiSelect
-          value={filter.lanes || CANONICAL_LANES}
+          value={filter.lanes || [...CANONICAL_LANES]}
           onChange={handleLanesChange}
           disabled={disabled}
         />

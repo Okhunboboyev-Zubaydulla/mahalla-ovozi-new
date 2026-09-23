@@ -14,8 +14,12 @@ Baseline before this program: HEAD `bdf999a`. Scope approved: the four Tier 1 it
 | 4 | `L3-P05-17` | `topic-projection-job-handler.ts` | **fixed** |
 | 5 | `L3-P05-10` | `topic-assignment-coordinator.ts` | **fixed** — but *not deterministically tested*; see Residual uncertainty |
 | 6 | `L3-P05-02` | `ai-gateway.ts` + 3 evaluator schemas + `types.ts` | **fixed** — the *finding was confirmed and found stronger*; 3 artifact defects corrected (Phase 5) |
+| 7 | `L3-P05-09` | `topic-assignment-coordinator.ts` + `jobs/topic-assignment-job-handler.ts` | **fixed** — *finding confirmed stronger*: two throw sites, not one (Phase 6) |
+| 8 | `L3-P05-15` | `topic-assignment-coordinator.ts` | **fixed** — same pass as #7 (Phase 6) |
+| 9 | *(unranked)* `is_hokim_related` tautology | `topic-projection-evaluator.ts` | **fixed** — now derived by the schema's `.transform` (Phase 7) |
+| 10 | `L3-P03-01` | `topic-query-engine.ts` + `packages/api-contracts` + 6 web files | **fixed** — interface narrowed 28 → 9 exports; `L3-P03-02` closed, `L3-P03-03` partially closed (Phase 8) |
 
-All six were executed test-first: a failing test was written, run to confirm it failed for the recorded root cause, then the fix was applied and the test re-run green.
+All ten were executed test-first: a failing test was written, run to confirm it failed for the recorded root cause, then the fix was applied and the test re-run green. Phase 8's web-side changes are the one exception — they were driven by compiler errors rather than a red test, and are recorded as such in that phase's residual uncertainty.
 
 ## Files changed
 
@@ -329,4 +333,81 @@ Falsified by temporarily restoring `is_hokim_related: z.boolean()` to the object
 A first attempt to run those six files together **timed out at 120 s and was force-killed mid-flight**, leaving one `districts` row (`dist_rec_46f7ec96`, name `'Reconciliation Test District'`, created `15:51:31Z`) plus its dependent rows behind, because `topic-projection-reconciliation.test.ts` creates that district in `beforeAll` and deletes it in `afterAll` — which a kill never reaches. The next run then failed with a genuine PostgreSQL `23505` on `districts_name_lower_idx`.
 
 This was **my process's residue, not a product defect**. Diagnosed by reading the orphan's `created_at` against the killed run's timing, then removed in FK order mirroring the test's own `cleanupTestData`, scoped strictly to the one proven orphan id. The suite returned to 7/7 immediately, confirming it as the sole cause. Recorded because a future reader hitting that constraint failure should know it can be residue rather than a real conflict. **Lesson: a force-killed integration run against a shared test DB can leave state that makes the next run fail for an unrelated reason.**
+
+## Phase 8 — `L3-P03-01`, the query engine's interface was ~3× wider than its use
+
+**Scope confirmed with the user before any edit** (four decisions, all answered in favour of the recommended option): the `:113-115` alias triple is deleted; the duplicate `TopicNotFoundError` is folded in; the lane constants are consolidated into `api-contracts` and all web copies fixed; `queryTopics` is **un-exported only**, with the missing own-module test recorded as residual rather than expanded into scope.
+
+### Re-derivation — the finding held, with one correction and one omission
+
+The finding was re-derived name-by-name from source rather than trusting the recorded table. 26 export lines / 28 names / 18 zero-consumer names all **confirmed**. Two corrections:
+
+1. **`InvalidCursorError` (`:59`) has 2 production consumers, not 1** — `district-topics-routes.ts:16` and `hokim-topics-routes.ts:22`. The artifact recorded only one. This does not move the total (the name was never in the zero-consumer set) but it makes the module more load-bearing than recorded. A first-pass miscount of 19 zero-consumer names was traced to `InvalidDateRangeError`, which is genuinely consumed — *through the re-export*, the very defect at `:29`.
+2. **The web app has five lane-constant copies, not four.** The handoff and the artifact both miss `apps/web/src/hooks/useLaneOrderPreference.ts:4` (`CANONICAL_LANE_ORDER`), consumed by `FiveLaneBoard.tsx:28`. Corrected in this fix.
+
+### The trap that was not in the record: lane order is load-bearing and differs from the enum
+
+All six lane arrays are ordered `HOKIM_RELATED, WATER, ELECTRICITY, GAS, WASTE`. `QualifyingLaneSchema` (`packages/api-contracts/src/topics.ts:4-10`) is ordered `WATER, ELECTRICITY, GAS, WASTE, HOKIM_RELATED`. **Deriving the shared constant from `QualifyingLaneSchema.options` — the obvious implementation — would have silently reordered the Hokim dashboard.** The order is user-visible: `useLaneOrderPreference.test.ts:22,28` asserts it and `FiveLaneBoard` renders in it. The constant is therefore an explicit literal with a comment forbidding derivation, and a test asserts the order independently of the permutation check.
+
+### Red → green, per phase
+
+| Phase | Files | Red evidence | Green evidence |
+|---|---|---|---|
+| 1 — contracts owns the lane list | 2 | `lanes-contracts.test.ts` failed: `CANONICAL_LANES` resolved to `undefined` (not yet exported) | 3/3 pass; full contracts suite **75/75** |
+| 2a — `LaneMultiSelect` + 2 consumers | 3 | three `TS4104`/`TS2345` `readonly` errors at the mutable boundaries | `tsc --noEmit` → exit 0 |
+| 2b — 4 remaining web copies | 4 | — (same class of error, pre-empted by spreading at the boundary) | `tsc --noEmit` → exit 0; `useLaneOrderPreference.test.ts` **7/7** |
+| 3 — narrow the engine | 3 | — (deletion; no new behaviour) | `tsc --noEmit` → exit 0 |
+| 4 — integration | — | — | `hokim-topic-search.test.ts` **15/15** |
+
+**Falsification (Phase 1).** Temporarily reordering the literal to `WATER, HOKIM_RELATED, …` failed the order assertion (`expected [ 'WATER', 'HOKIM_RELATED', …(3) ] to deeply equal [ 'HOKIM_RELATED', 'WATER', …(3) ]`) **while the permutation and not-derived tests still passed** — proving the order test is genuinely load-bearing and not a restatement of the permutation test. Probe reverted.
+
+### What changed
+
+- `packages/api-contracts/src/topics.ts` — added `CANONICAL_LANES` as an explicit `readonly QualifyingLane[]` literal in HOKIM_RELATED-first order, with a comment explaining why it must not be derived.
+- `packages/api-contracts/tests/lanes-contracts.test.ts` — **new**, 3 tests: exact order; duplicate-free permutation of the schema options; and an explicit assertion that it is *not* the enum order.
+- `apps/web` — all five copies deleted; `LaneMultiSelect.tsx`, `DistrictTopicFilterBar.tsx`, `FilterModalSheet.tsx`, `useDashboardFilterParams.ts`, `useHokimTopicBoard.ts`, `useTopicStatistics.ts` now import from the contract. `useLaneOrderPreference.ts` keeps the name `CANONICAL_LANE_ORDER` as a documented alias so `FiveLaneBoard.tsx` and its test are untouched.
+- `topic-query-engine.ts` — **6 export lines deleted** (`:29` re-export, local `CANONICAL_LANES`, duplicate `TopicNotFoundError`, the three-name alias triple); **11 `export` keywords dropped** while keeping the declarations (`TopicKeysetCursorPayload`, `encodeTopicKeysetCursor`, `RawTopicRow`, `TopicQueryFilters`, `TopicQueryResult`, `HokimTopicBoardFilterParams`, `HokimLaneQueryParams`, `ActorContext`, `queryTopics`, `checkProcessingDelay`, `resolvePriorPeriodComparison`).
+- `district-topics-routes.ts` — `InvalidDateRangeError` now imported from its declaring module, `../telegram-intake/timezone-util.js`.
+- `hokim-topic-search.test.ts` — `escapeLikePattern` now imported from its declaring module, `./topic-query-helpers.js`.
+
+Net: **59 insertions, 206 deletions** across 12 source/test files.
+
+### Acceptance criteria, measured not asserted
+
+| Criterion | Result |
+|---|---|
+| (1) ≤10 export lines in `topic-query-engine.ts`, each consumed outside the file | **9** — `DistrictNotFoundError`, `DistrictRequiredError`, `InvalidCursorError`, `decodeTopicKeysetCursor`, `queryDistrictMahallas`, `queryDistrictTopicsPage`, `queryHokimBoard`, `queryHokimLaneBatch`, `queryHokimStatistics` |
+| (2) no export line is a re-export of another module's symbol | **0** `export {` lines |
+| (3) `tsc --noEmit` exits 0 | exit **0** for `api-contracts`, `web`, and `backend` |
+
+**AC(2) was previously unsatisfiable as written**, because `:29`'s re-export and the local `CANONICAL_LANES` could not both be removed while `district-topics-routes.ts:17` still imported `InvalidDateRangeError` from the engine. Resolved by repointing that import at the declaring module — which is what the finding's own fix direction asked for but its acceptance criterion did not require.
+
+### Verification
+
+| Suite | Tests | Result |
+|---|---|---|
+| `packages/api-contracts` (full) | **75** (was 72; +3) | pass |
+| `apps/web/src/hooks/useLaneOrderPreference.test.ts` | 7 | pass |
+| `apps/backend/tests/hokim-topic-search.test.ts` | 15 | pass |
+| `tsc --noEmit` — api-contracts / web / backend | — | exit 0 / 0 / 0 |
+
+All test runs against **`mahalla_ovozi_test` on port 5433** (connectivity confirmed before the run, not assumed). Single affected file run, not a global suite.
+
+**One check beyond the plan.** `tsc --noEmit` cannot catch a *declaration-emit* failure: with `declaration: true` in `tsconfig.base.json`, an exported function whose parameter type is a now-un-exported interface would fail only at emit (TS4053). Ran `tsc --emitDeclarationOnly --declaration` against the backend — **exit 0**, temp dir removed. Without this the narrowing of `TopicQueryFilters`/`TopicQueryResult`/`HokimLaneQueryParams` could have broken `pnpm build` while `--noEmit` stayed green.
+
+### Scope decisions taken, and what they leave open
+
+- **`ActorContext` (`:181`) is un-exported but not deleted.** Deleting it is `L1-P01-01` (contracts' `districtId` is nullable/optional; the engine's is required), which carries type risk across the contracts seam and was deliberately not folded in.
+- **`L3-P03-02` (the alias triple) is fully closed.** The three names had zero references workspace-wide, including tests. No `git` history justification was found for the "Backward compatibility" comment — the module has no prior public version.
+- **`L3-P03-03` (duplicate `TopicNotFoundError`) is partially closed.** The engine's dead copy is deleted, so the duplicate no longer exists *in this module*; the identically-named class in `topic-evidence-service.ts:75` is untouched and remains the single live one. The finding is closed as a duplication, not as a class-hierarchy question.
+
+### Residual uncertainty — honest list
+
+1. **`queryTopics` is still the module's real seam and still has no direct test.** Un-exporting it satisfies the finding's letter, but `topic-query-engine.ts` remains testable only through its three route-level entry points; its own test file (`hokim-topic-search.test.ts`) exercises it only indirectly via HTTP, and imports `escapeLikePattern` — a helper declared in another module. **This is the largest thing this fix does not address** and is proposed as a follow-up finding rather than silently accepted.
+2. **The web lane refactor was type- and test-verified but never visually inspected.** I did not drive a browser. The behaviour should be identical (all six arrays were content-identical and order-identical before the change), and the order test covers the ordering risk, but no screenshot or E2E sign-off exists.
+3. **No falsification test exists for the web-side changes.** The `readonly`→spread conversions at three mutable boundaries were driven by compiler errors, not by a red test. The contracts-level order test is falsified; the web consumers are covered only by `tsc` and the pre-existing 7-test file.
+4. **`CANONICAL_LANES` is now a cross-layer contract export.** It is a value, not just a type, in a browser-safe package. That is consistent with `CONTEXT.md`'s contracts invariant ("browser-safe Zod request/response schemas") but it does widen what `api-contracts` owns. Not a defect; a boundary the next reviewer should know moved.
+
+
+
 

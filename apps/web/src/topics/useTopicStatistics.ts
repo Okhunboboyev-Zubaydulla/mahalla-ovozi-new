@@ -1,20 +1,12 @@
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  QualifyingLane,
   HokimTopicStatisticsResponse,
+  CANONICAL_LANES,
 } from '@mahalla-ovozi/api-contracts';
 import { hokimTopicsClient } from './hokim-topics-client.js';
 import { useAuth } from '../auth/auth-context.js';
 import { DashboardFilterState } from '../hooks/useDashboardFilterParams.js';
-
-const CANONICAL_LANES: QualifyingLane[] = [
-  'HOKIM_RELATED',
-  'WATER',
-  'ELECTRICITY',
-  'GAS',
-  'WASTE',
-];
 
 export interface UseTopicStatisticsResult {
   statistics: HokimTopicStatisticsResponse | undefined;
@@ -40,12 +32,12 @@ export function useTopicStatistics(
 
   const filterState: DashboardFilterState = useMemo(() => {
     if (typeof appliedFilters === 'string') {
-      return { dateScope: 'today', lanes: CANONICAL_LANES };
+      return { dateScope: 'today', lanes: [...CANONICAL_LANES] };
     }
     const lanes =
       appliedFilters?.lanes && Array.isArray(appliedFilters.lanes) && appliedFilters.lanes.length > 0
         ? appliedFilters.lanes
-        : CANONICAL_LANES;
+        : [...CANONICAL_LANES];
     return {
       dateScope: appliedFilters?.dateScope ?? 'today',
       dateFrom: appliedFilters?.dateFrom,
