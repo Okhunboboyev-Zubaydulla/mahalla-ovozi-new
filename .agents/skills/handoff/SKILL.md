@@ -28,7 +28,7 @@ C:/Users/Zubaydulla/software-development-session-handoffs/
 so this project's handoffs go to:
 
 ```
-C:/Users/Zubaydulla/software-development-session-handoffs/mahalla-ovozi/
+C:/Users/Zubaydulla/software-development-session-handoffs/<project>/
 ```
 
 The root is deliberately **tool-agnostic, harness-agnostic, and portable**:
