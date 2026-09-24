@@ -11,6 +11,7 @@
  */
 import pg from 'pg';
 import { extractTelegramUserMetadata } from '../adapters/jobs/boss-client.js';
+import { resolveDatabaseUrl, maskDatabaseUrl } from '../adapters/db/client.js';
 
 interface DegradedEvidenceRow {
   id: string;
@@ -23,12 +24,11 @@ interface DegradedEvidenceRow {
 async function main(): Promise<void> {
   const isApply = process.argv.includes('--apply');
 
-  const connectionString =
-    process.env.DATABASE_URL ||
-    'postgresql://mahalla_user:mahalla_dev_password@localhost:5433/mahalla_ovozi';
+  // Fails closed like createDbPool (L2-P01-01): no implicit development-database fallback.
+  const connectionString = resolveDatabaseUrl();
 
   console.log(`[Remediation] Mode: ${isApply ? 'APPLY' : 'DRY-RUN'}`);
-  console.log(`[Remediation] Connecting to database...`);
+  console.log(`[Remediation] Connecting to ${maskDatabaseUrl(connectionString)}...`);
 
   const pool = new pg.Pool({ connectionString });
 

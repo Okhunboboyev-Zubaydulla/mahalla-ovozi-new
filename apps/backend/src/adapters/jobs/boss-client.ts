@@ -2,6 +2,7 @@ import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 import PgBoss from 'pg-boss';
 import * as schema from '../db/schema/index.js';
+import { resolveDatabaseUrl } from '../db/client.js';
 import type {
   BossQueueMap,
   BossQueueName,
@@ -78,10 +79,9 @@ export const DEFAULT_QUEUE_CONFIGS: Record<string, Omit<PgBoss.SendOptions, 'db'
 };
 
 export function createBossClient(options?: { connectionString?: string; schema?: string }): PgBoss {
-  const connectionString =
-    options?.connectionString ||
-    process.env.DATABASE_URL ||
-    'postgresql://mahalla_user:mahalla_dev_password@localhost:5433/mahalla_ovozi';
+  // Same resolver as createDbPool (L2-P01-01): one place decides the database target, so the
+  // pool and the queue can never disagree about which database they are talking to.
+  const connectionString = resolveDatabaseUrl(options?.connectionString);
 
   return new PgBoss({
     connectionString,

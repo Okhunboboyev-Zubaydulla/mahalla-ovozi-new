@@ -4,11 +4,40 @@ import * as schema from './schema/index.js';
 
 const { Pool } = pg;
 
+/**
+ * Resolves the PostgreSQL connection string from an explicit argument or DATABASE_URL.
+ *
+ * Fails closed (L2-P01-01). This previously fell back to a hardcoded DSN for the
+ * DEVELOPMENT database, which made the connection target a property of the environment
+ * rather than of the code, and embedded a development password in a tracked file. A caller
+ * that supplies no target now gets an error instead of an unintended database.
+ */
+export function resolveDatabaseUrl(connectionString?: string): string {
+  const url = connectionString || process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error(
+      'No database target: supply a connection string or set DATABASE_URL. ' +
+        'Refusing to open a connection to an implicit database.',
+    );
+  }
+  return url;
+}
+
+/**
+ * Replaces the password in a connection string so the resolved target can be logged safely.
+ *
+ * Used wherever a database target is printed for operator confirmation, so a connection
+ * string never reaches a log or console with its credential intact.
+ */
+export function maskDatabaseUrl(databaseUrl: string): string {
+  return databaseUrl.replace(/:\/\/([^:@/]+):[^@/]*@/, '://$1:***@');
+}
+
 export function createDbPool(
   connectionString?: string,
   options?: Partial<pg.PoolConfig>,
 ) {
-  const url = connectionString || process.env.DATABASE_URL || 'postgresql://mahalla_user:mahalla_dev_password@localhost:5433/mahalla_ovozi';
+  const url = resolveDatabaseUrl(connectionString);
   const rawTimeout = process.env.DB_STATEMENT_TIMEOUT_MS;
   const parsedTimeout = rawTimeout !== undefined ? Number(rawTimeout) : NaN;
   const statementTimeout = !Number.isNaN(parsedTimeout) && parsedTimeout >= 0 ? parsedTimeout : 15000;

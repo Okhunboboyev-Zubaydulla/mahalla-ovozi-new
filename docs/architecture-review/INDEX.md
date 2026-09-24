@@ -44,7 +44,7 @@ Ordering is dependency-directional (L1→L6); L3 is internally ordered by churn.
 | **L4-resweep** | L4 web data | main session (single-agent mode) | Same scope — re-run at HEAD `ce92911`: all 51 inline queryKey declarations, 5 key factories, all invalidation sites; **`useDistrictWorkspace.ts` (545 lines) NOT read** | **complete (targeted)** | `phase-L4-web-data-resweep.md` |
 | **BACKLOG** | cross-layer | main session | all findings, ranked — **not authorised; requires fresh approval** | **complete** | `fix-backlog.md` |
 | **FIXES** | cross-layer | main session | 5 Tier-1 + Tier-2 fixes executed test-first — **separate program, approved 2026-09-23** | **complete** | `fix-ledger.md` |
-| **FIXES-2** | cross-layer | main session (single-agent mode) | Phases 13-15 (Tier A: `L4-P01-01`, `L3-P03-08`, `L3-P04-07`) then Phases 16-17 (`L6-P01-01` runbook/ADR reconciliation + the issue auto-resolve finding), Phase 18 (CI trigger widening), and **Phase 19** (`L6-P01-08` auto-resolve fix — all four colliding families; +Phase 20 `district-state.test.tsx:54`) — **approved 2026-09-24** | **complete** | `fix-ledger.md` (Phases 13-19) |
+| **FIXES-2** | cross-layer | main session (single-agent mode) | Phases 13-15 (Tier A: `L4-P01-01`, `L3-P03-08`, `L3-P04-07`) then Phases 16-17 (`L6-P01-01` runbook/ADR reconciliation + the issue auto-resolve finding), Phase 18 (CI trigger widening), and **Phase 19** (`L6-P01-08` auto-resolve fix — all four colliding families; +Phase 20 `district-state.test.tsx:54`), then **Phase 21** (`L2-P01-01` + `L2-P01-02` — the fail-closed database target, the two `high` findings from the L2 review; also fixed a test-pollution defect Phase 19 introduced) — **approved 2026-09-24** | **complete** | `fix-ledger.md` (Phases 13-21) |
 | **L6** | L6 Cross-cutting | main session (single-agent mode) | `deploy/`, `Dockerfile`, `.github/workflows/ci.yml`, and **ADR-0001 / ADR-0006 / ADR-0008 conformance** — the first and only assessment of the three L6-owned ADRs | **complete** | `phase-L6-cross-cutting.md` |
 | **L5** | L5 Web presentation | main session (single-agent mode) | `apps/web/src/{components,pages,theme}` — targeted pattern sweep (XSS, hooks-order, query keys, theme tokens, `as any`, timezone, ARIA), not a line-by-line read | **complete** | `phase-L5-web-presentation.md` |
 | **L2** | L2 Backend infrastructure | main session (single-agent mode) | `apps/backend/src/{adapters,entrypoints,cli,scripts,types,utils}` — targeted sweep (DSN fallbacks, silent catches, default params, NODE_ENV gates); **`mtproto-normalizer.ts` (863 lines) NOT read** | **complete (targeted)** | `phase-L2-backend-infrastructure.md` |
@@ -124,7 +124,7 @@ A completed **descriptive** reconnaissance run (4 tasks: backend summary, web su
 | L4-recon | 0 | 1 | 0 | 0 | **1** *(of 15 claimed)* |
 | L4-resweep | 0 | 0 | 1 | 2 | **3** *(L4-RS-01/02/03)* |
 | L6-P01 | 0 | 1 | 4 | 2 | **7** |
-| L2-P01 | 0 | 2 | 1 | 2 | **5** *(first-ever review)* |
+| L2-P01 | 0 | 2 | 1 | 2 | **5** *(first-ever review; both `high` fixed in Phase 21)* |
 | L5-P01 | 0 | 0 | 2 | 1 | **3** *(first-ever review)* |
 | L3-P22 | 0 | 0 | 0 | 2 | **2** *(class pass; both `latent`)* |
 

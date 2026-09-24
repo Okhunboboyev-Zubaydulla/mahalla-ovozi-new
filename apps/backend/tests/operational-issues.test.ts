@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import crypto from 'node:crypto';
 import { FastifyInstance } from 'fastify';
 import pg from 'pg';
 import {
@@ -547,13 +548,25 @@ describe('Story 4.2: Backend Operational Issues Database & HTTP Integration Test
       ['disaster_restore_reconciliation_failure', 'DISASTER_RECOVERY'],
     ];
 
+    // These rows are inserted ACTIVE and the assertions require them to STAY active, so they
+    // must be removed explicitly. Leaving the `disaster_restore_reconciliation_failure` row
+    // behind makes the readiness probe (health-routes.ts:69) report 'down' for every later
+    // test in the run, which is exactly the cross-suite pollution this cleanup prevents.
+    const insertedIssueIds: string[] = [];
+
+    afterAll(async () => {
+      for (const issueId of insertedIssueIds) {
+        await db.delete(operationalIssues).where(eq(operationalIssues.id, issueId));
+      }
+    });
+
     it.each(FAMILIES)(
       'does NOT resolve a %s lifecycle issue on a Healthy scheduled_deletion probe',
       async (keyPrefix, issueCategory) => {
         const ts = Date.now();
         const now = new Date();
         const logicalKey = keyPrefix.slice(-1) === ':' ? keyPrefix + ts : keyPrefix;
-        const issueId = 'iss_l6_' + ts;
+        const issueId = 'iss_l6_' + ts + '_' + crypto.randomUUID().slice(0, 8);
 
         await db.insert(operationalIssues).values({
           id: issueId,
@@ -576,6 +589,7 @@ describe('Story 4.2: Backend Operational Issues Database & HTTP Integration Test
           createdAt: now,
           updatedAt: now,
         });
+        insertedIssueIds.push(issueId);
 
         const healthyProbe = createObs('scheduled_deletion', 'Healthy', null);
         await synchronizeOperationalIssues(db, [healthyProbe], {

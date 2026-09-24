@@ -30,6 +30,8 @@
 
 ### L2-P01-01 - two adapters silently fall back to the DEVELOPMENT database
 
+> **FIXED** in fix-ledger **Phase 21**. `resolveDatabaseUrl` now throws when neither an argument nor `DATABASE_URL` is present; `createDbPool` and `createBossClient` both use it; every non-test backend script loads `.env` via `--env-file-if-exists`.
+
 - **Path:** apps/backend/src/adapters/db/client.ts:11 - apps/backend/src/adapters/jobs/boss-client.ts:81-84 - **Severity:** `high` - **Class:** `hidden-dependency` - **Verification:** `observed`
 - **Evidence.** Both connection factories default to the same hardcoded DSN when nothing is supplied:
 
@@ -43,6 +45,8 @@ const url = connectionString || process.env.DATABASE_URL || 'postgresql://mahall
 - **Fix direction.** Remove the literal DSN fallback and throw when neither the argument nor `DATABASE_URL` is present - failing closed is correct here. This also removes the embedded password.
 
 ### L2-P01-02 - `clean-test-data` deletes every district and account, with no target guard
+
+> **FIXED** in fix-ledger **Phase 21**. The CLI now refuses any database whose name matches `prod`, refuses any target without `--confirm`, and prints the masked target and resolved database name before deleting.
 
 - **Path:** apps/backend/src/cli/clean-test-data.ts:1-67 - **Severity:** `high` - **Class:** `correctness` - **Verification:** `observed`
 - **Evidence.** The CLI is registered as `cli:clean-test-data` (`apps/backend/package.json:18`) and calls `createDbPool()` at `:5` with **no argument**, inheriting the fallback in L2-P01-01. Its body then runs, unconditionally:

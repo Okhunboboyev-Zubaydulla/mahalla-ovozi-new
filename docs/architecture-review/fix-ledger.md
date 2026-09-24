@@ -1100,3 +1100,61 @@ That is why the runner reported `Number of calls: 2`. The test asserted one call
 
 **Honest note.** This phase changed only a test. It is a `low`-severity hygiene fix, and it was worth doing because a permanently-red suite trains reviewers to ignore failures.
 
+
+---
+
+## Phase 21 - `L2-P01-01` + `L2-P01-02`, the database target stops being implicit
+
+**Scope:** `apps/backend/src/adapters/db/client.ts`, `adapters/jobs/boss-client.ts`, `cli/clean-test-data.ts`, `scripts/remediate-evidence-user-metadata.ts`, `apps/backend/package.json`. Fixes the two `high` findings from the L2 review (Phase 21 artifact) - the highest-consequence open pair in the program.
+
+### What was verified at source before any edit
+
+- `adapters/db/client.ts:11` and `adapters/jobs/boss-client.ts:81-84` both ended in the same hardcoded DSN: `postgresql://mahalla_user:mahalla_dev_password@localhost:5433/mahalla_ovozi` - the **development** database.
+- `apps/backend/vitest.config.ts:8` sets `DATABASE_URL` to `mahalla_ovozi_test`, which is the only thing keeping tests off the dev database. The safe behaviour was a property of the environment, not of the code.
+- `cli/clean-test-data.ts:5` called `createDbPool()` with **no argument**, inheriting that fallback, then ran `DELETE FROM districts` and `DELETE FROM accounts WHERE username != 'Zubaydulla'`.
+- **A consequence the finding did not mention:** the CLI scripts do **not** load `.env` (only `cli/verify-deepinfra.ts` imported `dotenv/config`). Measured: `node -e "process.env.DATABASE_URL"` from `apps/backend` prints UNSET. So the CLIs were working *only* because of the fallback. Removing it without wiring env loading would have broken every CLI.
+- Production is unaffected by the fallback: `deploy/compose/docker-compose.prod.yml:37,73,103` all set `DATABASE_URL`. The risk was local, CI and any script run outside those containers.
+
+### The fix
+
+1. **One resolver.** `resolveDatabaseUrl(connectionString?)` in `adapters/db/client.ts` returns the argument or `DATABASE_URL` and **throws** when neither is present. `createDbPool` and `createBossClient` both call it, so the pool and the queue can no longer disagree about their target.
+2. **`maskDatabaseUrl`** sits beside it so any printed target has its password replaced with `***`. Used by the CLI and the remediation script.
+3. **CLI target guard.** `clean-test-data.ts` now refuses a database whose name matches `prod` outright, and refuses *any* target without `--confirm`. It prints the masked target and the resolved database name before deleting anything.
+4. **`.env` is actually loaded.** Every non-test backend script (`dev`, `worker`, `userbot`, all `cli:*`, `db:migrate`, `reconcile-restore`) now runs with `node --env-file-if-exists=.env`. Without this the CLI scripts would have had no `DATABASE_URL` at all once the fallback was gone. `--env-file-if-exists` rather than `--env-file` so a missing file is not an error.
+5. **The remediation script** (`src/scripts/remediate-evidence-user-metadata.ts`) uses the same resolver and prints a masked target.
+6. **The silent catch at `clean-test-data.ts:79` now logs.** It previously swallowed the pg-boss cleanup failure with no output.
+
+### Tests
+
+New: `apps/backend/tests/unit/db-target-resolution.test.ts`, 9 tests, pure unit (no database) because every function under test is pure.
+
+- **9/9 passed.** The suite asserts the throw on a missing target, that the old `mahalla_ovozi` fallback is gone, argument-over-env precedence, env fallback, name extraction with and without a query string, production refusal, confirmation refusal, confirmed allowance, and password masking.
+- **The test caught a real bug in my own change.** I first defined `maskDatabaseUrl` in `clean-test-data.ts` but imported it from `db/client.js`; the test failed with `maskDatabaseUrl is not a function`. Fixed by moving the helper next to `resolveDatabaseUrl`, where both callers can share it.
+- `tsc --noEmit` and `tsc --noEmit -p tsconfig.test.json` both exit 0. The first run failed on `TS18048: withoutQuery is possibly undefined` in `resolveTargetDatabaseName` (this repo enables `noUncheckedIndexedAccess`); fixed by replacing the `split('?')[0]` index access with `indexOf`/`slice`.
+- **Full backend suite: 88 files / 1303 tests, ALL PASSING** (`EXIT=0`). Previously 1302 passed / 1 failed.
+
+### A second defect found and fixed while verifying this one
+
+While verifying, the full suite failed `disaster-restore-reconciliation.test.ts` Test 1 with `restoreReconciliation: 'down'` instead of `'unreconciled'`. I first suspected this change and disproved that: **stashing the change and running Test 1 on pristine HEAD with the polluting row present failed identically.**
+
+**Root cause: my own Phase 19 test leaked state.** `tests/operational-issues.test.ts` describe 6 inserted four ACTIVE `operational_issues` rows and never deleted them. Three families carry a `Date.now()` suffix, but the fourth - `disaster_restore_reconciliation_failure` - has no suffix, so it leaked the same logical key on every run. `health-routes.ts:75-77` returns `'down'` when **any** ACTIVE row with that key exists, so the orphan made the readiness probe report `'down'` for every later test in the run.
+
+**Fix.** An `afterAll` in describe 6 deletes the rows it inserted, and the id gained a `crypto.randomUUID()` suffix to remove a same-millisecond collision risk. `tests/operational-issues.test.ts` 18/18 passed and the orphan count returned to 0.
+
+**Why this is recorded rather than quietly fixed.** Phase 19 shipped a test that polluted shared database state, and it stayed invisible because the repo test command runs file-parallelism off in a fixed order. It only surfaced when a *different* change made me run the suite from a different state. **A test that leaves rows behind is a defect in the test, not just in the run.**
+
+### Files changed
+
+- `apps/backend/src/adapters/db/client.ts` - added `resolveDatabaseUrl` and `maskDatabaseUrl`; `createDbPool` now calls the resolver.
+- `apps/backend/src/adapters/jobs/boss-client.ts` - `createBossClient` uses the same resolver.
+- `apps/backend/src/cli/clean-test-data.ts` - production refusal, `--confirm` requirement, masked target print, logged catch.
+- `apps/backend/src/scripts/remediate-evidence-user-metadata.ts` - resolver + masked target.
+- `apps/backend/package.json` - `--env-file-if-exists=.env` on every non-test script.
+- `apps/backend/tests/unit/db-target-resolution.test.ts` - NEW, 9 tests.
+- `apps/backend/tests/operational-issues.test.ts` - `afterAll` cleanup + collision-proof ids.
+
+### What this does not do
+
+- `drizzle.config.ts:8` and `apps/web/playwright.config.ts:28` still carry their own fallbacks. Both are tooling configs outside the L2 scope of this fix; the drizzle one resolves to the dev database and is worth a follow-up.
+- `L2-P01-03` (the backup-expiry dev stub returning `isExpired: true`) is **not** fixed. It remains open.
+- No production behaviour changes: production already set `DATABASE_URL` at `deploy/compose/docker-compose.prod.yml:37,73,103`.
