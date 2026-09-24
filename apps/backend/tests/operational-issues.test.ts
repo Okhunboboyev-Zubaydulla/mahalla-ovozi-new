@@ -536,4 +536,63 @@ describe('Story 4.2: Backend Operational Issues Database & HTTP Integration Test
       expect(res.json().error.code).toBe('VALIDATION_ERROR');
     });
   });
+
+
+  describe('6. Health-Sync Auto-Resolve Boundary (L6-P01-08)', () => {
+    // Each family is its own test case, so coverage is per-family, not inferred from one loop.
+    const FAMILIES: Array<[string, string]> = [
+      ['del_backup_fail:', 'BACKUP_EXPIRY_DELAY'],
+      ['del_sync_fail:', 'STORAGE_UNAVAILABLE'],
+      ['del_fail:', 'LIFECYCLE_DELETION'],
+      ['disaster_restore_reconciliation_failure', 'DISASTER_RECOVERY'],
+    ];
+
+    it.each(FAMILIES)(
+      'does NOT resolve a %s lifecycle issue on a Healthy scheduled_deletion probe',
+      async (keyPrefix, issueCategory) => {
+        const ts = Date.now();
+        const now = new Date();
+        const logicalKey = keyPrefix.slice(-1) === ':' ? keyPrefix + ts : keyPrefix;
+        const issueId = 'iss_l6_' + ts;
+
+        await db.insert(operationalIssues).values({
+          id: issueId,
+          logicalKey,
+          scope: 'GLOBAL',
+          districtId: null,
+          component: 'scheduled_deletion',
+          issueCategory: issueCategory,
+          severity: 'Critical',
+          status: 'ACTIVE',
+          healthStatus: 'UNAVAILABLE',
+          sanitizedTitle: 'Lifecycle issue',
+          sanitizedDescription: 'Lifecycle issue description',
+          recommendedAction: 'Test action',
+          targetRoute: null,
+          metadata: {},
+          startedAt: now,
+          latestCheckAt: now,
+          resolvedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        const healthyProbe = createObs('scheduled_deletion', 'Healthy', null);
+        await synchronizeOperationalIssues(db, [healthyProbe], {
+          evaluationScope: { type: 'SYSTEM' },
+        });
+
+        const [row] = await db
+          .select()
+          .from(operationalIssues)
+          .where(eq(operationalIssues.id, issueId))
+          .limit(1);
+
+        expect(row).toBeDefined();
+        if (!row) throw new Error('Row not found: ' + logicalKey);
+        expect(row.status).toBe('ACTIVE');
+      },
+    );
+  });
+
 });

@@ -1,6 +1,10 @@
 import crypto from 'node:crypto';
 import { eq, and, sql } from 'drizzle-orm';
-import { ComponentHealthObservation } from '@mahalla-ovozi/api-contracts';
+import {
+  ComponentHealthObservation,
+  ComponentScope,
+  ComponentType,
+} from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import {
   operationalIssues,
@@ -25,6 +29,22 @@ export interface SynchronizeResult {
   created: number;
   updated: number;
   resolved: number;
+}
+
+/**
+ * True only when the issue's own four identity fields regenerate its logicalKey.
+ * Health-sync issues satisfy this by construction; issues minted by other
+ * subsystems with a bespoke logicalKey do not, and must never be resolved by a
+ * health probe that merely shares their (scope, districtId, component) tuple.
+ */
+function isHealthSyncOwnedIssue(issue: OperationalIssueEntity): boolean {
+  const canonicalKey = generateLogicalKey(
+    issue.scope as ComponentScope,
+    issue.districtId,
+    issue.component as ComponentType,
+    issue.issueCategory,
+  );
+  return canonicalKey === issue.logicalKey;
 }
 
 /**
@@ -218,6 +238,12 @@ export async function synchronizeOperationalIssues(
     for (const existingIssue of activeIssuesList) {
       // If already processed as failed in Step 1, it is still failing
       if (processedFailedKeys.has(existingIssue.logicalKey)) {
+        continue;
+      }
+
+      // Foreign-keyed issues (deletion lifecycle, restore reconciliation) are not
+      // owned by the health sync; a probe sharing their tuple must not resolve them.
+      if (!isHealthSyncOwnedIssue(existingIssue)) {
         continue;
       }
 

@@ -960,3 +960,108 @@ Fixing it is not the change that was approved. Every candidate fix has real blas
 Per the modification gate, this is recorded and raised rather than unilaterally implemented.
 
 **Verification status:** mechanism read at source across four files (`district-deletion-service.ts`, `issue-manager.ts`, `health-checker.ts`, `health-service.ts`). **Not** yet demonstrated by a failing test, because no change was made. A red test that drives a health sync against a `del_backup_fail` row and asserts it stays `ACTIVE` would be the right first step if this is funded.
+
+---
+
+## Phase 19 — `L6-P01-08`, the health sync can no longer clear issues it does not own
+
+**Finding.** This closes the defect filed as a NEW finding in Phase 17 (see the tail of that phase): the full system-health check silently marked deletion-lifecycle operational issues `RESOLVED` while their underlying state stayed failed. **The finding ID is `L6-P01-08`** — Phase 17 declined to assign one, and the first attempt at an ID (`L6-P01-06`) collided with the existing `extra_hosts` finding at `phase-L6-cross-cutting.md:123-137`. Confirmed against that file before use.
+
+### What was verified at source before any edit
+
+Re-verified per §7 rule 1 (artifacts are analysis, not proof). The Phase 17 mechanism held, and **the blast radius was 4x larger than Phase 17 recorded**:
+
+Four distinct issue families — not one — all deliberately sit at `(scope='GLOBAL', districtId=null, component='scheduled_deletion')`, and all four collide with the same Healthy probe:
+
+| `logicalKey` | `issueCategory` | Producer |
+|---|---|---|
+| `del_backup_fail:${districtId}` | `BACKUP_EXPIRY_DELAY` | `district-deletion-service.ts:594,636` |
+| `del_sync_fail:${districtId}` | `STORAGE_UNAVAILABLE` | `district-deletion-service.ts:354,357` |
+| `del_fail:${districtId}` | `LIFECYCLE_DELETION` | `jobs/district-deletion-job-handler.ts:58,95` |
+| `disaster_restore_reconciliation_failure` | `DISASTER_RECOVERY` | `restore-reconciliation.ts:642,645` |
+
+`del_fail` is the live-deletion-failed alert — the most severe of the set, and absent from Phase 17's write-up entirely.
+
+**A legitimate resolution path already existed** for `del_backup_fail`: `district-deletion-service.ts:516-540` (Branch 1) sets `backupExpiryStatus: 'VERIFIED'` and explicitly resolves the issue at `:528-540`. So the health-sync resolution was strictly illegitimate, and the divergence between `backupExpiryStatus` staying `FAILED` and the alert reading `RESOLVED` was real, not cosmetic.
+
+### Two of Phase 17's three candidate fixes were wrong
+
+Phase 17 listed three options and said one was a contract change. On re-verification, **the contract-change count was wrong, and the literal form of the chosen option would have regressed**:
+
+1. **The literal `issueCategory` comparison would have broken recovery.** `deriveIssueMetadata` (`issue-evaluator.ts:74-221`) is a *failure* classifier, but the matcher asks it about a *recovery* observation. For `telegram_bot` the category is `BOT_TOKEN_INVALID` only while `errorCode` matches, else `BOT_DISCONNECTED` (`:81-92`) - so a fixed token yields `BOT_DISCONNECTED`, strict equality against the stored `BOT_TOKEN_INVALID` fails, and the issue would **stay ACTIVE forever**. `processing_queue` has the same shape (`:126-143`). This would have traded a silent false resolution for a permanent never-resolving Critical alert. **Flagged to the user before any code was written**; the corrected form was approved.
+2. **Candidate fix 3 is not distinct from fix 1.** Retagging `del_backup_fail` to an existing enum member such as `storage` makes it *worse*: `checkStorageHealth` emits the same `(GLOBAL, null)` observation shape at `health-service.ts:102`. It requires a *new* `ComponentType`, i.e. the same contract change as fix 1.
+3. **Candidate fix 2 as described was not a field comparison.** `ComponentHealthObservationSchema` (`packages/api-contracts/src/health.ts:84-98`) has no `issueCategory` field; the category is derived, not carried.
+
+### The fix
+
+The user ruled: widen the matcher identity to include `issueCategory`, covering **all four** families, implemented as a canonical-key predicate rather than a literal category comparison.
+
+`apps/backend/src/modules/issues/issue-manager.ts` - a new module-scope helper at `:34-48`:
+
+```js
+function isHealthSyncOwnedIssue(issue: OperationalIssueEntity): boolean {
+  const canonicalKey = generateLogicalKey(
+    issue.scope as ComponentScope,
+    issue.districtId,
+    issue.component as ComponentType,
+    issue.issueCategory,
+  );
+  return canonicalKey === issue.logicalKey;
+}
+```
+
+and the guard in the Step 2 recovery loop at `:244-248`, after the `processedFailedKeys` check and before observation matching:
+
+```js
+if (!isHealthSyncOwnedIssue(existingIssue)) {
+  continue;
+}
+```
+
+**Why the canonical-key predicate and not a category comparison.** The predicate asks whether the issue's *own* four identity fields regenerate its *own* `logicalKey`. That is a genuine `issueCategory` comparison - it asserts the category is the one that produces the key - but it never asks a failure classifier about a healthy observation, so it cannot regress recovery. It also needs no new field on the observation contract.
+
+Checked against all four families: `generateLogicalKey(scope, districtId, component, issueCategory)` canonicalises `del_backup_fail:dist_1` to `GLOBAL:global:scheduled_deletion:BACKUP_EXPIRY_DELAY`, which does not equal the stored key, so the issue is excluded. Health-sync-created issues are canonical **by construction** (`issue-manager.ts:104-109` builds the key from exactly those four fields), so they remain eligible and still resolve.
+
+Corroboration that these four keys are genuinely foreign rather than merely differently formatted: `deriveIssueMetadata` has **no `scheduled_deletion` case at all**, so it falls to `default` and yields `OPERATIONAL_MAINTENANCE_NOTICE`. The health sync can never mint an issue carrying `component: 'scheduled_deletion'` **and** category `BACKUP_EXPIRY_DELAY` - the four families borrow both the component and the category.
+
+**No contract change.** `ComponentTypeEnumSchema` (`packages/api-contracts/src/health.ts:26-38`) is untouched; nothing under `packages/` changed.
+
+### Tests (test-first, then falsified)
+
+`apps/backend/tests/operational-issues.test.ts` - new `describe` block 6, `L6-P01-08`, at `:540-596`. Four families as **four independent `it.each` cases**, so each family's coverage is proven on its own rather than inferred from one loop. Each case inserts an `ACTIVE` row at `(GLOBAL, null, scheduled_deletion)` with that family's `logicalKey` and `issueCategory`, syncs one `Healthy` `scheduled_deletion`/`GLOBAL`/`null` probe with `evaluationScope: { type: 'SYSTEM' }`, and asserts the row is still `ACTIVE`.
+
+| Step | Result |
+|---|---|
+| RED before the fix | `expected 'RESOLVED' to be 'ACTIVE'` at `:591` - 1 failed / 14 passed. Failing for the right reason. |
+| GREEN after the fix | **18/18 passed** |
+| **Falsification** (guard disabled via `if (false && ...)`) | **4 failed** / 14 passed - one failure per family, which is the evidence that the four cases are independent |
+| Reverted | 18/18 green again |
+
+A first version of this test used a single loop over all four families. The `code-review` pass (below) flagged that as a real gap - coverage was implied, not proven - and it was rewritten as `it.each` **before** the commit. The falsification result changed from `1 failed` (loop version) to `4 failed` (`it.each` version), which is the improvement made visible.
+
+### Verification performed
+
+- **Both backend typechecks green.** `node ../../node_modules/typescript/bin/tsc --noEmit` (exit 0) and `tsc --noEmit -p tsconfig.test.json` (exit 0). The second is mandatory per §7 rule 8 - plain `tsc` excludes `tests/`, and it caught real errors in the first draft of this test (`TS2769` on the insert overload, `TS2532` possibly-undefined on indexed access) that the plain run missed.
+- **Directly-affected neighbouring suites green:** `tests/system-health.test.ts` 28/28 (the real health-check path, including a full `GET /api/v1/health/system`), and `tests/district-backup-expiry.test.ts` + `tests/disaster-restore-reconciliation.test.ts` 22/22 (the producers of the protected families).
+- **No visual sign-off** exists for this change, and none is claimed - it is backend-only.
+
+### code-review (degraded single-agent mode)
+
+Run per §11, which requires it before committing. **The two axes shared one context, so the standards/spec isolation guarantee is lost** - the standards pass was completed and recorded before the spec pass began.
+
+- **Standards: 0 hard violations, 2 judgement calls.** (i) Two `as` casts narrowing `text` columns into contract enums - forced by the schema's design (unconstrained `text` plus DB `check` constraints) and identical to the pre-existing pattern at `issue-evaluator.ts:280,283`, but still an `as` in new code. (ii) The guard *skips* rather than raises, which reads against "no symptom-masking guards" until you notice it keeps an alert **visible** rather than clearing it - the loud outcome. Both recorded rather than waved through.
+- **Spec: 1 finding, 0 scope creep, 0 wrong implementation.** The finding was the single-loop test granularity described above, and it was **fixed before commit** rather than deferred.
+
+### What this does not do
+
+- **It does not retag the four families.** `del_backup_fail` still carries `component: 'scheduled_deletion'` and the `OPERATIONAL_MAINTENANCE_NOTICE` default category is still what `deriveIssueMetadata` would produce for that component. Phase 17's candidate fix 3 - "stop tagging a retention concern with the queue component" - remains the more honest domain model and remains **open**. It now needs a new `ComponentType` to be safe, which makes it a contract change with its own gate.
+- **It does not make the four families resolvable by any health signal.** They can still only be resolved by their owning subsystem (e.g. Branch 1 for `del_backup_fail`). That is intended: they are lifecycle artifacts, not health observations.
+- **It does not prove the four families' own producers behave correctly.** It only proves the health sync no longer clears them.
+
+### Files changed
+
+- `apps/backend/src/modules/issues/issue-manager.ts` (+27/-1)
+- `apps/backend/tests/operational-issues.test.ts` (+57/-1)
+
+**No contract change. No schema change. No new dependency.**
+
