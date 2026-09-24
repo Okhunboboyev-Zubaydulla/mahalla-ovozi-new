@@ -51,8 +51,8 @@ describe('District State & Switching Engine', () => {
     });
 
     // Verify 4-step atomic sequence: cancel queries -> remove queries -> set new ID (P4-B)
-    expect(cancelSpy).toHaveBeenCalledWith({ queryKey: ['district', 'dist_1'] });
-    expect(removeSpy).toHaveBeenCalledWith({ queryKey: ['district', 'dist_1'] });
+    expect(cancelSpy).toHaveBeenCalledWith({ queryKey: ['districts', 'dist_1'] });
+    expect(removeSpy).toHaveBeenCalledWith({ queryKey: ['districts', 'dist_1'] });
     expect(result.current.activeDistrictId).toBe('dist_2');
   });
 
