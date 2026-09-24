@@ -43,6 +43,7 @@ Ordering is dependency-directional (L1→L6); L3 is internally ordered by churn.
 | **L4-recon** | L4 web data | recon-l4-webdata | `apps/web/src/{api,auth,district,topics,hooks,lib,issues,health,utils}` — sweep, not a deep phase | **incomplete (1 of 15)** | `recon-l4-web-data.md` |
 | **BACKLOG** | cross-layer | main session | all findings, ranked — **not authorised; requires fresh approval** | **complete** | `fix-backlog.md` |
 | **FIXES** | cross-layer | main session | 5 Tier-1 + Tier-2 fixes executed test-first — **separate program, approved 2026-09-23** | **complete** | `fix-ledger.md` |
+| **L6** | L6 Cross-cutting | main session (single-agent mode) | `deploy/`, `Dockerfile`, `.github/workflows/ci.yml`, and **ADR-0001 / ADR-0006 / ADR-0008 conformance** — the first and only assessment of the three L6-owned ADRs | **complete** | `phase-L6-cross-cutting.md` |
 
 Phases beyond P5 are **not funded**. The post-slice decision is made at the gate.
 
@@ -117,6 +118,7 @@ A completed **descriptive** reconnaissance run (4 tasks: backend summary, web su
 | L3-P05c | 0 | 2 | 4 | 2 | **8** |
 | L3-P04R | 0 | 1 | 2 | 1 | **4** *(review-program findings; +2 filed later by the FIXES program — see note below)* |
 | L4-recon | 0 | 1 | 0 | 0 | **1** *(of 15 claimed)* |
+| L6-P01 | 0 | 1 | 4 | 2 | **7** |
 
 *(Findings are listed in full in each phase artifact. This roll-up is the index, not the record.)*
 
@@ -192,7 +194,7 @@ Populated at the slice gate. Each prior-art candidate is marked `replicated` · 
 |---|---|---|
 | 1. Signal reading surface | **replicated, with corrected scope** | Replicated: Accepted Evidence reading has no single owner — `getTopicEvidence` at `apps/backend/src/modules/topics/topic-evidence-service.ts:188` (Topic-scoped Hokim read) vs `listSignals`/`getSignalDetail` at `topic-evidence-management-service.ts:122`/`:394` (intake-centric Product Owner triage), recorded as `L3-P04-01` (high · strong · low-locality). **Correction from P4R:** the query split is principled and should NOT be collapsed; the accidental part is verbatim-text resolution, which now exists in **three** copies — the extractor `topic-evidence-management-service.ts:41-99`, the inline copy in `promoteSignal` `:607-620` (`L3-P04R-01`), and a SQL copy at `:220` (`L3-P04R-02`). P4R also found the SQL copy already diverges from the TypeScript one. Candidate 1's direction (one deep module) is right; its implied blast radius (the whole reading surface) is too wide. |
 | 2. Query engine interface | **partially replicated · partially refuted** | Replicated: "26 export lines" is exact (`grep -c '^export '` = 26); the backward-compat alias triple is real and dead (`topic-query-engine.ts:113-115`). **Refuted:** "nine zero-consumer exports" is wrong — P3 measured **18 of 28 names** with no consumer outside the file. **Independently refuted by main session:** the prior art listed `queryDistrictTopicsPage` as zero-consumer, but it IS imported at `district-topics-routes.ts:20,87,128`. Prior-art candidate 2 understated the interface width and misidentified at least one consumer. |
-| 3. ADR-0001 ports honesty | *pending L6* | — |
+| 3. ADR-0001 ports honesty | **partially replicated · direction inverted** | Assessed by L6 (`phase-L6-cross-cutting.md`, `L6-P01-04`). **The "180+" figure reproduces** — 181 module→adapter import lines across 83 module files. **"Nine of eleven adapters" does not:** there are 7 adapter *directories*, and 5 import modules back; the count describes 9 adapter *files* / 10 import lines. **The direction inverts on inspection:** 9 of those 10 reverse imports are imports of module-owned *port interfaces* (plus one type-only), which is the *correct* hexagonal direction, not a violation. Only `adapters/db/seeds.ts:10` (`activeAiConfig`, a concrete module value) is a genuine inversion. **The real ADR-0001 tension is the opposite one:** ADR-0001 line 18 says external systems are reached "via interfaces defined in `adapters/`", but ports are declared in `modules/*/ports/` (4 files) and `adapters/**/*port*.ts` is empty — while **122 of 158** module→adapter imports reach directly into `adapters/db` as a concrete dependency. Prior art recorded a pervasive two-way violation; measurement finds a mostly-sound interface layer with its weight concentrated in direct DB coupling. |
 
 ## Slice 1 gate
 
@@ -263,7 +265,7 @@ Severity did not decay either: P3 carried 1 high; P5a carried 2, P5b 2, P5c 2, P
 
 - **Novelty bar (i)** — satisfied by `L3-P05-01`, `L3-P05-10`, `L3-P05-09`, all `strong`/`observed` in files the prior pass never touched. Live candidates were `topic-projection-evaluator.ts` (589) / `topic-matching-evaluator.ts` (393) / `topic-assignment-coordinator.ts` (725). ~~`district-topics-service.ts`~~ — **struck**: the file was deleted in `b13a53a refactor(topics): flatten topic service layer, unify route validation, decompose toolbar`; it exists in git history only and is referenced by no live file (`grep` across `apps/`: no matches). Recorded so the bar is not read as naming four files.
 - **Novelty bar (ii)** — satisfied; see the three new problem classes above.
-- **Prior-art reconciliation** — complete. Candidate 1 replicated with corrected scope; candidate 2 partially replicated and partially refuted; candidate 3 remains pending L6 (its owner).
+- **Prior-art reconciliation** — complete. Candidate 1 replicated with corrected scope; candidate 2 partially replicated and partially refuted; candidate 3 **assessed by L6** (`phase-L6-cross-cutting.md`, `L6-P01-04`) — its headline count reproduces but its denominator is wrong and its direction inverts on inspection.
 - **Residual uncertainty from all five phases** — carried above.
 - **Recommendation** — `continue, narrow`, with reasons.
 
