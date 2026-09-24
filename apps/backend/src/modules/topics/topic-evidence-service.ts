@@ -288,7 +288,7 @@ export async function getTopicEvidence(
     districtId: topicRow.districtId,
     mahallaName: topicRow.mahallaName,
     calendarDay: topicRow.calendarDay,
-    summary: projectionRow?.summary ?? 'Мавзу хулосаси тайёрланмоқда...',
+    summary: projectionRow?.summary ?? null,
     latestUpdate: projectionRow?.latestUpdate ?? null,
     primaryLane: (topicRow.primaryLane as QualifyingLane) || 'HOKIM_RELATED',
     lanes: (projectionRow?.lanes as QualifyingLane[]) || [

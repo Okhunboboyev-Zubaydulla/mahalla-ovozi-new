@@ -698,6 +698,73 @@ A validation branch that never fires is worse than none, so before shipping Phas
 
 Three sessions running, the artifact's **mechanism** was the unreliable part while its **symptom** was real. Here the finding correctly identified an unbound producer and then proposed deleting the contract — the opposite of the right fix — because it never measured the consumer. It also asserted a failure mode (code-less envelopes) that no producer actually exhibits, while missing the one that was live (`blockers` cast through an untyped schema). **Measure the producer AND the consumer before choosing a direction; a plausible mechanism is not evidence.** The count being off by 20% is a smaller version of the same error.
 
+---
+
+## Phase 12 — `L1-P02-01`, the sentinel becomes an explicit `null`
+
+**Finding fixed:** `L1-P02-01` (rank 12 — the last ranked item, and the last high-severity finding in the program). **No follow-up filed.**
+
+### Re-derivation — the mechanism was false, the symptom was real
+
+Read at source before touching anything:
+
+- **The record is in the wrong file.** The handoff and `fix-backlog.md` both cite `phase-01-contract-primitives.md`. It is in **`phase-02-contract-domain-payloads.md:22-52`**. `phase-01` carries only a roll-up row.
+- **Lines had drifted:** `topics.ts:27-31` (recorded) → `topics.ts:43-47` (actual).
+- **The load-bearing claim is false.** The record says *"The backend writes a specific Uzbek sentence into the `summary` column as a marker meaning 'not ready'."* It does not. `topic-projections.ts:20` is `summary: text('summary').notNull()`, so a persisted summary can never be the sentinel. The literal existed only as a **read-time fallback**: `topic-query-engine.ts:286` `COALESCE(tp.summary, '...')` over `LEFT JOIN topic_projections` (`:295`), and `topic-evidence-service.ts:291` `projectionRow?.summary ?? '...'`. The sentinel appeared only when the join found **no projection row at all**.
+- **Consequence (2) was therefore false** — "changing the UI copy changes the stored data contract, and any already-persisted row keeps the old literal" cannot happen when nothing is persisted. (3) was overstated for the same reason.
+- **Consequence (1) stood and was the real defect:** no flag existed, so an unprojected topic was distinguishable only by exact string equality — and a legitimate summary that happened to read `Мавзу хулосаси тайёрланмоқда...` would have been silently misread as pending.
+
+### The design decision
+
+The record offered two options ("a status field or a nullable summary"). **Nullable `summary` was chosen** because `null` *already* meant "the LEFT JOIN missed" — the contract was describing an existing reality, not inventing a field. A `summaryStatus` enum would have added contract surface the domain never had and left `summary` a lie (a string that is sometimes not a summary). The compiler also carried the whole migration: root `pnpm typecheck` named all 7 web sites, exactly as AC(3)'s spirit requires.
+
+### What changed
+
+| File | Change |
+|---|---|
+| `packages/api-contracts/src/topics.ts` | `PENDING_TOPIC_SUMMARY_TEXT` + `isTopicSummaryPending` **deleted**; `TopicCardItemSchema.summary` → `z.string().nullable()` with a doc comment. |
+| `apps/backend/src/modules/topics/topic-query-engine.ts` | `:286` `COALESCE(tp.summary, '...')` → `tp.summary`; `RawTopicRow.summary` → `string \| null`. |
+| `apps/backend/src/modules/topics/topic-evidence-service.ts` | `:291` `?? '...'` → `?? null`. |
+| `apps/web/src/components/topics/TopicSummaryBody.tsx` | Prop `string \| null`; `isPending = props.summary === null`; `HighlightText text={props.summary ?? ''}`. |
+| `apps/web/src/components/topics/TopicCard.tsx` | Import → type-only; `topic.summary === null` in the aria-label. |
+| `apps/web/src/components/districts/topics/DistrictTopicsTable.tsx` | Import → type-only; `render: (summary: string \| null)`; `record.summary === null` in the aria-label. |
+| `apps/web/tests/unit/TopicSummaryBody.test.tsx` | Sentinel import dropped; 3 tests pass `summary={null}`. |
+| `apps/backend/tests/hokim-topics.test.ts:537,567` | Red test: asserts `found.summary).toBeNull()` for an unprojected topic. |
+
+The grep for `isTopicSummaryPending` / `PENDING_TOPIC_SUMMARY_TEXT` / the sentinel string now returns **0 source hits** (6 remaining hits are stale gitignored `dist/*.d.ts` build artifacts).
+
+### The defect this phase proved, and falsified
+
+The red test was real and failed for the recorded reason:
+
+```
+AssertionError: expected 'Мавзу хулосаси тайёрланмоқда...' to be null
+```
+
+**Falsified:** restoring the `COALESCE` in `topic-query-engine.ts` reproduced exactly that failure. Restored, re-ran green.
+
+### Verification actually run
+
+- `tests/hokim-topics.test.ts` — 9/9.
+- **8 backend topic suites / 104 tests green:** `hokim-topics`, `hokim-topics-filter`, `hokim-topics-pagination`, `hokim-topics-statistics`, `hokim-topics-refresh`, `hokim-topic-search`, `district-topics`, `topic-evidence`.
+- `apps/web` full suite — **382/383**, the single failure being `district-state.test.tsx`.
+- `pnpm typecheck` (root, both projects) — exit 0. `tsc --emitDeclarationOnly --declaration` on `api-contracts` — exit 0 (exports were narrowed, so TS4053 was checked).
+
+### One pre-existing failure, proven not mine
+
+`apps/web/tests/unit/district-state.test.tsx` fails (`expect(cancelSpy).toHaveBeenCalledWith({ queryKey: ['district', 'dist_1'] })`, `:54`). It imports none of the changed files. **Proven pre-existing, not assumed:** `git stash push --include-untracked` then re-running at HEAD reproduced the identical failure with my work absent. The stash was popped and the tree verified. It is unrelated to this finding and was left untouched.
+
+### Residual uncertainty — honest list
+
+1. **AC(1) needed a narrower reading, stated openly.** As literally worded — "No user-facing copy is exported from `packages/api-contracts`" — it would also condemn the ~100+ Uzbek zod validation messages across `analysis-settings.ts`, `districts.ts`, `signals.ts`, `topics.ts` and others. Satisfied as **"no *rendering* copy"**: a validation message describes why rejected input was rejected (contract data); a sentence rendered *in place of* absent data is presentation. That distinction is mine, and it is recorded rather than assumed.
+2. **`topic-query-engine.ts:241` `WHEN tp.summary ILIKE ${pattern} THEN NULL` was left alone.** It reads the table column, not the aliased select, so nullability does not change its behaviour: SQL `NULL ILIKE x` is `NULL`, never `TRUE`, which is the same outcome as before. Read, reasoned about, deliberately unchanged.
+3. **Stale `dist/` artifacts still contain the deleted exports.** Gitignored and not rebuilt here; a fresh build removes them. Worth knowing if anyone greps `dist`.
+4. **No visual sign-off.** `apps/web` now renders pending state from `null` instead of a string; verified by unit test only, per the no-browser-automation rule.
+
+### The lesson this phase reinforces
+
+This is the fourth consecutive session where the artifact's **mechanism** failed while its **symptom** was genuine — and the first where the false mechanism was also *load-bearing for the fix direction*. The record's own consequence (2) described a data-corruption risk that could not exist, because the column it named is `NOT NULL` and the value was synthesised at read time. One `grep` of the schema file would have shown it. **Read the schema before believing a claim about what is persisted.** The fix happened to be the record's own second option — which is luck, not vindication: had the record offered only the status-field option, it would have added contract surface to solve a problem that did not exist.
+
 
 
 

@@ -8,7 +8,7 @@ Baseline: HEAD `bdf999a`. Program: 8 artifacts, **56 findings** (0 blocker · 12
 
 ---
 
-## Progress — eleven of the twelve ranked items are FIXED
+## Progress — all twelve ranked items are FIXED
 
 All eleven were executed test-first (failing test → confirmed failure for the recorded root cause → minimal fix → re-run green) and verified against `mahalla_ovozi_test` on port **5433**. Two partial exceptions are recorded honestly: `L3-P03-01`'s web-side lane consolidation was driven by compiler errors rather than a red test (see `fix-ledger.md` Phase 8), and `L3-P04-01`'s `:475` call site preserves an explicit `null → ''` coercion rather than widening a shared evaluator contract (Phase 9).
 
@@ -26,7 +26,7 @@ All eleven were executed test-first (failing test → confirmed failure for the 
 
 `L3-P05-15` (low, unranked below) was fixed in the same pass as rank 6 — same file, same class, backlog Seam D. The unranked `is_hokim_related` tautology was fixed in session 3.
 
-**Ranks 10–12 are the highest-ranked remaining items.** Rank 9 was closed in session 5.
+**Ranks 10–12 were the highest-ranked remaining items; all are now closed.** Ranks 10 and 11 were closed in sessions 6 and 7; rank 12 in session 7. No ranked item remains.
 
 Per-finding detail, red-green evidence, and residual uncertainty live in `docs/architecture-review/fix-ledger.md`. This file stays an index; it does not carry the fix records.
 
@@ -104,8 +104,14 @@ A contract with no producer is a promise nothing keeps. **The claim's core held;
 
 **Follow-up filed — the 199-literal migration.** Give route handlers a way to `throw` a domain error carrying `statusCode`/`code`/`blockers` (the `ForbiddenOriginError` at `http.ts:39-43` and `InvalidDateRangeError` at `telegram-intake/timezone-util.ts:33-40` are the existing pattern) and let the one global handler serialise it. Until then the new gate guarantees validity for everything that passes through the handler, and the literals remain hand-asserted.
 
-**12. `L1-P02-01` — sentinel UI text and its predicate live in the contract package** · high · strong · observed · `leaky-seam`
-Presentation leaking into the browser-safe contract package.
+**12. `L1-P02-01` — sentinel UI text and its predicate live in the contract package** · high · strong · observed · `leaky-seam` · **[FIXED — session 7]**
+Presentation leaking into the browser-safe contract package. **The symptom was real; the load-bearing mechanism was false.** The record claimed the backend *writes* the sentinel into the `summary` column. It does not — `topic-projections.ts:20` is `summary: text('summary').notNull()`, and the literal existed only as a read-time `COALESCE` (`topic-query-engine.ts:286`) / `??` (`topic-evidence-service.ts:291`) over a `LEFT JOIN`. So consequence (2) ("changing UI copy changes stored data") was **false**, and (3) was overstated. Consequence (1) stood and was the real defect: no flag, so "unprojected" was only distinguishable by string equality.
+
+**Fixed:** pending state is now an explicit **nullable `summary`** — the record's own second option, and it matches reality, since `null` already meant "no projection row". `PENDING_TOPIC_SUMMARY_TEXT` and `isTopicSummaryPending` are deleted; `TopicCardItemSchema.summary` is `z.string().nullable()`. Three backend read sites and 7 web compile sites updated; the sentinel string no longer exists anywhere in the repo.
+
+**AC(1) satisfied under a narrower reading, stated openly:** as literally worded it would also condemn the ~100+ Uzbek zod validation messages across the contract package. Read as "no *rendering* copy" — validation messages describe rejected input (contract data); a sentence rendered in place of absent data is presentation. AC(2) and AC(3) met. Full record: `fix-ledger.md` Phase 12.
+
+**All twelve ranked items are now fixed.**
 
 **~~New — no ID assigned yet. `is_hokim_related` is now validated by a tautology.~~** · **[FIXED — session 3]**
 

@@ -40,18 +40,17 @@ export type TelegramReplyMetadata = z.infer<typeof TelegramReplyMetadataSchema>;
 export const SearchMatchBadgeSchema = z.enum(['evidence', 'author']);
 export type SearchMatchBadge = z.infer<typeof SearchMatchBadgeSchema>;
 
-export const PENDING_TOPIC_SUMMARY_TEXT = 'Мавзу хулосаси тайёрланмоқда...';
-
-export function isTopicSummaryPending(summary: string): boolean {
-  return summary === PENDING_TOPIC_SUMMARY_TEXT;
-}
-
 export const TopicCardItemSchema = z.object({
   id: z.string(),
   districtId: DistrictIdSchema,
   mahallaName: z.string(),
   calendarDay: z.string(),
-  summary: z.string(),
+  /**
+   * The projected summary, or `null` when no `topic_projections` row exists yet.
+   * `null` is the explicit "projection pending" signal — it replaces the former
+   * practice of comparing against a sentinel display string.
+   */
+  summary: z.string().nullable(),
   primaryLane: QualifyingLaneSchema,
   lanes: z.array(QualifyingLaneSchema),
   additionalLanes: z.array(QualifyingLaneSchema),

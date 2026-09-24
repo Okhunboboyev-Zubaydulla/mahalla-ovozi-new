@@ -534,7 +534,7 @@ describe('Story 3.1: Hokim Topic Board & Keyset Pagination Integration Tests', (
     });
 
 
-    it('displays newly created unprojected topic with fallback summary "Мавзу хулосаси тайёрланмоқда..." via LEFT JOIN', async () => {
+    it('returns a null summary for a newly created unprojected topic (no projection row)', async () => {
       const unprojectedTopicId = `top_unproj_${crypto.randomUUID().slice(0, 8)}`;
       const now = new Date();
       await db.insert(topics).values({
@@ -564,7 +564,7 @@ describe('Story 3.1: Hokim Topic Board & Keyset Pagination Integration Tests', (
       const waterTopics = data.lanes.WATER.topics;
       const found = waterTopics.find((t: { id: string }) => t.id === unprojectedTopicId);
       expect(found).toBeDefined();
-      expect(found.summary).toBe('Мавзу хулосаси тайёрланмоқда...');
+      expect(found.summary).toBeNull();
       expect(found.primaryLane).toBe('WATER');
       expect(found.lanes).toEqual(['WATER']);
     });

@@ -9,11 +9,7 @@ import {
   ClockCircleOutlined,
   SyncOutlined,
 } from '@ant-design/icons';
-import {
-  TopicCardItem,
-  QualifyingLane,
-  isTopicSummaryPending,
-} from '@mahalla-ovozi/api-contracts';
+import type { TopicCardItem, QualifyingLane } from '@mahalla-ovozi/api-contracts';
 import { formatTashkentActivityTime } from '../../../lib/formatters.js';
 import { LANE_LABELS, LANE_STYLES } from '../../topics/TopicCard.js';
 
@@ -54,8 +50,8 @@ export const DistrictTopicsTable: React.FC<DistrictTopicsTableProps> = ({
       title: 'Мавзу хулосаси',
       dataIndex: 'summary',
       key: 'summary',
-      render: (summary: string) => {
-        if (isTopicSummaryPending(summary)) {
+      render: (summary: string | null) => {
+        if (summary === null) {
           return (
             <Tag
               color="processing"
@@ -195,7 +191,7 @@ export const DistrictTopicsTable: React.FC<DistrictTopicsTableProps> = ({
             fontWeight: 500,
           }}
           aria-label={
-            isTopicSummaryPending(record.summary)
+            record.summary === null
               ? 'Далилларни кўриш (хулоса тайёрланмоқда)'
               : `Далилларни кўриш: ${record.summary}`
           }

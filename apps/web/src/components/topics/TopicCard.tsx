@@ -9,11 +9,7 @@ import {
   FireOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
-import {
-  TopicCardItem,
-  QualifyingLane,
-  isTopicSummaryPending,
-} from '@mahalla-ovozi/api-contracts';
+import type { TopicCardItem, QualifyingLane } from '@mahalla-ovozi/api-contracts';
 import { formatTashkentCalendarDate, formatTashkentTime } from '../../lib/formatters.js';
 import { TopicSummaryBody } from './TopicSummaryBody.js';
 import { TopicLatestUpdateCallout } from './TopicLatestUpdateCallout.js';
@@ -183,7 +179,7 @@ const TopicCardComponent: React.FC<TopicCardProps> = ({
       }}
       aria-current={isSelected ? 'true' : undefined}
       aria-label={
-        isTopicSummaryPending(topic.summary)
+        topic.summary === null
           ? `Мавзу: ${formattedMahallaName}, хулоса тайёрланмоқда`
           : `Мавзу: ${formattedMahallaName}, ${topic.summary}`
       }

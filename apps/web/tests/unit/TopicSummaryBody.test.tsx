@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { ConfigProvider } from 'antd';
-import { PENDING_TOPIC_SUMMARY_TEXT } from '@mahalla-ovozi/api-contracts';
 import { TopicSummaryBody } from '../../src/components/topics/TopicSummaryBody.js';
 import { mahallaTheme } from '../../src/theme/antd-theme.js';
 
@@ -22,7 +21,7 @@ describe('TopicSummaryBody', () => {
 
     render(
       <ConfigProvider theme={mahallaTheme}>
-        <TopicSummaryBody summary={PENDING_TOPIC_SUMMARY_TEXT} createdAt={createdAt} />
+        <TopicSummaryBody summary={null} createdAt={createdAt} />
       </ConfigProvider>,
     );
 
@@ -39,7 +38,7 @@ describe('TopicSummaryBody', () => {
 
     render(
       <ConfigProvider theme={mahallaTheme}>
-        <TopicSummaryBody summary={PENDING_TOPIC_SUMMARY_TEXT} createdAt={createdAt} />
+        <TopicSummaryBody summary={null} createdAt={createdAt} />
       </ConfigProvider>,
     );
 
@@ -57,7 +56,7 @@ describe('TopicSummaryBody', () => {
 
     render(
       <ConfigProvider theme={mahallaTheme}>
-        <TopicSummaryBody summary={PENDING_TOPIC_SUMMARY_TEXT} createdAt={createdAt} />
+        <TopicSummaryBody summary={null} createdAt={createdAt} />
       </ConfigProvider>,
     );
 

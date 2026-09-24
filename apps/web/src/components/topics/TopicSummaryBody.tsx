@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Skeleton, Typography } from 'antd';
 import { ClockCircleOutlined } from '@ant-design/icons';
-import { isTopicSummaryPending } from '@mahalla-ovozi/api-contracts';
 import { HighlightText } from './HighlightText.js';
 
 const { Paragraph, Text } = Typography;
 
 export interface TopicSummaryBodyProps {
-  summary: string;
+  /** `null` means the projection has not been produced yet. */
+  summary: string | null;
   createdAt: string;
   searchQuery?: string;
   style?: React.CSSProperties;
@@ -27,7 +27,7 @@ function isOlderThan60Seconds(timestamp: string): boolean {
 }
 
 export const TopicSummaryBody: React.FC<TopicSummaryBodyProps> = (props) => {
-  const isPending = isTopicSummaryPending(props.summary);
+  const isPending = props.summary === null;
   const [isTimedOut, setIsTimedOut] = useState<boolean>(() => isOlderThan60Seconds(props.createdAt));
 
   useEffect(() => {
@@ -117,7 +117,7 @@ export const TopicSummaryBody: React.FC<TopicSummaryBodyProps> = (props) => {
         ...props.style,
       }}
     >
-      <HighlightText text={props.summary} searchQuery={props.searchQuery} />
+      <HighlightText text={props.summary ?? ''} searchQuery={props.searchQuery} />
     </Paragraph>
   );
 };

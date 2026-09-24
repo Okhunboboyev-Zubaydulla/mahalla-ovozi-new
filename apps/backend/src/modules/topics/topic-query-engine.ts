@@ -102,7 +102,7 @@ interface RawTopicRow extends Record<string, unknown> {
   primaryLane: QualifyingLane;
   createdAt: Date;
   updatedAt: Date;
-  summary: string;
+  summary: string | null;
   latestUpdate?: string | null;
   lanes: QualifyingLane[] | null;
   isHokimRelated: boolean;
@@ -283,7 +283,7 @@ async function queryTopics(db: DbClient, params: TopicQueryFilters): Promise<Top
       t.primary_lane AS "primaryLane", 
       t.created_at AS "createdAt", 
       t.updated_at AS "updatedAt",
-      COALESCE(tp.summary, 'Мавзу хулосаси тайёрланмоқда...') AS summary, 
+      tp.summary AS summary, 
       tp.latest_update AS "latestUpdate",
       COALESCE(tp.lanes, jsonb_build_array(t.primary_lane)) AS lanes, 
       COALESCE(tp.is_hokim_related, (t.primary_lane = 'HOKIM_RELATED')) AS "isHokimRelated", 

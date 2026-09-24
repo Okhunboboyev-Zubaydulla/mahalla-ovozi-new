@@ -19,7 +19,7 @@ Read all eight payload modules at interface level, then trace every exported sym
 
 ## Findings
 
-### L1-P02-01 — Sentinel UI text and its predicate live in the contract package
+### L1-P02-01 — Sentinel UI text and its predicate live in the contract package · **[FIXED — session 7]**
 
 | Field | Value |
 |---|---|
@@ -28,9 +28,17 @@ Read all eight payload modules at interface level, then trace every exported sym
 | Strength | `strong` |
 | Confidence | high |
 | Verification | `observed` |
-| Location | `packages/api-contracts/src/topics.ts:27-31` |
+| Location | `packages/api-contracts/src/topics.ts:43-47` (recorded as `:27-31`; the code drifted) |
 
-**Description.** A user-facing Uzbek string and a function that tests for it are exported from the browser-safe contract package. Presentation copy is baked into the wire contract.
+> **Session 7 correction — the symptom was real; the load-bearing mechanism was false.**
+> The record claimed *"The backend writes a specific Uzbek sentence into the `summary` column as a marker meaning 'not ready'."* **It does not.** `apps/backend/src/adapters/db/schema/topic-projections.ts:20` declares `summary: text('summary').notNull()`, so a persisted summary can never be the sentinel. The literal existed only as a **read-time fallback**: `topic-query-engine.ts:286` `COALESCE(tp.summary, '...') AS summary` over a `LEFT JOIN topic_projections` (`:295`), and `topic-evidence-service.ts:291` `projectionRow?.summary ?? '...'`.
+> **Therefore consequence (2) was false** — changing UI copy could never alter persisted data, because nothing was persisted — and (3) was overstated. **Consequence (1) stood and was the real defect:** with no flag, an unprojected topic was distinguishable only by string equality, so a legitimate summary equal to that exact sentence would be misread as pending.
+> **Artifact-location error:** the handoff and `fix-backlog.md` both cite this record under `phase-01-contract-primitives.md`. It is here.
+>
+> **Fixed by taking the record's own second option — nullable `summary`.** `null` already meant "the LEFT JOIN found no projection row", so the contract now states that explicitly instead of encoding it as prose. `PENDING_TOPIC_SUMMARY_TEXT` and `isTopicSummaryPending` are deleted; `TopicCardItemSchema.summary` is `z.string().nullable()`.
+>
+> **AC(1) needed a narrower reading, stated openly.** As literally worded ("No user-facing copy is exported from `packages/api-contracts`") the criterion would also condemn the ~100+ Uzbek zod validation messages across `analysis-settings.ts`, `districts.ts`, `signals.ts` and others. It was satisfied as **"no *rendering* copy"** — messages that describe why input was rejected are contract-visible data; a sentence rendered in place of absent data is not.
+> **AC(2) and AC(3) met.** Full record: `fix-ledger.md` Phase 12.
 
 **Verbatim evidence.**
 

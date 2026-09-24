@@ -133,7 +133,7 @@ A completed **descriptive** reconnaissance run (4 tasks: backend summary, web su
 
 | ID | Title | Category | Severity | Strength | Verification |
 |---|---|---|---|---|---|
-| L1-P02-01 | Sentinel UI text and its predicate live in the contract package | leaky-seam | high | strong | observed |
+| L1-P02-01 | Sentinel UI text and its predicate live in the contract package — **[FIXED — session 7]**; the "backend writes the sentinel to the `summary` column" claim was **false** (the column is `notNull()` and the value was a read-time `COALESCE`), so consequence (2) was wrong; the record also lives in `phase-02`, not `phase-01` as the handoff and backlog claimed | leaky-seam | high | strong | observed |
 | L1-P02-02 | Canonical schemas bypassed within the contract layer itself | hidden-dependency, adr-conflict | medium | strong | observed |
 | L1-P02-03 | Four exported symbols have zero consumers, incl. two duplicating existing types | shallow-module, duplication | medium | strong | observed |
 | L1-P02-04 | Schema aliasing used as substitute for semantic distinction | duplication, leaky-seam | medium | worth-exploring | observed |
