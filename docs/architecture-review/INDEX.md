@@ -123,7 +123,7 @@ A completed **descriptive** reconnaissance run (4 tasks: backend summary, web su
 | ID | Title | Category | Severity | Strength | Verification |
 |---|---|---|---|---|---|
 | L1-P01-01 | `ActorContext` declared four times with divergent nullability — **[FIXED — session 6]**; the artifact missed the `req.actor` augmentation (`fastify.d.ts`) that was the real cause | duplication, hidden-dependency | high | strong | observed |
-| L1-P01-02 | `ApiErrorEnvelopeSchema` has no backend producers | leaky-seam, untestable-interface | high | strong | observed |
+| L1-P01-02 | `ApiErrorEnvelopeSchema` has no backend producers — **[FIXED — session 7]**; the core claim held but the literal count (199, not 250+), the "no centralised producer" claim, and the stated mechanism were all wrong, and the real live defect (`blockers` cast in `api-client.ts`) was missed | leaky-seam, untestable-interface | high | strong | observed |
 | L1-P01-03 | `timezone.ts` shallow; two of three exports unused in production | shallow-module | medium | strong | observed |
 | L1-P01-04 | Keyset cursor payload types placed inconsistently across the seam | hidden-dependency, duplication | medium | worth-exploring | observed |
 | L1-P01-05 | `IsoDateStringSchema` regex-only; backend re-validates with a different mechanism | hidden-dependency, duplication | medium | worth-exploring | observed |

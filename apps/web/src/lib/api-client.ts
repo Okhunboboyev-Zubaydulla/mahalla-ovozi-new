@@ -1,4 +1,31 @@
-import { ApiErrorEnvelopeSchema, PrerequisiteItem } from '@mahalla-ovozi/api-contracts';
+import {
+  ApiErrorEnvelopeSchema,
+  DistrictNotReadyErrorEnvelopeSchema,
+  PrerequisiteItem,
+} from '@mahalla-ovozi/api-contracts';
+
+/**
+ * Validates blocker payloads against the strongly-typed carve-out shape.
+ *
+ * `ApiErrorEnvelopeSchema` types `blockers` as `Record<string, unknown>[]`
+ * (common.ts:43), so a successful generic parse proves nothing about their
+ * structure. The transport contract for `DISTRICT_NOT_READY` carries
+ * `PrerequisiteItem[]` under the documented carve-out (common.ts:25-28).
+ *
+ * Returns the validated array when the body conforms to that carve-out, and falls
+ * back to the raw array otherwise so a producer bug degrades rather than silently
+ * dropping blockers the UI needs.
+ */
+function resolveBlockers(body: unknown, rawBlockers: unknown): PrerequisiteItem[] | undefined {
+  if (rawBlockers === undefined) {
+    return undefined;
+  }
+  const carveOut = DistrictNotReadyErrorEnvelopeSchema.safeParse(body);
+  if (carveOut.success) {
+    return carveOut.data.error.blockers;
+  }
+  return rawBlockers as PrerequisiteItem[];
+}
 
 export class ApiError extends Error {
   code: string;
@@ -72,7 +99,7 @@ export async function request<T>(
         errorParsed.data.error.code,
         response.status,
         false,
-        errorParsed.data.error.blockers as PrerequisiteItem[] | undefined
+        resolveBlockers(body, errorParsed.data.error.blockers)
       );
     }
     throw new ApiError(

@@ -7,11 +7,8 @@ import Fastify, { FastifyInstance } from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
 import fastifyCompress from '@fastify/compress';
-import {
-  serializerCompiler,
-  validatorCompiler,
-  hasZodFastifySchemaValidationErrors,
-} from 'fastify-type-provider-zod';
+import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
+import { serializeApiError, serializeNotFoundError } from '../modules/errors/api-error-envelope.js';
 import { createDbPool, createDbClient, DbClient } from '../adapters/db/client.js';
 import { registerAuthRoutes } from '../modules/auth/auth-routes.js';
 import { registerDistrictRoutes } from '../modules/districts/districts-routes.js';
@@ -163,93 +160,16 @@ export async function buildHttpServer(options?: {
       'Unhandled request error',
     );
 
-    if (hasZodFastifySchemaValidationErrors(error)) {
-      const issues = error.validation.map((v) => v.params.issue);
-      reply.status(400).send({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: issues[0]?.message || 'Киритилган маълумотларда хатолик бор.',
-          statusCode: 400,
-          validationErrors: issues.map((issue) => ({
-            path: issue.path,
-            message: issue.message,
-            code: issue.code,
-          })),
-        },
-      });
-      return;
-    }
-
-    // Zod validation error handling
-    if (
-      error &&
-      typeof error === 'object' &&
-      (('name' in error && error.name === 'ZodError') ||
-        ('issues' in error && Array.isArray((error as { issues: unknown[] }).issues)))
-    ) {
-      const zodErr = error as {
-        issues: Array<{ path: (string | number)[]; message: string; code?: string }>;
-      };
-      reply.status(400).send({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: zodErr.issues[0]?.message || 'Киритилган маълумотларда хатолик бор.',
-          statusCode: 400,
-          validationErrors: zodErr.issues.map((issue) => ({
-            path: issue.path,
-            message: issue.message,
-            code: issue.code,
-          })),
-        },
-      });
-      return;
-    }
-
-    const statusCode =
-      typeof error === 'object' && error && 'statusCode' in error && typeof (error as { statusCode: number }).statusCode === 'number'
-        ? (error as { statusCode: number }).statusCode
-        : 500;
-    const errorCode =
-      typeof error === 'object' && error && 'code' in error && typeof (error as { code: string }).code === 'string'
-        ? (error as { code: string }).code
-        : 'INTERNAL_ERROR';
-
-    // Preserve client-safe error messages for 4xx status codes; fallback to generic 500 message for internal errors
-    let errorMessage = 'Серверда кутилмаган хатолик юз берди.';
-    if (statusCode < 500 && error instanceof Error && error.message) {
-      errorMessage = error.message;
-    }
-
-    const errorPayload: Record<string, unknown> = {
-      code: errorCode,
-      message: errorMessage,
-      statusCode,
-    };
-
-    if (typeof error === 'object' && error) {
-      if ('blockers' in error && Array.isArray((error as { blockers: unknown[] }).blockers)) {
-        errorPayload.blockers = (error as { blockers: unknown[] }).blockers;
-      }
-      if ('details' in error && (error as { details: unknown }).details !== undefined) {
-        errorPayload.details = (error as { details: unknown }).details;
-      }
-      if ('validationErrors' in error && Array.isArray((error as { validationErrors: unknown[] }).validationErrors)) {
-        errorPayload.validationErrors = (error as { validationErrors: unknown[] }).validationErrors;
-      }
-    }
-
-    reply.status(statusCode).send({
-      error: errorPayload,
-    });
+    // Single producer-side gate for the shared ApiErrorEnvelope contract.
+    // Every thrown value is normalised and validated against the schema here, so the
+    // browser's api-client.ts:68 parse cannot fail on a malformed envelope.
+    const serialized = serializeApiError(error);
+    reply.status(serialized.statusCode).send(serialized.body);
   });
 
   server.setNotFoundHandler((_request, reply) => {
-    reply.status(404).send({
-      error: {
-        code: 'NOT_FOUND',
-        message: 'Сўралган манзил топилмади.',
-      },
-    });
+    const serialized = serializeNotFoundError();
+    reply.status(serialized.statusCode).send(serialized.body);
   });
 
   const pool = options?.pool || createDbPool();

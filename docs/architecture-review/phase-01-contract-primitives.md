@@ -68,7 +68,7 @@ Also declared at `apps/backend/src/modules/districts/district-onboarding-engine.
 
 ---
 
-### L1-P01-02 — `ApiErrorEnvelopeSchema` has no backend producers
+### L1-P01-02 — `ApiErrorEnvelopeSchema` has no backend producers · **[FIXED — session 7]**
 
 | Field | Value |
 |---|---|
@@ -77,6 +77,17 @@ Also declared at `apps/backend/src/modules/districts/district-onboarding-engine.
 | Strength | `strong` |
 | Confidence | high |
 | Verification | `observed` |
+
+> **Session 7 correction — the core claim held; three details and the fix direction did not.**
+> **Measured:** **199** literal `error: {` sites in `apps/backend/src`, not "250+".
+> **Wrong:** the backend was not purely hand-written — `entrypoints/http.ts:154-244` (`setErrorHandler`) and `:246-253` (`setNotFoundHandler`) were already centralised producers that lifted `blockers`/`details`/`validationErrors` programmatically.
+> **Wrong:** the stated mechanism ("a route that emits `{ error: { message } }` without `code` passes the backend build") had **0 live offenders** — every `error: {` block carries a `code`.
+> **Missed:** the real live defect. `common.ts:43` types `blockers` as `z.array(z.record(z.unknown()))`, so the generic schema validates nothing about blocker structure, while `apps/web/src/lib/api-client.ts:75` cast the result to `PrerequisiteItem[]` against a producer (`districts-routes.ts:227`) that emits real `PrerequisiteItem[]`.
+> **Deletion test re-run: the schema SURVIVES.** `api-client.ts:68` is a live production consumer the entire web error path depends on. Deleting it would move the parse and the shape knowledge into the client and remove the only validation of server-originated errors. The finding's "give the backend one error-serialising function" direction was right; its framing ("the schema is dead / delete it") was the wrong branch.
+>
+> **Fixed:** new gate `apps/backend/src/modules/errors/api-error-envelope.ts` — `serializeApiError(error)` and `serializeNotFoundError()`, each returning `{ statusCode, body }` where `body` has passed `ApiErrorEnvelopeSchema.parse`. Both `http.ts` producers now route through it. AC(1) and AC(2) met. The client cast is replaced by carve-out validation (`api-client.ts:19-28`).
+>
+> **AC(3) is PARTIAL and stated as such.** The 199 literals still bypass the gate — filed, not fixed (see `fix-backlog.md` item 11). Full record: `fix-ledger.md` Phase 11.
 | Location | `packages/api-contracts/src/common.ts:37-46`; consumed at `apps/web/src/lib/api-client.ts:1,68` |
 
 **Description.** The error envelope is a contract the browser *parses* but the backend never *produces* through the schema. Every backend route hand-writes the envelope as an object literal, so the contract cannot fail on the producing side.

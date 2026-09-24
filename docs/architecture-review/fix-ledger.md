@@ -631,6 +631,73 @@ After the augmentation was re-pointed and the four declarations deleted, `pnpm t
 
 The artifact described the *symptom* (four copies) and got the *mechanism* wrong ("divergent nullability") while missing the *cause* (`req.actor` typed as a database row). **The correct unit of search was again the CONCEPT, not the file** — grepping the type name found four declarations; grepping what the routes actually *read* off the actor found the reason they could diverge without anyone noticing. Ask what a type is *used as*, not only where it is written.
 
+---
+
+## Phase 11 — `L1-P01-02`, the error envelope gets a producer-side gate
+
+**Finding fixed:** `L1-P01-02` (rank 11). **One follow-up filed** (the 199-literal migration). **No severities corrected.**
+
+### Re-derivation — the core held, three details and the framing did not
+
+Read at source before touching anything:
+
+- **The literal count is wrong.** The finding says "250+ literal `error: { ... }` sites across `apps/backend/src`". Measured: **199**. A naive grep also picks up four false positives in `adapters/crypto/password-policy.ts:13,24,32,41` (`error: 'EMPTY'` etc.), which are result codes, not envelopes.
+- **"Every backend route hand-writes the envelope" is wrong.** `entrypoints/http.ts:154-244` (`setErrorHandler`) and `:246-253` (`setNotFoundHandler`) were already centralised, *programmatic* producers. The error handler built `errorPayload` and conditionally lifted `blockers` (`:230-232`), `details` (`:233-235`) and `validationErrors` (`:236-238`). That is most of the envelope, in one place, before this phase.
+- **The stated mechanism had zero live offenders.** The finding claims a route emitting `{ error: { message } }` without `code` "passes the backend build and surfaces to the client as a parse failure". I scanned every `error: {` block for `message` without `code`: **0**. (Formatting-sensitive; exotic layouts not exhaustively proven.)
+- **The deletion test does not come out the way the finding implies.** `apps/web/src/lib/api-client.ts:68` is a live production consumer; the *entire* web error path depends on it. Deleting the schema would move the parse and the shape knowledge into the client and remove the only validation of server-originated errors. The schema earns its keep — the finding's own deletion test says so, then its fix direction says "give the backend one error-serialising function", which is the branch actually taken.
+- **What the finding missed is the live defect.** `common.ts:43` types `blockers` as `z.array(z.record(z.unknown()))` — the generic schema validates *nothing* about blocker structure. `apps/web/src/lib/api-client.ts:75` then cast the parse result to `PrerequisiteItem[]`, while the producer (`districts-routes.ts:227`, `subscriptions-routes.ts:258`) emits genuine `PrerequisiteItem[]` under the carve-out. Typed shape produced → untyped schema → asserted back to typed in the client. That cast is the leak.
+
+### The design decision that drove the code
+
+Two candidate seams were considered. **(A)** a free function `serializeApiError(error): { statusCode, body }` called by the existing global handler; **(B)** a Fastify `onSend` hook or custom `reply.send` override that validates every outgoing error envelope, catching the 199 literals too. **A was chosen and B rejected**, because B validates *after* the fact — it would turn a producer bug into a 500 at response time, in production, on a path with no test coverage, and it would silently rewrite or reject payloads the carve-out deliberately gives its own shape. A makes the contract a compile-and-run-time obligation at one explicit call site and leaves the literals honest about being hand-asserted. Rejecting B is what keeps AC(3) *partially* met rather than falsely claimed.
+
+### What changed
+
+| File | Change |
+|---|---|
+| `apps/backend/src/modules/errors/api-error-envelope.ts` | **New.** `serializeApiError` + `serializeNotFoundError`; every returned `body` has passed `ApiErrorEnvelopeSchema.parse`. |
+| `apps/backend/src/entrypoints/http.ts` | Error handler and not-found handler route through the gate; ~90 lines of inline envelope construction deleted. |
+| `apps/backend/tests/api-error-envelope.test.ts` | **New.** 9 tests: envelope validity, out-of-range status normalisation, 5xx message non-leak, blocker pass-through, non-object blocker dropping, plus 3 HTTP-seam tests via argument-free `buildHttpServer()`. |
+| `apps/web/src/lib/api-client.ts` | `resolveBlockers` validates the carve-out shape; the unchecked `as PrerequisiteItem[]` assertion is now a documented fallback. |
+| `apps/web/src/lib/api-client.test.ts` | **New.** 6 tests over the real `request()` seam with a stubbed `fetch`. |
+
+### The defect this phase proved, and falsified
+
+The red test was **not** invented. The original handler passed a thrown `statusCode` straight through:
+
+```
+AssertionError: expected 301 to be greater than or equal to 400
+```
+
+A domain error with `statusCode = 301` produced an envelope carrying `statusCode: 301`, which `ApiErrorEnvelopeSchema` forbids (`min(400).max(599)`) — so the client's `safeParse` rejected a *well-formed* error and degraded to opaque `SERVER_ERROR`. That is the finding's claim, reproduced at runtime rather than argued.
+
+**Falsified:** restoring the original inline literal in `http.ts` made the test fail with exactly that message, proving the green was meaningful. Restored, re-ran green (9/9).
+
+Phase 3's test was falsified separately and more sharply: reverting `resolveBlockers` to the plain cast leaked an `internalDbColumn` field through to the UI, and the assertion caught it. That is what distinguishes *validation* from a *cast* — a distinction the first six tests could not make, which is why the stripping test was added.
+
+### Verification actually run
+
+- `apps/backend/tests/api-error-envelope.test.ts` — 9/9.
+- `apps/backend/tests/{auth-lifecycle,districts-activation,http-compression}.test.ts` — 34/34 with the new file.
+- **Broad error-path regression, 8 suites / 123 tests, all passing:** `subscriptions`, `telegram-bot`, `audit-history`, `districts-lifecycle`, `topic-evidence`, `operational-issues`, `hokim-accounts`, `userbot-session-routes`. These are the suites that assert `body.error.code` most heavily, so they are the ones a change to the global handler could break.
+- `apps/web/src/lib/api-client.test.ts` — 6/6.
+- `pnpm --filter @mahalla-ovozi/backend typecheck` and `pnpm typecheck` (root, both projects) — exit 0.
+
+### The carve-out was verified reachable, not assumed
+
+A validation branch that never fires is worse than none, so before shipping Phase 3 the producer was checked against the schema it is validated by: `district-onboarding-engine.ts:43` declares `readonly code = 'DISTRICT_NOT_READY'` (matches the `z.literal`), and all eight prerequisite keys emitted at `:109-193` (`district_identity`, `access_eligibility`, `analysis_configuration`, `district_isolation`, `disclosure_confirmation`, `telegram_bot`, `group_mappings`, `hokim_account`) match `PrerequisiteKeySchema` (`districts.ts:115-124`) exactly, with statuses drawn from the lowercase enum at `districts.ts:112`. The branch fires on real responses.
+
+### Residual uncertainty — honest list
+
+1. **AC(3) is not fully met.** The 199 route literals still bypass the gate. Filed as a follow-up in `fix-backlog.md` item 11; not attempted here.
+2. **The 0-offender scan is formatting-sensitive.** It covered multi-line blocks and single-line forms; a pathological layout could hide a code-less envelope. Stated, not proven.
+3. **No web-side visual sign-off.** `apps/web` has no `vitest.config.ts` and no browser automation was approved; the `api-client` change is verified by unit test only.
+4. **The `resolveBlockers` fallback is still a cast.** When a body does not conform to the carve-out, the raw array is passed through as before. Deliberate (it preserves today's behaviour for any producer not yet conforming), but it means the cast is narrowed, not eliminated.
+
+### The lesson this phase reinforces
+
+Three sessions running, the artifact's **mechanism** was the unreliable part while its **symptom** was real. Here the finding correctly identified an unbound producer and then proposed deleting the contract — the opposite of the right fix — because it never measured the consumer. It also asserted a failure mode (code-less envelopes) that no producer actually exhibits, while missing the one that was live (`blockers` cast through an untyped schema). **Measure the producer AND the consumer before choosing a direction; a plausible mechanism is not evidence.** The count being off by 20% is a smaller version of the same error.
+
 
 
 
