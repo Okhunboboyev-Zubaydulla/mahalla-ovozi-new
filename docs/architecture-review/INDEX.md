@@ -43,6 +43,7 @@ Ordering is dependency-directional (L1→L6); L3 is internally ordered by churn.
 | **L4-recon** | L4 web data | recon-l4-webdata | `apps/web/src/{api,auth,district,topics,hooks,lib,issues,health,utils}` — sweep, not a deep phase | **incomplete (1 of 15)** | `recon-l4-web-data.md` |
 | **BACKLOG** | cross-layer | main session | all findings, ranked — **not authorised; requires fresh approval** | **complete** | `fix-backlog.md` |
 | **FIXES** | cross-layer | main session | 5 Tier-1 + Tier-2 fixes executed test-first — **separate program, approved 2026-09-23** | **complete** | `fix-ledger.md` |
+| **FIXES-2** | cross-layer | main session (single-agent mode) | Phases 13-15 (Tier A: `L4-P01-01`, `L3-P03-08`, `L3-P04-07`) then Phases 16-17 (`L6-P01-01` runbook/ADR reconciliation + the issue auto-resolve finding) and Phase 18 (CI trigger widening) — **approved 2026-09-24** | **complete** | `fix-ledger.md` (Phases 13-18) |
 | **L6** | L6 Cross-cutting | main session (single-agent mode) | `deploy/`, `Dockerfile`, `.github/workflows/ci.yml`, and **ADR-0001 / ADR-0006 / ADR-0008 conformance** — the first and only assessment of the three L6-owned ADRs | **complete** | `phase-L6-cross-cutting.md` |
 
 Phases beyond P5 are **not funded**. The post-slice decision is made at the gate.
@@ -119,6 +120,8 @@ A completed **descriptive** reconnaissance run (4 tasks: backend summary, web su
 | L3-P04R | 0 | 1 | 2 | 1 | **4** *(review-program findings; +2 filed later by the FIXES program — see note below)* |
 | L4-recon | 0 | 1 | 0 | 0 | **1** *(of 15 claimed)* |
 | L6-P01 | 0 | 1 | 4 | 2 | **7** |
+
+**`L6-P01-01` status (2026-09-24).** The runbook/ADR half is **reconciled** in fix-ledger **Phase 16** (`deploy/backup/runbook.md` rewritten to 208 lines; `docs/adr/0008-single-host-compose-caddy-edge.md` amended). The infrastructure half is **NOT done**: no backup transport exists. While preparing the planned follow-on change, **Phase 17 disproved the approved plan's own premise** (the failure was neither stuck nor silent) and found a **new, unlisted correctness defect**: the `del_backup_fail` operational issue is tagged `component: 'scheduled_deletion'` / `scope: 'GLOBAL'` / `districtId: null`, and `synchronizeOperationalIssues` matches on those three fields alone — so a healthy pg-boss probe **auto-resolves** the backup alert on the next health sync. Recorded, not fixed; see Phase 17 of `fix-ledger.md` for three candidate fixes and their blast radius. **`L6-P01-02` and `L6-P01-05` are also addressed:** the missing `Caddyfile.maintenance` is now an explicit open decision (runbook §5 item 2) and CI triggers on all branches.
 
 *(Findings are listed in full in each phase artifact. This roll-up is the index, not the record.)*
 

@@ -864,3 +864,99 @@ The `topic-evidence.test.ts:633` assertion that pinned the old code was updated 
 ### The pattern worth recording
 
 A3 joins A2 and A4 as the **third** Tier A finding whose recorded mechanism did not survive source contact — and the **second** where the handoff's own correction was also incomplete. What survived in all three was narrower and different from both accounts. The lesson is not "the artifacts are wrong" (long established) but that **the symptom's severity is not evidence about the mechanism**, in either direction: A4 was under-ranked, A2 and A3 over-stated.
+
+---
+
+## Phase 16 — `L6-P01-01`, the DR runbook is reconciled to what the repository defines
+
+**Scope:** `deploy/` + `docs/` only. 2 files changed, 0 tests, 0 behaviour. This phase has **NO behaviour to test** — saying so explicitly rather than inventing a red test.
+
+### The finding survived contact — with four corrections
+
+`L6-P01-01` was re-verified at source before any edit. The headline holds: `deploy/backup/runbook.md:44` invoked a `pgbackrest` service that `deploy/compose/docker-compose.prod.yml` does not define (exactly five services), and no `archive_mode` / `wal_level` / `archive_command` / S3 repository exists anywhere in the repo.
+
+**Four corrections, found by re-verifying rather than trusting the artifact:**
+
+1. **A correction I fabricated, and have retracted.** The first draft of this entry claimed "the handoff and artifact both cite `docs/adr/0008-continuous-wal-archiving.md`". **They do not.** A workspace-wide grep for that filename returns exactly one match: the false claim itself. The handoff cites only `docs/adr/0001`, `0006`, `0008`. What *is* true and worth a reviewer's attention: the ADR's real filename is `docs/adr/0008-single-host-compose-caddy-edge.md`, and its central DR claim sits at **line 8** — do not expect a filename describing WAL archiving. No artifact defect existed here; the defect was mine.
+2. **A real hazard, but overstated on first draft — corrected here.** The runbook never passes `-f`, so `docker compose` resolves against whatever default compose file sits at the working directory. The first draft of this entry asserted the runbook "would have operated on the dev stack". **That is an inference, not a verified fact** — the repository does not record what is deployed at `/opt/mahalla-ovozi`, and the VPS was not contacted. `deploy/README.md:33-61`, `package.json:17-18` and `deploy/runbooks/userbot-account-warmup.md:75` all use the same bare `docker compose` from that directory, which implies the *production* compose file may well be deployed there. What **is** verifiable in-repo: a repo-root `docker-compose.yml` exists and is the **dev** PostgreSQL-only stack (port 5433), so running these commands *from a repository checkout* would hit the wrong stack. Separately — and this part was confirmed empirically, not inferred — passing `-f` **without** `-p` makes Compose derive the project name from that file's directory (`docker compose config` reported `name: sub` for a file in a directory named `sub`), which would create a parallel stack with a **new, empty `postgres_data` volume**. The runbook now warns about both and tells the operator to confirm with `docker compose ls -a` before acting.
+3. **The readiness probe used an unpublished port.** `runbook.md:83` ran `curl http://localhost:3000/api/v1/health/ready` from the host, but only Caddy publishes ports (`:117-119`); `backend` is reachable solely on `mahalla-net`. The probe must run inside the container.
+4. **The tombstone store is a single point of failure the artifact did not mention.** `deploy/backup/tombstones.json` is bind-mounted into `backend`/`worker` but is **gitignored** (`.gitignore:43-44`) and lives only on that host. If the host is lost, the deletion tombstones are lost, and the reconciliation step cannot suppress resurrected districts.
+
+### What was changed
+
+`deploy/backup/runbook.md` was rewritten (121 -> 236 lines) to describe only mechanisms that exist:
+
+- A status banner states plainly that **no backup transport is configured in this repository**, so the RPO/RTO targets are unverified and not currently achievable.
+- New **§2** replaces the undefined invocation with a *discovery* step: the operator runs `docker compose ls -a` and `docker compose config --services` at `/opt/mahalla-ovozi` to establish which project and compose file are actually live, then pins both via `export COMPOSE_PROD="docker compose -p <project> -f <path>"`. It documents the `-f`-without-`-p` volume hazard (empirically confirmed) rather than asserting a path this repository does not record.
+- **Step 1** now stops Caddy (`$COMPOSE_PROD stop caddy`) instead of reloading a non-existent `Caddyfile.maintenance`.
+- **Step 3** no longer invokes a missing service; it documents the stop/restore/start sequence with the restore left to an operator-supplied mechanism.
+- **Step 4** runs reconciliation *inside* the backend container so it inherits `DATABASE_URL` and `TOMBSTONE_STORE_PATH`, and its expected-output field names were verified against `restore-reconciliation.ts:244-255`.
+- **Step 5** probes readiness with `$COMPOSE_PROD exec backend curl ...` instead of an unreachable host port.
+- New **§5** records four open decisions; the RPO/RTO matrix in **§6** now reads `NONE` / `UNVERIFIED`.
+
+`docs/adr/0008-single-host-compose-caddy-edge.md` was amended: line 8 now reads "**intended** to be managed via pgBackRest ... **not configured anywhere in this repository**", line 19's "mitigated by scheduled pgBackRest backup restore drills" was corrected to "not yet in place", and a dated **Amendment** section records the gap, notes the TAS-IX/UZ-IX conflict with an offsite S3 store, and warns against reading the ADR as evidence that backups exist.
+
+### Verification for a docs phase
+
+No behaviour exists to test. Falsifiable checks actually run instead: every command in the rewritten runbook was cross-checked against a source artifact — the service names against `docker-compose.prod.yml`, `reconcile-restore` against `apps/backend/package.json:24` and `package.json:14`, `/api/v1/health/ready` against `health-routes.ts:165`, the readiness JSON shape against `ReadinessProbeResponseSchema` (`packages/api-contracts/src/health.ts:113-119`), the reconciliation output fields against `restore-reconciliation.ts:244-255`, and the CLI's `status`/`event` envelope against `entrypoints/reconcile-restore.ts:33-44`.
+
+**Not verified, and not claimed:** nothing about the running VPS. The repository was not contacted remotely, no restore was performed, and no backup was proven to exist. This phase makes the *repository* self-consistent; it does not establish that backups are taken.
+
+---
+
+## Phase 17 — `L6-P01-01` follow-on: the planned fix was wrong, and the real defect is worse
+
+**Scope:** NONE. No file changed in this phase. This entry records a **correction to the plan** and a **new finding** discovered while preparing the approved 17B change.
+
+### My own approved plan contained a false premise
+
+The approved plan (and the L6 artifact's fix direction) described the production verifier as leaving a **"permanently unsatisfiable, silently stuck"** state. Re-verification at source shows **neither half of that is true**:
+
+- **Not "stuck".** `system-backup-verifier.ts:112-122` returns `isExpired: false` with `verificationMethod: 'PGBACKREST_CLI_EXECUTION_FAILED'` and an `error` string, and `district-deletion-service.ts:584-705` (Branch 3) correctly transitions the record to `backupExpiryStatus: 'FAILED'`, raises a `Critical` `BACKUP_EXPIRY_DELAY` operational issue, and emits a `DISTRICT_BACKUP_EXPIRY_FAILED` audit event. The failure *is* surfaced, exactly once.
+- **Not "silent".** The operator-facing surface is real: `ActiveIssuesList` (`apps/web/src/pages/SystemHealthPage.tsx:187` -> `apps/web/src/components/issues/ActiveIssuesList.tsx`).
+
+So the state I planned to make "explicit" was already explicit. Proceeding would have been busywork dressed as a fix.
+
+### The real defect: an unrelated probe silently auto-RESOLVES the alert
+
+The backup-expiry issue is written at `district-deletion-service.ts:630-666` with:
+
+```
+logicalKey:  `del_backup_fail:${districtId}`   // NOT the generateLogicalKey() format
+scope:       'GLOBAL'
+districtId:  null
+component:   'scheduled_deletion'
+```
+
+`runFullSystemHealthCheck` (`health-service.ts:162-165`) calls `synchronizeOperationalIssues(db, allObservations, { evaluationScope: { type: 'SYSTEM' } })`. In `issue-manager.ts:80-82` the SYSTEM branch assigns `activeIssuesList = await existingActiveQuery`, which selects **every** `status = 'ACTIVE'` row with **no scope filter** — so the backup issue is included.
+
+Step 2 (`issue-manager.ts:218-277`) then looks for a matching observation:
+
+```js
+const matchingObs = observations.find(
+  (o) => o.scope === existingIssue.scope &&
+         (o.districtId || null) === (existingIssue.districtId || null) &&
+         o.component === existingIssue.component,
+);
+if (matchingObs.status === 'Healthy' || matchingObs.status === 'Quiet') {
+  // -> status 'RESOLVED', resolvedAt now, OPERATIONAL_ISSUE_RESOLVED audit
+}
+```
+
+`checkScheduledDeletionHealth` (`health-checker.ts:466-525`) emits exactly `component: 'scheduled_deletion'`, `scope: 'GLOBAL'`, `districtId: null`, `status: 'Healthy'` whenever the **pg-boss scheduler is reachable** — which is the normal case.
+
+**Consequence.** The three-part match succeeds on `component` alone. The next full health check marks the backup-retention failure **RESOLVED**, with a `OPERATIONAL_ISSUE_RESOLVED` audit event, even though nothing about backup retention changed and `backupExpiryStatus` stays `FAILED`. The operator's only alert for "this district's deletion can never complete" disappears on its own.
+
+This is a **correctness** defect in the issue system, not an infra gap, and it is **not** part of `L6-P01-01` as filed.
+
+### Why no code was changed
+
+Fixing it is not the change that was approved. Every candidate fix has real blast radius and needs a ruling:
+
+1. Give the backup issue a distinct `component` (e.g. `backup_retention`). One value — but it crosses the `ComponentType` contract and the `ActiveIssuesList` / issue-filter surface, and may need a contract change.
+2. Fix the matcher in `issue-manager.ts` to compare `issueCategory` as well. Touches **all** operational issues, not just this one.
+3. Stop `del_backup_fail` from using the `scheduled_deletion` component tag at all (it is a *retention* concern, not a *queue* concern) — the most honest model, but a domain change.
+
+Per the modification gate, this is recorded and raised rather than unilaterally implemented.
+
+**Verification status:** mechanism read at source across four files (`district-deletion-service.ts`, `issue-manager.ts`, `health-checker.ts`, `health-service.ts`). **Not** yet demonstrated by a failing test, because no change was made. A red test that drives a health sync against a `del_backup_fail` row and asserts it stays `ACTIVE` would be the right first step if this is funded.
