@@ -39,5 +39,6 @@ blob-report/
 .grepai/
 .temp/
 .tmp/
+dsh-session-*/
 tombstones.json
 **/tombstones.json

@@ -100,7 +100,7 @@ Three candidates, all self-rated `Strong`:
 
 A completed **descriptive** reconnaissance run (4 tasks: backend summary, web summary, contracts/infra summary, ADR/governance summary) by members `backend-scout` and `web-scout`. Orientation material only — it produced no deepening candidates, so it carries no anchoring risk. Not fed to subagents.
 
-**DANGLING (recorded 2026-09-23).** This path no longer exists on disk. `git status --short` shows it as an unstaged deletion (` D .agent-teams/archive/mahalla-ovozi-codebase-summary/{team.json,inbox/backend-scout.jsonl,inbox/captain.jsonl}` and ` D .agent-teams/retired-members.json`); the `.agent-teams/` directory is absent. The prior-art record above therefore points at nothing. No candidate or finding depended on it. **Not restored, not staged.**
+**RESOLVED — RETIRED (2026-09-24).** This path was already absent from disk when first recorded (2026-09-23). The user confirmed the `.agent-teams/` agent-team tooling is not used on this project, so the deletion was **committed deliberately** rather than restored — the prior-art record above stays as a historical note and now points at a retired artefact by design. No candidate or finding ever depended on it. Nothing else references this path: a workspace-wide grep finds only this entry (and its `.grepai/index.gob` embedding copy).
 
 ## Findings roll-up
 
