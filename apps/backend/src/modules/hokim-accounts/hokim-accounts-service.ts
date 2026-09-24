@@ -6,6 +6,7 @@ import {
   DistrictHokimAccount,
   HokimAccountStateEnum,
   HokimAccountStatus,
+  ActorContext,
 } from '@mahalla-ovozi/api-contracts';
 import { cryptoService } from '../../adapters/crypto/index.js';
 import { recordAuditEvent } from '../audit/audit-service.js';
@@ -56,11 +57,6 @@ export class HokimAccountCreationError extends Error {
 export interface ClientContext {
   ipAddress?: string | null;
   userAgent?: string | null;
-}
-
-export interface ActorContext {
-  id: string;
-  role: string;
 }
 
 export function toDistrictHokimAccount(account: Account): DistrictHokimAccount {

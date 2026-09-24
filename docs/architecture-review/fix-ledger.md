@@ -530,6 +530,107 @@ continuity?.precedingRelevantMessage ?? input.immediatePrecedingMessage ?? null
 
 **Lesson worth carrying.** Two of the four "gaps" were the same failure mode in miniature: a value being carefully preserved because its type demanded it, with nobody asking whether anything consumed it. The compiler found the answer in one command (`-p tsconfig.test.json`) that the standard `tsc --noEmit` cannot run.
 
+---
+
+## Phase 10 — `L1-P01-01`, the actor concept gets one declaration (and a narrowing seam)
+
+**Finding fixed:** `L1-P01-01` (rank 10). **No new findings filed. No severities corrected.**
+
+### Re-derivation — the artifact's mechanism was wrong, and it missed the centre of gravity
+
+Read at source before touching anything:
+
+- **`topic-query-engine.ts`'s copy is at `:158-162`, not the recorded `:181-185`.** The line drifted because the `L3-P03-01` fix edited the file. Not a review error — flagged so it is not mistaken for one.
+- **"Four declarations with divergent nullability" is imprecise.** `district-onboarding-engine.ts:62` and `hokim-accounts-service.ts:61` declared `{ id: string; role: string }` — **no `districtId` member at all**. They were narrower structural subsets, not divergent-nullability copies. Only the contracts schema (nullable+optional) and the engine (required non-null) actually disagreed.
+- **The artifact missed a fifth, undeclared declaration that is the real centre of gravity.** `apps/backend/src/types/fastify.d.ts:1-7` augments `FastifyRequest` with `actor?: Account` — the **Drizzle row type** (`accounts.ts:39`), carrying `passwordHash`, `credentialVersion`, timestamps and `role: text` rather than the enum. That is the type every route actually sees. **AC(3) was unreachable while it stayed that way.**
+- **`req.actor` is assigned at one place:** `require-auth.ts:156` (`req.actor = account;`). Single construction seam, which is what made the fix cheap.
+- **The backend imported the contracts `ActorContext` nowhere.** Its only type-level consumer was `apps/web/src/auth/auth-context.tsx:4,13,89`. The two packages had never actually been connected — which is exactly how four copies survived.
+
+### The measurement that chose the design
+
+Before editing, every `req.actor.` / `req.actor!.` member read across `apps/backend/src` was enumerated. **No route reads any `Account`-only field** — every read is `id`, `role`, or `districtId` (`username` appears only in contracts tests). That is what made re-pointing the augmentation safe, and it was measured rather than assumed. Option B (dedup while keeping `req.actor: Account`) was offered and rejected: it satisfies AC(1) and AC(2) while leaving AC(3) unmet.
+
+### The design decision that drove the code
+
+`DistrictScopedActor` is declared as **`interface DistrictScopedActor extends ActorContext { districtId: string }`** — derived by construction, so AC(1) holds literally rather than by convention. It is produced only by `isDistrictScopedActor`, which rejects blank and whitespace-only ids as well as null/absent ones: a district id is used directly as a tenant filter, so an empty string would silently match nothing instead of failing loudly.
+
+At the route layer the eight inline casts in `hokim-topics-routes.ts` collapsed into **one `resolveDistrictActor(req, reply)` seam**, which returns the narrowed actor or answers 401/403 and returns `null`. This keeps the envelopes identical across all eight routes and lets the compiler carry the narrowing instead of a cast at each call site.
+
+### What changed
+
+| File | Change |
+|---|---|
+| `packages/api-contracts/src/auth.ts` | `DistrictScopedActor` (derived) + `isDistrictScopedActor` guard. `ActorContextSchema` unchanged. |
+| `packages/api-contracts/tests/auth-contracts.test.ts` | +5 guard tests, test-first. |
+| `apps/backend/src/types/fastify.d.ts` | `actor?: Account` → `actor?: ActorContext`. |
+| `apps/backend/src/modules/auth/require-auth.ts` | Builds the actor from the row and validates it via `ActorContextSchema.safeParse`; 500 `ACTOR_CONTEXT_INVALID` on a corrupt row instead of leaking it into tenant-scoped queries. |
+| `apps/backend/src/modules/topics/topic-query-engine.ts` | Local `ActorContext` **deleted**; three params → `DistrictScopedActor`; **three unreachable `if (!actorContext.districtId) throw` guards removed**. |
+| `apps/backend/src/modules/topics/hokim-topics-routes.ts` | One `resolveDistrictActor` seam replaces 8 casts + 8 duplicated 401 blocks. |
+| `apps/backend/src/modules/topics/topic-evidence-service.ts` | Anonymous `{ id; districtId; role }` param → `DistrictScopedActor`; unreachable guard removed. |
+| `apps/backend/src/modules/topics/district-topics-routes.ts` | Synthetic actor literal replaced with `{ ...productOwner, districtId }` behind an explicit 401. |
+| `apps/backend/src/modules/districts/district-onboarding-engine.ts` | Local `ActorContext` deleted, re-pointed. |
+| `apps/backend/src/modules/hokim-accounts/hokim-accounts-service.ts` | Local `ActorContext` deleted, re-pointed. |
+| `apps/backend/src/modules/hokim-accounts/hokim-accounts-routes.ts` | Five hand-built `{ id, role }` subsets → the real actor. |
+
+### The compiler found six sites no artifact listed
+
+After the augmentation was re-pointed and the four declarations deleted, `pnpm typecheck` surfaced **six call sites that hand-built actor subsets**: `hokim-accounts-routes.ts:69,88,107,142,177` passing `{ id: req.actor!.id, role: req.actor!.role }` (missing the now-required `username`), and `district-topics-routes.ts:187` passing a **synthetic** `{ id: 'product_owner', districtId, role: 'PRODUCT_OWNER' }` against a request whose actor the `createRequireProductOwner` hook had not constrained at the type level. These are precisely the silent divergences the finding describes, and none appeared in any artifact. This is the concrete payoff of Option A over Option B.
+
+**The `district-topics-routes.ts:187` site was a semantic gap, not merely a type error.** The Product Owner is legitimately not district-bound (their own `districtId` is null), so the district scope for that evidence read comes from the validated URL param. It now says so: the session actor is spread and the param asserted, with an explicit 401 when there is no actor. Intended-equivalent behaviour, but visible rather than buried in a cast.
+
+### Red → green, falsified
+
+| Step | Evidence |
+|---|---|
+| Guard red | `TypeError: (0 , isDistrictScopedActor) is not a function` — 5 failed / 75 passed |
+| Guard green | 80/80 in `packages/api-contracts` (baseline 75) |
+| Guard falsified | Removing the blank check fails exactly 2 tests (empty-string and whitespace-only ids) — 78 passed / 2 failed |
+| **AC(3) falsified** | Adding a required `falsificationProbe: z.string()` to `ActorContextSchema` produces **22 compile errors** across web auth-context tests, `BoardToolbar`, `DashboardSearch`, `FilterBar`, `FilterModalSheet`, `FirstSignInPasswordChangePage` and the backend. Reverted; gate re-run green. |
+
+### Acceptance criteria, measured not asserted
+
+| Criterion | Result |
+|---|---|
+| (1) Exactly one declaration of the actor concept in `packages/api-contracts` | **1** — grep for `interface ActorContext` / `type ActorContext` / `ActorContextSchema =` returns a single live source hit at `packages/api-contracts/src/auth.ts:6,13`. The three module-local interfaces and the anonymous inline shape are gone; every remaining reference resolves to the contracts type. |
+| (2) Non-null requirement as a derived type or validating guard, not a second interface | `DistrictScopedActor extends ActorContext` + `isDistrictScopedActor`; no second `interface ActorContext` anywhere. |
+| (3) A change to the actor shape produces a compile error at every affected call site | **22 errors** from a one-field addition (see above). |
+
+### Verification
+
+| Suite | Tests | Result |
+|---|---|---|
+| `packages/api-contracts` (full) | **80** (was 75; +5) | pass |
+| `apps/backend/tests/hokim-topics.test.ts` | 9 | pass |
+| `apps/backend/tests/hokim-topic-search.test.ts` | 15 | pass |
+| `apps/backend/tests/topic-evidence.test.ts` | 10 | pass |
+| `apps/backend/tests/hokim-accounts.test.ts` | 17 | pass |
+| `apps/backend/tests/district-topics.test.ts` | 20 | pass |
+| `apps/backend/tests/auth-lifecycle.test.ts` | 13 | pass |
+| `apps/backend/tests/auth-first-login-password.test.ts` | 8 | pass |
+| `apps/backend/tests/userbot-session-routes.test.ts` | 14 | pass |
+
+- `pnpm typecheck` (both tsconfigs) → **exit 0** for `api-contracts`, `web`, `backend`.
+- `tsc --noEmit -p tsconfig.test.json` run separately → **exit 0**. Necessary here: 4 of the 22 falsification errors were in `tests/`, which plain `tsc --noEmit` excludes.
+- `tsc --emitDeclarationOnly --declaration` → **exit 0**, no TS4053.
+- All test runs against **`mahalla_ovozi_test` on port 5433**.
+
+### Scope decisions taken, and what they leave open
+
+- **The three in-engine `districtId` guards were deleted** (`topic-query-engine.ts` board/lane/statistics, plus the one in `topic-evidence-service.ts`). They became unreachable once the parameter type required a non-null `districtId`, and `code-standards.md:42` forbids symptom-masking guards. The requirement is now enforced at the single guard seam, which is the point of the fix.
+- **`ACTOR_CONTEXT_INVALID` is a new response code.** It fires only on a corrupt `accounts` row — the table's CHECK constraints make that unreachable in practice. Recorded as a guard, not as tested behaviour.
+- **No commit-time code-review skill run.** The `code-review` skill runs its two axes in parallel sub-agents, which conflicts with this session's no-subagent directive. Reviewed inline against `code-standards.md` instead.
+
+### Residual uncertainty — honest list
+
+1. **The `require-auth.ts` 500 path has no test.** Unreachable via the DB schema's CHECK constraints, so no red test exists. Stated, not dressed up.
+2. **Phases C/D/E were pure type-narrowing** — no behaviour to falsify beyond the AC(3) probe. The only new behaviour is the guard's blank/whitespace rejection, which is tested and falsified.
+3. **`userbot-session-routes.ts:135-136,179-180,199-200` retains a pre-existing defect, untouched.** It casts `req.actor` to `{ actorId?: string }` — a field that does not exist on the actor — and reads it with `??`, so the left operand is always `undefined` and the fallback always wins. Harmless today (the fallback resolves correctly) but dead code that looks load-bearing. **Filed here as an observation; not fixed, to keep this fix scoped.**
+4. **`username` is now a required member of the actor passed into backend service functions** that previously received hand-built `{ id, role }` objects. No behaviour change (the value is always present on a real account row), but the affected service signatures are stricter than before.
+
+### The lesson this phase reinforces
+
+The artifact described the *symptom* (four copies) and got the *mechanism* wrong ("divergent nullability") while missing the *cause* (`req.actor` typed as a database row). **The correct unit of search was again the CONCEPT, not the file** — grepping the type name found four declarations; grepping what the routes actually *read* off the actor found the reason they could diverge without anyone noticing. Ask what a type is *used as*, not only where it is written.
+
 
 
 

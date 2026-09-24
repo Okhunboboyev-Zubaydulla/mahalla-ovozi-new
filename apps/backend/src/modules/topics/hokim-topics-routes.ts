@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import {
   HokimTopicBoardQuerySchema,
@@ -26,6 +26,43 @@ import {
   TopicNotFoundError,
   decodeEvidenceKeysetCursor,
 } from './topic-evidence-service.js';
+import { isDistrictScopedActor, type DistrictScopedActor } from '@mahalla-ovozi/api-contracts';
+
+/**
+ * Resolves the authenticated actor to a district-scoped actor, or answers the
+ * request and returns null.
+ *
+ * Every route in this file operates on a single district, so the district scope
+ * is a precondition rather than something each handler re-checks. Answering here
+ * keeps the 401/403 envelopes identical across all eight routes and lets the
+ * compiler carry the narrowing instead of an inline cast at each call site.
+ */
+function resolveDistrictActor(
+  req: FastifyRequest,
+  reply: FastifyReply,
+): DistrictScopedActor | null {
+  if (!req.actor) {
+    reply.status(401).send({
+      error: {
+        code: 'UNAUTHENTICATED',
+        message: 'Сессия топилмади ёки муддати тугаган.',
+      },
+    });
+    return null;
+  }
+
+  if (!isDistrictScopedActor(req.actor)) {
+    reply.status(403).send({
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Ушбу амални бажариш учун туман кўрсатилиши шарт.',
+      },
+    });
+    return null;
+  }
+
+  return req.actor;
+}
 
 export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient): void {
   fastify.register(async (instance) => {
@@ -37,23 +74,9 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
     scope.get(
       '/api/v1/hokim/topics/mahallas',
       async (req, reply) => {
-        if (!req.actor) {
-          return reply.status(401).send({
-            error: {
-              code: 'UNAUTHENTICATED',
-              message: 'Сессия топилмади ёки муддати тугаган.',
-            },
-          });
-        }
-
-        const actor = req.actor as { id: string; districtId: string; role: string };
-        if (!actor.districtId) {
-          return reply.status(400).send({
-            error: {
-              code: 'MAHALLAS_QUERY_ERROR',
-              message: 'Ҳоким ҳисоби туманга бириктирилмаган.',
-            },
-          });
+        const actor = resolveDistrictActor(req, reply);
+        if (!actor) {
+          return;
         }
 
         try {
@@ -81,19 +104,15 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         },
       },
       async (req, reply) => {
-        if (!req.actor) {
-          return reply.status(401).send({
-            error: {
-              code: 'UNAUTHENTICATED',
-              message: 'Сессия топилмади ёки муддати тугаган.',
-            },
-          });
+        const actor = resolveDistrictActor(req, reply);
+        if (!actor) {
+          return;
         }
 
         try {
           const board = await queryHokimBoard(
             db,
-            req.actor as { id: string; districtId: string; role: string },
+            actor,
             req.query,
           );
           return reply.status(200).send(board);
@@ -118,13 +137,9 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         },
       },
       async (req, reply) => {
-        if (!req.actor) {
-          return reply.status(401).send({
-            error: {
-              code: 'UNAUTHENTICATED',
-              message: 'Сессия топилмади ёки муддати тугаган.',
-            },
-          });
+        const actor = resolveDistrictActor(req, reply);
+        if (!actor) {
+          return;
         }
 
         const { cursor } = req.query;
@@ -140,7 +155,7 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
 
         try {
           const laneBatch = await queryHokimLaneBatch(db, {
-            actorContext: req.actor as { id: string; districtId: string; role: string },
+            actorContext: actor,
             ...req.query,
           });
 
@@ -174,13 +189,9 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         },
       },
       async (req, reply) => {
-        if (!req.actor) {
-          return reply.status(401).send({
-            error: {
-              code: 'UNAUTHENTICATED',
-              message: 'Сессия топилмади ёки муддати тугаган.',
-            },
-          });
+        const actor = resolveDistrictActor(req, reply);
+        if (!actor) {
+          return;
         }
 
         const topicId = (req.params as { id: string }).id;
@@ -206,7 +217,7 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         try {
           const evidenceResponse = await getTopicEvidence(
             db,
-            req.actor as { id: string; districtId: string; role: string },
+            actor,
             topicId,
             req.query,
           );
@@ -247,19 +258,15 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         },
       },
       async (req, reply) => {
-        if (!req.actor) {
-          return reply.status(401).send({
-            error: {
-              code: 'UNAUTHENTICATED',
-              message: 'Сессия топилмади ёки муддати тугаган.',
-            },
-          });
+        const actor = resolveDistrictActor(req, reply);
+        if (!actor) {
+          return;
         }
 
         try {
           const statistics = await queryHokimStatistics(
             db,
-            req.actor as { id: string; districtId: string; role: string },
+            actor,
             req.query,
           );
           return reply.status(200).send(statistics);
@@ -285,19 +292,15 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         },
       },
       async (req, reply) => {
-        if (!req.actor) {
-          return reply.status(401).send({
-            error: {
-              code: 'UNAUTHENTICATED',
-              message: 'Сессия топилмади ёки муддати тугаган.',
-            },
-          });
+        const actor = resolveDistrictActor(req, reply);
+        if (!actor) {
+          return;
         }
 
         try {
           const board = await queryHokimBoard(
             db,
-            req.actor as { id: string; districtId: string; role: string },
+            actor,
             req.body,
           );
           return reply.status(200).send(board);
@@ -322,13 +325,9 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         },
       },
       async (req, reply) => {
-        if (!req.actor) {
-          return reply.status(401).send({
-            error: {
-              code: 'UNAUTHENTICATED',
-              message: 'Сессия топилмади ёки муддати тугаган.',
-            },
-          });
+        const actor = resolveDistrictActor(req, reply);
+        if (!actor) {
+          return;
         }
 
         const { cursor } = req.body;
@@ -344,7 +343,7 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
 
         try {
           const laneBatch = await queryHokimLaneBatch(db, {
-            actorContext: req.actor as { id: string; districtId: string; role: string },
+            actorContext: actor,
             ...req.body,
           });
 
@@ -378,19 +377,15 @@ export function registerHokimTopicsRoutes(fastify: FastifyInstance, db: DbClient
         },
       },
       async (req, reply) => {
-        if (!req.actor) {
-          return reply.status(401).send({
-            error: {
-              code: 'UNAUTHENTICATED',
-              message: 'Сессия топилмади ёки муддати тугаган.',
-            },
-          });
+        const actor = resolveDistrictActor(req, reply);
+        if (!actor) {
+          return;
         }
 
         try {
           const statistics = await queryHokimStatistics(
             db,
-            req.actor as { id: string; districtId: string; role: string },
+            actor,
             req.body,
           );
           return reply.status(200).send(statistics);

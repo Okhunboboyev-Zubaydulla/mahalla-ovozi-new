@@ -12,6 +12,32 @@ export const ActorContextSchema = z.object({
 });
 export type ActorContext = z.infer<typeof ActorContextSchema>;
 
+/**
+ * An actor guaranteed to carry a usable district scope.
+ *
+ * This is a narrowing of `ActorContext`, not a second actor declaration: a
+ * `PRODUCT_OWNER` legitimately has `districtId: null`, while district-bound
+ * operations (Hokim board, lane batch, statistics, evidence reads) require a
+ * real district. The requirement is expressed once, here, instead of being
+ * re-declared as a parallel interface in every consuming module.
+ *
+ * Obtain one through `isDistrictScopedActor`; never cast to it.
+ */
+export interface DistrictScopedActor extends ActorContext {
+  districtId: string;
+}
+
+/**
+ * Validates that an actor carries a non-blank district scope and narrows it.
+ *
+ * Blank and whitespace-only values are rejected because a district id is used
+ * directly as a tenant filter; an empty string would silently match nothing
+ * rather than fail loudly.
+ */
+export function isDistrictScopedActor(actor: ActorContext): actor is DistrictScopedActor {
+  return typeof actor.districtId === 'string' && actor.districtId.trim() !== '';
+}
+
 export const SignInRequestSchema = z.object({
   username: z.string().min(3).max(64),
   // B10: Use code-point count (not UTF-16 .length) to match password-policy.ts.

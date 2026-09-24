@@ -23,6 +23,7 @@ import {
   decodeKeysetCursor,
   KeysetCursorPayload,
   CANONICAL_LANES,
+  DistrictScopedActor,
 } from '@mahalla-ovozi/api-contracts';
 import { getTashkentCalendarDay, resolveDateBoundary } from '../telegram-intake/timezone-util.js';
 import { escapeLikePattern, buildTopicSearchPredicate } from './topic-query-helpers.js';
@@ -153,12 +154,6 @@ interface HokimLaneQueryParams {
   cursor?: string;
   limit?: number;
   baselineTimestamp?: string;
-}
-
-interface ActorContext {
-  id: string;
-  districtId: string;
-  role: string;
 }
 
 // --- Authoritative District Mahallas Extraction ---
@@ -474,14 +469,10 @@ export async function queryDistrictTopicsPage(
  */
 export async function queryHokimBoard(
   db: DbClient,
-  actorContext: ActorContext,
+  actorContext: DistrictScopedActor,
   paramsOrCalendarDay?: HokimTopicBoardFilterParams | string,
   baselineTimestampOverride?: string,
 ): Promise<HokimTopicBoardResponse> {
-  if (!actorContext.districtId) {
-    throw new Error('Ҳоким ҳисоби туманга бириктирилмаган.');
-  }
-
   const district = await db.query.districts.findFirst({
     where: eq(districts.id, actorContext.districtId),
   });
@@ -597,13 +588,9 @@ export async function queryHokimBoard(
  */
 export async function queryHokimLaneBatch(
   db: DbClient,
-  params: HokimLaneQueryParams & { actorContext: ActorContext },
+  params: HokimLaneQueryParams & { actorContext: DistrictScopedActor },
 ): Promise<HokimLaneResponse> {
   const { actorContext, lane, cursor, baselineTimestamp, mahallaName, search, limit } = params;
-
-  if (!actorContext.districtId) {
-    throw new Error('Ҳоким ҳисоби туманга бириктирилмаган.');
-  }
 
   const { datePredicate } = resolveDateBoundary({
     dateScope: params.dateScope,
@@ -717,12 +704,9 @@ async function checkProcessingDelay(
  */
 export async function queryHokimStatistics(
   db: DbClient,
-  actorContext: ActorContext,
+  actorContext: DistrictScopedActor,
   params: HokimTopicStatisticsQueryOutput & { search?: string },
 ): Promise<HokimTopicStatisticsResponse> {
-  if (!actorContext.districtId) {
-    throw new Error('Ҳоким ҳисоби туманга бириктирилмаган.');
-  }
   const districtId = actorContext.districtId;
 
   const districtResult = await db

@@ -14,6 +14,7 @@ import {
   DistrictStatusSchema,
   ConfirmDisclosureResponse,
   ActivateDistrictResponse,
+  ActorContext,
 } from '@mahalla-ovozi/api-contracts';
 import { recordAuditEvent } from '../audit/audit-service.js';
 import { formatDistrict } from './districts-service.js';
@@ -57,11 +58,6 @@ export class DistrictInvalidStatusError extends Error {
     super(`Туман нотўғри ҳолатда: ${status}. Фақат созлаш тугалланмаган туманларни фаоллаштириш мумкин (ID: ${districtId}).`);
     this.name = 'DistrictInvalidStatusError';
   }
-}
-
-export interface ActorContext {
-  id: string;
-  role: string;
 }
 
 export interface ClientContext {

@@ -15,6 +15,7 @@ import {
   decodeKeysetCursor,
   KeysetCursorPayload,
   DEFAULT_HOKIM_RECOGNITION_TERMS,
+  DistrictScopedActor,
 } from '@mahalla-ovozi/api-contracts';
 import { districtAnalysisSettingsRepository } from '../ai/district-analysis-settings-repository.js';
 
@@ -187,13 +188,10 @@ interface RawEvidenceRow extends Record<string, unknown> {
  */
 export async function getTopicEvidence(
   db: DbClient,
-  actorContext: { id: string; districtId: string; role: string },
+  actorContext: DistrictScopedActor,
   topicId: string,
   query: TopicEvidenceQueryOutput,
 ): Promise<TopicEvidenceResponse> {
-  if (!actorContext.districtId) {
-    throw new Error('Ҳоким ҳисоби туманга бириктирилмаган.');
-  }
 
   // 1. Build Keyset Cursor Predicate (Bidirectional: ASC or DESC)
   const order = query.order ?? 'ASC';

@@ -6,6 +6,8 @@ import {
   SignOutResponseSchema,
   ApiErrorEnvelopeSchema,
   ActorContextSchema,
+  isDistrictScopedActor,
+  type ActorContext,
 } from '../src/index.js';
 
 describe('Auth API Contracts', () => {
@@ -126,6 +128,48 @@ describe('Auth API Contracts', () => {
     it('rejects error envelopes missing code or message', () => {
       expect(ApiErrorEnvelopeSchema.safeParse({ error: { message: 'Failed' } }).success).toBe(false);
       expect(ApiErrorEnvelopeSchema.safeParse({ error: { code: 'FAIL' } }).success).toBe(false);
+    });
+  });
+
+  describe('isDistrictScopedActor', () => {
+    const districtHokimActor: ActorContext = {
+      id: 'acc_hokim_1',
+      role: 'DISTRICT_HOKIM',
+      username: 'hokim_1',
+      districtId: 'dist_1',
+    };
+
+    it('narrows an actor whose districtId is a non-empty string', () => {
+      expect(isDistrictScopedActor(districtHokimActor)).toBe(true);
+    });
+
+    it('rejects a Product Owner actor whose districtId is null', () => {
+      const productOwnerActor: ActorContext = {
+        id: 'acc_po_1',
+        role: 'PRODUCT_OWNER',
+        username: 'po_1',
+        districtId: null,
+      };
+      expect(isDistrictScopedActor(productOwnerActor)).toBe(false);
+    });
+
+    it('rejects an actor that omits districtId entirely', () => {
+      const unscopedActor: ActorContext = {
+        id: 'acc_po_2',
+        role: 'PRODUCT_OWNER',
+        username: 'po_2',
+      };
+      expect(isDistrictScopedActor(unscopedActor)).toBe(false);
+    });
+
+    it('rejects an empty-string districtId', () => {
+      const blankDistrictActor: ActorContext = { ...districtHokimActor, districtId: '' };
+      expect(isDistrictScopedActor(blankDistrictActor)).toBe(false);
+    });
+
+    it('rejects a whitespace-only districtId', () => {
+      const paddedDistrictActor: ActorContext = { ...districtHokimActor, districtId: '   ' };
+      expect(isDistrictScopedActor(paddedDistrictActor)).toBe(false);
     });
   });
 });

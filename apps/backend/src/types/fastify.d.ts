@@ -1,7 +1,7 @@
-import type { Account } from '../adapters/db/schema/index.js';
+import type { ActorContext } from '@mahalla-ovozi/api-contracts';
 
 declare module 'fastify' {
   interface FastifyRequest {
-    actor?: Account;
+    actor?: ActorContext;
   }
 }

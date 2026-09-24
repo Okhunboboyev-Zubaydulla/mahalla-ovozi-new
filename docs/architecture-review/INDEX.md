@@ -122,7 +122,7 @@ A completed **descriptive** reconnaissance run (4 tasks: backend summary, web su
 
 | ID | Title | Category | Severity | Strength | Verification |
 |---|---|---|---|---|---|
-| L1-P01-01 | `ActorContext` declared four times with divergent nullability | duplication, hidden-dependency | high | strong | observed |
+| L1-P01-01 | `ActorContext` declared four times with divergent nullability — **[FIXED — session 6]**; the artifact missed the `req.actor` augmentation (`fastify.d.ts`) that was the real cause | duplication, hidden-dependency | high | strong | observed |
 | L1-P01-02 | `ApiErrorEnvelopeSchema` has no backend producers | leaky-seam, untestable-interface | high | strong | observed |
 | L1-P01-03 | `timezone.ts` shallow; two of three exports unused in production | shallow-module | medium | strong | observed |
 | L1-P01-04 | Keyset cursor payload types placed inconsistently across the seam | hidden-dependency, duplication | medium | worth-exploring | observed |

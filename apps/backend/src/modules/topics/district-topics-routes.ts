@@ -182,9 +182,23 @@ export function registerDistrictTopicsRoutes(fastify: FastifyInstance, db: DbCli
             throw new DistrictNotFoundError('Туман топилмади.');
           }
 
+          // The Product Owner is not district-bound (their own districtId is null),
+          // so the district scope for this evidence read comes from the validated
+          // URL param. Assert that scope explicitly instead of relying on the
+          // session actor's district.
+          const productOwner = req.actor;
+          if (!productOwner) {
+            return reply.status(401).send({
+              error: {
+                code: 'UNAUTHENTICATED',
+                message: 'Сессия топилмади ёки муддати тугаган.',
+              },
+            });
+          }
+
           const evidenceResponse = await getTopicEvidence(
             db,
-            { id: 'product_owner', districtId, role: 'PRODUCT_OWNER' },
+            { ...productOwner, districtId },
             topicId,
             req.query,
           );

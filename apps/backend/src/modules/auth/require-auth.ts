@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { ActorContextSchema } from '@mahalla-ovozi/api-contracts';
 import { DbClient } from '../../adapters/db/client.js';
 import { COOKIE_NAME, validateAndTouchSession } from './session-manager.js';
 import { districts } from '../../adapters/db/schema/index.js';
@@ -152,8 +153,31 @@ export function createRequireAuth(db: DbClient, options: RequireAuthOptions = {}
       }
     }
 
-    // Attach validated account to request for downstream route handlers
-    req.actor = account;
+    // Attach the validated actor context for downstream route handlers.
+    // Built from the account row but validated against the shared contract schema,
+    // so `req.actor` is the one actor type rather than the raw database row.
+    // The accounts table constrains role and status via CHECK, so a parse failure
+    // here means a corrupt row: fail loudly instead of leaking a malformed actor
+    // into tenant-scoped queries.
+    const actorResult = ActorContextSchema.safeParse({
+      id: account.id,
+      role: account.role,
+      username: account.username,
+      districtId: account.districtId,
+      mustChangePassword: account.mustChangePassword,
+    });
+
+    if (!actorResult.success) {
+      reply.status(500).send({
+        error: {
+          code: 'ACTOR_CONTEXT_INVALID',
+          message: 'Фойдаланувчи контекстини шакллантиришда хатолик юз берди.',
+        },
+      });
+      return;
+    }
+
+    req.actor = actorResult.data;
   };
 }
 

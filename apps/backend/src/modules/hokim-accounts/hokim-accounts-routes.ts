@@ -66,7 +66,7 @@ export function registerHokimAccountRoutes(fastify: FastifyInstance, db: DbClien
             db,
             districtId,
             parseResult.data,
-            { id: req.actor!.id, role: req.actor!.role },
+            req.actor!,
             { ipAddress: req.ip, userAgent: req.headers['user-agent'] },
           );
           return reply.status(201).send(result);
@@ -85,7 +85,7 @@ export function registerHokimAccountRoutes(fastify: FastifyInstance, db: DbClien
           const result = await resetDistrictHokimPassword(
             db,
             districtId,
-            { id: req.actor!.id, role: req.actor!.role },
+            req.actor!,
             { ipAddress: req.ip, userAgent: req.headers['user-agent'] },
           );
           return reply.status(200).send(result);
@@ -104,7 +104,7 @@ export function registerHokimAccountRoutes(fastify: FastifyInstance, db: DbClien
           const result = await disableDistrictHokimAccount(
             db,
             districtId,
-            { id: req.actor!.id, role: req.actor!.role },
+            req.actor!,
             { ipAddress: req.ip, userAgent: req.headers['user-agent'] },
           );
           return reply.status(200).send(result);
@@ -139,7 +139,7 @@ export function registerHokimAccountRoutes(fastify: FastifyInstance, db: DbClien
             db,
             districtId,
             parseResult.data,
-            { id: req.actor!.id, role: req.actor!.role },
+            req.actor!,
             { ipAddress: req.ip, userAgent: req.headers['user-agent'] },
           );
           return reply.status(200).send(result);
@@ -174,7 +174,7 @@ export function registerHokimAccountRoutes(fastify: FastifyInstance, db: DbClien
             db,
             districtId,
             parseResult.data,
-            { id: req.actor!.id, role: req.actor!.role },
+            req.actor!,
             { ipAddress: req.ip, userAgent: req.headers['user-agent'] },
           );
           return reply.status(200).send(result);
