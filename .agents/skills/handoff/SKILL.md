@@ -15,17 +15,31 @@ Save to a **machine-level handoff root, one folder per project**:
 <handoff-root>/<project>/<handoff-file>.md
 ```
 
-On this machine the root is **`C:/software-development-session-handoffs/`**, so this project's handoffs go to:
+### Resolving the root
+
+Use `$HANDOFF_ROOT` if it is set, otherwise default to `~/software-development-session-handoffs/`.
+
+On this machine that resolves to:
 
 ```
-C:/software-development-session-handoffs/mahalla-ovozi/
+C:/Users/Zubaydulla/software-development-session-handoffs/
 ```
 
-The root is deliberately **tool-agnostic and harness-agnostic** — it belongs to the developer, not to any agent, IDE, or CLI. If another machine uses a different root (another drive, a synced folder), only the root changes; the `<project>/` layout and the rules below stay the same.
+so this project's handoffs go to:
+
+```
+C:/Users/Zubaydulla/software-development-session-handoffs/mahalla-ovozi/
+```
+
+The root is deliberately **tool-agnostic, harness-agnostic, and portable**:
+
+- The `~` anchor is the same on Windows, macOS, and Linux — unlike a drive-root path such as `C:/...`, which exists only on Windows.
+- It belongs to the **developer**, not to any agent, IDE, or CLI. Switching tools does not invalidate the convention.
+- `$HANDOFF_ROOT` lets a specific machine or project redirect the root (another drive, a synced folder) **without editing this skill**. Only the root changes; the `<project>/` layout and the rules below stay the same.
 
 ### Never save a handoff to these two places
 
-- **Not the OS temporary directory.** This was the original instruction and it destroyed real work: a completed handoff written to `%LOCALAPPDATA%\Temp` was silently lost when temp was cleared, taking every earlier handoff stored the same way. A reboot, a cleanup tool, or a disk-pressure sweep wipes temp without warning. A handoff is the one artifact the next session depends on, so it must outlive a temp sweep.
+- **Not the OS temporary directory.** This destroyed real work: a completed handoff written to `%LOCALAPPDATA%\Temp` was silently lost when temp was cleared, taking every earlier handoff stored the same way. A reboot, a cleanup tool, or a disk-pressure sweep wipes temp without warning. A handoff is the one artifact the next session depends on, so it must outlive a temp sweep.
 - **Not the workspace.** The handoff describes work that may not be committed yet, and the next session must not treat it as project content. It also pollutes `git status` for the agent that follows — exactly the noise this process exists to avoid.
 
 ### Conventions
