@@ -5,7 +5,7 @@
 | Task | t4 (recon-l4) |
 | Layer | L4 web data |
 | Owner | recon-l4-webdata |
-| Status | **incomplete (1 of 15)** — the sweep ended after its first finding; see note below |
+| Status | **incomplete (1 of 15)** — superseded 2026-09-24 by `phase-L4-web-data-resweep.md` (see note below) |
 | Baseline | HEAD `bdf999a` |
 | Scope | `apps/web/src/{api,auth,district,topics,hooks,lib,issues,health,utils}` — 48 files, ~5,131 LOC |
 | Kind | RECONNAISSANCE (sweep, not a deep phase) |
@@ -130,3 +130,5 @@ import { useDistrictMahallas } from '../../topics/district-topics-client.js';
 **Fix direction.** Give the `district-mahallas` key a single owner. Either (a) delete `useDistrictMahallas.ts` and route `MahallaSelect.tsx` to `useDistrictTopicsMahallas(activeDistrictId)` — which requires accepting that the district route returns a richer payload than `string[]` — or (b) move the key into a factory and give the two endpoints distinguishable slots (`['district-mahallas', 'hokim', districtId]` vs `['district-mahallas', 'district', districtId]`). Option (a) is the concentration; option (b) is the minimum safe fix if the two endpoints are genuinely both needed.
 
 **Acceptance criteria.** (1) No two `useQuery` call sites in `apps/web/src` declare the same query key with queryFns hitting different URL paths. (2) A single exported symbol owns the key for `/api/v1/hokim/topics/mahallas`. (3) The barrel `apps/web/src/topics/index.ts` exports at most one symbol named `useDistrictMahallas`.
+
+> **SUPERSEDED (2026-09-24).** This sweep was re-run as `phase-L4-web-data-resweep.md` (3 findings: `L4-RS-01` low, `L4-RS-02` low, `L4-RS-03` medium). Its single finding `L4-P01-01` was fixed in `c79bd19`; two of its claimed high/medium areas did not reproduce. Read the re-sweep, not this file.

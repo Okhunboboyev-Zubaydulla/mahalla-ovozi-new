@@ -22,7 +22,7 @@ Baseline: HEAD `bdf999a` · started 2026-09-22 · backend typecheck baseline CLE
 | **L1** Contracts | `packages/api-contracts/src` | 18 | 2,401 |
 | **L2** Backend infrastructure | `apps/backend/src/{adapters,entrypoints,cli,scripts,types,utils}` | 55 | 6,649 (re-measured; register previously said 39 / ~4,900) |
 | **L3** Backend domain | `apps/backend/src/modules/**` (15 modules) | 90 | 27,417 |
-| **L4** Web data | `apps/web/src/{api,auth,district,topics,hooks,lib,issues,health,utils}` | 48 | 5,131 |
+| **L4** Web data | `apps/web/src/{api,auth,district,topics,hooks,lib,issues,health,utils}` | 47 | 5,588 (re-measured; register previously said 48 / 5,131) |
 | **L5** Web presentation | `apps/web/src/{components,pages,theme}` | 104 | 23,095 (re-measured; register previously said 21,641) |
 | **L6** Cross-cutting | `deploy/`, `Dockerfile`, `.github/workflows/ci.yml`, ADR conformance | — | — |
 
@@ -40,7 +40,8 @@ Ordering is dependency-directional (L1→L6); L3 is internally ordered by churn.
 | **P5b** | L3 topics | subagent (write truncated; completed by main session) | `topic-assignment-coordinator`, `topic-matching-resolver` | **complete** | `phase-05b-assignment-coordination.md` |
 | **P5c** | L3 topics | main session (single-agent mode) | `jobs/topic-projection-job-handler`, `jobs/topic-assignment-job-handler`, `topic-reconciliation-service`, `topics-data-cleaner` | **complete** | `phase-05c-jobs-reconciliation.md` |
 | **P4R** | L3 topics | main session (single-agent mode) | `topic-evidence-management-service`, `topic-evidence-service` — re-derive L3-P04-02 / -03 / -04 | **complete** | `phase-04r-evidence-read-repair.md` |
-| **L4-recon** | L4 web data | recon-l4-webdata | `apps/web/src/{api,auth,district,topics,hooks,lib,issues,health,utils}` — sweep, not a deep phase | **incomplete (1 of 15)** | `recon-l4-web-data.md` |
+| **L4-recon** | L4 web data | recon-l4-webdata | `apps/web/src/{api,auth,district,topics,hooks,lib,issues,health,utils}` — sweep, not a deep phase | **superseded by the re-sweep** | `recon-l4-web-data.md` |
+| **L4-resweep** | L4 web data | main session (single-agent mode) | Same scope — re-run at HEAD `ce92911`: all 51 inline queryKey declarations, 5 key factories, all invalidation sites; **`useDistrictWorkspace.ts` (545 lines) NOT read** | **complete (targeted)** | `phase-L4-web-data-resweep.md` |
 | **BACKLOG** | cross-layer | main session | all findings, ranked — **not authorised; requires fresh approval** | **complete** | `fix-backlog.md` |
 | **FIXES** | cross-layer | main session | 5 Tier-1 + Tier-2 fixes executed test-first — **separate program, approved 2026-09-23** | **complete** | `fix-ledger.md` |
 | **FIXES-2** | cross-layer | main session (single-agent mode) | Phases 13-15 (Tier A: `L4-P01-01`, `L3-P03-08`, `L3-P04-07`) then Phases 16-17 (`L6-P01-01` runbook/ADR reconciliation + the issue auto-resolve finding), Phase 18 (CI trigger widening), and **Phase 19** (`L6-P01-08` auto-resolve fix — all four colliding families; +Phase 20 `district-state.test.tsx:54`) — **approved 2026-09-24** | **complete** | `fix-ledger.md` (Phases 13-19) |
@@ -121,6 +122,7 @@ A completed **descriptive** reconnaissance run (4 tasks: backend summary, web su
 | L3-P05c | 0 | 2 | 4 | 2 | **8** |
 | L3-P04R | 0 | 1 | 2 | 1 | **4** *(review-program findings; +2 filed later by the FIXES program — see note below)* |
 | L4-recon | 0 | 1 | 0 | 0 | **1** *(of 15 claimed)* |
+| L4-resweep | 0 | 0 | 1 | 2 | **3** *(L4-RS-01/02/03)* |
 | L6-P01 | 0 | 1 | 4 | 2 | **7** |
 
 **`L6-P01-01` status (2026-09-24).** The runbook/ADR half is **reconciled** in fix-ledger **Phase 16** (`deploy/backup/runbook.md` rewritten to 208 lines; `docs/adr/0008-single-host-compose-caddy-edge.md` amended). The infrastructure half is **NOT done**: no backup transport exists. While preparing the planned follow-on change, **Phase 17 disproved the approved plan's own premise** (the failure was neither stuck nor silent) and found a **new, unlisted correctness defect**: the `del_backup_fail` operational issue is tagged `component: 'scheduled_deletion'` / `scope: 'GLOBAL'` / `districtId: null`, and `synchronizeOperationalIssues` matches on those three fields alone — so a healthy pg-boss probe **auto-resolves** the backup alert on the next health sync. Recorded, not fixed; see Phase 17 of `fix-ledger.md` for three candidate fixes and their blast radius. **`L6-P01-02` and `L6-P01-05` are also addressed:** the missing `Caddyfile.maintenance` is now an explicit open decision (runbook §5 item 2) and CI triggers on all branches.
@@ -174,7 +176,7 @@ Every phase artifact was checked against its own header claim by counting `^### 
 - **L3-P04-03** — *lost*. Residual uncertainty at `phase-04-topics-evidence-path.md:472` records it as **inferred, not executed**: `promoteSignal`'s inline extractor (`topic-evidence-management-service.ts:607-620`) does not handle `rawPayload.message.text`, and it is *"the one finding whose severity could move upward if confirmed."* Scheduled for re-derivation in P4R — **the program's only live correctness lead.**
 - **L3-P04-04** — *lost*, but the substance survives in prose at `phase-04-topics-evidence-path.md:24`: `topic-evidence-management-service.ts` has **11** exports, not 4; seven are declared with a stray leading two-space indent so `^export` grep misses them.
 
-**L4 loss.** `recon-l4-web-data.md` claims `0 blocker · 2 high · 8 medium · 5 low` and says *"Both `high` findings below"*, then ends after its first finding. Only **L4-P01-01** survives: two hooks share query key `['district-mahallas', districtId]` across different endpoints and different Zod schemas (`apps/web/src/topics/useDistrictMahallas.ts:10` vs `apps/web/src/topics/district-topics-client.ts:134`). Reclassified as an incomplete sweep. Completing it would mean re-running the L4 sweep — a **funding decision for the gate**, not a repair.
+**L4 loss — now recovered.** `recon-l4-web-data.md` claims `0 blocker · 2 high · 8 medium · 5 low` and says *"Both `high` findings below"*, then ends after its first finding. **L4-P01-01 has since been fixed** (`c79bd19`, `district-topics-client.ts:134` now declares `['districts', districtId, 'mahallas']`), and the sweep was re-run in `phase-L4-web-data-resweep.md` (3 findings: `L4-RS-01` low, `L4-RS-02` low, `L4-RS-03` medium). Two of the recon's claimed high/medium areas did **not** reproduce — the auth-context scoping is correct for district-bound hokims (silent non-loading, not cross-tenant leakage), and no cross-module invalidation defect exists.
 
 ### L3-P03 findings at a glance
 
@@ -250,7 +252,7 @@ Severity did not decay either: P3 carried 1 high; P5a carried 2, P5b 2, P5c 2, P
 
 1. **The recurrence is the finding.** Three instances of one defect class suggests the remaining value is in *following that class* rather than in opening new layers. A targeted pass over L3 `ai` (`ai-gateway.ts`, `context-snapshot.ts`) and L2 `ai-providers` would test whether the pattern generalises — `L3-P05-02` (gateway rewrites evaluator payloads before `safeParse`) already points there and was filed by P5a but never followed.
 2. **The write-integrity tax is real and quantified.** Four artifact writes failed in this program (P4 truncated 10→6, L4 recon 15→1, P5b attempt 1 wrote nothing, P5b attempt 2 wrote 4 of 7). Every one was caught by filesystem verification, none by trusting a report. Three of the five slice artifacts needed main-session repair. Continuing at 24 further phases multiplies that tax; a narrower scope with the same verification discipline does not.
-3. **The L4 recon is not a phase and should not become one by accident.** `recon-l4-web-data.md` claims 15 findings and delivers 1. Completing it means re-running the sweep. It is now formally **not funded**; if L4 is opened it must be opened as a real phase with its own gate, not silently finished.
+3. **The L4 recon is not a phase and should not become one by accident.** `recon-l4-web-data.md` claims 15 findings and delivers 1. It was re-run in the fixes program (`phase-L4-web-data-resweep.md`, 3 findings) at the user's explicit direction, **not** by silently funding a phase — the original gate note stands: a future L4 *layer* phase still needs its own gate.
 
 **Do not stop.** The pre-commitment ("if both bars fail → stop or narrow") does not trigger: both bars passed. Stopping now would discard a demonstrated-positive yield curve.
 
@@ -261,7 +263,7 @@ Severity did not decay either: P3 carried 1 high; P5a carried 2, P5b 2, P5c 2, P
 - `L3-P04R-01` — one writer of `telegram_intake_records.raw_payload` was not exhaustively ruled out; the `(Матн мавжуд эмас)` grep found none in `apps/backend/src`, but fixtures/seeds/CLI were not checked.
 - `L3-P04R-02` — the `channel_post`/`edited_channel_post` search gap is textually certain; whether real districts ingest channel posts is unverified.
 - `L3-P04R-03` — the stray-indent export pattern was confirmed in one file only; whether it is systemic is unknown.
-- `L4-P01-01` stands alone from a truncated sweep; no L4 conclusion beyond it should be relied on.
+- `L4-P01-01` stands alone from a truncated sweep; **that gap is now closed by the re-sweep** (`phase-L4-web-data-resweep.md`, 3 findings). `apps/web/src/district/useDistrictWorkspace.ts` (545 lines) remains unread in both passes and is the largest residual L4 gap.
 - The `deploy/compose/.env.example` `DEEPINFRA` gap (parked item 5) remains unverified.
 
 ### Required at the gate (checklist, all satisfied)
