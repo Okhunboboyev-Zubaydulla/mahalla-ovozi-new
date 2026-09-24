@@ -20,7 +20,7 @@ Baseline: HEAD `bdf999a` · started 2026-09-22 · backend typecheck baseline CLE
 | Layer | Scope | Files | LOC |
 |---|---|---|---|
 | **L1** Contracts | `packages/api-contracts/src` | 18 | 2,401 |
-| **L2** Backend infrastructure | `apps/backend/src/{adapters,entrypoints,cli,scripts,types,utils}` | 39 | ~4,900 |
+| **L2** Backend infrastructure | `apps/backend/src/{adapters,entrypoints,cli,scripts,types,utils}` | 55 | 6,649 (re-measured; register previously said 39 / ~4,900) |
 | **L3** Backend domain | `apps/backend/src/modules/**` (15 modules) | 90 | 27,417 |
 | **L4** Web data | `apps/web/src/{api,auth,district,topics,hooks,lib,issues,health,utils}` | 48 | 5,131 |
 | **L5** Web presentation | `apps/web/src/{components,pages,theme}` | 104 | 23,095 (re-measured; register previously said 21,641) |
@@ -46,6 +46,7 @@ Ordering is dependency-directional (L1→L6); L3 is internally ordered by churn.
 | **FIXES-2** | cross-layer | main session (single-agent mode) | Phases 13-15 (Tier A: `L4-P01-01`, `L3-P03-08`, `L3-P04-07`) then Phases 16-17 (`L6-P01-01` runbook/ADR reconciliation + the issue auto-resolve finding), Phase 18 (CI trigger widening), and **Phase 19** (`L6-P01-08` auto-resolve fix — all four colliding families; +Phase 20 `district-state.test.tsx:54`) — **approved 2026-09-24** | **complete** | `fix-ledger.md` (Phases 13-19) |
 | **L6** | L6 Cross-cutting | main session (single-agent mode) | `deploy/`, `Dockerfile`, `.github/workflows/ci.yml`, and **ADR-0001 / ADR-0006 / ADR-0008 conformance** — the first and only assessment of the three L6-owned ADRs | **complete** | `phase-L6-cross-cutting.md` |
 | **L5** | L5 Web presentation | main session (single-agent mode) | `apps/web/src/{components,pages,theme}` — targeted pattern sweep (XSS, hooks-order, query keys, theme tokens, `as any`, timezone, ARIA), not a line-by-line read | **complete** | `phase-L5-web-presentation.md` |
+| **L2** | L2 Backend infrastructure | main session (single-agent mode) | `apps/backend/src/{adapters,entrypoints,cli,scripts,types,utils}` — targeted sweep (DSN fallbacks, silent catches, default params, NODE_ENV gates); **`mtproto-normalizer.ts` (863 lines) NOT read** | **complete (targeted)** | `phase-L2-backend-infrastructure.md` |
 
 Phases beyond P5 are **not funded**. The post-slice decision is made at the gate.
 
