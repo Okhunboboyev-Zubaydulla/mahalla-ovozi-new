@@ -768,3 +768,49 @@ This is the fourth consecutive session where the artifact's **mechanism** failed
 
 
 
+
+
+## Phase 13 — `L4-P01-01`, two hooks stop sharing one cache key (and the finding's mechanism is corrected twice)
+
+**Scope:** `apps/web` only. 1 source file, 1 new test file. No backend change.
+
+### What the artifact said, and what the handoff said, were both wrong
+
+The artifact claimed the two hooks share a cache key holding *differently-shaped* payloads, because their Zod schemas differ. The handoff's re-triage disproved that — the schemas are literal aliases — and concluded the residue was "just" a `staleTime` divergence (15 min vs 60 s). **Both are wrong, and the handoff's version is the more dangerous error**, because it would have produced a test that passes while the defect stays live.
+
+The real mechanism is a **cache-VALUE shape mismatch**, which exists regardless of the schemas being aliases:
+
+- `useDistrictMahallas.ts:11` → `hokimTopicsClient.getDistrictMahallas()` → resolves to a bare `string[]` (`hokim-topics-client.ts:105-115` returns `response.mahallas`).
+- `district-topics-client.ts:135` → `districtTopicsClient.listMahallas()` → resolves to the whole `DistrictMahallasResponse` object `{ mahallas: string[] }` (`:60-71`).
+
+Both under `queryKey: ['district-mahallas', districtId]`. So whichever mounts first writes its shape, and the other reads a foreign one. The two consumers fail differently:
+
+- `SignalMonitoringTable.tsx:173-177` guards `if (!districtMahallasData?.mahallas) return []` — against a bare array this silently yields an **empty** Mahalla filter (no crash, no error).
+- `MahallaSelect.tsx:19,22` destructures `mahallas` then calls `.map` — against the object shape this is a **runtime TypeError**.
+
+Zod cannot catch either: both shapes satisfy the alias, and each client validates against its own schema on its own fetch.
+
+### The fix
+
+`district-topics-client.ts:134` — the district-scoped hook moves to its own key:
+
+```
+-    queryKey: ['district-mahallas', districtId],
++    queryKey: ['districts', districtId, 'mahallas'],
+```
+
+The new key follows the repo's existing `districtQueryKeys` convention (`district/query-keys.ts:6-13` uses `['districts', id, <aspect>]`), so this aligns the outlier rather than inventing a scheme. Only two sites referenced the old key (grep-verified); nothing invalidated it.
+
+**The name collision was NOT changed.** AC(3) ("the barrel exports at most one symbol named `useDistrictMahallas`") is **already satisfied** and was satisfied before this fix: `topics/index.ts:1-6` exports only `useDistrictTopicsMahallas` by name, and `district-topics-client.ts:141` aliases it. The name collision was never the defect; the shared key was.
+
+### Verification
+
+- **Test-first.** New `apps/web/tests/unit/district-mahallas-cache-key.test.tsx` — renders both hooks against one `QueryClient` and asserts each receives its own documented shape. Written and run **before** the source change: failed with `expected undefined to deeply equal ['Alpha','Beta']` — the district hook had been served the hokim hook's bare array.
+- **Falsified, both directions.** Reverting `:134` to the shared key fails **both** tests: `expected undefined to deeply equal [...]` and `expected { mahallas: [...] } to have property 'length'`. The second test exists precisely because the contamination is symmetric — a one-directional test would have passed a partial fix.
+- **Full `apps/web` run:** 384 passed, 1 failed. The single failure is the **known pre-existing** `district-state.test.tsx:54`, re-proven not-mine this session via `git stash push --include-untracked` at clean HEAD (identical failure with this phase's files absent).
+- **Both typechecks green:** `pnpm typecheck` → `tsc --noEmit` **and** `tsc --noEmit -p tsconfig.test.json` (backend), `tsc --noEmit` (web, contracts).
+- **No visual sign-off.** Per the no-browser-automation rule, verified by unit test only. The `MahallaSelect` crash path is asserted at the hook-value level, not by rendering the component.
+
+### Why this was worth doing
+
+This finding was ranked **A4**, and the handoff recommended demoting it to "a medium freshness defect". At source it is the opposite: it is a genuine `correctness` defect with a silent-wrong-data path in one consumer and a crash path in the other. **The ranking was wrong in the demotion direction, not the inflation direction** — a first for this program, where every prior correction deflated a finding.

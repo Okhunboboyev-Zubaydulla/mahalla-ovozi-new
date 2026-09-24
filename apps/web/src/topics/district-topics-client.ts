@@ -131,7 +131,7 @@ export function useDistrictTopicEvidence(
 
 export function useDistrictTopicsMahallas(districtId: string | null) {
   return useQuery<DistrictMahallasResponse, Error>({
-    queryKey: ['district-mahallas', districtId],
+    queryKey: ['districts', districtId, 'mahallas'],
     queryFn: ({ signal }) => districtTopicsClient.listMahallas(districtId!, signal),
     enabled: Boolean(districtId),
     staleTime: 60_000,
