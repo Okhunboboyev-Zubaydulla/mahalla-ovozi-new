@@ -472,6 +472,36 @@ describe('Story 3.1: Hokim Topic Board & Keyset Pagination Integration Tests', (
     });
   });
 
+  describe('AC 5 (A2): visit append semantics on a GET read path', () => {
+    it('appends one immutable visit row per board load, never updating or colliding', async () => {
+      await db.delete(userDashboardVisits).where(eq(userDashboardVisits.userId, hokimAId));
+
+      const before = await db
+        .select()
+        .from(userDashboardVisits)
+        .where(eq(userDashboardVisits.userId, hokimAId));
+      expect(before).toHaveLength(0);
+
+      for (const _ of [1, 2]) {
+        const res = await server.inject({
+          method: 'GET',
+          url: `/api/v1/hokim/topics/board?calendarDay=${testCalendarDay}`,
+          headers: { ...SAME_ORIGIN_HEADERS, cookie: hokimACookie },
+        });
+        expect(res.statusCode).toBe(200);
+      }
+
+      const rows = await db
+        .select()
+        .from(userDashboardVisits)
+        .where(eq(userDashboardVisits.userId, hokimAId));
+
+      expect(rows).toHaveLength(2);
+      expect(new Set(rows.map((r) => r.id)).size).toBe(2);
+      expect(rows.every((r) => r.id.startsWith('vis_'))).toBe(true);
+    });
+  });
+
   describe('AC 6: Keyset Pagination & Lane-Local Continuation', () => {
     it('paginates lane topics deterministically using keyset cursor without skipping or duplicating', async () => {
       const now = Date.now();

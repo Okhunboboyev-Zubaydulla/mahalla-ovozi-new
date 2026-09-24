@@ -814,3 +814,53 @@ The new key follows the repo's existing `districtQueryKeys` convention (`distric
 ### Why this was worth doing
 
 This finding was ranked **A4**, and the handoff recommended demoting it to "a medium freshness defect". At source it is the opposite: it is a genuine `correctness` defect with a silent-wrong-data path in one consumer and a crash path in the other. **The ranking was wrong in the demotion direction, not the inflation direction** — a first for this program, where every prior correction deflated a finding.
+
+
+## Phase 14 — `L3-P03-08`, the GET visit-write is accepted and pinned (not "fixed")
+
+**Scope:** `apps/backend` only. 1 source file (comment), 1 test file. No behaviour change.
+
+### Why this is not a repair
+
+`queryHokimBoard` (`topic-query-engine.ts:470`) appends to `user_dashboard_visits` at `:517-523` inside a GET. Re-verified at source, and the artifact's framing is wrong in the same direction as its A2 sibling: it claims "two concurrent board loads race on the same visit row". **Read the schema before believing a claim about what is persisted** — `adapters/db/schema/user-visits.ts:5-29` declares a pkey, two FKs and NOT NULLs, and **no unique constraint on `(userId, districtId)`**. Confirmed independently against the live test database via `pg_constraint`:
+
+```
+user_dashboard_visits_pkey:p, ..._user_id_accounts_id_fk:f,
+..._district_id_districts_id_fk:f, ..._created_at_not_null:n,
+..._district_id_not_null:n, ..._id_not_null:n, ..._user_id_not_null:n,
+..._visited_at_not_null:n
+```
+
+So it is an **append-only visit log**. Concurrent loads cannot collide or corrupt; there is no race to fix.
+
+### The write is load-bearing — proven, not assumed
+
+Falsified by deleting the insert and re-running `tests/hokim-topics.test.ts`: **2 of 10 failed**, including the pre-existing AC 5 freshness test (`isNew`/`isUpdated` derive from the previous visit timestamp). The append *is* the feature. Removing it to satisfy a read-path purity rule would silently disable freshness.
+
+### What was done instead
+
+A comment at the site (`topic-query-engine.ts:517-530`) records it as an **accepted trade-off** with the schema evidence, the accepted cost (read-only replicas and cache-on-GET do not hold for this route), and a pointer to the pinning test. A new test asserts one immutable visit row per load, ids are unique, and the `vis_` prefix holds.
+
+---
+
+## Phase 15 — `L3-P04-07`, the evidence cursor error gets a type (latent hygiene)
+
+**Scope:** `apps/backend` only. 2 source files, 1 test file.
+
+### The recorded mechanism is false — sixth consecutive session
+
+The artifact says a bare `Error` at `topic-evidence-service.ts:202` falls through the route mappers to a generic **500**. Re-verified at source: **both** routes pre-validate the identical cursor before calling `getTopicEvidence` — `hokim-topics-routes.ts:208-215` and `district-topics-routes.ts:167-174` — using `decodeEvidenceKeysetCursor`, which returns `null` and **never throws**. The branch is unreachable over HTTP. And even if reached, the hokim catch-all at `:240-247` returns **400** `EVIDENCE_QUERY_ERROR`, not 500. `getTopicEvidence` has exactly two call sites repo-wide, both pre-validating.
+
+### What is real
+
+An untyped `Error` inside a service whose callers classify typed domain errors — a latent trap for any future caller that reaches it. Hardened rather than deleted: the throw now uses the **existing** `InvalidCursorError` (`topic-query-engine.ts:51-58`, `statusCode = 400`, `code = 'INVALID_CURSOR'`). No cycle: `topic-query-engine.ts` never imports the evidence service, so the new import edge is one-way.
+
+### Contract change, stated openly
+
+The hokim evidence route's malformed-cursor **response code changed** from `VALIDATION_ERROR` to `INVALID_CURSOR`, unifying it with its district sibling (`district-topics-routes.ts:170`) and with the error class. Verified client-safe **before** changing it: `apps/web` has **zero** references to `VALIDATION_ERROR`, and its only cursor branching (`useHokimTopicBoard.ts:513`) tests for `INVALID_CURSOR`.
+
+The `topic-evidence.test.ts:633` assertion that pinned the old code was updated — a deliberate contract change, **not** a weakened test. Falsified by reverting the route code: `expected 'VALIDATION_ERROR' to be 'INVALID_CURSOR'`.
+
+### The pattern worth recording
+
+A3 joins A2 and A4 as the **third** Tier A finding whose recorded mechanism did not survive source contact — and the **second** where the handoff's own correction was also incomplete. What survived in all three was narrower and different from both accounts. The lesson is not "the artifacts are wrong" (long established) but that **the symptom's severity is not evidence about the mechanism**, in either direction: A4 was under-ranked, A2 and A3 over-stated.

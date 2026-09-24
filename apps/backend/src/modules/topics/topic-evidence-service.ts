@@ -18,6 +18,7 @@ import {
   DistrictScopedActor,
 } from '@mahalla-ovozi/api-contracts';
 import { districtAnalysisSettingsRepository } from '../ai/district-analysis-settings-repository.js';
+import { InvalidCursorError } from './topic-query-engine.js';
 
 export function buildHokimTermsRegex(terms: readonly string[]): RegExp {
   const normalizedTerms = new Set<string>();
@@ -199,7 +200,7 @@ export async function getTopicEvidence(
   if (query.cursor) {
     const decoded = decodeEvidenceKeysetCursor(query.cursor);
     if (!decoded) {
-      throw new Error('Курсор нотўғри ёки муддати ўтган.');
+      throw new InvalidCursorError('Курсор нотўғри ёки муддати ўтган.');
     }
     const cursorDate = new Date(decoded.t);
     if (order === 'DESC') {

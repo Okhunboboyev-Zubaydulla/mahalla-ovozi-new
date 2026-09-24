@@ -514,6 +514,17 @@ export async function queryHokimBoard(
 
     visitBaselineTimestamp = prevVisit ? prevVisit.visitedAt.toISOString() : null;
 
+    // A2 (L3-P03-08) — ACCEPTED TRADE-OFF, not an oversight.
+    // This GET appends a visit row, so the endpoint is not side-effect free.
+    // The append IS the feature: the next load's `isNew`/`isUpdated` freshness
+    // is derived from the previous visit timestamp, so removing the write
+    // silently disables freshness (AC 5 fails).
+    // `user_dashboard_visits` has NO unique constraint on (userId, districtId)
+    // — verified in the live schema and via pg_constraint — so it is an
+    // append-only log and concurrent board loads cannot collide or corrupt.
+    // Known costs, accepted: read-only replicas and cache-on-GET assumptions
+    // do not hold for this route. Pinned by the 'visit append semantics' test
+    // in apps/backend/tests/hokim-topics.test.ts.
     await db.insert(userDashboardVisits).values({
       id: `vis_${crypto.randomUUID()}`,
       userId: actorContext.id,

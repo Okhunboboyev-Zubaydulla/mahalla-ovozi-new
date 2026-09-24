@@ -9,6 +9,7 @@ import { ensureDefaultAiProfiles } from '../src/adapters/db/seeds.js';
 import { hashPassword } from '../src/adapters/crypto/argon2.js';
 import { getTashkentCalendarDay } from '../src/modules/telegram-intake/timezone-util.js';
 import { TopicEvidenceResponse } from '@mahalla-ovozi/api-contracts';
+import { getTopicEvidence } from '../src/modules/topics/topic-evidence-service.js';
 
 const SAME_ORIGIN_HEADERS = {
   origin: 'http://localhost:5173',
@@ -630,8 +631,38 @@ describe('Story 3.2: Inspect Complete Topic Evidence Integration Tests', () => {
 
     expect(res.statusCode).toBe(400);
     const body = JSON.parse(res.body);
-    expect(body.error.code).toBe('VALIDATION_ERROR');
+    // A3: was 'VALIDATION_ERROR'. Unified with the sibling district evidence
+    // route (district-topics-routes.ts:170) and with InvalidCursorError, which
+    // already carries statusCode 400 / code 'INVALID_CURSOR'. Verified no
+    // client under apps/web branches on 'VALIDATION_ERROR' (zero matches).
+    expect(body.error.code).toBe('INVALID_CURSOR');
     expect(body.error.message).toContain('Курсор');
+  });
+
+  it('A3: service contract rejects a malformed cursor with a typed 400 error', async () => {
+    // The routes pre-validate the cursor, so this branch is unreachable via HTTP.
+    // It is still part of getTopicEvidence's public contract: a caller that
+    // reaches it must receive a typed domain error, not a bare Error that no
+    // mapper can classify.
+    const thrown = await getTopicEvidence(
+      db,
+      {
+        id: `acc_probe_${crypto.randomUUID().slice(0, 8)}`,
+        role: 'DISTRICT_HOKIM',
+        username: 'probe',
+        districtId: districtAId,
+      },
+      topicA1Id,
+      { cursor: 'invalid_base64_json!', limit: 50, order: 'ASC' },
+    ).then(
+      () => null,
+      (e: unknown) => e,
+    );
+
+    expect(thrown).toBeInstanceOf(Error);
+    const typed = thrown as Error & { statusCode?: number; code?: string };
+    expect(typed.statusCode).toBe(400);
+    expect(typed.code).toBe('INVALID_CURSOR');
   });
 
   it('accurately identifies and flags isHokimRelated for evidence items referencing Hokim terms', async () => {
