@@ -4,6 +4,10 @@ description: "Implement a specification in code."
 disable-model-invocation: true
 ---
 
+> **Single-agent fallback (global invariant).** The steps below name sub-agents. Under the session's Direct Single-Agent Invariant (`~/.dsh/AGENTS.md` §1) no child sessions may be spawned. Do not skip or refuse the work: perform every sub-agent step **sequentially in this session**, and state the degradation explicitly in your output. Never silently drop a step that this skill assigns to a sub-agent.
+> **Degradation in this skill:** Tickets are implemented one at a time, in this session, on one branch/worktree. The parallel-worktree concurrency model and the merger sub-agent step do not apply; merge each ticket's work yourself before starting the next.
+
+
 You have been provided a spec. This spec should have tickets associated with it, describing how to implement the spec.
 
 The goal is a PR which implements the entire spec on a single branch.
