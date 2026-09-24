@@ -5,7 +5,7 @@
 | Task | t4 (recon-l4) |
 | Layer | L4 web data |
 | Owner | recon-l4-webdata |
-| Status | complete |
+| Status | **incomplete (1 of 15)** — the sweep ended after its first finding; see note below |
 | Baseline | HEAD `bdf999a` |
 | Scope | `apps/web/src/{api,auth,district,topics,hooks,lib,issues,health,utils}` — 48 files, ~5,131 LOC |
 | Kind | RECONNAISSANCE (sweep, not a deep phase) |
@@ -13,6 +13,8 @@
 | ADR lens | ADR-0007 observed only, not filed (L3 auth owns it) |
 
 **This artifact recommends. It funds nothing and decides nothing.** No deep phase is authorised by this document.
+
+> **STATUS CORRECTION (2026-09-24) — this sweep is INCOMPLETE.** The `Findings` row above (`0 blocker · 2 high · 8 medium · 5 low` = 15) states the *intended* scope of the sweep, not what was written. The document body contains **one** finding — `L4-P01-01` — and then stops, mid-sentence relative to its own claim that *"Both `high` findings below"*. The earlier `Status: complete` was wrong and contradicted `INDEX.md`'s register row (`incomplete (1 of 15)`); the register was right. **No L4 conclusion beyond `L4-P01-01` may be relied on.** Completing the sweep is a re-run of L4, which is a funding decision for the gate — not a repair, and not authorised by this correction.
 
 ## Phase question and method
 

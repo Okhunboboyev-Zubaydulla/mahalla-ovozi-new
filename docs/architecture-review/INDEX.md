@@ -2,6 +2,8 @@
 
 Read-only architectural review of `mahalla-ovozi-trial-2`. **No file under `apps/` or `packages/` is modified by this program.** The deliverable is this ledger, not fixed code.
 
+> **Historical — superseded 2026-09-23 by the separate FIXES program.** The sentence above describes the *review* program, which was read-only by decision. It is **not** a current statement about the repository: the fixes program (register row `FIXES`, record in `fix-ledger.md`) has since modified **51 source files** under `apps/` and `packages/` — measured as `git diff --name-only bdf999a..HEAD -- apps packages` (80 files changed overall, 7,702 insertions, 756 deletions). Kept verbatim so the frozen constraints below remain readable as a record of what the review program actually committed to.
+
 Baseline: HEAD `bdf999a` · started 2026-09-22 · backend typecheck baseline CLEAN.
 
 ## Program constraints (frozen)
@@ -31,7 +33,7 @@ Ordering is dependency-directional (L1→L6); L3 is internally ordered by churn.
 | Phase | Layer | Owner | Scope | Status | Artifact |
 |---|---|---|---|---|---|
 | **P1** | L1 Contracts | main | `common`, `pagination`, `timezone`, `auth`, `index` | **complete** | `phase-01-contract-primitives.md` |
-| P2 | L1 Contracts | main | `topics`, `signals`, `issues`, `districts`, `hokim-accounts`, `telegram-groups`, `telegram-bot`, `audit` | pending | — |
+| **P2** | L1 Contracts | main | `topics`, `signals`, `issues`, `districts`, `hokim-accounts`, `telegram-groups`, `telegram-bot`, `audit` | **complete** | `phase-02-contract-domain-payloads.md` |
 | **P3** | L3 topics | subagent | `topic-query-engine`, `topic-query-helpers`, `hokim-topics-routes`, `district-topics-routes` | **complete** | `phase-03-topics-read-path.md` |
 | **P4** | L3 topics | subagent | `topic-evidence-management-service`, `topic-evidence-service`, `admin-signals-routes` | **complete (6 of 10)** | `phase-04-topics-evidence-path.md` |
 | **P5a** | L3 topics | subagent | `topic-projection-evaluator`, `topic-matching-evaluator` | **complete** | `phase-05a-topic-evaluators.md` |
@@ -113,10 +115,12 @@ A completed **descriptive** reconnaissance run (4 tasks: backend summary, web su
 | L3-P05a | 0 | 2 | 3 | 3 | **8** |
 | L3-P05b | 0 | 2 | 3 | 2 | **7** |
 | L3-P05c | 0 | 2 | 4 | 2 | **8** |
-| L3-P04R | 0 | 1 | 2 | 1 | **4** |
+| L3-P04R | 0 | 1 | 2 | 1 | **4** *(review-program findings; +2 filed later by the FIXES program — see note below)* |
 | L4-recon | 0 | 1 | 0 | 0 | **1** *(of 15 claimed)* |
 
 *(Findings are listed in full in each phase artifact. This roll-up is the index, not the record.)*
+
+**Scope note — this roll-up counts REVIEW-PROGRAM findings only.** Two findings were filed *after* the review gate, by the fixes program, and are deliberately **not** added to any row above: `L3-P04R-05` (high) and `L3-P04R-06` (medium), both appended to `phase-04r-evidence-read-repair.md` and both since fixed (`L3-P04R-05` in commit `b7d31af`, `L3-P04R-06` in commit `e8a0ca2`). The review total is therefore **56**, and the P4R row stays **4**. A fix-session finding is a different provenance from a review finding; folding them in would silently redefine what the program measured. The live count of remaining work is a separate question, owned by the re-triage pass.
 
 ### L1-P01 findings at a glance
 
@@ -146,15 +150,15 @@ Every phase artifact was checked against its own header claim by counting `^### 
 
 | Artifact | Claims | Recorded | Verdict |
 |---|---|---|---|
-| `phase-01-contract-primitives.md` (321 lines) | 6 | 6 | **intact** |
-| `phase-02-contract-domain-payloads.md` (312 lines) | 6 | 6 | **intact** |
+| `phase-01-contract-primitives.md` (332 lines) | 6 | 6 | **intact** |
+| `phase-02-contract-domain-payloads.md` (320 lines) | 6 | 6 | **intact** |
 | `phase-03-topics-read-path.md` (538 lines) | 10 | 10 | **intact** |
 | `phase-04-topics-evidence-path.md` (535 lines) | 10 | 7 (L3-P04-01, -05…-10) — 1 high · 5 medium · 1 low | **truncated — -02/-03/-04 re-derived in P4R** |
 | `phase-05a-topic-evaluators.md` (490 lines) | 8 | 8 | **intact** |
 | `phase-05b-assignment-coordination.md` (460 lines) | 7 | 7 | **intact** (subagent wrote 292/7→4; completed by main session) |
 | `phase-05c-jobs-reconciliation.md` (484 lines) | 8 | 8 | **intact** |
-| `phase-04r-evidence-read-repair.md` (303 lines) | 4 | 4 | **intact** |
-| `recon-l4-web-data.md` (130 lines) | 15 | 1 (L4-P01-01) | **truncated** |
+| `phase-04r-evidence-read-repair.md` (401 lines) | 4 | 4 | **intact** — *review-program findings only; the file now carries 6 headings (`-01`…`-06`) because the FIXES program appended `L3-P04R-05` (high) and `L3-P04R-06` (medium) after the audit. The 4/4 verdict is about the review's own write integrity and still holds.* |
+| `recon-l4-web-data.md` (132 lines) | 15 | 1 (L4-P01-01) | **truncated** |
 
 **P4 loss.** The artifact goes from `## Phase question and method` straight to `### L3-P04-05`; findings **-01 through -04 have no record in it**. Status:
 
