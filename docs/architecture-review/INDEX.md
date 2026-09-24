@@ -124,6 +124,9 @@ A completed **descriptive** reconnaissance run (4 tasks: backend summary, web su
 | L4-recon | 0 | 1 | 0 | 0 | **1** *(of 15 claimed)* |
 | L4-resweep | 0 | 0 | 1 | 2 | **3** *(L4-RS-01/02/03)* |
 | L6-P01 | 0 | 1 | 4 | 2 | **7** |
+| L2-P01 | 0 | 2 | 1 | 2 | **5** *(first-ever review)* |
+| L5-P01 | 0 | 0 | 2 | 1 | **3** *(first-ever review)* |
+| L3-P22 | 0 | 0 | 0 | 2 | **2** *(class pass; both `latent`)* |
 
 **`L6-P01-01` status (2026-09-24).** The runbook/ADR half is **reconciled** in fix-ledger **Phase 16** (`deploy/backup/runbook.md` rewritten to 208 lines; `docs/adr/0008-single-host-compose-caddy-edge.md` amended). The infrastructure half is **NOT done**: no backup transport exists. While preparing the planned follow-on change, **Phase 17 disproved the approved plan's own premise** (the failure was neither stuck nor silent) and found a **new, unlisted correctness defect**: the `del_backup_fail` operational issue is tagged `component: 'scheduled_deletion'` / `scope: 'GLOBAL'` / `districtId: null`, and `synchronizeOperationalIssues` matches on those three fields alone — so a healthy pg-boss probe **auto-resolves** the backup alert on the next health sync. Recorded, not fixed; see Phase 17 of `fix-ledger.md` for three candidate fixes and their blast radius. **`L6-P01-02` and `L6-P01-05` are also addressed:** the missing `Caddyfile.maintenance` is now an explicit open decision (runbook §5 item 2) and CI triggers on all branches.
 
