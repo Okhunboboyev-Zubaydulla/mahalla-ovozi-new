@@ -7,18 +7,34 @@ disable-model-invocation: true
 
 Write a handoff document summarising the current conversation so a fresh agent can continue the work.
 
-**Save it to `~/.dsh/handoffs/` — resolved on this machine as `C:/Users/Zubaydulla/.dsh/handoffs/`.**
+## Where to save it
 
-Do **NOT** use the OS temporary directory, and do **NOT** use the current workspace:
+Save to a **machine-level handoff root, one folder per project**:
 
-- **Not the OS temporary directory.** This was the previous instruction, and it is wrong on this machine. The temp directory was cleared mid-project on 2026-09-24 and silently destroyed a completed handoff — a reboot, a cleanup tool, or a disk-pressure sweep wipes it without warning. A handoff is the one artifact the next session depends on; it must outlive a temp cleanup.
-- **Not the workspace.** The handoff describes work that may not be committed yet, and the next session must not treat it as project content. It also pollutes `git status` for the agent that follows, which is exactly the noise the process exists to avoid.
+```
+<handoff-root>/<project>/<handoff-file>.md
+```
 
-`~/.dsh/handoffs/` is durable profile storage that the DSH harness itself maintains, alongside `~/.dsh/sessions/`, `~/.dsh/attachments/`, and `~/.dsh/rewind-snapshots/`. Those directories survived the very cleanup that destroyed the temp-based handoff, so this location is the proven-durable choice. It is outside the repo and version-controlled by nobody but the user, which is the intent.
+On this machine the root is **`C:/software-development-session-handoffs/`**, so this project's handoffs go to:
 
-Use the filename convention `handoff-<project>-after-<finding-or-topic>.md`, e.g. `handoff-mahalla-ovozi-after-L3-P04-01.md`.
+```
+C:/software-development-session-handoffs/mahalla-ovozi/
+```
 
-When a new handoff supersedes an older one, name the older file in the new document's header, mark it superseded, and leave it on disk. Do not silently delete it.
+The root is deliberately **tool-agnostic and harness-agnostic** — it belongs to the developer, not to any agent, IDE, or CLI. If another machine uses a different root (another drive, a synced folder), only the root changes; the `<project>/` layout and the rules below stay the same.
+
+### Never save a handoff to these two places
+
+- **Not the OS temporary directory.** This was the original instruction and it destroyed real work: a completed handoff written to `%LOCALAPPDATA%\Temp` was silently lost when temp was cleared, taking every earlier handoff stored the same way. A reboot, a cleanup tool, or a disk-pressure sweep wipes temp without warning. A handoff is the one artifact the next session depends on, so it must outlive a temp sweep.
+- **Not the workspace.** The handoff describes work that may not be committed yet, and the next session must not treat it as project content. It also pollutes `git status` for the agent that follows — exactly the noise this process exists to avoid.
+
+### Conventions
+
+- **Project folder:** a short stable slug matching the repo, e.g. `mahalla-ovozi`. Create it if missing. Do not nest by date, branch, or session id — one folder per project, so a later session finds every past handoff in one listing.
+- **Filename:** `handoff-<project>-after-<finding-or-topic>.md`, e.g. `handoff-mahalla-ovozi-after-L3-P04-01.md`.
+- **Superseding:** when a new handoff replaces an older one, name the older file in the new document's header, mark it superseded, and **leave it on disk**. Do not silently delete it — the record of what was believed earlier is part of the handoff's value.
+
+## What to include
 
 Include a "suggested skills" section in the document, naming which skills the next agent should call the Skill tool for.
 
