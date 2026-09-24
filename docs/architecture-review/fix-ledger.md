@@ -1065,3 +1065,38 @@ Run per §11, which requires it before committing. **The two axes shared one con
 
 **No contract change. No schema change. No new dependency.**
 
+
+---
+
+## Phase 20 — the repository's only red test was a stale assertion
+
+**Finding.** `apps/web/tests/unit/district-state.test.tsx:54-55` was the single failing test in the repo (385 tests, 64 files). It asserted:
+
+```js
+expect(cancelSpy).toHaveBeenCalledWith({ queryKey: ['district', 'dist_1'] });
+expect(removeSpy).toHaveBeenCalledWith({ queryKey: ['district', 'dist_1'] });
+```
+
+**The mechanism, re-verified at source.** `query-keys.ts:8` defines `district: (id) => ['districts', id]` — **plural**. `district-context.tsx:159` calls `queryClient.cancelQueries({ queryKey: districtQueryKeys.district(prevId) })`, i.e. the canonical factory. So the test was written against an older key shape that no longer exists anywhere in the codebase. A grep for `['district',` finds only this assertion.
+
+**The second call the failure reported was also correct behaviour.** `district-context.tsx:160-163` additionally cancels queries whose key *contains* the previous district id:
+
+```js
+await queryClient.cancelQueries({
+  predicate: (query) =>
+    query.queryKey.some((part) => typeof part === 'string' && part === prevId),
+});
+```
+
+That is why the runner reported `Number of calls: 2`. The test asserted one call and the singular key; both halves were stale.
+
+**Ruling and what changed.** The user ruled it a **stale assertion**, not a regression. Two lines changed, no production code touched:
+
+- `apps/web/tests/unit/district-state.test.tsx` (+2/-2)
+
+**Why not the alternative.** The alternative reading — that `query-keys.ts` should return the singular — would have required changing a factory with 89 call sites to match one stale assertion, and would have silently invalidated every real cache key in the district layer. The direction of the fix matters: the test was wrong, not the key.
+
+**Verification.** `apps/web/tests/unit/district-state.test.tsx` 8/8 passed. Full web suite **64 files / 385 tests, all passing** — the repository now has no red tests. `tsc --noEmit` green.
+
+**Honest note.** This phase changed only a test. It is a `low`-severity hygiene fix, and it was worth doing because a permanently-red suite trains reviewers to ignore failures.
+
